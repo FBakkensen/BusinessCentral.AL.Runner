@@ -144,6 +144,21 @@ public static class BcRuntime
             HookProperty(sessType, "CurrentMethodScope", false, nameof(GetCurrentMethodScopeReplacement));
             // LocalLanguageNoFallback reads globalLanguageStack which is null in skeleton session; return -1 (use default).
             HookProperty(sessType, "LocalLanguageNoFallback", false, nameof(NavSession_LocalLanguageNoFallback));
+            // IsLocalLanguage reads globalLanguageStack.Count — same NRE source. Return false: the
+            // skeleton session uses InvariantCulture for formatting in headless mode.
+            var isLocalLang = sessType.GetProperty("IsLocalLanguage",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)?.GetGetMethod(true);
+            if (isLocalLang != null) Hook(isLocalLang, nameof(ReturnFalse_1Arg), "NavSession.get_IsLocalLanguage");
+            // GetSecurityFilters reads Database.SecurityAndLicense which NREs on the skeleton DB.
+            // Return null — RecordImplementation handles null filters as "no security filtering".
+            var getSecFilters = sessType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                .FirstOrDefault(m => m.Name == "GetSecurityFilters");
+            if (getSecFilters != null)
+                Hook(getSecFilters, nameof(NavSession_GetSecurityFilters), "NavSession.GetSecurityFilters");
+            // PushDynamicCaptionStack — language-stack manipulation, NREs on skeleton.
+            var pushDyn = sessType.GetMethod("PushDynamicCaptionStack",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            if (pushDyn != null) Hook(pushDyn, nameof(NoOp_OneArg), "NavSession.PushDynamicCaptionStack");
             // SyncFormatSettings also accesses cultureSettings (null in skeleton); return new FormatSettings().
             var syncFmt = sessType.GetMethod("SyncFormatSettings", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
             if (syncFmt != null) Hook(syncFmt, nameof(NavSession_SyncFormatSettings), "NavSession.SyncFormatSettings");
@@ -282,6 +297,15 @@ public static class BcRuntime
                 var noop = p switch { 1 => nameof(NoOp_OneArg), 2 => nameof(NoOp2), _ => null };
                 if (noop != null) Hook(tso, noop, "NavMethodScope.ThrowStackOverflow");
             }
+
+            // NavMethodScope.AssertError(Action body) — original calls session.Rollback() on the
+            // catch path which NREs on the skeleton session. Replace with a body that just runs
+            // the action and inverts pass/fail semantics for asserterror tests.
+            var assertError = msType.GetMethod("AssertError",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance,
+                null, new[] { typeof(Action) }, null);
+            if (assertError != null)
+                Hook(assertError, nameof(NavMethodScope_AssertError), "NavMethodScope.AssertError");
         }
 
         // TreeHandler.get_Session — the tree's session field is null (root has no session propagated).
@@ -1378,6 +1402,31 @@ public static class BcRuntime
     /// </summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static int NavSession_LocalLanguageNoFallback(object? self) => -1;
+
+    /// <summary>
+    /// Replacement for NavMethodScope.AssertError(Action body). The real method calls
+    /// session.Rollback() in its catch path, which NREs on the skeleton session. We invert the
+    /// pass/fail semantics in headless mode: if the body throws, the asserterror succeeded;
+    /// if the body completes normally, throw NavNCLAssertErrorException so the test driver
+    /// sees an asserterror failure.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void NavMethodScope_AssertError(object self, Action body)
+    {
+        try { body(); }
+        catch { return; /* asserterror passed: body threw something */ }
+        throw new Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException();
+    }
+
+    /// <summary>
+    /// Replacement for NavSession.GetSecurityFilters — bypasses Database.SecurityAndLicense which
+    /// NREs on the skeleton database. Return null; RecordImplementation treats null as "no security
+    /// filters" (matches the IsPermissionSystemEnabled=false code path in the original method).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static object? NavSession_GetSecurityFilters(object self,
+        int companyNameToken, int tableId, object securityFilterType,
+        object? callingObject, object? securableObject) => null;
 
     /// <summary>
     /// Replacement for NavSession.SyncFormatSettings().
