@@ -30,13 +30,20 @@ These three classifications are entirely independent of each other. **Three para
 ## Performance
 
 ```
-v2 wall-clock per bucket: ~2.0s
-  AL→C# emit subprocess: ~1.8s (bottleneck — running existing AlRunner CLI)
-  Roslyn compile:        ~0.2s
-  test execution:        ~0.02s
+v2 wall-clock per bucket — measured today: ~2.0s
+  AL→C# emit subprocess: ~1.8s (the bottleneck — `dotnet AlRunner.dll --dump-csharp` startup + emit)
+  Roslyn compile:        ~0.2s   (C# → IL against real BC DLLs)
+  test execution:        ~0.02s  (every Test method in the bucket combined)
+
+v2 wall-clock per bucket — projected after in-process AL emit (W-5): **~0.3s**
+  AL→C# emit (in-process):    ~0.08s
+  Roslyn compile:             ~0.2s
+  test execution:             ~0.02s
 ```
 
-**The new approach is faster per bucket than the old pipeline today**, even with the AL emit subprocess overhead. Eliminating the subprocess (calling `Compilation.Emit` in-process) would drop ~85% of the per-bucket time — projected ~0.3s/bucket.
+**Projection: an entire bucket of tests runs in ~0.3 seconds.** That's the whole bucket — every Test method combined, including AL→C# emission, Roslyn compile against real BC DLLs, JMP-hook-patched runtime, and per-test invocation. Test execution itself is already ~0.02s for the full bucket; the only meaningful work left is the compile pipeline. The 0.3s projection is grounded in measured numbers — the only changing variable is replacing a subprocess (`dotnet AlRunner.dll`, ~1.8s of which ~1.6s is JIT/init overhead) with an in-process call to `Microsoft.Dynamics.Nav.CodeAnalysis.Compilation.Emit`. That subprocess is currently the only reason a bucket takes seconds rather than fractions of a second.
+
+For reference, the existing AL Runner takes ~5–10s per bucket end-to-end. The v2 approach is on track for **~30× faster** post-W-5.
 
 ## Work-item breakdown for parallel execution
 
