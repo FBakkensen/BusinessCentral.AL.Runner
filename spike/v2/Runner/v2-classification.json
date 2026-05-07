@@ -1,86 +1,264 @@
 {
-  "generated": "2026-05-07T06:52:40.3889356Z",
-  "total_failures": 6,
+  "generated": "2026-05-07T07:26:19.5492570Z",
+  "total_failures": 7,
   "classifications": [
     {
-      "classification": "runtime/null-deref",
-      "count": 6,
+      "classification": "runtime/method-scope",
+      "count": 7,
       "examples": [
         {
-          "bucket": "/home/stefan/Documents/Repos/community/BusinessCentral.AL.Runner/tests/bucket-1/codeunit-runtime/01-pure-function",
+          "bucket": "/tmp/spike-w1/tests/bucket-1/codeunit-runtime/04-asserterror",
           "kind": "fail",
-          "codeunit": "Codeunit50900",
-          "method": "TestApplyDiscount_100Percent",
+          "codeunit": "Codeunit50903",
+          "method": "TestValidateEmail_Empty",
           "message": "NullReferenceException: Object reference not set to an instance of an object.",
-          "classification": "runtime/null-deref"
+          "stack_top": [
+            "at Microsoft.Dynamics.Nav.Runtime.SessionContextHelper.GetALScope(NavSession session)",
+            "at Microsoft.Dynamics.Nav.Runtime.AL.ALTelemetryHelper.IsMicrosoftPublishedExtension(NavSession session)",
+            "at Microsoft.Dynamics.Nav.Runtime.AL.ALTelemetryHelper.GetPrivacyClassificationForErrorMessage(NavSession session, PrivacyClassification defaultPrivacyClassification)",
+            "at Microsoft.Dynamics.Nav.Runtime.AL.ALTelemetryHelper.LogALErrorTelemetry(NavSession session, String traceTag, String errorMessage)",
+            "at Microsoft.Dynamics.Nav.Runtime.NavDialog.ALError(NavSession session, Guid automationId, String message, NavValue[] values)",
+            "at Microsoft.Dynamics.Nav.Runtime.NavDialog.ALError(NavSession session, Guid automationId, String message)",
+            "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50104.ValidateEmail_Scope_1297047081.OnRun()",
+            "at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.Run()",
+            "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50104.ValidateEmail(NavText email)",
+            "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50104.OnInvoke(Int32 memberId, Object[] args)",
+            "at Microsoft.Dynamics.Nav.Runtime.NavApplicationObjectBase.Invoke(Int32 methodId, Object[] arguments)",
+            "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50903.TestValidateEmail_Empty_Scope_667725218.\u003COnRun\u003Eb__5_0()",
+            "at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertError(Action body)",
+            "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50903.TestValidateEmail_Empty_Scope_667725218.OnRun()",
+            "at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.Run()"
+          ],
+          "classification": "runtime/method-scope"
         },
         {
-          "bucket": "/home/stefan/Documents/Repos/community/BusinessCentral.AL.Runner/tests/bucket-1/codeunit-runtime/01-pure-function",
+          "bucket": "/tmp/spike-w1/tests/bucket-1/codeunit-runtime/04-asserterror",
           "kind": "fail",
-          "codeunit": "Codeunit50900",
-          "method": "TestApplyDiscount_10Percent",
+          "codeunit": "Codeunit50903",
+          "method": "TestValidateEmail_NoAtSign",
           "message": "NullReferenceException: Object reference not set to an instance of an object.",
-          "classification": "runtime/null-deref"
+          "stack_top": [
+            "at Microsoft.Dynamics.Nav.Runtime.SessionContextHelper.GetALScope(NavSession session)",
+            "at Microsoft.Dynamics.Nav.Runtime.AL.ALTelemetryHelper.IsMicrosoftPublishedExtension(NavSession session)",
+            "at Microsoft.Dynamics.Nav.Runtime.AL.ALTelemetryHelper.GetPrivacyClassificationForErrorMessage(NavSession session, PrivacyClassification defaultPrivacyClassification)",
+            "at Microsoft.Dynamics.Nav.Runtime.AL.ALTelemetryHelper.LogALErrorTelemetry(NavSession session, String traceTag, String errorMessage)",
+            "at Microsoft.Dynamics.Nav.Runtime.NavDialog.ALError(NavSession session, Guid automationId, String message, NavValue[] values)",
+            "at Microsoft.Dynamics.Nav.Runtime.NavDialog.ALError(NavSession session, Guid automationId, String message)",
+            "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50104.ValidateEmail_Scope_1297047081.OnRun()",
+            "at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.Run()",
+            "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50104.ValidateEmail(NavText email)",
+            "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50104.OnInvoke(Int32 memberId, Object[] args)",
+            "at Microsoft.Dynamics.Nav.Runtime.NavApplicationObjectBase.Invoke(Int32 methodId, Object[] arguments)",
+            "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50903.TestValidateEmail_NoAtSign_Scope__1767799255.\u003COnRun\u003Eb__5_0()",
+            "at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertError(Action body)",
+            "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50903.TestValidateEmail_NoAtSign_Scope__1767799255.OnRun()",
+            "at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.Run()"
+          ],
+          "classification": "runtime/method-scope"
         },
         {
-          "bucket": "/home/stefan/Documents/Repos/community/BusinessCentral.AL.Runner/tests/bucket-1/codeunit-runtime/01-pure-function",
+          "bucket": "/tmp/spike-w1/tests/bucket-1/codeunit-runtime/04-asserterror",
           "kind": "fail",
-          "codeunit": "Codeunit50900",
-          "method": "TestApplyDiscount_NegativePercent",
+          "codeunit": "Codeunit50903",
+          "method": "TestValidateEmail_NoDomain",
           "message": "NullReferenceException: Object reference not set to an instance of an object.",
-          "classification": "runtime/null-deref"
+          "stack_top": [
+            "at Microsoft.Dynamics.Nav.Runtime.SessionContextHelper.GetALScope(NavSession session)",
+            "at Microsoft.Dynamics.Nav.Runtime.AL.ALTelemetryHelper.IsMicrosoftPublishedExtension(NavSession session)",
+            "at Microsoft.Dynamics.Nav.Runtime.AL.ALTelemetryHelper.GetPrivacyClassificationForErrorMessage(NavSession session, PrivacyClassification defaultPrivacyClassification)",
+            "at Microsoft.Dynamics.Nav.Runtime.AL.ALTelemetryHelper.LogALErrorTelemetry(NavSession session, String traceTag, String errorMessage)",
+            "at Microsoft.Dynamics.Nav.Runtime.NavDialog.ALError(NavSession session, Guid automationId, String message, NavValue[] values)",
+            "at Microsoft.Dynamics.Nav.Runtime.NavDialog.ALError(NavSession session, Guid automationId, String message)",
+            "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50104.ValidateEmail_Scope_1297047081.OnRun()",
+            "at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.Run()",
+            "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50104.ValidateEmail(NavText email)",
+            "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50104.OnInvoke(Int32 memberId, Object[] args)",
+            "at Microsoft.Dynamics.Nav.Runtime.NavApplicationObjectBase.Invoke(Int32 methodId, Object[] arguments)",
+            "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50903.TestValidateEmail_NoDomain_Scope__797324140.\u003COnRun\u003Eb__5_0()",
+            "at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertError(Action body)",
+            "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50903.TestValidateEmail_NoDomain_Scope__797324140.OnRun()",
+            "at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.Run()"
+          ],
+          "classification": "runtime/method-scope"
         }
       ]
     }
   ],
   "all_failures": [
     {
-      "bucket": "/home/stefan/Documents/Repos/community/BusinessCentral.AL.Runner/tests/bucket-1/codeunit-runtime/01-pure-function",
+      "bucket": "/tmp/spike-w1/tests/bucket-1/codeunit-runtime/04-asserterror",
       "kind": "fail",
-      "codeunit": "Codeunit50900",
-      "method": "TestApplyDiscount_100Percent",
+      "codeunit": "Codeunit50903",
+      "method": "TestValidateEmail_Empty",
       "message": "NullReferenceException: Object reference not set to an instance of an object.",
-      "classification": "runtime/null-deref"
+      "stack_top": [
+        "at Microsoft.Dynamics.Nav.Runtime.SessionContextHelper.GetALScope(NavSession session)",
+        "at Microsoft.Dynamics.Nav.Runtime.AL.ALTelemetryHelper.IsMicrosoftPublishedExtension(NavSession session)",
+        "at Microsoft.Dynamics.Nav.Runtime.AL.ALTelemetryHelper.GetPrivacyClassificationForErrorMessage(NavSession session, PrivacyClassification defaultPrivacyClassification)",
+        "at Microsoft.Dynamics.Nav.Runtime.AL.ALTelemetryHelper.LogALErrorTelemetry(NavSession session, String traceTag, String errorMessage)",
+        "at Microsoft.Dynamics.Nav.Runtime.NavDialog.ALError(NavSession session, Guid automationId, String message, NavValue[] values)",
+        "at Microsoft.Dynamics.Nav.Runtime.NavDialog.ALError(NavSession session, Guid automationId, String message)",
+        "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50104.ValidateEmail_Scope_1297047081.OnRun()",
+        "at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.Run()",
+        "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50104.ValidateEmail(NavText email)",
+        "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50104.OnInvoke(Int32 memberId, Object[] args)",
+        "at Microsoft.Dynamics.Nav.Runtime.NavApplicationObjectBase.Invoke(Int32 methodId, Object[] arguments)",
+        "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50903.TestValidateEmail_Empty_Scope_667725218.\u003COnRun\u003Eb__5_0()",
+        "at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertError(Action body)",
+        "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50903.TestValidateEmail_Empty_Scope_667725218.OnRun()",
+        "at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.Run()"
+      ],
+      "classification": "runtime/method-scope"
     },
     {
-      "bucket": "/home/stefan/Documents/Repos/community/BusinessCentral.AL.Runner/tests/bucket-1/codeunit-runtime/01-pure-function",
+      "bucket": "/tmp/spike-w1/tests/bucket-1/codeunit-runtime/04-asserterror",
       "kind": "fail",
-      "codeunit": "Codeunit50900",
-      "method": "TestApplyDiscount_10Percent",
+      "codeunit": "Codeunit50903",
+      "method": "TestValidateEmail_NoAtSign",
       "message": "NullReferenceException: Object reference not set to an instance of an object.",
-      "classification": "runtime/null-deref"
+      "stack_top": [
+        "at Microsoft.Dynamics.Nav.Runtime.SessionContextHelper.GetALScope(NavSession session)",
+        "at Microsoft.Dynamics.Nav.Runtime.AL.ALTelemetryHelper.IsMicrosoftPublishedExtension(NavSession session)",
+        "at Microsoft.Dynamics.Nav.Runtime.AL.ALTelemetryHelper.GetPrivacyClassificationForErrorMessage(NavSession session, PrivacyClassification defaultPrivacyClassification)",
+        "at Microsoft.Dynamics.Nav.Runtime.AL.ALTelemetryHelper.LogALErrorTelemetry(NavSession session, String traceTag, String errorMessage)",
+        "at Microsoft.Dynamics.Nav.Runtime.NavDialog.ALError(NavSession session, Guid automationId, String message, NavValue[] values)",
+        "at Microsoft.Dynamics.Nav.Runtime.NavDialog.ALError(NavSession session, Guid automationId, String message)",
+        "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50104.ValidateEmail_Scope_1297047081.OnRun()",
+        "at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.Run()",
+        "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50104.ValidateEmail(NavText email)",
+        "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50104.OnInvoke(Int32 memberId, Object[] args)",
+        "at Microsoft.Dynamics.Nav.Runtime.NavApplicationObjectBase.Invoke(Int32 methodId, Object[] arguments)",
+        "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50903.TestValidateEmail_NoAtSign_Scope__1767799255.\u003COnRun\u003Eb__5_0()",
+        "at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertError(Action body)",
+        "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50903.TestValidateEmail_NoAtSign_Scope__1767799255.OnRun()",
+        "at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.Run()"
+      ],
+      "classification": "runtime/method-scope"
     },
     {
-      "bucket": "/home/stefan/Documents/Repos/community/BusinessCentral.AL.Runner/tests/bucket-1/codeunit-runtime/01-pure-function",
+      "bucket": "/tmp/spike-w1/tests/bucket-1/codeunit-runtime/04-asserterror",
       "kind": "fail",
-      "codeunit": "Codeunit50900",
-      "method": "TestApplyDiscount_NegativePercent",
+      "codeunit": "Codeunit50903",
+      "method": "TestValidateEmail_NoDomain",
       "message": "NullReferenceException: Object reference not set to an instance of an object.",
-      "classification": "runtime/null-deref"
+      "stack_top": [
+        "at Microsoft.Dynamics.Nav.Runtime.SessionContextHelper.GetALScope(NavSession session)",
+        "at Microsoft.Dynamics.Nav.Runtime.AL.ALTelemetryHelper.IsMicrosoftPublishedExtension(NavSession session)",
+        "at Microsoft.Dynamics.Nav.Runtime.AL.ALTelemetryHelper.GetPrivacyClassificationForErrorMessage(NavSession session, PrivacyClassification defaultPrivacyClassification)",
+        "at Microsoft.Dynamics.Nav.Runtime.AL.ALTelemetryHelper.LogALErrorTelemetry(NavSession session, String traceTag, String errorMessage)",
+        "at Microsoft.Dynamics.Nav.Runtime.NavDialog.ALError(NavSession session, Guid automationId, String message, NavValue[] values)",
+        "at Microsoft.Dynamics.Nav.Runtime.NavDialog.ALError(NavSession session, Guid automationId, String message)",
+        "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50104.ValidateEmail_Scope_1297047081.OnRun()",
+        "at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.Run()",
+        "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50104.ValidateEmail(NavText email)",
+        "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50104.OnInvoke(Int32 memberId, Object[] args)",
+        "at Microsoft.Dynamics.Nav.Runtime.NavApplicationObjectBase.Invoke(Int32 methodId, Object[] arguments)",
+        "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50903.TestValidateEmail_NoDomain_Scope__797324140.\u003COnRun\u003Eb__5_0()",
+        "at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertError(Action body)",
+        "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50903.TestValidateEmail_NoDomain_Scope__797324140.OnRun()",
+        "at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.Run()"
+      ],
+      "classification": "runtime/method-scope"
     },
     {
-      "bucket": "/home/stefan/Documents/Repos/community/BusinessCentral.AL.Runner/tests/bucket-1/codeunit-runtime/01-pure-function",
+      "bucket": "/tmp/spike-w1/tests/bucket-1/codeunit-runtime/04-asserterror",
       "kind": "fail",
-      "codeunit": "Codeunit50900",
-      "method": "TestApplyDiscount_Over100Percent",
+      "codeunit": "Codeunit50903",
+      "method": "TestValidatePercentage_Negative",
       "message": "NullReferenceException: Object reference not set to an instance of an object.",
-      "classification": "runtime/null-deref"
+      "stack_top": [
+        "at Microsoft.Dynamics.Nav.Runtime.SessionContextHelper.GetALScope(NavSession session)",
+        "at Microsoft.Dynamics.Nav.Runtime.AL.ALTelemetryHelper.IsMicrosoftPublishedExtension(NavSession session)",
+        "at Microsoft.Dynamics.Nav.Runtime.AL.ALTelemetryHelper.GetPrivacyClassificationForErrorMessage(NavSession session, PrivacyClassification defaultPrivacyClassification)",
+        "at Microsoft.Dynamics.Nav.Runtime.AL.ALTelemetryHelper.LogALErrorTelemetry(NavSession session, String traceTag, String errorMessage)",
+        "at Microsoft.Dynamics.Nav.Runtime.NavDialog.ALError(NavSession session, Guid automationId, String message, NavValue[] values)",
+        "at Microsoft.Dynamics.Nav.Runtime.NavDialog.ALError(NavSession session, Guid automationId, String message)",
+        "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50104.ValidatePercentage_Scope__1953832132.OnRun()",
+        "at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.Run()",
+        "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50104.ValidatePercentage(Decimal18 pct)",
+        "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50104.OnInvoke(Int32 memberId, Object[] args)",
+        "at Microsoft.Dynamics.Nav.Runtime.NavApplicationObjectBase.Invoke(Int32 methodId, Object[] arguments)",
+        "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50903.TestValidatePercentage_Negative_Scope__1667199703.\u003COnRun\u003Eb__5_0()",
+        "at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertError(Action body)",
+        "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50903.TestValidatePercentage_Negative_Scope__1667199703.OnRun()",
+        "at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.Run()"
+      ],
+      "classification": "runtime/method-scope"
     },
     {
-      "bucket": "/home/stefan/Documents/Repos/community/BusinessCentral.AL.Runner/tests/bucket-1/codeunit-runtime/01-pure-function",
+      "bucket": "/tmp/spike-w1/tests/bucket-1/codeunit-runtime/04-asserterror",
       "kind": "fail",
-      "codeunit": "Codeunit50900",
-      "method": "TestApplyDiscount_ZeroPercent",
+      "codeunit": "Codeunit50903",
+      "method": "TestValidatePercentage_Over100",
       "message": "NullReferenceException: Object reference not set to an instance of an object.",
-      "classification": "runtime/null-deref"
+      "stack_top": [
+        "at Microsoft.Dynamics.Nav.Runtime.SessionContextHelper.GetALScope(NavSession session)",
+        "at Microsoft.Dynamics.Nav.Runtime.AL.ALTelemetryHelper.IsMicrosoftPublishedExtension(NavSession session)",
+        "at Microsoft.Dynamics.Nav.Runtime.AL.ALTelemetryHelper.GetPrivacyClassificationForErrorMessage(NavSession session, PrivacyClassification defaultPrivacyClassification)",
+        "at Microsoft.Dynamics.Nav.Runtime.AL.ALTelemetryHelper.LogALErrorTelemetry(NavSession session, String traceTag, String errorMessage)",
+        "at Microsoft.Dynamics.Nav.Runtime.NavDialog.ALError(NavSession session, Guid automationId, String message, NavValue[] values)",
+        "at Microsoft.Dynamics.Nav.Runtime.NavDialog.ALError(NavSession session, Guid automationId, String message)",
+        "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50104.ValidatePercentage_Scope__1953832132.OnRun()",
+        "at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.Run()",
+        "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50104.ValidatePercentage(Decimal18 pct)",
+        "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50104.OnInvoke(Int32 memberId, Object[] args)",
+        "at Microsoft.Dynamics.Nav.Runtime.NavApplicationObjectBase.Invoke(Int32 methodId, Object[] arguments)",
+        "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50903.TestValidatePercentage_Over100_Scope_981906164.\u003COnRun\u003Eb__5_0()",
+        "at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertError(Action body)",
+        "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50903.TestValidatePercentage_Over100_Scope_981906164.OnRun()",
+        "at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.Run()"
+      ],
+      "classification": "runtime/method-scope"
     },
     {
-      "bucket": "/home/stefan/Documents/Repos/community/BusinessCentral.AL.Runner/tests/bucket-1/codeunit-runtime/01-pure-function",
+      "bucket": "/tmp/spike-w1/tests/bucket-1/codeunit-runtime/04-asserterror",
       "kind": "fail",
-      "codeunit": "Codeunit50900",
-      "method": "TestCalculateVAT",
+      "codeunit": "Codeunit50903",
+      "method": "TestValidateQuantity_Negative",
       "message": "NullReferenceException: Object reference not set to an instance of an object.",
-      "classification": "runtime/null-deref"
+      "stack_top": [
+        "at Microsoft.Dynamics.Nav.Runtime.SessionContextHelper.GetALScope(NavSession session)",
+        "at Microsoft.Dynamics.Nav.Runtime.AL.ALTelemetryHelper.IsMicrosoftPublishedExtension(NavSession session)",
+        "at Microsoft.Dynamics.Nav.Runtime.AL.ALTelemetryHelper.GetPrivacyClassificationForErrorMessage(NavSession session, PrivacyClassification defaultPrivacyClassification)",
+        "at Microsoft.Dynamics.Nav.Runtime.AL.ALTelemetryHelper.LogALErrorTelemetry(NavSession session, String traceTag, String errorMessage)",
+        "at Microsoft.Dynamics.Nav.Runtime.NavDialog.ALError(NavSession session, Guid automationId, String message, NavValue[] values)",
+        "at Microsoft.Dynamics.Nav.Runtime.NavDialog.ALError(NavSession session, Guid automationId, String message)",
+        "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50104.ValidateQuantity_Scope_2069891842.OnRun()",
+        "at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.Run()",
+        "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50104.ValidateQuantity(Int32 qty)",
+        "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50104.OnInvoke(Int32 memberId, Object[] args)",
+        "at Microsoft.Dynamics.Nav.Runtime.NavApplicationObjectBase.Invoke(Int32 methodId, Object[] arguments)",
+        "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50903.TestValidateQuantity_Negative_Scope__1018693702.\u003COnRun\u003Eb__5_0()",
+        "at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertError(Action body)",
+        "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50903.TestValidateQuantity_Negative_Scope__1018693702.OnRun()",
+        "at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.Run()"
+      ],
+      "classification": "runtime/method-scope"
+    },
+    {
+      "bucket": "/tmp/spike-w1/tests/bucket-1/codeunit-runtime/04-asserterror",
+      "kind": "fail",
+      "codeunit": "Codeunit50903",
+      "method": "TestValidateQuantity_TooLarge",
+      "message": "NullReferenceException: Object reference not set to an instance of an object.",
+      "stack_top": [
+        "at Microsoft.Dynamics.Nav.Runtime.SessionContextHelper.GetALScope(NavSession session)",
+        "at Microsoft.Dynamics.Nav.Runtime.AL.ALTelemetryHelper.IsMicrosoftPublishedExtension(NavSession session)",
+        "at Microsoft.Dynamics.Nav.Runtime.AL.ALTelemetryHelper.GetPrivacyClassificationForErrorMessage(NavSession session, PrivacyClassification defaultPrivacyClassification)",
+        "at Microsoft.Dynamics.Nav.Runtime.AL.ALTelemetryHelper.LogALErrorTelemetry(NavSession session, String traceTag, String errorMessage)",
+        "at Microsoft.Dynamics.Nav.Runtime.NavDialog.ALError(NavSession session, Guid automationId, String message, NavValue[] values)",
+        "at Microsoft.Dynamics.Nav.Runtime.NavDialog.ALError(NavSession session, Guid automationId, String message)",
+        "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50104.ValidateQuantity_Scope_2069891842.OnRun()",
+        "at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.Run()",
+        "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50104.ValidateQuantity(Int32 qty)",
+        "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50104.OnInvoke(Int32 memberId, Object[] args)",
+        "at Microsoft.Dynamics.Nav.Runtime.NavApplicationObjectBase.Invoke(Int32 methodId, Object[] arguments)",
+        "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50903.TestValidateQuantity_TooLarge_Scope__1765464883.\u003COnRun\u003Eb__5_0()",
+        "at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertError(Action body)",
+        "at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50903.TestValidateQuantity_TooLarge_Scope__1765464883.OnRun()",
+        "at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.Run()"
+      ],
+      "classification": "runtime/method-scope"
     }
   ]
 }
