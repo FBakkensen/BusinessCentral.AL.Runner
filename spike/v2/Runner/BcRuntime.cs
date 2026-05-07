@@ -17,6 +17,17 @@ public static class BcRuntime
     private static Microsoft.Dynamics.Nav.Runtime.NavMethodScope? _skeletonRootScope;
     public static Microsoft.Dynamics.Nav.Runtime.ITreeObject? RootTreeStub;
 
+    // Reflected fields used by the NavMethodScope ctor replacement.
+    // Populated in ApplyAllPatches; used in NavMethodScopeCtorReplacement.
+    private static FieldInfo? _fTreeObjTree;           // TreeObject.tree
+    private static FieldInfo? _fMsSession;             // NavMethodScope.session
+    private static FieldInfo? _fMsParentScope;         // NavMethodScope.parentScope
+    private static FieldInfo? _fMsFlags;               // NavMethodScope.flags
+    private static FieldInfo? _fMsStackDepth;          // NavMethodScope.<StackDepth>k__BackingField
+    private static FieldInfo? _fMsTopLevelAppObj;      // NavMethodScope.<TopLevelApplicationObject>k__BackingField
+    private static FieldInfo? _fSessCurrentScope;      // NavSession.<CurrentMethodScope>k__BackingField
+    private static MethodInfo? _mCreateTreeHandler;    // TreeHandler.CreateTreeHandler
+
     // Set to the currently-loaded test assembly so CreateTarget looks up codeunit types there.
     private static Assembly? _currentTestAssembly;
     public static void SetTestAssembly(Assembly asm)
@@ -96,6 +107,23 @@ public static class BcRuntime
             }
         }
 
+        // Reflect and cache the fields we need for the ctor replacement below.
+        if (treeObjType != null)
+            _fTreeObjTree = treeObjType.GetField("tree", BindingFlags.NonPublic | BindingFlags.Instance);
+        if (msType != null)
+        {
+            _fMsSession    = msType.GetField("session",      BindingFlags.NonPublic | BindingFlags.Instance);
+            _fMsParentScope= msType.GetField("parentScope",  BindingFlags.NonPublic | BindingFlags.Instance);
+            _fMsFlags      = msType.GetField("flags",        BindingFlags.NonPublic | BindingFlags.Instance);
+            _fMsStackDepth = msType.GetField("<StackDepth>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance);
+            _fMsTopLevelAppObj = msType.GetField("<TopLevelApplicationObject>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance);
+        }
+        if (sessType != null)
+            _fSessCurrentScope = sessType.GetField("<CurrentMethodScope>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance);
+        if (treeHandlerType != null)
+            _mCreateTreeHandler = treeHandlerType.GetMethod("CreateTreeHandler",
+                BindingFlags.Public | BindingFlags.Static);
+
         // Build a proper NavMethodScope+RootMethodScope skeleton so the NavMethodScope ctor
         // (which calls base(parent)) can create child TreeHandlers from it safely.
         // Returning RootTreeObject (an ITreeObject, not NavMethodScope) caused out-of-bounds
@@ -123,6 +151,38 @@ public static class BcRuntime
                 if (depthField != null) FieldPoke.SetInstance(depthField, skel, 1);
                 _skeletonRootScope = (Microsoft.Dynamics.Nav.Runtime.NavMethodScope)skel;
             }
+        }
+
+        // Hook the 3-arg NavMethodScope ctor that all generated test-scope nested classes call.
+        // The BC ctor body dereferences properties on the skeleton session/root-scope that NRE
+        // once earlier-bucket test scopes have mutated shared state (e.g. session.CurrentMethodScope
+        // setter writes back, some paths touch Diagnostics, etc.).
+        // Replace the whole ctor body with a minimal safe implementation that sets only the
+        // fields actually needed for Pass/Fail/Error classification at this layer of the pipeline.
+        if (msType != null)
+        {
+            var aoType2 = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavApplicationObjectBase");
+            var msFlagsType = _fMsFlags?.FieldType;
+            if (aoType2 != null && msFlagsType != null)
+            {
+                var ctor3 = msType.GetConstructors(
+                    BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public)
+                    .FirstOrDefault(c => {
+                        var ps = c.GetParameters();
+                        return ps.Length == 3
+                            && ps[0].ParameterType == aoType2
+                            && ps[2].ParameterType == typeof(bool);
+                    });
+                if (ctor3 != null)
+                {
+                    Console.Error.WriteLine($"[BcRuntime] Hooking 3-arg NavMethodScope ctor: {ctor3}");
+                    Hook(ctor3, nameof(NavMethodScopeCtorReplacement), "NavMethodScope..ctor(NavApplicationObjectBase,MethodScopeFlags,bool)");
+                }
+                else
+                    Console.Error.WriteLine($"[BcRuntime] WARNING: 3-arg NavMethodScope ctor NOT FOUND");
+            }
+            else
+                Console.Error.WriteLine($"[BcRuntime] WARNING: msFlagsType={msFlagsType}, aoType2={aoType2}");
         }
 
         // NavMethodScope.ThrowStackOverflow — stack-depth check uses non-NavMethodScope, false-positive
@@ -264,6 +324,101 @@ public static class BcRuntime
         if (_skeletonRootScope != null && _skeletonRootScope.IsDisposed)
             Console.Error.WriteLine("[BcRuntime] WARNING: _skeletonRootScope is disposed!");
         return _skeletonRootScope;
+    }
+
+    /// <summary>
+    /// Replacement for NavMethodScope..ctor(NavApplicationObjectBase, MethodScopeFlags, bool).
+    ///
+    /// The real ctor body dereferences many properties on the skeleton session and root scope that
+    /// become unreliable once earlier test-bucket scopes have mutated shared state (e.g. the
+    /// session's CurrentMethodScope backing field, Diagnostics, ExecutionUnit, etc.).  Instead of
+    /// patching each individually we replace the entire body with a minimal implementation that
+    /// only sets the fields callers actually depend on in our thin test harness.
+    ///
+    /// Fields set (all via FieldPoke to bypass readonly/private access restrictions):
+    ///   TreeObject.tree              — new child TreeHandler under _skeletonRootScope
+    ///   NavMethodScope.session       — _skeletonSession
+    ///   NavMethodScope.parentScope   — _skeletonRootScope
+    ///   NavMethodScope.flags         — GetMethodScopeFlags() (virtual, resolved on concrete subtype)
+    ///   NavMethodScope.StackDepth    — 2 (root=1, one level deeper)
+    ///   NavMethodScope.TopLevelApplicationObject — applicationObject
+    ///   NavSession.CurrentMethodScope (backing field) — self
+    /// </summary>
+    /// <summary>
+    /// Replacement for the BODY of NavMethodScope..ctor(NavApplicationObjectBase, MethodScopeFlags, bool).
+    ///
+    /// By the time this is called, the base-chain ctors (TreeObject..ctor → NavScope..ctor) have
+    /// already run, so the TreeObject.tree field is already initialised.  This replacement only
+    /// needs to initialise the fields that are declared in NavMethodScope itself:
+    ///   session, parentScope, flags, cancellationToken (left at default 0), StackDepth,
+    ///   TopLevelApplicationObject, and session.CurrentMethodScope.
+    ///
+    /// This avoids every property dereference in the real ctor body that can NRE on a skeleton
+    /// session/root-scope, especially when shared mutable state (CurrentMethodScope backing field,
+    /// Diagnostics, ServiceConnection, etc.) is dirty from a previous test bucket.
+    /// </summary>
+    /// <summary>
+    /// Full replacement for NavMethodScope..ctor(NavApplicationObjectBase, MethodScopeFlags, bool).
+    ///
+    /// When a JMP-hook replaces a constructor, the ENTIRE ctor is replaced — including the
+    /// base-chain call (: base(...)). That means TreeObject..ctor and NavScope..ctor do NOT run,
+    /// so we must set up every field that any of those base ctors would have initialised.
+    ///
+    /// Fields initialised (all via FieldPoke to bypass readonly/private restrictions):
+    ///
+    ///   TreeObject.tree              — new child TreeHandler under _skeletonRootScope; sets up
+    ///                                  the parent-child link in the tree so Dispose bookkeeping works
+    ///   NavMethodScope.session       — _skeletonSession
+    ///   NavMethodScope.parentScope   — _skeletonRootScope
+    ///   NavMethodScope.flags         — GetMethodScopeFlags() on the concrete subtype
+    ///   NavMethodScope.StackDepth    — 2 (root=1, one level deeper)
+    ///   NavMethodScope.TopLevelApplicationObject — applicationObject
+    ///   NavSession.CurrentMethodScope (backing field) — self
+    ///
+    /// TreeHandler.isDisposing is left false (default); all other TreeObject/NavMethodScope
+    /// fields default to null/0/false which is safe for the thin test-harness usage.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void NavMethodScopeCtorReplacement(
+        Microsoft.Dynamics.Nav.Runtime.NavMethodScope self,
+        Microsoft.Dynamics.Nav.Runtime.NavApplicationObjectBase applicationObject,
+        object flags,   // MethodScopeFlags — superseded by GetMethodScopeFlags()
+        bool eventSource)
+    {
+        // 1. TreeObject.tree — CreateTreeHandler links self as a child of _skeletonRootScope.
+        //    This is the equivalent of base(applicationObject.Session.CurrentMethodScope)
+        //    → TreeObject..ctor(_skeletonRootScope) → tree = CreateTreeHandler(_skeletonRootScope, self).
+        if (_mCreateTreeHandler != null && _fTreeObjTree != null && _skeletonRootScope != null)
+        {
+            var handler = _mCreateTreeHandler.Invoke(null, new object[] { _skeletonRootScope, self });
+            FieldPoke.SetInstance(_fTreeObjTree, self, handler);
+        }
+        // 2. NavMethodScope.session
+        if (_fMsSession != null)     FieldPoke.SetInstance(_fMsSession,     self, _skeletonSession);
+        // 3. NavMethodScope.parentScope = _skeletonRootScope
+        if (_fMsParentScope != null) FieldPoke.SetInstance(_fMsParentScope, self, _skeletonRootScope);
+        // 4. NavMethodScope.flags — resolve via virtual GetMethodScopeFlags() on the concrete subtype.
+        //    NavMethodScope<T> → IsStackFrame; TryMethodScope → IsInTryScope; etc.
+        if (_fMsFlags != null)
+        {
+            try
+            {
+                var getFlags = self.GetType().GetMethod("GetMethodScopeFlags",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+                var scopeFlags = getFlags != null ? getFlags.Invoke(self, null) : null;
+                FieldPoke.SetInstance(_fMsFlags, self, scopeFlags ?? Enum.ToObject(_fMsFlags.FieldType, 0));
+            }
+            catch { /* leave flags at default 0 on reflection error */ }
+        }
+        // 5. NavMethodScope.StackDepth = 2 (_skeletonRootScope.StackDepth=1)
+        if (_fMsStackDepth != null)  FieldPoke.SetInstance(_fMsStackDepth,  self, 2);
+        // 6. NavMethodScope.TopLevelApplicationObject = applicationObject
+        if (_fMsTopLevelAppObj != null) FieldPoke.SetInstance(_fMsTopLevelAppObj, self, applicationObject);
+        // 7. NavSession.CurrentMethodScope backing field = self  (mirrors real ctor's session.CurrentMethodScope = this)
+        if (_fSessCurrentScope != null && _skeletonSession != null)
+            FieldPoke.SetInstance(_fSessCurrentScope, _skeletonSession, self);
+        // cancellationToken, sqlStatisticsAvailable, globalSql*AtStart all left at default
+        // (zero-value structs / false) — safe for the test harness since no SQL paths run.
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)] public static void NoOp_OneArg(object? a) { }
