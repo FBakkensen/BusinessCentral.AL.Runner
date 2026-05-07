@@ -146,6 +146,45 @@ spike/v2/Runner/
 
 **Total: ~775 lines.** Replaces (eventually) `AlRunner/RoslynRewriter.cs` (~3500 lines) and `AlRunner/Runtime/AlScope.cs` (~3500 lines) plus the rewriter-related portions of `Pipeline.cs` and `Program.cs`. Net reduction in production AL Runner: estimated **~6000 lines** once W-1/W-2 land and the migration completes.
 
+## W-7 (deferred design): explicit isolation modes
+
+**Status:** designed, not built. Track here so it's not forgotten.
+
+BC's standard test framework supports configurable isolation per test suite — each AL test file declares (or the runner is configured for) one of:
+
+| BC mode | What BC does | v2 equivalent |
+|---|---|---|
+| `Test Runner` (codeunit 130450, default) | Wraps each `[Test]` method in a transaction scope; rolls back at end | `--isolation per-test` — reset BC singleton fields between every Test method |
+| `Test Runner - Isol. Disabled` (codeunit 130451) | No isolation, all tests share state, used in BCApps CI with `renewClientContextBetweenTests` | `--isolation disabled` — current single-process behavior |
+| `Test Suite` (codeunit 130459) | Per-suite isolation (looser than per-test) | `--isolation per-codeunit` — reset between buckets |
+
+**AL tests are written against a specific mode.** A test that assumes per-function rollback will leak state to the next test under `disabled`. A test that depends on a previous test's setup will fail under `per-test` reset.
+
+### What v2 needs
+
+1. **CLI flag:** `--isolation per-test|per-codeunit|disabled`. Default to `per-test` to match BC's standard runner.
+2. **Per-bucket override** read from `al-runner.json` (same knob the existing AL Runner already exposes — should propagate verbatim).
+3. **`BcRuntime.ResetState(IsolationLevel)`** — re-pokes the appropriate field set:
+   - `PerTest`: smallest set — `_skeletonSession.<CurrentMethodScope>k__BackingField`, `_skeletonRootScope.<StackDepth>k__BackingField`, any error/diagnostic state
+   - `PerCodeunit`: superset — also reset accumulated child-scope linked lists, codeunit type cache, `NavEnvironment.instance` mutable fields
+   - `Disabled`: no-op
+4. **`TestExecutor`** invokes `BcRuntime.ResetState(level)` before each `[Test]` method (PerTest) or before each codeunit (PerCodeunit) or never (Disabled).
+5. **Subprocess fallback** stays available as `--isolation subprocess` for buckets that genuinely need full process isolation (e.g. tests that touch BC types we haven't yet identified as polluters).
+
+### Why this is deferred
+
+W-1.6 found the actual cross-bucket pollution root cause was `<TieredCompilation>false</TieredCompilation>`, not field mutation. With tiered comp off, the JMP-hooks stay live for the full run and most "pollution" disappears. The remaining residual is small enough that explicit isolation modes are a *correctness* feature (matching BC's contract for AL test authors) rather than a *pass-rate* feature.
+
+### Done criteria when implemented
+
+- `--isolation per-test` runs every test in the same effective state as the existing AL Runner's per-function isolation
+- AL tests with `// IsolationLevel = Disabled` comments / config respect that
+- Pass rate parity with the existing AL Runner on a representative bucket sample
+
+### Estimated effort
+
+S–M (1–3 days). The ResetState fields are already enumerated in BcRuntime.cs's existing patches; this is wiring + plumbing, not investigation.
+
 ## Suggested work cadence
 
 1. **Now → W-1 + W-2 in parallel** (two impl agents). Each is bounded by ILSpy-aided introspection of one BC type. ~1 day each.
