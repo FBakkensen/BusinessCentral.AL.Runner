@@ -146,7 +146,17 @@ spike/v2/Runner/
 
 **Total: ~775 lines.** Replaces (eventually) `AlRunner/RoslynRewriter.cs` (~3500 lines) and `AlRunner/Runtime/AlScope.cs` (~3500 lines) plus the rewriter-related portions of `Pipeline.cs` and `Program.cs`. Net reduction in production AL Runner: estimated **~6000 lines** once W-1/W-2 land and the migration completes.
 
-## W-7 (deferred design): explicit isolation modes
+## W-8 (deferred): permanent-table semantics on top of TempTableDataProvider
+
+The record-gate verdict (`spike/v2/RECORD-GATE.md`) chose `TempTableDataProvider` as the storage substrate for *all* records, including permanent tables. AL test authors expect permanent-table semantics — three patches close the gaps:
+
+- **`IsTemporary` lies as `false`** for AL-declared permanent records. Triggers fire as on a real table; storage stays temp-backed. ~5 lines.
+- **Trigger dispatch**: confirm `runTrigger=true` on `Insert/Modify/Delete` actually invokes the AL trigger handlers when storage is temp-backed. If not, hook the dispatch path to fire our trigger registry. Verification + ~50 lines if needed.
+- **`Commit`**: no-op is safe for unit tests; document as a limitation. AL tests that depend on commit-semantics rollback are rare in unit-testing.
+
+Estimated: 1 week. Should land **with** W-7 (not after) — they share the rollback infrastructure described below.
+
+## W-7 (deferred design): test isolation modes + init handlers + write-log rollback
 
 **Status:** designed, not built. Track here so it's not forgotten.
 
@@ -164,16 +174,27 @@ BC's standard test framework supports configurable isolation per test suite — 
 
 1. **CLI flag:** `--isolation per-test|per-codeunit|disabled`. Default to `per-test` to match BC's standard runner.
 2. **Per-bucket override** read from `al-runner.json` (same knob the existing AL Runner already exposes — should propagate verbatim).
-3. **`BcRuntime.ResetState(IsolationLevel)`** — re-pokes the appropriate field set:
-   - `PerTest`: smallest set — `_skeletonSession.<CurrentMethodScope>k__BackingField`, `_skeletonRootScope.<StackDepth>k__BackingField`, any error/diagnostic state
+3. **Write-log rollback in `RecordPatches`.** Every `Insert/Modify/Delete` through our hooked `IDataAccess` appends to a per-test `(table, key, prev-value-or-null)` log. At test boundary (per `IsolationLevel`), replay log in reverse to restore state. ~150 lines. Same algorithm `AlScope.cs` uses today.
+4. **`BcRuntime.ResetState(IsolationLevel)`** — re-pokes the appropriate field set:
+   - `PerTest`: smallest set — `_skeletonSession.<CurrentMethodScope>k__BackingField`, `_skeletonRootScope.<StackDepth>k__BackingField`, any error/diagnostic state, replay write log
    - `PerCodeunit`: superset — also reset accumulated child-scope linked lists, codeunit type cache, `NavEnvironment.instance` mutable fields
    - `Disabled`: no-op
-4. **`TestExecutor`** invokes `BcRuntime.ResetState(level)` before each `[Test]` method (PerTest) or before each codeunit (PerCodeunit) or never (Disabled).
-5. **Subprocess fallback** stays available as `--isolation subprocess` for buckets that genuinely need full process isolation (e.g. tests that touch BC types we haven't yet identified as polluters).
+5. **Init handler discovery and invocation in `TestExecutor`.** AL test buckets register codeunits via `[EventSubscriber]` against `Codeunit::"Test Runner"` events:
+   - `OnBeforeTestSuiteRun` — invoked once before the bucket's tests run; this is where master-data seed lives
+   - `OnBeforeTestRun` / `OnAfterTestRun` — per-test setup/teardown
+   - `OnAfterTestSuiteRun` — final cleanup
+   Plus the existing AL Runner's `tests/init-events/` codeunit-list mechanism for older tests. Both must be honored. ~200 lines + small event dispatcher.
+6. **`TestExecutor`** invokes init handlers and `BcRuntime.ResetState(level)` at the right boundaries:
+   - bucket start: `OnBeforeTestSuiteRun` handlers
+   - per `[Test]` method: `OnBeforeTestRun` → run test → `OnAfterTestRun` → reset state if isolation requires
+   - bucket end: `OnAfterTestSuiteRun`
+7. **Subprocess fallback** stays available as `--isolation subprocess` for buckets that genuinely need full process isolation (e.g. tests that touch BC types we haven't yet identified as polluters).
 
 ### Why this is deferred
 
-W-1.6 found the actual cross-bucket pollution root cause was `<TieredCompilation>false</TieredCompilation>`, not field mutation. With tiered comp off, the JMP-hooks stay live for the full run and most "pollution" disappears. The remaining residual is small enough that explicit isolation modes are a *correctness* feature (matching BC's contract for AL test authors) rather than a *pass-rate* feature.
+W-1.6 found the actual cross-bucket *runtime-state* pollution root cause was `<TieredCompilation>false</TieredCompilation>`, not field mutation. With tiered comp off, the JMP-hooks stay live for the full run and most pollution disappears.
+
+But W-7 / W-8 cover a **different** pollution problem: **AL-test-level state pollution.** Tests writing records that bleed into the next test produce wrong outcomes, sometimes silently passing tests that would fail under BC's default `Test Runner`. This is the contract AL test authors actually depend on, and v2 today is silently in `Isol. Disabled` mode. **It's a correctness gap that affects pass-rate accuracy, not pass-rate volume.** A test passing in v2 today doesn't necessarily mean the AL code is correct under standard BC test semantics.
 
 ### Done criteria when implemented
 
@@ -183,7 +204,14 @@ W-1.6 found the actual cross-bucket pollution root cause was `<TieredCompilation
 
 ### Estimated effort
 
-S–M (1–3 days). The ResetState fields are already enumerated in BcRuntime.cs's existing patches; this is wiring + plumbing, not investigation.
+M (1 week, combined with W-8). Components:
+- Write-log + rollback in `RecordPatches`: ~150 LOC, well-defined algorithm.
+- Init-handler discovery + invocation: ~200 LOC, follows BC's `[EventSubscriber]` pattern.
+- ResetState: ~100 LOC of field-poke wiring, fields already enumerated in BcRuntime.cs.
+- CLI flag + `al-runner.json` propagation: ~50 LOC.
+- W-8's `IsTemporary` lie + trigger dispatch: ~50–100 LOC, depends on what `runTrigger=true` actually triggers in BC IL when the provider is temp-backed.
+
+**Critical for production-readiness, not pass-rate alone.** Without it, v2's pass numbers are misleading — they include tests that would fail if isolated correctly.
 
 ## Suggested work cadence
 
