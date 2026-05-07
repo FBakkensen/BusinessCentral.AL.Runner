@@ -42,8 +42,8 @@ foreach (var bucket in bucketDirs)
 {
     i2++;
     Console.Write($"[{i2}/{bucketDirs.Count}] {Path.GetRelativePath(Environment.CurrentDirectory, bucket)} ... ");
-    var (config, srcDir, testDir) = ReadBucketConfig(bucket);
-    if (config == null) { Console.WriteLine("SKIP (no al-runner.json)"); continue; }
+    var (_, srcDir, testDir) = ReadBucketConfig(bucket);
+    if (srcDir == null && testDir == null) { Console.WriteLine("SKIP (no src/test dirs)"); continue; }
 
     // Register AL table sources so RecordPatches can build NCLMetaTable instances.
     if (srcDir != null) AlRunnerV2.Patches.RecordPatches.AddSourceDir(srcDir);
@@ -105,23 +105,45 @@ return 0;
 
 static (object? config, string? src, string? test) ReadBucketConfig(string dir)
 {
+    // al-runner.json is optional. When present, sourcePath/testPath override the defaults.
+    // When absent, fall back to ./src and ./test (matches the existing CI-loop convention
+    // in .github/workflows/test-matrix.yml which iterates by src/test directory presence).
     var cfg = Path.Combine(dir, "al-runner.json");
-    if (!File.Exists(cfg)) return (null, null, null);
-    var json = System.Text.Json.JsonDocument.Parse(File.ReadAllText(cfg));
-    var root = json.RootElement;
-    string? src = root.TryGetProperty("sourcePath", out var s) ? s.GetString() : null;
-    string? test = root.TryGetProperty("testPath", out var t) ? t.GetString() : null;
-    if (src == null || test == null) return (null, null, null);
-    return (json, Path.GetFullPath(Path.Combine(dir, src)),
-                  Path.GetFullPath(Path.Combine(dir, test)));
+    string src = "src";
+    string test = "test";
+    object? json = null;
+    if (File.Exists(cfg))
+    {
+        var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(cfg));
+        var root = doc.RootElement;
+        if (root.TryGetProperty("sourcePath", out var s) && s.GetString() is { } sv) src = sv;
+        if (root.TryGetProperty("testPath",   out var t) && t.GetString() is { } tv) test = tv;
+        json = doc;
+    }
+    var srcAbs = Path.GetFullPath(Path.Combine(dir, src));
+    var testAbs = Path.GetFullPath(Path.Combine(dir, test));
+    if (!Directory.Exists(srcAbs) && !Directory.Exists(testAbs)) return (null, null, null);
+    return (json, srcAbs, testAbs);
 }
 
+// Discover suites under `arg` by either:
+//   • the dir itself looks like a suite (has src/ or test/), or
+//   • any descendant dir contains src/+test/ (suite leaf).
+// al-runner.json is no longer required — its presence only customises sourcePath/testPath.
 static IEnumerable<string> ExpandBucket(string arg)
 {
-    if (Directory.Exists(arg) && File.Exists(Path.Combine(arg, "al-runner.json")))
-        yield return Path.GetFullPath(arg);
-    else if (Directory.Exists(arg))
-        foreach (var d in Directory.EnumerateDirectories(arg, "*", SearchOption.AllDirectories))
-            if (File.Exists(Path.Combine(d, "al-runner.json")))
-                yield return Path.GetFullPath(d);
+    if (!Directory.Exists(arg)) yield break;
+    string full = Path.GetFullPath(arg);
+    if (LooksLikeSuite(full)) { yield return full; yield break; }
+    foreach (var d in Directory.EnumerateDirectories(full, "*", SearchOption.AllDirectories))
+        if (LooksLikeSuite(d))
+            yield return Path.GetFullPath(d);
+}
+
+static bool LooksLikeSuite(string dir)
+{
+    if (Directory.Exists(Path.Combine(dir, "test"))) return true;
+    if (Directory.Exists(Path.Combine(dir, "src")) && File.Exists(Path.Combine(dir, "al-runner.json")))
+        return true;
+    return false;
 }

@@ -3,9 +3,8 @@
 // Pattern: bc-linux's JMP-hook via mprotect + RuntimeHelpers.PrepareMethod.
 using System.Collections.Concurrent;
 using System.Reflection;
-using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
+using AlRunnerV2.Infrastructure;
 
 namespace AlRunnerV2;
 
@@ -38,10 +37,16 @@ public static class BcRuntime
     private static object? _skeletonCompany;            // cached skeleton NavCompany (CompanyNameToken=0)
 
     // NavRecord write-path replacement fields (cached for perf).
+    private static object? _skeletonNavServerEventSource;
     private static FieldInfo? _fNavRecordRecordImplementation;     // NavRecord.recordImplementation
     private static MethodInfo? _mRecordImplementationInsertRecordAsync;  // RecordImplementation.InsertRecordAsync
     private static MethodInfo? _mRecordImplementationModifyRecordAsync;  // RecordImplementation.ModifyRecordAsync
     private static MethodInfo? _mRecordImplementationDeleteRecordAsync;  // RecordImplementation.DeleteRecordAsync
+    private static FieldInfo? _fRecordImplementationDataAccess;          // RecordImplementation.dataAccess
+    private static FieldInfo? _fRecordImplementationMutableRecordBuffer; // RecordImplementation.mutableRecordBuffer
+    private static MethodInfo? _mDataAccessTryGetByPrimaryKeyAsync;
+    private static PropertyInfo? _pMrbResultResult;     // MutableRecordBufferResult<bool>.Result
+    private static PropertyInfo? _pMrbResultRecordBuffer;
 
     // Set to the currently-loaded test assembly so CreateTarget looks up codeunit types there.
     private static Assembly? _currentTestAssembly;
@@ -511,6 +516,34 @@ public static class BcRuntime
             if (verifyPerms != null)
                 Hook(verifyPerms, nameof(NoOp3), "RecordImplementation.VerifyPermissions");
 
+            // InternalFindRecordWithoutCheckingValuesAsync — replace with a thin call that hits
+            // dataAccess.TryGetByPrimaryKeyAsync and bypasses the NRE-prone fallback branch
+            // (Session.CurrentMethodScope.ApplicationObject is null on the skeleton root scope).
+            _fRecordImplementationDataAccess = recImplType.GetField("dataAccess",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            _fRecordImplementationMutableRecordBuffer = recImplType.GetField("mutableRecordBuffer",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            var dataAccessType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.DataAccess");
+            if (dataAccessType != null)
+            {
+                _mDataAccessTryGetByPrimaryKeyAsync = dataAccessType.GetMethod("TryGetByPrimaryKeyAsync",
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            }
+            var mrbResultType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.MutableRecordBufferResult`1")
+                ?.MakeGenericType(typeof(bool));
+            if (mrbResultType != null)
+            {
+                _pMrbResultResult = mrbResultType.GetProperty("Result");
+                _pMrbResultRecordBuffer = mrbResultType.GetProperty("RecordBuffer");
+            }
+            var internalFind = recImplType.GetMethods(BindingFlags.NonPublic | BindingFlags.Instance)
+                .FirstOrDefault(m => m.Name == "InternalFindRecordWithoutCheckingValuesAsync"
+                                     && m.GetParameters().Length == 4);
+            if (internalFind != null && _fRecordImplementationDataAccess != null
+                && _mDataAccessTryGetByPrimaryKeyAsync != null && _pMrbResultResult != null)
+                Hook(internalFind, nameof(RecordImpl_InternalFindRecordWithoutCheckingValuesAsync),
+                    "RecordImplementation.InternalFindRecordWithoutCheckingValuesAsync");
+
             // VerifySecurityFiltersOnRecordAsync(IRecordBuffer, FilterFieldDictionary, bool, bool)
             // — called from InternalFindRecordWithoutCheckingValuesAsync; NREs through Session
             // permission infrastructure. No-op (returns completed ValueTask).
@@ -546,11 +579,23 @@ public static class BcRuntime
         // NavServerEventSource.WritePermissionUncheckedEvent — telemetry event called from
         // RecordImplementation.InternalFindRecordWithoutCheckingValuesAsync; the property
         // get_NavServerTracingEvents NREs because the singleton EventSource is uninitialized in
-        // headless mode. No-op the public method (the class-internal NavServerTracingEvents
-        // forwarder is unreachable once we skip the entry point).
+        // headless mode. No-op the public method, AND ensure NavServerEventSource.Log returns a
+        // non-null instance so the call-site doesn't NRE on virtual dispatch.
         var navServerEventSourceType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavServerEventSource");
         if (navServerEventSourceType != null)
         {
+            // Pre-build an uninitialised NavServerEventSource singleton (cached in static field).
+            _skeletonNavServerEventSource = RuntimeHelpers.GetUninitializedObject(navServerEventSourceType);
+
+            var getLog = navServerEventSourceType.GetProperty("Log",
+                BindingFlags.Public | BindingFlags.Static)?.GetGetMethod(true);
+            if (getLog != null)
+                Hook(getLog, nameof(NavServerEventSource_get_Log), "NavServerEventSource.get_Log");
+
+            // No-op every event-write method on the type — they all dereference the (uninit)
+            // EventSource internals which would NRE. Cheap belt-and-braces compared to chasing
+            // each one individually as new tests hit them.
+            // 10-arg specific (WritePermissionUncheckedEvent already has its own typed no-op).
             var writePerm = navServerEventSourceType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
                 .FirstOrDefault(m => m.Name == "WritePermissionUncheckedEvent" && m.GetParameters().Length == 10);
             if (writePerm != null)
@@ -1129,6 +1174,9 @@ public static class BcRuntime
         }
     }
 
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static object? NavServerEventSource_get_Log() => _skeletonNavServerEventSource;
+
     /// <summary>
     /// No-op for NavServerEventSource.WritePermissionUncheckedEvent — instance method with 10 args
     /// (4 strings + 6 ints). The replacement is static so first arg is the receiver.
@@ -1139,6 +1187,54 @@ public static class BcRuntime
         string serverInstanceName, string navTenantId, string environmentName, string environmentType,
         int sessionId, int objectType, int objectId, int permissions, int callingObjectType, int callingObjectId)
     { }
+
+    /// <summary>
+    /// Replacement for RecordImplementation.InternalFindRecordWithoutCheckingValuesAsync —
+    /// thin passthrough that hits dataAccess.TryGetByPrimaryKeyAsync and bypasses the original
+    /// body's permission-event/diagnostic args evaluation, which NREs through
+    /// Session.CurrentMethodScope.ApplicationObject (null on the skeleton root scope) when the
+    /// requested record is not found.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static System.Threading.Tasks.ValueTask<bool> RecordImpl_InternalFindRecordWithoutCheckingValuesAsync(
+        object self,
+        Microsoft.Dynamics.Nav.Types.DataError errorLevel,
+        object request,
+        bool useRecord,
+        bool calcAutoCalcFields)
+    {
+        try
+        {
+            var dataAccess = _fRecordImplementationDataAccess?.GetValue(self);
+            if (dataAccess == null || _mDataAccessTryGetByPrimaryKeyAsync == null)
+                return new System.Threading.Tasks.ValueTask<bool>(false);
+            var taskObj = _mDataAccessTryGetByPrimaryKeyAsync.Invoke(dataAccess, new[] { request });
+            if (taskObj == null) return new System.Threading.Tasks.ValueTask<bool>(false);
+
+            // taskObj is ValueTask<MutableRecordBufferResult<bool>> — block via .AsTask().Result.
+            var asTaskMi = taskObj.GetType().GetMethod("AsTask");
+            var asTask = asTaskMi?.Invoke(taskObj, null) as System.Threading.Tasks.Task;
+            asTask?.Wait();
+            var resultObj = asTask?.GetType().GetProperty("Result")?.GetValue(asTask);
+            if (resultObj == null) return new System.Threading.Tasks.ValueTask<bool>(false);
+
+            bool found = (bool)(_pMrbResultResult!.GetValue(resultObj) ?? false);
+            if (found && useRecord)
+            {
+                var recBuffer = _pMrbResultRecordBuffer?.GetValue(resultObj);
+                _fRecordImplementationMutableRecordBuffer?.SetValue(self, recBuffer);
+            }
+            if (found) return new System.Threading.Tasks.ValueTask<bool>(true);
+            // Not-found path: TrapError → false; ThrowError → throw.
+            if ((int)errorLevel == 1) return new System.Threading.Tasks.ValueTask<bool>(false);
+            throw new InvalidOperationException("Record not found (skeleton find).");
+        }
+        catch (TargetInvocationException tie) when (tie.InnerException != null)
+        {
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(tie.InnerException);
+            return default;
+        }
+    }
 
     /// <summary>
     /// Replacement for NavRecord.InsertAsync(DataError, bool, bool, bool).
@@ -1312,133 +1408,5 @@ public static class BcRuntime
                 return false;
             throw;
         }
-    }
-}
-
-// --- supporting helpers ---
-
-internal sealed class RootTreeObject : Microsoft.Dynamics.Nav.Runtime.ITreeObject
-{
-    private readonly RootHandler _h;
-    public RootTreeObject() { _h = new RootHandler(this); }
-    Microsoft.Dynamics.Nav.Runtime.TreeHandler Microsoft.Dynamics.Nav.Runtime.ITreeObject.Tree => _h;
-    Microsoft.Dynamics.Nav.Runtime.TreeObjectType Microsoft.Dynamics.Nav.Runtime.ITreeObject.Type => default;
-    bool Microsoft.Dynamics.Nav.Runtime.ITreeObject.SingleThreaded => false;
-}
-
-internal sealed class RootHandler : Microsoft.Dynamics.Nav.Runtime.TreeHandler
-{
-    private static readonly FieldInfo _fHost =
-        typeof(Microsoft.Dynamics.Nav.Runtime.TreeHandler)
-            .GetField("hostObject", BindingFlags.NonPublic | BindingFlags.Instance)!;
-    public RootHandler(Microsoft.Dynamics.Nav.Runtime.ITreeObject host) : base()
-    {
-        // IsDisposed = (hostObject == null) — flip it.
-        _fHost.SetValue(this, host);
-    }
-}
-
-internal static class FieldPoke
-{
-    public static void SetStatic(Type t, string name, object? value)
-    {
-        var f = t.GetField(name, BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
-        if (f == null) return;
-        try { f.SetValue(null, value); }
-        catch (FieldAccessException) { SetStaticReadonly(f, value); }
-    }
-    public static void TryInitDefault(Type t, string fieldName)
-    {
-        var f = t.GetField(fieldName, BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
-        if (f == null) return;
-        try { SetStatic(t, fieldName, Activator.CreateInstance(f.FieldType)); }
-        catch { /* optional */ }
-    }
-    public static void SetInstance(FieldInfo f, object obj, object? value)
-    {
-        try { f.SetValue(obj, value); }
-        catch (FieldAccessException) { SetInstanceReadonly(f, obj, value); }
-    }
-    private static void SetInstanceReadonly(FieldInfo field, object obj, object? value)
-    {
-        var dm = new DynamicMethod($"setinst_{field.Name}", typeof(void),
-            new[] { typeof(object), typeof(object) },
-            field.DeclaringType!.Module, skipVisibility: true);
-        var il = dm.GetILGenerator();
-        il.Emit(OpCodes.Ldarg_0);
-        il.Emit(OpCodes.Ldarg_1);
-        if (field.FieldType.IsValueType) il.Emit(OpCodes.Unbox_Any, field.FieldType);
-        il.Emit(OpCodes.Stfld, field);
-        il.Emit(OpCodes.Ret);
-        ((Action<object?, object?>)dm.CreateDelegate(typeof(Action<object?, object?>)))(obj, value);
-    }
-    private static void SetStaticReadonly(FieldInfo field, object? value)
-    {
-        var dm = new DynamicMethod($"set_{field.Name}", typeof(void), new[] { typeof(object) },
-            field.DeclaringType!.Module, skipVisibility: true);
-        var il = dm.GetILGenerator();
-        if (value == null) il.Emit(OpCodes.Ldnull);
-        else
-        {
-            il.Emit(OpCodes.Ldarg_0);
-            if (field.FieldType.IsValueType) il.Emit(OpCodes.Unbox_Any, field.FieldType);
-        }
-        il.Emit(OpCodes.Stsfld, field);
-        il.Emit(OpCodes.Ret);
-        ((Action<object?>)dm.CreateDelegate(typeof(Action<object?>)))(value);
-    }
-}
-
-internal static class JmpHook
-{
-    [DllImport("libc", SetLastError = true)]
-    private static extern int mprotect(IntPtr addr, nuint len, int prot);
-    private const int PROT_READ = 1, PROT_WRITE = 2, PROT_EXEC = 4;
-
-    public static void Apply(MethodBase original, MethodInfo replacement, string name)
-    {
-        RuntimeHelpers.PrepareMethod(original.MethodHandle);
-        RuntimeHelpers.PrepareMethod(replacement.MethodHandle);
-        var origFp = original.MethodHandle.GetFunctionPointer();
-        var replFp = replacement.MethodHandle.GetFunctionPointer();
-
-        IntPtr compiledCode = IntPtr.Zero;
-        try
-        {
-            byte[] precode = new byte[24];
-            Marshal.Copy(origFp, precode, 0, 24);
-            // .NET 8 x64 FixupPrecode: MOV r10,MD ; JMP [rip+disp32]
-            if (precode[10] == 0xFF && precode[11] == 0x25)
-                compiledCode = Marshal.ReadIntPtr(origFp + 16 + BitConverter.ToInt32(precode, 12));
-            // StubPrecode
-            if (compiledCode == IntPtr.Zero && precode[0] == 0xFF && precode[1] == 0x25)
-                compiledCode = Marshal.ReadIntPtr(origFp + 6 + BitConverter.ToInt32(precode, 2));
-            // E9 relative
-            if (compiledCode == IntPtr.Zero && precode[0] == 0xE9)
-                compiledCode = origFp + 5 + BitConverter.ToInt32(precode, 1);
-        }
-        catch { }
-
-        WriteJmp(origFp, replFp);
-        if (compiledCode != IntPtr.Zero && compiledCode != origFp && compiledCode != replFp)
-            try { WriteJmp(compiledCode, replFp); } catch { }
-    }
-
-    private static void WriteJmp(IntPtr target, IntPtr destination)
-    {
-        // x86-64 absolute indirect: FF 25 00 00 00 00 [imm64]
-        byte[] jmp = new byte[14];
-        jmp[0] = 0xFF; jmp[1] = 0x25;
-        BitConverter.GetBytes(destination.ToInt64()).CopyTo(jmp, 6);
-        long pageSize = 4096;
-        long addr = target.ToInt64();
-        long pageStart = addr & ~(pageSize - 1);
-        var regionSize = (nuint)((addr - pageStart) + jmp.Length + pageSize);
-        if (mprotect(new IntPtr(pageStart), regionSize, PROT_READ | PROT_WRITE | PROT_EXEC) != 0)
-        {
-            Console.Error.WriteLine($"[JmpHook.WriteJmp] mprotect FAILED for target=0x{target:X} errno={Marshal.GetLastSystemError()}");
-            return;
-        }
-        Marshal.Copy(jmp, 0, target, jmp.Length);
     }
 }
