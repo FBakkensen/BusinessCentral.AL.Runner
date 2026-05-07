@@ -14,6 +14,7 @@ public static class BcRuntime
     private static bool _applied;
     private static Type? _navEnvironmentType;
     private static object? _skeletonSession;
+    private static Microsoft.Dynamics.Nav.Runtime.NavMethodScope? _skeletonRootScope;
     public static Microsoft.Dynamics.Nav.Runtime.ITreeObject? RootTreeStub;
 
     // Set to the currently-loaded test assembly so CreateTarget looks up codeunit types there.
@@ -74,6 +75,9 @@ public static class BcRuntime
         // NavApplicationObjectBase.get_Session — return skeleton NavSession
         var aoType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavApplicationObjectBase");
         var sessType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavSession");
+        var msType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavMethodScope");
+        var treeObjType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.TreeObject");
+        var treeHandlerType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.TreeHandler");
         if (aoType != null && sessType != null)
         {
             _skeletonSession = RuntimeHelpers.GetUninitializedObject(sessType);
@@ -92,8 +96,36 @@ public static class BcRuntime
             }
         }
 
+        // Build a proper NavMethodScope+RootMethodScope skeleton so the NavMethodScope ctor
+        // (which calls base(parent)) can create child TreeHandlers from it safely.
+        // Returning RootTreeObject (an ITreeObject, not NavMethodScope) caused out-of-bounds
+        // field reads on a corpus run where heap was fragmented.
+        if (msType != null && sessType != null && treeObjType != null && treeHandlerType != null)
+        {
+            var rootMSType = msType.GetNestedType("RootMethodScope", BindingFlags.NonPublic);
+            var createRoot = treeHandlerType.GetMethod("CreateTreeRoot",
+                BindingFlags.Public | BindingFlags.Static);
+            if (rootMSType != null && createRoot != null)
+            {
+                var skel = RuntimeHelpers.GetUninitializedObject(rootMSType);
+                // CreateTreeRoot(skel) sets parentHandler=null, hostObject=skel.
+                // Requires skel.Tree == null (it is — uninitialized) and calls skel.SingleThreaded.
+                var rootTree = createRoot.Invoke(null, new object[] { skel });
+                // Populate fields so IsDisposed, StackDepth, IsRootScope, etc. work correctly.
+                var treeField = treeObjType.GetField("tree", BindingFlags.NonPublic | BindingFlags.Instance);
+                var sessionField = msType.GetField("session", BindingFlags.NonPublic | BindingFlags.Instance);
+                var flagsField = msType.GetField("flags", BindingFlags.NonPublic | BindingFlags.Instance);
+                var depthField = msType.GetField("<StackDepth>k__BackingField",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+                if (treeField != null) FieldPoke.SetInstance(treeField, skel, rootTree);
+                if (sessionField != null) FieldPoke.SetInstance(sessionField, skel, _skeletonSession);
+                if (flagsField != null) FieldPoke.SetInstance(flagsField, skel, Enum.ToObject(flagsField.FieldType, 1)); // RootScope=1
+                if (depthField != null) FieldPoke.SetInstance(depthField, skel, 1);
+                _skeletonRootScope = (Microsoft.Dynamics.Nav.Runtime.NavMethodScope)skel;
+            }
+        }
+
         // NavMethodScope.ThrowStackOverflow — stack-depth check uses non-NavMethodScope, false-positive
-        var msType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavMethodScope");
         if (msType != null)
         {
             var tso = msType.GetMethod("ThrowStackOverflow",
@@ -104,6 +136,41 @@ public static class BcRuntime
                 var noop = p switch { 1 => nameof(NoOp_OneArg), 2 => nameof(NoOp2), _ => null };
                 if (noop != null) Hook(tso, noop, "NavMethodScope.ThrowStackOverflow");
             }
+        }
+
+        // ALTelemetryHelper.LogALErrorTelemetry — called before creating NavNCLDialogException;
+        // NREs through SessionContextHelper.GetALScope on skeleton session.  No-op is safe because
+        // the throw still happens immediately after.
+        var telType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.ALTelemetryHelper");
+        if (telType != null)
+        {
+            foreach (var m in telType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
+                .Where(m => m.Name == "LogALErrorTelemetry"))
+            {
+                var p = m.GetParameters().Length;
+                var noop = p switch { 2 => nameof(NoOp2), 3 => nameof(NoOp3), 4 => nameof(NoOp4), _ => null };
+                if (noop != null) Hook(m, noop, $"ALTelemetryHelper.LogALErrorTelemetry/{p}");
+            }
+        }
+
+        // SessionTransactionExtensions.Rollback — called by AssertError after catching an AL error;
+        // NREs through skeleton session.DataAccessSource (null).
+        var stExtType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.SessionTransactionExtensions");
+        var rollback = stExtType?.GetMethod("Rollback",
+            BindingFlags.Public | BindingFlags.Static, null, new[] { sessType! }, null);
+        if (rollback != null)
+            Hook(rollback, nameof(NoOp_OneArg), "SessionTransactionExtensions.Rollback");
+
+        // NCLEnumMetadata.Create(int) — called at field-initializer time for every enum variable;
+        // chains through NavGlobal.MetadataProvider → SystemTenant → NavEnvironment.Tenants → NRE.
+        // Returning NCLOptionMetadata.Default preserves ordinal arithmetic (NavOption.Value = passed int).
+        var nclEnumMeta = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NCLEnumMetadata");
+        if (nclEnumMeta != null)
+        {
+            var createById = nclEnumMeta.GetMethod("Create",
+                BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(int) }, null);
+            if (createById != null)
+                Hook(createById, nameof(NCLEnumMetadata_CreateById), "NCLEnumMetadata.Create(int)");
         }
 
         // NavCodeunitHandle.CreateTarget — bypass NavGlobal.NCLMetadata by constructing
@@ -192,11 +259,21 @@ public static class BcRuntime
     public static object? GetSessionReplacement(object self) => _skeletonSession;
 
     [MethodImpl(MethodImplOptions.NoInlining)]
-    public static object? GetCurrentMethodScopeReplacement(object self) => RootTreeStub;
+    public static object? GetCurrentMethodScopeReplacement(object self)
+    {
+        if (_skeletonRootScope != null && _skeletonRootScope.IsDisposed)
+            Console.Error.WriteLine("[BcRuntime] WARNING: _skeletonRootScope is disposed!");
+        return _skeletonRootScope;
+    }
 
     [MethodImpl(MethodImplOptions.NoInlining)] public static void NoOp_OneArg(object? a) { }
     [MethodImpl(MethodImplOptions.NoInlining)] public static void NoOp2(object? a, object? b) { }
     [MethodImpl(MethodImplOptions.NoInlining)] public static void NoOp3(object? a, object? b, object? c) { }
+    [MethodImpl(MethodImplOptions.NoInlining)] public static void NoOp4(object? a, object? b, object? c, object? d) { }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static Microsoft.Dynamics.Nav.Runtime.NCLOptionMetadata NCLEnumMetadata_CreateById(int id)
+        => Microsoft.Dynamics.Nav.Runtime.NCLOptionMetadata.Default;
 
     // Cache: codeunit ID → generated codeunit Type (keyed per loaded assembly bytes).
     private static readonly ConcurrentDictionary<int, Type?> _codeunitTypeCache = new();
@@ -294,6 +371,24 @@ internal static class FieldPoke
         if (f == null) return;
         try { SetStatic(t, fieldName, Activator.CreateInstance(f.FieldType)); }
         catch { /* optional */ }
+    }
+    public static void SetInstance(FieldInfo f, object obj, object? value)
+    {
+        try { f.SetValue(obj, value); }
+        catch (FieldAccessException) { SetInstanceReadonly(f, obj, value); }
+    }
+    private static void SetInstanceReadonly(FieldInfo field, object obj, object? value)
+    {
+        var dm = new DynamicMethod($"setinst_{field.Name}", typeof(void),
+            new[] { typeof(object), typeof(object) },
+            field.DeclaringType!.Module, skipVisibility: true);
+        var il = dm.GetILGenerator();
+        il.Emit(OpCodes.Ldarg_0);
+        il.Emit(OpCodes.Ldarg_1);
+        if (field.FieldType.IsValueType) il.Emit(OpCodes.Unbox_Any, field.FieldType);
+        il.Emit(OpCodes.Stfld, field);
+        il.Emit(OpCodes.Ret);
+        ((Action<object?, object?>)dm.CreateDelegate(typeof(Action<object?, object?>)))(obj, value);
     }
     private static void SetStaticReadonly(FieldInfo field, object? value)
     {
