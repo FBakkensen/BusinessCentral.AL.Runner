@@ -29,6 +29,14 @@ public static class BcRuntime
     private static MethodInfo? _mCreateTreeHandler;    // TreeHandler.CreateTreeHandler
     private static Type? _navNCLDialogExceptionType;   // NavNCLDialogException (for NavDialog.ALError replacement)
 
+    // NavApplicationObjectBase ctor replacement fields.
+    private static FieldInfo? _fAoSession;             // NavApplicationObjectBase.session
+    private static FieldInfo? _fAoObjectId;            // NavApplicationObjectBase.objectId  (if needed)
+    private static FieldInfo? _fAoOrigGroupId;         // NavApplicationObjectBase.originalAppGroupId
+    private static FieldInfo? _fAoRuntimeGroupId;      // NavApplicationObjectBase.runtimeAppGroupId
+    private static FieldInfo? _fNavComplexValueTree;   // NavComplexValue.tree (distinct from TreeObject.tree)
+    private static object? _skeletonCompany;            // cached skeleton NavCompany (CompanyNameToken=0)
+
     // Set to the currently-loaded test assembly so CreateTarget looks up codeunit types there.
     private static Assembly? _currentTestAssembly;
     public static void SetTestAssembly(Assembly asm)
@@ -84,7 +92,9 @@ public static class BcRuntime
         }
         HookProperty(envType, "Instance", true, nameof(GetInstanceReplacement));
 
-        // NavApplicationObjectBase.get_Session — return skeleton NavSession
+        // NavApplicationObjectBase.get_Session — return skeleton NavSession.
+        // Also hook the NavApplicationObjectBase.ctor to inject _skeletonSession directly,
+        // because the get_Session property is typically inlined by the JIT.
         var aoType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavApplicationObjectBase");
         var sessType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavSession");
         var msType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavMethodScope");
@@ -94,10 +104,73 @@ public static class BcRuntime
         {
             _skeletonSession = RuntimeHelpers.GetUninitializedObject(sessType);
             HookProperty(aoType, "Session", false, nameof(GetSessionReplacement));
+
+            // Cache fields for the ctor replacement.
+            _fAoSession       = aoType.GetField("session",             BindingFlags.NonPublic | BindingFlags.Instance);
+            _fAoOrigGroupId   = aoType.GetField("originalAppGroupId",  BindingFlags.NonPublic | BindingFlags.Instance);
+            _fAoRuntimeGroupId= aoType.GetField("runtimeAppGroupId",   BindingFlags.NonPublic | BindingFlags.Instance);
+
+            // Hook NavApplicationObjectBase..ctor to bypass the tree-based session lookup.
+            // The real ctor does `session = base.Tree.Session` which gives null (skeleton has no real tree chain).
+            // get_Session is inlined at every call site so the property hook alone is insufficient.
+            var aoCtor = aoType.GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                .FirstOrDefault(c => {
+                    var ps = c.GetParameters();
+                    return ps.Length >= 2
+                        && ps[0].ParameterType.Name == "ITreeObject"
+                        && ps[1].ParameterType.Name == "ApplicationObjectId";
+                });
+            if (aoCtor != null)
+            {
+                Console.Error.WriteLine($"[BcRuntime] Hooking NavApplicationObjectBase.ctor: {aoCtor}");
+                Hook(aoCtor, nameof(NavApplicationObjectBaseCtorReplacement), "NavApplicationObjectBase..ctor");
+            }
+            else
+                Console.Error.WriteLine("[BcRuntime] WARNING: NavApplicationObjectBase.ctor NOT FOUND");
         }
         if (sessType != null)
         {
             HookProperty(sessType, "CurrentMethodScope", false, nameof(GetCurrentMethodScopeReplacement));
+            // NavSession.Company getter may be inlined — also inject the backing field directly on _skeletonSession.
+            // NavRecord.GetCompanyNameToken calls Session.Company.CompanyNameToken — must not null-ref.
+            var navCompanyType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavCompany");
+            if (navCompanyType != null)
+            {
+                var skelCompany = RuntimeHelpers.GetUninitializedObject(navCompanyType);
+                var cnTokenField = navCompanyType.GetField("companyNameToken",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+                cnTokenField?.SetValue(skelCompany, 0);
+                _skeletonCompany = skelCompany;
+                // Inject skeleton company into _skeletonSession.company field directly.
+                var companyField = sessType.GetField("company", BindingFlags.NonPublic | BindingFlags.Instance);
+                if (companyField != null)
+                    FieldPoke.SetInstance(companyField, _skeletonSession!, skelCompany);
+            }
+            HookProperty(sessType, "Company", false, nameof(GetSkeletonCompanyReplacement));
+
+            // Set OverriddenAppGroup = NavAppGroup.BaseGroup on _skeletonSession.
+            // NavCurrentThread.TryResolveAppGroup returns OverriddenAppGroup if non-null,
+            // preventing access to tenant.NavAppGroup (which NREs on our uninitialized skeleton).
+            var navAppGroupType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.Apps.NavAppGroup");
+            if (navAppGroupType != null)
+            {
+                // BaseGroup is a public static readonly field, not a property.
+                var baseGroupField = navAppGroupType.GetField("BaseGroup",
+                    BindingFlags.Public | BindingFlags.Static);
+                var baseGroup = baseGroupField?.GetValue(null);
+                if (baseGroup != null)
+                {
+                    var overriddenField = sessType.GetField("<OverriddenAppGroup>k__BackingField",
+                        BindingFlags.NonPublic | BindingFlags.Instance);
+                    overriddenField?.SetValue(_skeletonSession, baseGroup);
+                    Console.Error.WriteLine($"[BcRuntime] Set _skeletonSession.OverriddenAppGroup = NavAppGroup.BaseGroup");
+                }
+                else
+                    Console.Error.WriteLine($"[BcRuntime] WARN: NavAppGroup.BaseGroup field not found");
+            }
+            else
+                Console.Error.WriteLine($"[BcRuntime] WARN: Microsoft.Dynamics.Nav.Runtime.Apps.NavAppGroup type not found in NCL");
+
             // VerifyExecutePermission overloads → no-op
             foreach (var m in sessType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
                 .Where(m => m.Name == "VerifyExecutePermission" && m.ReturnType == typeof(void)))
@@ -111,6 +184,10 @@ public static class BcRuntime
         // Reflect and cache the fields we need for the ctor replacement below.
         if (treeObjType != null)
             _fTreeObjTree = treeObjType.GetField("tree", BindingFlags.NonPublic | BindingFlags.Instance);
+        // NavComplexValue (parent of NavApplicationObjectBase) has its OWN tree field distinct from TreeObject.tree.
+        var navComplexValueType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavComplexValue");
+        if (navComplexValueType != null)
+            _fNavComplexValueTree = navComplexValueType.GetField("tree", BindingFlags.NonPublic | BindingFlags.Instance);
         if (msType != null)
         {
             _fMsSession    = msType.GetField("session",      BindingFlags.NonPublic | BindingFlags.Instance);
@@ -199,6 +276,16 @@ public static class BcRuntime
             }
         }
 
+        // TreeHandler.get_Session — the tree's session field is null (root has no session propagated).
+        // Return _skeletonSession so NavApplicationObjectBase.ctor and NavRecord.ctor can find a session.
+        if (treeHandlerType != null)
+        {
+            var treeSessionProp = treeHandlerType.GetProperty("Session",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            if (treeSessionProp?.GetGetMethod(true) != null)
+                Hook(treeSessionProp.GetGetMethod(true)!, nameof(TreeHandler_get_Session), "TreeHandler.get_Session");
+        }
+
         // ALTelemetryHelper.LogALErrorTelemetry — called before creating NavNCLDialogException;
         // NREs through SessionContextHelper.GetALScope → NavGlobal.get_NCLMetadata on skeleton.
         // No-op is safe because the throw still happens immediately after.
@@ -248,6 +335,191 @@ public static class BcRuntime
             if (createTarget != null)
                 Hook(createTarget, nameof(NavCodeunitHandle_CreateTarget), "NavCodeunitHandle.CreateTarget");
         }
+
+        // ── RECORD PATCHES (Approach A spike) ────────────────────────────────────────
+        // NavRecordHandle.CreateTarget — bypass NCLMetadata by constructing Record{ID}
+        // directly using an NCLMetaTable built from parsed AL source, backed by BC's own
+        // TempTableDataProvider (in-memory AVL-tree store).
+        AlRunnerV2.Patches.RecordPatches.Register();
+
+        // Pre-populate skeleton session's DataAccessSource field directly.
+        // NavSession.DataAccessSource getter is inlined by JIT (trivial field return),
+        // so the JMP hook on it never fires — we must inject DAS via field reflection.
+        Console.Error.WriteLine($"[BcRuntime] _skeletonSession null? {_skeletonSession == null}");
+        if (_skeletonSession != null)
+            AlRunnerV2.Patches.RecordPatches.InitializeSkeletonSession(_skeletonSession);
+        else
+            Console.Error.WriteLine("[BcRuntime] WARN: _skeletonSession is null — DAS not injected");
+
+        var recordHandleType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavRecordHandle");
+        if (recordHandleType != null)
+        {
+            var createTargetRec = recordHandleType.GetMethod("CreateTarget",
+                BindingFlags.NonPublic | BindingFlags.Instance,
+                null, Type.EmptyTypes, null);
+            if (createTargetRec != null)
+                Hook(createTargetRec,
+                    typeof(AlRunnerV2.Patches.RecordPatches).GetMethod("NavRecordHandle_CreateTarget",
+                        BindingFlags.Public | BindingFlags.Static)!,
+                    "NavRecordHandle.CreateTarget");
+        }
+
+        // NavSession.DataAccessSource getter — return skeleton DataAccessSource backed by in-memory store.
+        // NavSession.Database getter — return skeleton NavDatabase (real Database => Tenant.Database NREs).
+        var sessType2 = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavSession");
+        if (sessType2 != null)
+        {
+            var dasProp = sessType2.GetProperty("DataAccessSource",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            if (dasProp?.GetGetMethod(true) != null)
+                Hook(dasProp.GetGetMethod(true)!,
+                    typeof(AlRunnerV2.Patches.RecordPatches).GetMethod("NavSession_get_DataAccessSource",
+                        BindingFlags.Public | BindingFlags.Static)!,
+                    "NavSession.get_DataAccessSource");
+
+            var dbProp = sessType2.GetProperty("Database",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            if (dbProp?.GetGetMethod(true) != null)
+                Hook(dbProp.GetGetMethod(true)!,
+                    typeof(AlRunnerV2.Patches.RecordPatches).GetMethod("NavSession_get_Database",
+                        BindingFlags.Public | BindingFlags.Static)!,
+                    "NavSession.get_Database");
+        }
+
+        // DataAccessSource.GetDataAccessForTable — always route to CreateTempDataAccess (in-memory).
+        var dasType2 = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.DataAccessSource");
+        if (dasType2 != null)
+        {
+            var gdaft = dasType2.GetMethod("GetDataAccessForTable",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            if (gdaft != null)
+                Hook(gdaft,
+                    typeof(AlRunnerV2.Patches.RecordPatches).GetMethod("NavDataAccessSource_GetDataAccessForTable",
+                        BindingFlags.Public | BindingFlags.Static)!,
+                    "DataAccessSource.GetDataAccessForTable");
+        }
+
+        // TempTableDataProvider.ctor — navSession.Database.CollationAwareStringComparer NREs on skeleton session.
+        // Replace with manual field injection to bypass the Database access.
+        var ttdpType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.TempTableDataProvider");
+        if (ttdpType != null)
+        {
+            var sessT = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavSession");
+            var nclMetaT = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NCLMetaTable");
+            var ttdpCtor = ttdpType.GetConstructor(
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance,
+                null, new[] { sessT!, nclMetaT! }, null);
+            if (ttdpCtor != null)
+                Hook(ttdpCtor,
+                    typeof(AlRunnerV2.Patches.RecordPatches).GetMethod("TempTableDataProviderCtorReplacement",
+                        BindingFlags.Public | BindingFlags.Static)!,
+                    "TempTableDataProvider.ctor");
+        }
+
+        // NavDatabase.CollationAwareStringComparer getter — return OrdinalIgnoreCase comparer.
+        var navDbType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavDatabase");
+        if (navDbType != null)
+        {
+            var collProp = navDbType.GetProperty("CollationAwareStringComparer",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            if (collProp?.GetGetMethod(true) != null)
+                Hook(collProp.GetGetMethod(true)!,
+                    typeof(AlRunnerV2.Patches.RecordPatches).GetMethod("NavDatabase_get_CollationAwareStringComparer",
+                        BindingFlags.Public | BindingFlags.Static)!,
+                    "NavDatabase.get_CollationAwareStringComparer");
+        }
+        // NavRecord.Dispose(bool) — NREs when RequiredSessionId != NavCurrentThread.Session.Id
+        // (skeleton session has no real Id, DiagnosticsResolver.GetMostSpecificInstance(null) NREs).
+        // Safe to no-op since our in-memory DataAccess/TempTableDataProvider needs no cleanup.
+        var navRecordType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavRecord");
+        if (navRecordType != null)
+        {
+            var disposeMethod = navRecordType.GetMethod("Dispose",
+                BindingFlags.NonPublic | BindingFlags.Instance, null,
+                new[] { typeof(bool) }, null);
+            if (disposeMethod != null)
+                Hook(disposeMethod, nameof(NoOp2), "NavRecord.Dispose(bool)");
+
+            // IsGlobalTriggerImplemented — checks Session.SystemCodeunitFactory.GlobalTriggers which
+            // NREs on skeleton session. Return false: no global triggers in headless mode.
+            var isGlobalTrigger = navRecordType.GetMethod("IsGlobalTriggerImplemented",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            Console.Error.WriteLine($"[BcRuntime] IsGlobalTriggerImplemented found: {isGlobalTrigger != null} {isGlobalTrigger}");
+            if (isGlobalTrigger != null)
+                Hook(isGlobalTrigger, nameof(ReturnFalse2), "NavRecord.IsGlobalTriggerImplemented");
+        }
+        // NCLMetaApplicationObject.CheckApplicationObjectIsValid — validates app-group ID matches.
+        // Fails on skeleton session because tenant is null. No-op is safe: headless mode doesn't
+        // do hot-reload or app-group switching, so stale-object detection has no value here.
+        var nclMetaAppObjType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NCLMetaApplicationObject");
+        if (nclMetaAppObjType != null)
+        {
+            var checkValid = nclMetaAppObjType.GetMethod("CheckApplicationObjectIsValid",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            if (checkValid != null)
+                Hook(checkValid, nameof(NoOp2), "NCLMetaApplicationObject.CheckApplicationObjectIsValid");
+
+            // get_ApplicationObjectClrType — does lock(nclMetaObjectCLRTypeContainer) which NREs
+            // when the container is null (our CreateFromMetaTable-built tables don't have it set).
+            // Replace with a dynamic lookup in loaded assemblies: Record{ID} in BusinessApplication namespace.
+            var getClrType = nclMetaAppObjType.GetProperty("ApplicationObjectClrType",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)?.GetGetMethod(true);
+            if (getClrType != null)
+                Hook(getClrType,
+                    typeof(AlRunnerV2.Patches.RecordPatches).GetMethod("NCLMetaApplicationObject_get_ApplicationObjectClrType",
+                        BindingFlags.Public | BindingFlags.Static)!,
+                    "NCLMetaApplicationObject.get_ApplicationObjectClrType");
+        }
+
+        // RecordImplementation.VerifyPermissions — calls NavSession.GetPermissionSet → Permissions field
+        // NREs on skeleton session (no real security infrastructure). No-op is safe in headless mode.
+        var recImplType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.RecordImplementation");
+        if (recImplType != null)
+        {
+            // Find the 2-arg private instance VerifyPermissions(PermissionMask, bool).
+            var verifyPerms = recImplType.GetMethods(BindingFlags.NonPublic | BindingFlags.Instance)
+                .FirstOrDefault(m => m.Name == "VerifyPermissions" && m.GetParameters().Length == 2);
+            if (verifyPerms != null)
+                Hook(verifyPerms, nameof(NoOp3), "RecordImplementation.VerifyPermissions");
+
+            // RecordImplementation.get_IsOpen — diagnose null tree.
+            // IsOpen = !base.IsDisposed && initialized. base.IsDisposed = tree.IsDisposed.
+            // If tree is null, NRE here (inlined into ThrowIfRecordStaleOrNotOpen).
+            var getIsOpen = recImplType.GetProperty("IsOpen",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)?.GetGetMethod(true);
+            if (getIsOpen != null)
+            {
+                Console.Error.WriteLine($"[BcRuntime] RecordImplementation.IsOpen found: {getIsOpen}");
+                Hook(getIsOpen, nameof(ReturnTrue), "RecordImplementation.get_IsOpen");
+            }
+        }
+
+        // SequentialUuidCreator.NativeMethods.NewSequentialId — P/Invokes rpcrt4.dll (Windows only).
+        // Replace with Guid.NewGuid() on all platforms.
+        var seqUuidCreator = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.Data.SequentialUuidCreator+NativeMethods");
+        if (seqUuidCreator != null)
+        {
+            var newSeqId = seqUuidCreator.GetMethod("NewSequentialId",
+                BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+            var newSeqIdRepl = typeof(AlRunnerV2.Patches.RecordPatches).GetMethod(
+                nameof(AlRunnerV2.Patches.RecordPatches.NewSequentialId_Replacement),
+                BindingFlags.Public | BindingFlags.Static);
+            if (newSeqId != null && newSeqIdRepl != null)
+                Hook(newSeqId, newSeqIdRepl, "SequentialUuidCreator.NewSequentialId");
+        }
+
+        // TempTableStatistics.ReportIncrementChange — tries to call NavEnvironment.PerformanceCounterSetter
+        // which is null on our skeleton. No-op: temp table statistics are not needed in headless mode.
+        var tTempStats = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.TempTableStatistics");
+        if (tTempStats != null)
+        {
+            var reportChange = tTempStats.GetMethod("ReportIncrementChange",
+                BindingFlags.NonPublic | BindingFlags.Instance,
+                null, new[] { typeof(int), typeof(int), typeof(int) }, null);
+            if (reportChange != null)
+                Hook(reportChange, nameof(NoOp4), "TempTableStatistics.ReportIncrementChange");
+        }
+        // ── END RECORD PATCHES ────────────────────────────────────────────────────────
 
         // NavCancellationToken throws — uninitialized cancellation tokens trip the check.
         var typesAsm = AppDomain.CurrentDomain.GetAssemblies()
@@ -330,6 +602,9 @@ public static class BcRuntime
             ?? throw new InvalidOperationException($"Replacement {replacementName} not found");
         JmpHook.Apply(original, repl, description);
     }
+
+    private static void Hook(MethodBase original, MethodInfo replacement, string description)
+        => JmpHook.Apply(original, replacement, description);
 
     // === Replacement methods ===
     [MethodImpl(MethodImplOptions.NoInlining)]
@@ -469,6 +744,71 @@ public static class BcRuntime
     [MethodImpl(MethodImplOptions.NoInlining)] public static void NoOp2(object? a, object? b) { }
     [MethodImpl(MethodImplOptions.NoInlining)] public static void NoOp3(object? a, object? b, object? c) { }
     [MethodImpl(MethodImplOptions.NoInlining)] public static void NoOp4(object? a, object? b, object? c, object? d) { }
+    [MethodImpl(MethodImplOptions.NoInlining)] public static object? ReturnNull_OneArg(object a) => null;
+    [MethodImpl(MethodImplOptions.NoInlining)] public static object? GetSkeletonCompanyReplacement(object self) => _skeletonCompany;
+
+    /// <summary>
+    /// Replacement for NavApplicationObjectBase(ITreeObject parent, ApplicationObjectId objectId, NCLStaticMetadata staticMetadata).
+    /// The real ctor body does three problematic things:
+    ///   1. `session = base.Tree.Session` — returns null because our skeleton tree has no session chain.
+    ///   2. `NavCurrentThread.ResolveAppGroup(session)` — NREs through NCLMetadata on null session.
+    ///   3. `base(parent)` chain call — this IS included in the method body and we must replicate it,
+    ///      otherwise TreeObject.ctor (which sets `this.tree`) is never called.
+    /// Our replacement: call CreateTreeHandler to set the tree, inject _skeletonSession, skip ResolveAppGroup.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void NavApplicationObjectBaseCtorReplacement(object self, object parent, object objectId, object? staticMetadata)
+    {
+        Console.Error.WriteLine($"[AoCtor] called for {self?.GetType().Name ?? "null"}");
+        // 1. Replicate TreeObject.ctor: create the TreeHandler from parent and assign to this.tree.
+        //    This is what the `base(parent)` chain normally does for NavApplicationObjectBase.
+        if (_mCreateTreeHandler != null && _fNavComplexValueTree != null)
+        {
+            // Use parent if it has a valid tree; otherwise fall back to _skeletonRootScope.
+            // This ensures every NavRecord/NavApplicationObjectBase always gets a non-null tree field,
+            // which is required for TreeObject.IsDisposed (called from RecordImplementation.IsOpen).
+            var parentAsTreeObject = parent as Microsoft.Dynamics.Nav.Runtime.ITreeObject;
+            var effectiveParent = (parentAsTreeObject?.Tree != null)
+                ? parentAsTreeObject
+                : (Microsoft.Dynamics.Nav.Runtime.ITreeObject?)_skeletonRootScope;
+            if (effectiveParent != null)
+            {
+                try
+                {
+                    var handler = _mCreateTreeHandler.Invoke(null, new object[] { effectiveParent, self });
+                    FieldPoke.SetInstance(_fNavComplexValueTree, self, handler);
+                    var treeCheck = _fNavComplexValueTree.GetValue(self);
+                    Console.Error.WriteLine($"[AoCtor] tree set for {self?.GetType().Name}: {treeCheck != null}");
+                }
+                catch (Exception ex) { Console.Error.WriteLine($"[AoCtor] tree creation failed for {self?.GetType().Name}: {ex.Message}"); }
+            }
+        }
+        // 2. Inject skeleton session instead of `session = base.Tree.Session` (which gives null).
+        if (_fAoSession != null)
+        {
+            FieldPoke.SetInstance(_fAoSession, self, _skeletonSession);
+            // Verify: read back the session field immediately to confirm write succeeded.
+            var check = _fAoSession.GetValue(self);
+            if (check == null)
+                Console.Error.WriteLine($"[BcRuntime] WARN: session field write failed on {self.GetType().Name}");
+        }
+        else
+        {
+            Console.Error.WriteLine("[BcRuntime] WARN: _fAoSession is null — cannot inject session");
+        }
+        // 3. Skip NavCurrentThread.ResolveAppGroup — use BaseGroupId=0.
+        if (_fAoOrigGroupId != null)    FieldPoke.SetInstance(_fAoOrigGroupId,    self, 0);
+        if (_fAoRuntimeGroupId != null) FieldPoke.SetInstance(_fAoRuntimeGroupId, self, 0);
+    }
+
+    /// <summary>
+    /// Replacement for TreeHandler.get_Session.
+    /// The tree hierarchy is built from skeleton objects whose session fields are null.
+    /// Always return the skeleton session so NavRecord.ctor and NavApplicationObjectBase.ctor
+    /// can access a non-null session without needing a real BC tree.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static object? TreeHandler_get_Session(object self) => _skeletonSession;
 
     /// <summary>
     /// Replacement for NavCodeunit.ContainsMethod(int, string, object[]).
@@ -477,6 +817,16 @@ public static class BcRuntime
     /// </summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static bool ReturnFalse_3Args(object? a, object? b, object? c) => false;
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static bool ReturnFalse2(object? a, object? b) => false;
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static bool ReturnTrue(object? a)
+    {
+        Console.Error.WriteLine($"[ReturnTrue] IsOpen hook fired for {a?.GetType().Name}");
+        return true;
+    }
 
     /// <summary>
     /// Replacement for NavDialog.ALError(NavSession, Guid, NavALErrorInfo) and similar overloads
