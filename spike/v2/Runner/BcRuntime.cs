@@ -27,6 +27,7 @@ public static class BcRuntime
     private static FieldInfo? _fMsTopLevelAppObj;      // NavMethodScope.<TopLevelApplicationObject>k__BackingField
     private static FieldInfo? _fSessCurrentScope;      // NavSession.<CurrentMethodScope>k__BackingField
     private static MethodInfo? _mCreateTreeHandler;    // TreeHandler.CreateTreeHandler
+    private static Type? _navNCLDialogExceptionType;   // NavNCLDialogException (for NavDialog.ALError replacement)
 
     // Set to the currently-loaded test assembly so CreateTarget looks up codeunit types there.
     private static Assembly? _currentTestAssembly;
@@ -199,11 +200,15 @@ public static class BcRuntime
         }
 
         // ALTelemetryHelper.LogALErrorTelemetry — called before creating NavNCLDialogException;
-        // NREs through SessionContextHelper.GetALScope on skeleton session.  No-op is safe because
-        // the throw still happens immediately after.
-        var telType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.ALTelemetryHelper");
-        if (telType != null)
+        // NREs through SessionContextHelper.GetALScope → NavGlobal.get_NCLMetadata on skeleton.
+        // No-op is safe because the throw still happens immediately after.
+        // The type lives in Microsoft.Dynamics.Nav.Runtime.AL namespace (not Runtime directly).
+        foreach (var telTypeName in new[] {
+            "Microsoft.Dynamics.Nav.Runtime.ALTelemetryHelper",       // older builds
+            "Microsoft.Dynamics.Nav.Runtime.AL.ALTelemetryHelper" })  // 27.x+
         {
+            var telType = navNcl.GetType(telTypeName);
+            if (telType == null) continue;
             foreach (var m in telType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
                 .Where(m => m.Name == "LogALErrorTelemetry"))
             {
@@ -260,6 +265,45 @@ public static class BcRuntime
                 if (noop != null) Hook(m, noop, $"NavCancellationToken.{name}/{m.GetParameters().Length}");
             }
         }
+
+        // NavSessionSettings.ALInit — called when AL SessionSettings variable is initialised;
+        // NREs through NavGlobal / session infrastructure. No-op leaves settings at defaults.
+        var sessSettingsType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavSessionSettings");
+        if (sessSettingsType != null)
+        {
+            var alInit = sessSettingsType.GetMethod("ALInit",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            if (alInit != null)
+                Hook(alInit, nameof(NoOp_OneArg), "NavSessionSettings.ALInit");
+        }
+
+        // NavCodeunit.ContainsMethod(int, string, object[]) — chains through NCLMetadata; return false.
+        var navCodeunitType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavCodeunit");
+        if (navCodeunitType != null)
+        {
+            var containsMethod = navCodeunitType.GetMethod("ContainsMethod",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
+            if (containsMethod != null)
+                Hook(containsMethod, nameof(ReturnFalse_3Args), "NavCodeunit.ContainsMethod");
+        }
+
+        // NavDialog.ALError(NavSession, Guid, NavALErrorInfo) — NREs when accessing diagnostics on
+        // the skeleton session. Throw NavNCLDialogException so asserterror traps it correctly.
+        var navDialogType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavDialog");
+        if (navDialogType != null && typesAsm != null)
+        {
+            _navNCLDialogExceptionType = typesAsm.GetType(
+                "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLDialogException");
+            foreach (var m in navDialogType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
+                .Where(m => m.Name == "ALError"))
+            {
+                var ps = m.GetParameters();
+                // Only hook the overloads that NRE; simpler string overloads already work fine.
+                if (ps.Length >= 1 && ps[ps.Length - 1].ParameterType.Name == "NavALErrorInfo")
+                    Hook(m, nameof(NavDialogALError_NavALErrorInfo), $"NavDialog.ALError/{ps.Length}");
+            }
+        }
+
     }
 
     private static void HookProperty(Type t, string propName, bool isStatic, string replacementName)
@@ -425,6 +469,43 @@ public static class BcRuntime
     [MethodImpl(MethodImplOptions.NoInlining)] public static void NoOp2(object? a, object? b) { }
     [MethodImpl(MethodImplOptions.NoInlining)] public static void NoOp3(object? a, object? b, object? c) { }
     [MethodImpl(MethodImplOptions.NoInlining)] public static void NoOp4(object? a, object? b, object? c, object? d) { }
+
+    /// <summary>
+    /// Replacement for NavCodeunit.ContainsMethod(int, string, object[]).
+    /// Returns false — callers use this to check whether a codeunit event handler exists.
+    /// The real implementation chains through NCLMetadata which NREs on a skeleton session.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static bool ReturnFalse_3Args(object? a, object? b, object? c) => false;
+
+    /// <summary>
+    /// Replacement for NavDialog.ALError(NavSession, Guid, NavALErrorInfo) and similar overloads
+    /// that take a NavALErrorInfo as the last parameter.  The real body NREs through diagnostics
+    /// infrastructure on the skeleton session.  We construct NavNCLDialogException directly from
+    /// the error message in NavALErrorInfo so asserterror traps it correctly.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void NavDialogALError_NavALErrorInfo(object? a, object? b, object? errorInfo)
+    {
+        string msg = string.Empty;
+        if (errorInfo != null)
+        {
+            try
+            {
+                var msgProp = errorInfo.GetType().GetProperty("ALMessage",
+                    BindingFlags.Public | BindingFlags.Instance);
+                msg = msgProp?.GetValue(errorInfo) as string ?? string.Empty;
+            }
+            catch { }
+        }
+        if (_navNCLDialogExceptionType != null)
+        {
+            var exc = Activator.CreateInstance(_navNCLDialogExceptionType, msg) as Exception
+                ?? new Exception(msg);
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(exc);
+        }
+        throw new Exception(msg.Length > 0 ? msg : "AL error");
+    }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static Microsoft.Dynamics.Nav.Runtime.NCLOptionMetadata NCLEnumMetadata_CreateById(int id)

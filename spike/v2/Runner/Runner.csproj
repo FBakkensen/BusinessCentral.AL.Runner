@@ -6,6 +6,9 @@
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <NoWarn>CA1416</NoWarn>
+    <!-- Disable tiered re-JIT: JMP-hook patches written at tier-0 addresses are overwritten
+         when the .NET runtime promotes hot methods to tier-1, undoing our hooks. -->
+    <TieredCompilation>false</TieredCompilation>
     <ServiceTierPath>$(HOME)/.local/share/al-runner/artifacts/27.5.46862.48827</ServiceTierPath>
     <RepoRoot>$(MSBuildProjectDirectory)/../../..</RepoRoot>
   </PropertyGroup>
