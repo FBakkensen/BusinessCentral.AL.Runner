@@ -15,6 +15,7 @@ var serviceTier = System.IO.Path.Combine(
 foreach (var n in new[] { "Microsoft.Dynamics.Nav.Common", "Microsoft.Dynamics.Nav.Types", "Microsoft.Dynamics.Nav.Language", "Microsoft.Dynamics.Nav.Ncl" })
     Assembly.LoadFrom(System.IO.Path.Combine(serviceTier, n + ".dll"));
 var navNcl = AppDomain.CurrentDomain.GetAssemblies().First(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Ncl");
+LinuxBootstrap.RootTreeStub = new StubTreeObject(); // shared root for CurrentMethodScope return
 LinuxBootstrap.Apply(navNcl);
 
 // Spike: try to load SpikeBuild.dll (compiled directly against real BC DLLs)

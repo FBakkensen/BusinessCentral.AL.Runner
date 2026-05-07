@@ -11,6 +11,8 @@ using System.Runtime.InteropServices;
 internal static class LinuxBootstrap
 {
     private static Type? _navEnvironmentType;
+    private static object? _skeletonSession;
+    public static Microsoft.Dynamics.Nav.Runtime.ITreeObject? RootTreeStub;
 
     public static void Apply(Assembly navNcl)
     {
@@ -63,6 +65,103 @@ internal static class LinuxBootstrap
             ApplyJmpHook(getInstance, repl, "NavEnvironment.get_Instance");
         }
 
+        // Hook NavApplicationObjectBase.get_Session — returns null on our skeleton codeunit,
+        // and NavMethodScope..ctor immediately dereferences session.CurrentMethodScope.
+        var aoType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavApplicationObjectBase");
+        if (aoType != null)
+        {
+            var nsType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavSession");
+            if (nsType != null) _skeletonSession = RuntimeHelpers.GetUninitializedObject(nsType);
+            var sessionGet = aoType.GetProperty("Session", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)?.GetMethod;
+            if (sessionGet != null)
+            {
+                var repl = typeof(LinuxBootstrap).GetMethod(nameof(GetSessionReplacement), BindingFlags.Public | BindingFlags.Static)!;
+                ApplyJmpHook(sessionGet, repl, "NavApplicationObjectBase.get_Session");
+            }
+        }
+
+        // Hook NavSession.get_CurrentMethodScope — read by NavMethodScope..ctor.
+        var sessType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavSession");
+        if (sessType != null)
+        {
+            var cmsGet = sessType.GetProperty("CurrentMethodScope", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)?.GetMethod;
+            if (cmsGet != null)
+            {
+                var repl = typeof(LinuxBootstrap).GetMethod(nameof(GetCurrentMethodScopeReplacement), BindingFlags.Public | BindingFlags.Static)!;
+                ApplyJmpHook(cmsGet, repl, "NavSession.get_CurrentMethodScope");
+            }
+        }
+
+        // No-op all VerifyExecutePermission overloads on NavSession — permissions don't exist headless.
+        if (sessType != null)
+        {
+            foreach (var m in sessType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                .Where(m => m.Name == "VerifyExecutePermission" && m.ReturnType == typeof(void)))
+            {
+                var paramCount = m.GetParameters().Length;
+                var noopName = paramCount switch
+                {
+                    1 => nameof(NoOp2),  // (this, arg)
+                    2 => nameof(NoOp3),  // (this, arg1, arg2)
+                    _ => null
+                };
+                if (noopName == null) continue;
+                var noop = typeof(LinuxBootstrap).GetMethod(noopName, BindingFlags.Public | BindingFlags.Static)!;
+                ApplyJmpHook(m, noop, $"NavSession.VerifyExecutePermission/{paramCount}");
+            }
+        }
+
+        // No-op cancellation throws — our skeleton tokens trip the check; no real cancellation.
+        var typesAsm = AppDomain.CurrentDomain.GetAssemblies()
+            .FirstOrDefault(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Types");
+        if (typesAsm != null)
+        {
+            var ctType = typesAsm.GetType("Microsoft.Dynamics.Nav.Types.NavCancellationToken");
+            if (ctType != null)
+            {
+                foreach (var name in new[] { "ThrowOperationCanceledException", "ThrowIfCancellationRequested" })
+                {
+                    foreach (var m in ctType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
+                        .Where(mm => mm.Name == name))
+                    {
+                        var paramCount = m.GetParameters().Length + (m.IsStatic ? 0 : 1);
+                        var noopName = paramCount switch
+                        {
+                            1 => nameof(NoOp_OneArg),
+                            2 => nameof(NoOp2),
+                            _ => (string?)null
+                        };
+                        if (noopName == null) continue;
+                        var noop = typeof(LinuxBootstrap).GetMethod(noopName, BindingFlags.Public | BindingFlags.Static)!;
+                        ApplyJmpHook(m, noop, $"NavCancellationToken.{name}({m.GetParameters().Length})");
+                    }
+                }
+            }
+        }
+
+        // No-op ThrowStackOverflow — the ctor's stack-depth check uses a non-NavMethodScope
+        // CurrentMethodScope and reaches false-positive stack overflow.
+        var msType2 = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavMethodScope");
+        if (msType2 != null)
+        {
+            var tso = msType2.GetMethod("ThrowStackOverflow", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance);
+            if (tso != null)
+            {
+                var paramCount = tso.GetParameters().Length;
+                var noopName = (tso.IsStatic ? paramCount : paramCount + 1) switch
+                {
+                    1 => nameof(NoOp_OneArg),
+                    2 => nameof(NoOp2),
+                    _ => null
+                };
+                if (noopName != null)
+                {
+                    var noop = typeof(LinuxBootstrap).GetMethod(noopName, BindingFlags.Public | BindingFlags.Static)!;
+                    ApplyJmpHook(tso, noop, "NavMethodScope.ThrowStackOverflow");
+                }
+            }
+        }
+
         // Hook NavMethodScope statics via cctor init (statics are accessed from instance ctor).
         var msType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavMethodScope");
         if (msType != null)
@@ -113,6 +212,12 @@ internal static class LinuxBootstrap
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
+    public static object? GetSessionReplacement(object self) => _skeletonSession;
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static object? GetCurrentMethodScopeReplacement(object self) => RootTreeStub;
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
     public static object? GetInstanceReplacement()
     {
         var f = _navEnvironmentType!.GetField("instance", BindingFlags.NonPublic | BindingFlags.Static);
@@ -125,6 +230,9 @@ internal static class LinuxBootstrap
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static string GetServiceAccountNameReplacement() => "SYSTEM";
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void NoOp_OneArg(object? a) { }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static void NoOp2(object? a, object? b) { }
