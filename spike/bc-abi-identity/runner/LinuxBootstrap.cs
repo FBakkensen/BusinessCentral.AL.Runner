@@ -63,6 +63,26 @@ internal static class LinuxBootstrap
             ApplyJmpHook(getInstance, repl, "NavEnvironment.get_Instance");
         }
 
+        // Hook NavMethodScope statics via cctor init (statics are accessed from instance ctor).
+        var msType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavMethodScope");
+        if (msType != null)
+        {
+            // Try running the original cctor; if it fails, init manually.
+            try { RuntimeHelpers.RunClassConstructor(msType.TypeHandle); }
+            catch (TypeInitializationException ex)
+            {
+                Console.WriteLine($"[Linux] NavMethodScope.cctor failed: {ex.InnerException?.Message}");
+            }
+            // If cctor failed, statics are null. Set them defensively.
+            var fDict = msType.GetField("methodNameDictionary", BindingFlags.NonPublic | BindingFlags.Static);
+            if (fDict != null && fDict.GetValue(null) == null)
+            {
+                var dictType = fDict.FieldType;
+                fDict.SetValue(null, Activator.CreateInstance(dictType));
+                Console.WriteLine("[Linux] Manually initialized NavMethodScope.methodNameDictionary");
+            }
+        }
+
         // Hook 4: EmitServerStartupTraceEvents touches System.Drawing fonts → no-op
         var emit = envType.GetMethod("EmitServerStartupTraceEvents",
             BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance);
