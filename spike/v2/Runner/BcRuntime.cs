@@ -98,6 +98,11 @@ public static class BcRuntime
         if (sessType != null)
         {
             HookProperty(sessType, "CurrentMethodScope", false, nameof(GetCurrentMethodScopeReplacement));
+            // LocalLanguageNoFallback reads globalLanguageStack which is null in skeleton session; return -1 (use default).
+            HookProperty(sessType, "LocalLanguageNoFallback", false, nameof(NavSession_LocalLanguageNoFallback));
+            // SyncFormatSettings also accesses cultureSettings (null in skeleton); return new FormatSettings().
+            var syncFmt = sessType.GetMethod("SyncFormatSettings", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            if (syncFmt != null) Hook(syncFmt, nameof(NavSession_SyncFormatSettings), "NavSession.SyncFormatSettings");
             // VerifyExecutePermission overloads → no-op
             foreach (var m in sessType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
                 .Where(m => m.Name == "VerifyExecutePermission" && m.ReturnType == typeof(void)))
@@ -176,11 +181,10 @@ public static class BcRuntime
                     });
                 if (ctor3 != null)
                 {
-                    Console.Error.WriteLine($"[BcRuntime] Hooking 3-arg NavMethodScope ctor: {ctor3}");
                     Hook(ctor3, nameof(NavMethodScopeCtorReplacement), "NavMethodScope..ctor(NavApplicationObjectBase,MethodScopeFlags,bool)");
                 }
                 else
-                    Console.Error.WriteLine($"[BcRuntime] WARNING: 3-arg NavMethodScope ctor NOT FOUND");
+                    Console.Error.WriteLine("[BcRuntime] WARNING: 3-arg NavMethodScope ctor NOT FOUND");
             }
             else
                 Console.Error.WriteLine($"[BcRuntime] WARNING: msFlagsType={msFlagsType}, aoType2={aoType2}");
@@ -298,10 +302,148 @@ public static class BcRuntime
                 .Where(m => m.Name == "ALError"))
             {
                 var ps = m.GetParameters();
-                // Only hook the overloads that NRE; simpler string overloads already work fine.
-                if (ps.Length >= 1 && ps[ps.Length - 1].ParameterType.Name == "NavALErrorInfo")
-                    Hook(m, nameof(NavDialogALError_NavALErrorInfo), $"NavDialog.ALError/{ps.Length}");
+                // Only hook overloads that take NavALErrorInfo as the last param.
+                if (ps.Length < 1 || ps[ps.Length - 1].ParameterType.Name != "NavALErrorInfo")
+                    continue;
+                // Guid (16 bytes) occupies 2 x64 register slots on Linux .NET 8.
+                // 2-arg (Guid, NavALErrorInfo):          slots = Guid-lo, Guid-hi, errorInfo  → 3 params ✓
+                // 3-arg (NavSession, Guid, NavALErrorInfo): slots = session, Guid-lo, Guid-hi, errorInfo → 4 params
+                //   This 3-arg overload is only called from ALLogInternalError (Internal-type errors),
+                //   which we already no-op; no-op the overload itself too as belt-and-suspenders.
+                bool hasSession = ps.Length >= 2 && ps[0].ParameterType.Name == "NavSession";
+                var replacementName = hasSession ? nameof(NoOp4) : nameof(NavDialogALError_NavALErrorInfo);
+                Hook(m, replacementName, $"NavDialog.ALError/{ps.Length}");
             }
+            // NavDialog.ALLogInternalError — calls ALError internally; no-op so Dialog.LogInternalError
+            // behaves like a trace (matching existing AL Runner behavior). All static overloads.
+            foreach (var m in navDialogType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
+                .Where(m => m.Name == "ALLogInternalError"))
+            {
+                var np = m.GetParameters().Length;
+                var noop = np switch { 3 => nameof(NoOp3), 4 => nameof(NoOp4), 5 => nameof(NoOp5), _ => null };
+                if (noop != null) Hook(m, noop, $"NavDialog.ALLogInternalError/{np}");
+            }
+        }
+
+        // NavALErrorInfo.LogAddActionFailure(string) — private static telemetry; no-op.
+        var navALErrorInfoType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavALErrorInfo");
+        if (navALErrorInfoType != null)
+        {
+            var logFail = navALErrorInfoType.GetMethod("LogAddActionFailure",
+                BindingFlags.NonPublic | BindingFlags.Static, null, new[] { typeof(string) }, null);
+            if (logFail != null)
+                Hook(logFail, nameof(NoOp_OneArg), "NavALErrorInfo.LogAddActionFailure(string)");
+        }
+
+        // ALSession.GetALCurrentClientType(NavSession) — switches on session.ClientConnectionType
+        // which NREs on the skeleton session. Return Background as a safe default.
+        // ALSession.ALStopSessionAsync — async stop-session; returns ValueTask<bool>(false).
+        var alSessionType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.ALSession");
+        if (alSessionType != null && sessType != null)
+        {
+            var getClientType = alSessionType.GetMethod("GetALCurrentClientType",
+                BindingFlags.Public | BindingFlags.Static, null, new[] { sessType }, null);
+            if (getClientType != null)
+                Hook(getClientType, nameof(ALSession_GetALCurrentClientType), "ALSession.GetALCurrentClientType");
+
+            // Hook all ALStopSessionAsync overloads — they all NRE via session.Diagnostics on skeleton.
+            // Also hook the sync ALStopSession wrappers as belt-and-suspenders (they call Async internally).
+            foreach (var m in alSessionType.GetMethods(BindingFlags.Public | BindingFlags.Static)
+                .Where(m => m.Name == "ALStopSessionAsync"))
+            {
+                Hook(m, nameof(ALSession_StopSessionAsync), $"ALSession.ALStopSessionAsync/{m.GetParameters().Length}");
+            }
+            foreach (var m in alSessionType.GetMethods(BindingFlags.Public | BindingFlags.Static)
+                .Where(m => m.Name == "ALStopSession"))
+            {
+                var np = m.GetParameters().Length;
+                var repl = np switch { 2 => nameof(ReturnFalse_2Args), 3 => nameof(ReturnFalse_3Args), _ => null };
+                if (repl != null) Hook(m, repl, $"ALSession.ALStopSession/{np}");
+            }
+        }
+
+        // NavCodeunit.DoRunAsync(DataError, NavRecord) — first line creates a timing scope via
+        // DiagnosticsResolver.GetMostSpecificInstance(Session) which NREs on the skeleton.
+        // Replacement calls OnRun(record) directly on the concrete subclass and returns true.
+        var navCodeunitType2 = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavCodeunit");
+        if (navCodeunitType2 != null)
+        {
+            var doRunAsync = navCodeunitType2.GetMethod("DoRunAsync",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            if (doRunAsync != null)
+                Hook(doRunAsync, nameof(NavCodeunit_DoRunAsync), "NavCodeunit.DoRunAsync");
+        }
+
+        // NavMethodScope.ProcessException(Exception) — when an NRE occurs in OnRun(), the real
+        // implementation tries to call session.Diagnostics.SendExceptionTag(...) which NREs again
+        // on the skeleton session (Diagnostics is null), producing a secondary NRE that masks the
+        // original.  Returning false immediately (= "not handled") lets the original exception
+        // propagate cleanly through Run()'s outer catch clauses.
+        if (msType != null)
+        {
+            var procExc = msType.GetMethod("ProcessException",
+                BindingFlags.NonPublic | BindingFlags.Instance, null,
+                new[] { typeof(Exception) }, null);
+            if (procExc != null)
+                Hook(procExc, nameof(NavMethodScope_ProcessException), "NavMethodScope.ProcessException(Exception)");
+        }
+
+        // ALDebugger — all methods are obsolete stubs; handled at source level via BcAssembler
+        // polyfill redirects to avoid ABI issues with value-type parameters (DataError enum).
+
+        // NavApplicationObjectBase.TryInvoke — needs session.CurrentMethodScope; skeleton session lacks it.
+        var navAOB = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavApplicationObjectBase");
+        if (navAOB != null)
+        {
+            var tryInvoke = navAOB.GetMethod("TryInvoke",
+                BindingFlags.Public | BindingFlags.Static,
+                new[] { navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavSession")!,
+                         typeof(Action) });
+            if (tryInvoke != null)
+                Hook(tryInvoke, nameof(NavApplicationObjectBase_TryInvoke), "NavApplicationObjectBase.TryInvoke(NavSession, Action)");
+        }
+        // ALSession.ALEnableVerboseTelemetry — telemetry enable/disable; no-op is safe.
+        if (alSessionType != null)
+        {
+            foreach (var m in alSessionType.GetMethods(BindingFlags.Public | BindingFlags.Static)
+                .Where(m => m.Name == "ALEnableVerboseTelemetry"))
+            {
+                var np = m.GetParameters().Length;
+                var noop = np switch { 1 => nameof(NoOp_OneArg), 2 => nameof(NoOp2), 3 => nameof(NoOp3), 4 => nameof(NoOp4), _ => null };
+                if (noop != null) Hook(m, noop, $"ALSession.ALEnableVerboseTelemetry/{np}");
+            }
+        }
+
+        // ALNavApp.ALNavAppIsInstalling() — static, returns bool; no install in progress → false.
+        var alNavAppType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.ALNavApp");
+        if (alNavAppType != null)
+        {
+            var isInstalling = alNavAppType.GetMethod("ALNavAppIsInstalling",
+                BindingFlags.Public | BindingFlags.Static, null, Type.EmptyTypes, null);
+            if (isInstalling != null)
+                Hook(isInstalling, nameof(ReturnFalse_0Args), "ALNavApp.ALNavAppIsInstalling");
+        }
+
+        // NavSessionSettings.ALRequestSessionUpdate(bool) — no-op; no live session to update.
+        if (sessSettingsType != null)
+        {
+            var reqUpdate = sessSettingsType.GetMethod("ALRequestSessionUpdate",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            if (reqUpdate != null)
+                Hook(reqUpdate, nameof(NoOp2), "NavSessionSettings.ALRequestSessionUpdate");
+        }
+
+        // CallStackElement.TryGetSourceInfo(out ObjectSourceInfo) — chains through NavGlobal.NCLMetadata
+        // which NREs on the skeleton session. Return false (no source info available) and set the
+        // out-param pointer to zero so callers see a null/default sourceInfo.
+        var callStackElemType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.CallStackElement");
+        if (callStackElemType != null)
+        {
+            var tryGetSrc = callStackElemType.GetMethod("TryGetSourceInfo",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            if (tryGetSrc != null)
+                Hook(tryGetSrc, nameof(CallStackElement_TryGetSourceInfo),
+                    "CallStackElement.TryGetSourceInfo");
         }
 
     }
@@ -365,8 +507,6 @@ public static class BcRuntime
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static object? GetCurrentMethodScopeReplacement(object self)
     {
-        if (_skeletonRootScope != null && _skeletonRootScope.IsDisposed)
-            Console.Error.WriteLine("[BcRuntime] WARNING: _skeletonRootScope is disposed!");
         return _skeletonRootScope;
     }
 
@@ -465,10 +605,15 @@ public static class BcRuntime
         // (zero-value structs / false) — safe for the test harness since no SQL paths run.
     }
 
+    [MethodImpl(MethodImplOptions.NoInlining)] public static void NoOp_0Args() { }
     [MethodImpl(MethodImplOptions.NoInlining)] public static void NoOp_OneArg(object? a) { }
     [MethodImpl(MethodImplOptions.NoInlining)] public static void NoOp2(object? a, object? b) { }
     [MethodImpl(MethodImplOptions.NoInlining)] public static void NoOp3(object? a, object? b, object? c) { }
     [MethodImpl(MethodImplOptions.NoInlining)] public static void NoOp4(object? a, object? b, object? c, object? d) { }
+    [MethodImpl(MethodImplOptions.NoInlining)] public static void NoOp5(object? a, object? b, object? c, object? d, object? e) { }
+    [MethodImpl(MethodImplOptions.NoInlining)] public static bool ReturnFalse_0Args() => false;
+    [MethodImpl(MethodImplOptions.NoInlining)] public static bool ReturnFalse_1Arg(object? a) => false;
+    [MethodImpl(MethodImplOptions.NoInlining)] public static bool ReturnFalse_2Args(object? a, object? b) => false;
 
     /// <summary>
     /// Replacement for NavCodeunit.ContainsMethod(int, string, object[]).
@@ -479,10 +624,92 @@ public static class BcRuntime
     public static bool ReturnFalse_3Args(object? a, object? b, object? c) => false;
 
     /// <summary>
-    /// Replacement for NavDialog.ALError(NavSession, Guid, NavALErrorInfo) and similar overloads
-    /// that take a NavALErrorInfo as the last parameter.  The real body NREs through diagnostics
-    /// infrastructure on the skeleton session.  We construct NavNCLDialogException directly from
-    /// the error message in NavALErrorInfo so asserterror traps it correctly.
+    /// Replacement for NavMethodScope.ProcessException(Exception).
+    /// The real body calls session.Diagnostics.SendExceptionTag(...) when the exception is an NRE,
+    /// but session.Diagnostics is null on the skeleton session → secondary NRE that masks the original.
+    /// Returning false immediately means "exception not handled here" so the original exception
+    /// propagates cleanly through Run()'s outer catch clauses.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static bool NavMethodScope_ProcessException(object? self, Exception? exception) => false;
+
+    /// <summary>
+    /// Replacement for CallStackElement.TryGetSourceInfo(out ObjectSourceInfo sourceInfo).
+    /// The real implementation chains through NavGlobal.NCLMetadata which NREs on a skeleton session.
+    /// Returns false (no source info) and zeros the out-param so callers see a null/default sourceInfo.
+    /// The out-param is passed as an IntPtr to the raw managed pointer location.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static unsafe bool CallStackElement_TryGetSourceInfo(object? self, IntPtr sourceInfoOutPtr)
+    {
+        if (sourceInfoOutPtr != IntPtr.Zero)
+            *(IntPtr*)sourceInfoOutPtr.ToPointer() = IntPtr.Zero;
+        return false;
+    }
+
+    /// <summary>
+    /// Replacement for ALSession.GetALCurrentClientType(NavSession).
+    /// The real body switches on session.ClientConnectionType which NREs on the skeleton session.
+    /// Returns Background as a safe default matching headless/service-tier-less execution.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static Microsoft.Dynamics.Nav.Types.NavClientType ALSession_GetALCurrentClientType(
+        object? session)
+        => Microsoft.Dynamics.Nav.Types.NavClientType.Background;
+
+    /// <summary>
+    /// Replacement for all ALSession.ALStopSessionAsync overloads.
+    /// The async body NREs via session.Diagnostics on the skeleton. Return false (not stopped).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static System.Threading.Tasks.ValueTask<bool> ALSession_StopSessionAsync(
+        object? a, object? b, object? c, object? d)
+    {
+        return new System.Threading.Tasks.ValueTask<bool>(false);
+    }
+
+    /// <summary>
+    /// Replacement for NavCodeunit.DoRunAsync(DataError, NavRecord).
+    /// Bypasses DiagnosticsResolver.GetMostSpecificInstance(Session) which NREs on the skeleton
+    /// by calling the concrete subclass's OnRun(INavRecordHandle) directly via reflection.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static System.Threading.Tasks.ValueTask<bool> NavCodeunit_DoRunAsync(
+        Microsoft.Dynamics.Nav.Runtime.NavCodeunit self,
+        Microsoft.Dynamics.Nav.Types.DataError errorLevel,
+        Microsoft.Dynamics.Nav.Runtime.NavRecord? record)
+    {
+        try
+        {
+            var onRun = self.GetType().GetMethod("OnRun",
+                BindingFlags.NonPublic | BindingFlags.Instance, null,
+                new[] { typeof(Microsoft.Dynamics.Nav.Runtime.INavRecordHandle) }, null);
+            if (onRun != null)
+                onRun.Invoke(self, new object?[] { record });
+            else
+            {
+                var onRun0 = self.GetType().GetMethod("OnRun",
+                    BindingFlags.NonPublic | BindingFlags.Instance, null, Type.EmptyTypes, null);
+                onRun0?.Invoke(self, null);
+            }
+            return new System.Threading.Tasks.ValueTask<bool>(true);
+        }
+        catch (TargetInvocationException tie) when (tie.InnerException != null)
+        {
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(tie.InnerException);
+            return default; // unreachable
+        }
+    }
+
+    /// <summary>
+    /// Replacement for NavDialog.ALError(Guid automationId, NavALErrorInfo errorInfo).
+    /// On Linux x86-64, Guid (16 bytes) occupies two register slots, so the actual
+    /// parameters received are: a = Guid-lo64, b = Guid-hi64, errorInfo = NavALErrorInfo.
+    /// The real body NREs through diagnostics infrastructure; we construct NavNCLDialogException
+    /// directly from the error message so asserterror traps it correctly.
+    /// Note: the 3-arg overload ALError(NavSession, Guid, NavALErrorInfo) is hooked to NoOp4
+    /// (session + two Guid halves + errorInfo) since it is only called from ALLogInternalError
+    /// which we already suppress.
     /// </summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static void NavDialogALError_NavALErrorInfo(object? a, object? b, object? errorInfo)
@@ -492,11 +719,20 @@ public static class BcRuntime
         {
             try
             {
-                var msgProp = errorInfo.GetType().GetProperty("ALMessage",
-                    BindingFlags.Public | BindingFlags.Instance);
-                msg = msgProp?.GetValue(errorInfo) as string ?? string.Empty;
+                var ei = (Microsoft.Dynamics.Nav.Runtime.NavALErrorInfo)errorInfo;
+                if (ei.ALErrorType == Microsoft.Dynamics.Nav.Types.ALErrorType.Internal)
+                    return;
+                msg = ei.ALMessage ?? string.Empty;
             }
-            catch { }
+            catch
+            {
+                try
+                {
+                    var msgProp = errorInfo.GetType().GetProperty("ALMessage", BindingFlags.Public | BindingFlags.Instance);
+                    msg = msgProp?.GetValue(errorInfo) as string ?? string.Empty;
+                }
+                catch { }
+            }
         }
         if (_navNCLDialogExceptionType != null)
         {
@@ -566,6 +802,45 @@ public static class BcRuntime
             catch { /* skip dynamic/reflection-only assemblies */ }
         }
         return null;
+    }
+
+    /// <summary>
+    /// Replacement for NavSession.get_LocalLanguageNoFallback.
+    /// The real getter reads globalLanguageStack which is null in our skeleton session.
+    /// Return -1 = "no override, use default language" (same as empty stack result).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static int NavSession_LocalLanguageNoFallback(object? self) => -1;
+
+    /// <summary>
+    /// Replacement for NavSession.SyncFormatSettings().
+    /// Accesses cultureSettings (null in skeleton) → NRE.  Return a default FormatSettings.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static Microsoft.Dynamics.Nav.Runtime.FormatSettings NavSession_SyncFormatSettings(object? self)
+        => new Microsoft.Dynamics.Nav.Runtime.FormatSettings();
+
+    /// <summary>
+    /// Replacement for NavApplicationObjectBase.TryInvoke(NavSession session, Action method).
+    /// The real body calls session.CurrentMethodScope.GetTryMethodScope() which NREs on the
+    /// skeleton session.  We run the method directly, catching trappable AL exceptions.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static bool NavApplicationObjectBase_TryInvoke(object? session, Action? method)
+    {
+        if (method == null) return false;
+        try
+        {
+            method();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            // Rethrow untrappable errors; swallow trappable NavBaseExceptions.
+            if (ex is Microsoft.Dynamics.Nav.Types.Exceptions.NavBaseException nbe && !nbe.UntrappableError)
+                return false;
+            throw;
+        }
     }
 }
 
@@ -688,7 +963,11 @@ internal static class JmpHook
         long addr = target.ToInt64();
         long pageStart = addr & ~(pageSize - 1);
         var regionSize = (nuint)((addr - pageStart) + jmp.Length + pageSize);
-        if (mprotect(new IntPtr(pageStart), regionSize, PROT_READ | PROT_WRITE | PROT_EXEC) != 0) return;
+        if (mprotect(new IntPtr(pageStart), regionSize, PROT_READ | PROT_WRITE | PROT_EXEC) != 0)
+        {
+            Console.Error.WriteLine($"[JmpHook.WriteJmp] mprotect FAILED for target=0x{target:X} errno={Marshal.GetLastSystemError()}");
+            return;
+        }
         Marshal.Copy(jmp, 0, target, jmp.Length);
     }
 }
