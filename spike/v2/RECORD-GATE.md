@@ -1,5 +1,26 @@
 # Record Gate Spike — Verdict: **GO**
 
+> **STATUS UPDATE — 2026-05-07.** Three deltas vs the original gate verdict below:
+>
+> 1. **02-record-operations now passes 4/6** (was 1/6 at gate). The `NavRecord.InsertAsync`
+>    redirect landed in commit `c7a6f2e6` — `InsertAsync` is hooked to bypass trigger/event
+>    dispatch and call `RecordImpl.InsertRecordAsync` directly. The 2 remaining fails route
+>    through `RecordImpl.InternalFindRecordWithoutCheckingValuesAsync` and need a thin
+>    `TryGetByPrimaryKey` passthrough — that hook was added but JIT-inlining issues mean it
+>    didn't take effect at the right layer; needs another pass.
+>
+> 2. **Full record-table corpus now visible.** The `al-runner.json`-required discovery filter
+>    was removed; record-table now reports actual numbers across all suites. See `HANDOFF.md`.
+>
+> 3. **Architectural pivot in progress** (see `CLASSIFICATION.md` header) — replacing the
+>    `--dump-csharp` subprocess with a direct call to BC's `Compilation.Emit`. Once that
+>    lands, the storage-substitution machinery in `RecordPatches.cs` continues to apply
+>    (it operates at runtime via JMP hooks on the BC IL, independent of the C# emission
+>    path). The gate verdict — `TempTableDataProvider` is the right substrate, NavRecord
+>    redirection works — remains valid.
+>
+> ──────────────────────── original gate verdict below ────────────────────────
+
 **Confidence:** Medium-high.
 **Test target:** `tests/bucket-1/record-table/02-record-operations`.
 **Result:** 1/6 PASS, 5/6 fail uniformly on a single async overload (`NavRecord.InsertAsync`). One test passing through real BC IL with full AL `Init/Insert/Get/Modify/Delete` semantics is the gate-spike's minimum success criterion.

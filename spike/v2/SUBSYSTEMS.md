@@ -1,5 +1,39 @@
 # BC service-tier subsystem boundary analysis
 
+> **STATUS UPDATE — 2026-05-07.** This document is preserved as historical analysis.
+> Several specifics are stale:
+>
+> - The "**14 patches**" count and the "**633 / 791 tests pass**" baseline are
+>   superseded. v2 now applies ~30+ JMP-hook patches and the visible test
+>   population is 3,628 (post the 2026-05-07 al-runner.json-discovery fix).
+>   Current pass rate: **2,131 / 3,628 (59%)** corpus-wide, OLD architecture
+>   (per-suite-subprocess emit + Roslyn compile against pre-rewrite C#).
+>
+> - The recommendation "**stay reactive**" needs nuance: for state-pollution
+>   issues across calls into the BC IL, reactive JMP-hooks remain the right
+>   answer (the `--isolation` work in `CLASSIFICATION.md` W-7 still applies).
+>   But for the AL→C#→DLL pipeline itself, the architectural pivot is to call
+>   BC's `Microsoft.Dynamics.Nav.CodeAnalysis.Compilation.Emit()` directly,
+>   which means BC's compiler does the post-emit rewrites natively (ByRef
+>   wraps, OnInvoke dispatch, lambda call-site wraps) — no separate v2
+>   rewriter. See `CLASSIFICATION.md` header for details.
+>
+> - The "155 NavMethodScope ctor failures" / "convergence on a tractable JMP-hook
+>   patch set" framing was correct for the codeunit-runtime category but the
+>   visible failure surface today is broader: top failure classes include
+>   `NavApplicationObjectBaseHandle\`1.get_Target` (forms/reports/queries),
+>   `NavRecordRef.get_Target`, `NavTestPageHandle.CreateTarget`, etc — see the
+>   live `v2-classification.json` for the current histogram.
+>
+> ## Subsystem analysis still applies
+>
+> Boundaries identified below (`NavGlobal` is a forwarder; `NCLMetadata` is the
+> highest-leverage cut; `NavSession` is a god object only patchable per-property;
+> `NavMethodScope` ctor needs body replacement) are correct and continue to drive
+> the patch shape. The list of categories at the top is still the right map.
+>
+> ──────────────────────── original analysis below ────────────────────────
+
 **Status:** spike artifact, architectural analysis only.
 **Audience:** anyone deciding whether AlRunner v2 should continue with reactive JMP-hook patches or pivot to principled subsystem replacement at natural interface boundaries.
 **Method:** ILSpy-decompiled BC 27.5.46862.48827 service-tier types, read-only reference (decompiled output not committed). Conclusions cross-checked against `spike/v2/Runner/BcRuntime.cs`, `spike/bc-abi-identity/FINDINGS.md`, the live failure stacks in `spike/v2/results-after-w1.json`, and the bc-linux StartupHook (`~/Documents/Repos/community/bc-linux/src/StartupHook/StartupHook.cs`).

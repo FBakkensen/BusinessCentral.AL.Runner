@@ -1,5 +1,35 @@
 # Spike: BC ABI identity — END-TO-END SUCCESS
 
+> **CLARIFICATION — 2026-05-07.** The phrase "no rewriting" in this document needs
+> nuance. The original Discount Calculator test happens to use only pure compute AL
+> (no `var Codeunit/Record/...` parameters). Its emitted C# from `--dump-csharp`
+> compiles directly against real BC DLLs because the var-param rewrite path is
+> never exercised.
+>
+> Tests that DO use AL `var` parameters with non-handle types (`var Foo: Code`,
+> `var Bar: Boolean`, `var Baz: RecordRef`, `Dictionary of [G, Codeunit]` with
+> `Get(key, var X)`, etc.) require BC's service-tier post-emit rewriter — which
+> wraps params/fields/dispatch in `ByRef<T>` and rewrites call-site arguments to
+> `new ByRef<T>(getter-lambda, setter-lambda)`. `--dump-csharp` produces an
+> intermediate form that the rewriter then completes.
+>
+> The v2 architectural answer (in flight 2026-05-07): replace the
+> `--dump-csharp` subprocess with a **direct in-process call to
+> `Microsoft.Dynamics.Nav.CodeAnalysis.Compilation.Emit()`** — the same API BC's
+> service tier uses at extension install time. BC's compiler does the rewrites
+> natively, emits a final DLL, v2 loads it. The "no rewriting in v2" premise is
+> preserved (BC does it all); the original phrasing was technically inaccurate
+> only because `--dump-csharp` taps an intermediate stage rather than the final
+> emit. See `spike/v2/CLASSIFICATION.md` header and `spike/v2/HANDOFF.md` for the
+> current state.
+>
+> The 18 layers cleared in this spike, the JMP-hook plumbing, the Win32 stubs,
+> and the proof that real BC IL executes correctly under skeleton sessions — all
+> still valid. This document remains the authoritative description of why
+> headless BC IL execution is feasible.
+>
+> ──────────────────────── original spike report below ────────────────────────
+
 **Branch:** `spike/bc-abi-identity`
 **Test:** `tests/bucket-1/codeunit-runtime/01-pure-function/Discount_Calculator`
 **BC:** 27.5.46862.48827 / AL compiler 17.0.34.45391

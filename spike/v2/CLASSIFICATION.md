@@ -1,5 +1,113 @@
 # AlRunner v2 — failure classification & parallelizable work plan
 
+> **STATUS UPDATE — 2026-05-07 session.** This document is partly historical. The
+> sections marked below are SUPERSEDED by findings from the 2026-05-07 work; treat
+> this header as the source of truth and the older sections as preserved context.
+>
+> ## Architectural pivot — superseding W-5 (and large parts of v2's premise)
+>
+> The original v2 premise was "AL→C# via `--dump-csharp` → unmodified Roslyn compile
+> against real BC DLLs → JMP-hook patches". That was validated for pure-compute AL
+> code, but breaks for AL code that uses `var` parameters with non-handle types
+> (`var Foo: Code`, `var Bar: Boolean`, `var Baz: RecordRef`, …). The reason: the
+> AL compiler's `--dump-csharp` taps an **intermediate** form. BC's service tier
+> applies a final post-emit rewriter at extension install time — adding `ByRef<T>`
+> wraps for value-typed `var` parameters, rewriting `OnInvoke` dispatch, and
+> wrapping call-site arguments as `new ByRef<T>(getter, setter)` where the callee
+> expects `ByRef<T>`.
+>
+> Verified by inspecting Microsoft-shipped pre-compiled DLLs: 8,373+ `ByRef<>`
+> occurrences, ZERO `[NavByReferenceAttribute]` survives into the final DLL for
+> non-handle types. The rule encoded in BC's emitter (`ParameterSymbol.ShouldBe-
+> PassedByRef`): wrap iff `IsVar && !IsArray && !IsUserType` (UserType = Codeunit /
+> Page / Report / Record / Table / Query / Interface / XmlPort / TestPage). Handle
+> types preserve `[NavByReference] T` as-is.
+>
+> ### The pivot v2 is taking
+>
+> Replace the `AlRunner --dump-csharp` subprocess + custom Roslyn compile with a
+> **direct in-process call to `Microsoft.Dynamics.Nav.CodeAnalysis.Compilation.Emit()`**.
+> That is the same API the BC service tier uses at extension install time — it
+> performs the rewrites natively and emits a final DLL. v2 then loads the DLL bytes
+> and runs tests under JMP-hook-patched skeleton sessions.
+>
+> Net: v2 does **zero C# rewriting itself**. BC's compiler does it all. The earlier
+> `ByRefWrapRewriter` (committed in `Rewriters/ByRefWrapRewriter.cs`) is preserved
+> as documentation of what BC does, but is NOT in the current pipeline path. It
+> will be deleted once `Compilation.Emit` integration lands.
+>
+> This is the same direction W-5 anticipated, but elevated from "post-stabilisation
+> performance polish" to "the architectural answer for correctness AND speed".
+>
+> ## Suite-discovery fix (2026-05-07 morning)
+>
+> `Program.cs::ExpandBucket` no longer requires `al-runner.json`. Suites are
+> discovered by `src/`+`test/` directory presence (matches the existing CI loop in
+> `.github/workflows/test-matrix.yml`). Visible tests across `tests/bucket-1/` +
+> `tests/bucket-2/` jumped from 809 (al-runner.json-only) to **3,628** (full
+> corpus). Pre-discovery measurements in this document below are on the smaller
+> visible set; they understate corpus coverage but do not affect classifications.
+>
+> ## Bundled-bucket compile (in flight)
+>
+> Aligning v2's compilation scope to v1's: every top-level arg (typically
+> `tests/bucket-N/`) becomes ONE compilation unit — every suite's `src`/`test`/
+> `app*` dirs collected and fed in one pass. Confirmed against v1: v1 builds ONE
+> Roslyn `Compilation` per multi-folder invocation (`Pipeline.cs:1626`/`:772`).
+> `--test-isolation method` is just a runtime state-reset flag, not a compilation
+> boundary.
+>
+> Once `Compilation.Emit` lands, this becomes "one BC compilation per top-level
+> arg → one DLL → one in-process load + run".
+>
+> ## Patches landed in this session
+>
+> All under `BcRuntime.cs` / `Patches/*.cs` (now per-concern partial files):
+> - `NavRecord.InsertAsync` (4-arg) → bypass triggers/events, route to
+>   `RecordImpl.InsertRecordAsync` directly.
+> - `RecordImpl.InternalFindRecordWithoutCheckingValuesAsync` → thin
+>   TryGetByPrimaryKey passthrough; bypasses NRE-prone fallback branch.
+> - `NavServerEventSource.WritePermissionUncheckedEvent` + `get_Log` →
+>   no-op + skeleton EventSource singleton.
+> - `RecordImpl.VerifySecurityFiltersOnRecordAsync` / `VerifySecurityFiltersAsync`
+>   → completed-`ValueTask` no-ops.
+> - `NavSession.IsLocalLanguage` → `false`.
+> - `NavSession.GetSecurityFilters` → `null` (matches IsPermissionSystemEnabled=false branch).
+> - `NavMethodScope.AssertError(Action)` → run body, invert pass/fail; skip session.Rollback.
+> - `NavSession.PushDynamicCaptionStack` → no-op.
+> - `NavSession.SortingProperties` + skeleton DB `sqlSortingProperties` poke →
+>   unblocks `RecordBufferComparer.Compare` inside `TempTableDataProvider.Insert`.
+>
+> ## Latest measured pass rate (per-suite-subprocess, OLD architecture pre-bundle)
+>
+> | Bucket | Suites | Ran | Compile-fail | Exec-fail | Tests | Pass | Fail | % |
+> |---|---|---|---|---|---|---|---|---|
+> | bucket-1 | 349 | 278 | 6 | 65 | 1,485 | 730 | 755 | 49% |
+> | bucket-2 | 312 | 297 | 2 | 13 | 2,143 | 1,401 | 742 | 65% |
+> | **Total** | **661** | **575** | **8** | **78** | **3,628** | **2,131** | **1,497** | **59%** |
+>
+> Existing v1 AlRunner reports 4,281 passing across the same corpus. v2 covers
+> ~50% of that today; gap is split between visible-but-failing (~1,497) and
+> suites whose AL emit subprocess fails entirely (~78 of 661 suites).
+>
+> ## File layout (post-2026-05-07 split)
+>
+> `BcRuntime.cs` 1541 → 597 lines; `Patches/RecordPatches.cs` 804 → 487; replacement
+> methods extracted into per-concern partials (`Patches/HelperShims.cs`,
+> `EnvironmentPatches.cs`, `SessionPatches.cs`, `MethodScopePatches.cs`,
+> `ApplicationObjectBasePatches.cs`, `CodeunitPatches.cs`, `RecordWritePatches.cs`,
+> `TelemetryPatches.cs`, `MiscPatches.cs`); `RecordPatches.AlSourceParser.cs` and
+> `RecordPatches.NclMetaTableBuilder.cs` separate. JMP-hook + field-poke moved to
+> `Infrastructure/`. See `HANDOFF.md` for the full layout.
+>
+> ## Where to read for current state
+> - `spike/v2/HANDOFF.md` — the live entry point for any future agent.
+> - This file's "## Architecture summary" and the work-item bodies (W-1…W-8) are
+>   STALE for the patch-count and file-layout details, but the work-item INTENT
+>   (what each W-N covers and why) remains valid as a roadmap.
+>
+> ──────────────────────── original document below ────────────────────────
+
 ## Status snapshot (post W-1, W-1.5, W-2 + Opus subsystem analysis)
 
 | Mode | Pass | Fail | Total | Notes |
