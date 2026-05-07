@@ -75,6 +75,7 @@ foreach (var bucket in bucketDirs)
     try
     {
         var asm = Assembly.Load(compile.AssemblyBytes!);
+        BcRuntime.SetTestAssembly(asm);
         tests = executor.Run(asm);
     }
     catch (Exception ex)
