@@ -1,5 +1,17 @@
 # AlRunner v2 — failure classification & parallelizable work plan
 
+## Status snapshot (post W-1, W-1.5, W-2 + Opus subsystem analysis)
+
+| Mode | Pass | Fail | Total | Notes |
+|---|---|---|---|---|
+| Baseline (no patches) | 0 | 791 | 791 | original v2 corpus run |
+| After W-2 only | 4 | 161 | 165 | bucket-1/codeunit-runtime |
+| After W-1 + W-2 | 6 | 155 | 161 | bucket-1/codeunit-runtime, single process |
+| After W-1.5 + W-1 + W-2, **single process** | 21 | 140 | 161 | state pollution caps progress |
+| After W-1.5 + W-1 + W-2, **per-bucket subprocess** | **95** | **66** | **161** | **59% pass rate** |
+
+The subprocess-isolated run is the current effective mode. State-pollution isolation (W-1.6) is the next bottleneck — solving it lifts the single-process number toward 95.
+
 ## Executive summary
 
 Ran the new v2 pipeline (AL→C# via `--dump-csharp` → unmodified Roslyn compile against real BC DLLs → JMP-hook patches → load + execute) across most of the existing AL test corpus.
