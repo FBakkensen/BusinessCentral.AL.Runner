@@ -32,4 +32,20 @@ public static partial class BcRuntime
 
     [MethodImpl(MethodImplOptions.NoInlining)] public static object? ReturnNull_OneArg(object a) => null;
     [MethodImpl(MethodImplOptions.NoInlining)] public static object? GetSkeletonCompanyReplacement(object self) => _skeletonCompany;
+
+    [MethodImpl(MethodImplOptions.NoInlining)] public static bool ReturnFalse_3Args(object? a, object? b, object? c) => false;
+    [MethodImpl(MethodImplOptions.NoInlining)] public static bool ReturnFalse2(object? a, object? b) => false;
+
+    /// <summary>
+    /// Diagnostic helper used for the RecordImplementation.IsOpen hook — logs the call
+    /// site so we can trace which patched receiver is being asked. Always returns true
+    /// (record is open) because by the time the test harness asks, we want the read path
+    /// to proceed against TempTableDataProvider rather than throw NotOpened.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static bool ReturnTrue(object? a)
+    {
+        Console.Error.WriteLine($"[ReturnTrue] IsOpen hook fired for {a?.GetType().Name}");
+        return true;
+    }
 }
