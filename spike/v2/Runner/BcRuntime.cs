@@ -1,6 +1,7 @@
 // BcRuntime — applies Linux-compatibility patches to BC service-tier DLLs at process start.
 // Lifted directly from spike/bc-abi-identity/runner/LinuxBootstrap.cs (proven to work end-to-end).
 // Pattern: bc-linux's JMP-hook via mprotect + RuntimeHelpers.PrepareMethod.
+using System.Collections.Concurrent;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
@@ -14,6 +15,15 @@ public static class BcRuntime
     private static Type? _navEnvironmentType;
     private static object? _skeletonSession;
     public static Microsoft.Dynamics.Nav.Runtime.ITreeObject? RootTreeStub;
+
+    // Set to the currently-loaded test assembly so CreateTarget looks up codeunit types there.
+    private static Assembly? _currentTestAssembly;
+    public static void SetTestAssembly(Assembly asm)
+    {
+        if (_currentTestAssembly == asm) return;
+        _currentTestAssembly = asm;
+        _codeunitTypeCache.Clear();
+    }
 
     public static void EnsureApplied()
     {
@@ -96,6 +106,17 @@ public static class BcRuntime
             }
         }
 
+        // NavCodeunitHandle.CreateTarget — bypass NavGlobal.NCLMetadata by constructing
+        // the codeunit directly from the loaded compiled assembly via reflection.
+        var codeunitHandleType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavCodeunitHandle");
+        if (codeunitHandleType != null)
+        {
+            var createTarget = codeunitHandleType.GetMethod("CreateTarget",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            if (createTarget != null)
+                Hook(createTarget, nameof(NavCodeunitHandle_CreateTarget), "NavCodeunitHandle.CreateTarget");
+        }
+
         // NavCancellationToken throws — uninitialized cancellation tokens trip the check.
         var typesAsm = AppDomain.CurrentDomain.GetAssemblies()
             .FirstOrDefault(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Types");
@@ -176,6 +197,63 @@ public static class BcRuntime
     [MethodImpl(MethodImplOptions.NoInlining)] public static void NoOp_OneArg(object? a) { }
     [MethodImpl(MethodImplOptions.NoInlining)] public static void NoOp2(object? a, object? b) { }
     [MethodImpl(MethodImplOptions.NoInlining)] public static void NoOp3(object? a, object? b, object? c) { }
+
+    // Cache: codeunit ID → generated codeunit Type (keyed per loaded assembly bytes).
+    private static readonly ConcurrentDictionary<int, Type?> _codeunitTypeCache = new();
+
+    /// <summary>
+    /// Replacement for NavCodeunitHandle.CreateTarget().
+    /// Bypasses NavGlobal.NCLMetadata by looking up the compiled codeunit class directly
+    /// from the loaded assembly and constructing it via the 1-arg ITreeObject ctor.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static Microsoft.Dynamics.Nav.Runtime.NavCodeunit NavCodeunitHandle_CreateTarget(
+        Microsoft.Dynamics.Nav.Runtime.NavCodeunitHandle self)
+    {
+        int id = self.ObjectId.ObjectNumber;
+        var codeunitType = _codeunitTypeCache.GetOrAdd(id, FindCodeunitType);
+        if (codeunitType == null)
+            throw new InvalidOperationException(
+                $"NavCodeunitHandle.CreateTarget: no loaded type Codeunit{id} found");
+        var ctor = codeunitType.GetConstructors()
+            .FirstOrDefault(c => c.GetParameters().Length == 1 &&
+                typeof(Microsoft.Dynamics.Nav.Runtime.ITreeObject)
+                    .IsAssignableFrom(c.GetParameters()[0].ParameterType));
+        if (ctor == null)
+            throw new InvalidOperationException(
+                $"Codeunit{id} has no single-arg ITreeObject constructor");
+        return (Microsoft.Dynamics.Nav.Runtime.NavCodeunit)ctor.Invoke(new object[] { self });
+    }
+
+    private static Type? FindCodeunitType(int id)
+    {
+        var baseCu = typeof(Microsoft.Dynamics.Nav.Runtime.NavCodeunit);
+        var name = $"Codeunit{id}";
+        // Search the current test assembly first (avoids cross-bucket ID collisions).
+        if (_currentTestAssembly != null)
+        {
+            try
+            {
+                var t = Array.Find(_currentTestAssembly.GetTypes(),
+                    x => x.Name == name && baseCu.IsAssignableFrom(x));
+                if (t != null) return t;
+            }
+            catch { }
+        }
+        // Fall back to all loaded assemblies (e.g. stubs in other assemblies).
+        foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            if (asm == _currentTestAssembly) continue;
+            try
+            {
+                var t = Array.Find(asm.GetTypes(),
+                    x => x.Name == name && baseCu.IsAssignableFrom(x));
+                if (t != null) return t;
+            }
+            catch { /* skip dynamic/reflection-only assemblies */ }
+        }
+        return null;
+    }
 }
 
 // --- supporting helpers ---
