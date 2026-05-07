@@ -40,6 +40,8 @@ public static class RecordPatches
     private static Type? _tCollationAwareStringComparer;
     private static Type? _tSqlSortingProperties;
     private static FieldInfo? _fNavDatabaseCollation;
+    private static FieldInfo? _fNavDatabaseSqlSortingProperties;
+    private static object? _sqlSortingProperties;     // pre-built SqlSortingProperties
     private static FieldInfo? _fSessionDataAccessSource;
     private static FieldInfo? _fDasSession;
     private static FieldInfo? _fDasGlobalFilters;
@@ -135,6 +137,12 @@ public static class RecordPatches
         _tSqlSortingProperties = nclAsm.GetType("Microsoft.Dynamics.Nav.Runtime.SqlSortingProperties");
         _fNavDatabaseCollation = _tNavDatabase.GetField("collationAwareStringComparer",
             BindingFlags.NonPublic | BindingFlags.Instance);
+        _fNavDatabaseSqlSortingProperties = _tNavDatabase.GetField("sqlSortingProperties",
+            BindingFlags.NonPublic | BindingFlags.Instance);
+
+        // Pre-build SqlSortingProperties so it's available for both the skeleton DB and the
+        // NavSession.SortingProperties hook (used by RecordBufferComparer in TempTableDataProvider).
+        _sqlSortingProperties = BuildSqlSortingProperties();
 
         // Build skeleton NavDatabase once — NavDatabase.CollationAwareStringComparer is JMP-hooked
         // so any non-null NavDatabase is sufficient; we just need it to not NRE.
@@ -144,6 +152,8 @@ public static class RecordPatches
             var comparer = BuildCollationAwareComparer();
             if (comparer != null) _fNavDatabaseCollation.SetValue(_skeletonDatabase, comparer);
         }
+        if (_fNavDatabaseSqlSortingProperties != null && _sqlSortingProperties != null)
+            _fNavDatabaseSqlSortingProperties.SetValue(_skeletonDatabase, _sqlSortingProperties);
         Console.Error.WriteLine($"[RecordPatches] Skeleton NavDatabase built: {_skeletonDatabase.GetType().Name}");
 
         // DataAccessSource fields to poke when creating skeleton
@@ -348,9 +358,9 @@ public static class RecordPatches
         // Nothing to inject on the session object itself.
     }
 
-    private static object? BuildCollationAwareComparer()
+    private static object? BuildSqlSortingProperties()
     {
-        if (_tCollationAwareStringComparer == null || _tSqlSortingProperties == null) return null;
+        if (_tSqlSortingProperties == null) return null;
         try
         {
             // SqlSortingProperties(CultureInfo culture, CompareOptions compareOptions, string collation)
@@ -363,11 +373,26 @@ public static class RecordPatches
                         && ps[1].ParameterType == typeof(System.Globalization.CompareOptions);
                 });
             if (sortingPropsCtor == null) return null;
-            var sortingProps = sortingPropsCtor.Invoke(new object[] {
+            return sortingPropsCtor.Invoke(new object[] {
                 System.Globalization.CultureInfo.InvariantCulture,
                 System.Globalization.CompareOptions.IgnoreCase,
                 "Latin1_General_CI_AS"
             });
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[RecordPatches] BuildSqlSortingProperties failed: {ex.Message}");
+            return null;
+        }
+    }
+
+    private static object? BuildCollationAwareComparer()
+    {
+        if (_tCollationAwareStringComparer == null || _tSqlSortingProperties == null) return null;
+        var sortingProps = _sqlSortingProperties ?? BuildSqlSortingProperties();
+        if (sortingProps == null) return null;
+        try
+        {
             var compCtor = _tCollationAwareStringComparer
                 .GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
                 .FirstOrDefault(c => c.GetParameters().Length == 1
@@ -380,6 +405,14 @@ public static class RecordPatches
             return null;
         }
     }
+
+    /// <summary>
+    /// Replacement for NavSession.get_SortingProperties — Database.SqlSortingProperties NREs because
+    /// the skeleton NavDatabase does not have a collation set up for the lazy-init path. Return the
+    /// pre-built SqlSortingProperties from RecordPatches.Register.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static object? NavSession_get_SortingProperties(object self) => _sqlSortingProperties;
 
     /// <summary>
     /// Replacement for DataAccessSource.GetDataAccessForTable(NCLMetaTable, bool).

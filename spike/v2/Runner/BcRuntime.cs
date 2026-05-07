@@ -37,6 +37,12 @@ public static class BcRuntime
     private static FieldInfo? _fNavComplexValueTree;   // NavComplexValue.tree (distinct from TreeObject.tree)
     private static object? _skeletonCompany;            // cached skeleton NavCompany (CompanyNameToken=0)
 
+    // NavRecord write-path replacement fields (cached for perf).
+    private static FieldInfo? _fNavRecordRecordImplementation;     // NavRecord.recordImplementation
+    private static MethodInfo? _mRecordImplementationInsertRecordAsync;  // RecordImplementation.InsertRecordAsync
+    private static MethodInfo? _mRecordImplementationModifyRecordAsync;  // RecordImplementation.ModifyRecordAsync
+    private static MethodInfo? _mRecordImplementationDeleteRecordAsync;  // RecordImplementation.DeleteRecordAsync
+
     // Set to the currently-loaded test assembly so CreateTarget looks up codeunit types there.
     private static Assembly? _currentTestAssembly;
     public static void SetTestAssembly(Assembly asm)
@@ -444,6 +450,32 @@ public static class BcRuntime
             Console.Error.WriteLine($"[BcRuntime] IsGlobalTriggerImplemented found: {isGlobalTrigger != null} {isGlobalTrigger}");
             if (isGlobalTrigger != null)
                 Hook(isGlobalTrigger, nameof(ReturnFalse2), "NavRecord.IsGlobalTriggerImplemented");
+
+            // NavRecord.InsertAsync(DataError, bool, bool, bool) — full body NREs through
+            // NavCurrentThread.ResolveAppGroup / metaTable.IsEventSubscribed / DataModificationListener
+            // before reaching the storage layer. Replace the whole body with a minimal call that
+            // delegates straight to recordImplementation.InsertRecordAsync — which goes through our
+            // already-hooked TempTableDataProvider DataAccessSource. Skips trigger/event dispatch
+            // (W-8 will reintroduce that on top of the temp store).
+            _fNavRecordRecordImplementation = navRecordType.GetField("recordImplementation",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            var recImplTypeForWrites = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.RecordImplementation");
+            if (recImplTypeForWrites != null)
+            {
+                _mRecordImplementationInsertRecordAsync = recImplTypeForWrites.GetMethod(
+                    "InsertRecordAsync",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+                _mRecordImplementationModifyRecordAsync = recImplTypeForWrites.GetMethod(
+                    "ModifyRecordAsync",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+                _mRecordImplementationDeleteRecordAsync = recImplTypeForWrites.GetMethod(
+                    "DeleteRecordAsync",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+            }
+            var insertAsync4 = navRecordType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                .FirstOrDefault(m => m.Name == "InsertAsync" && m.GetParameters().Length == 4);
+            if (insertAsync4 != null && _mRecordImplementationInsertRecordAsync != null)
+                Hook(insertAsync4, nameof(NavRecord_InsertAsync), "NavRecord.InsertAsync(DataError,bool,bool,bool)");
         }
         // NCLMetaApplicationObject.CheckApplicationObjectIsValid — validates app-group ID matches.
         // Fails on skeleton session because tenant is null. No-op is safe: headless mode doesn't
@@ -479,6 +511,26 @@ public static class BcRuntime
             if (verifyPerms != null)
                 Hook(verifyPerms, nameof(NoOp3), "RecordImplementation.VerifyPermissions");
 
+            // VerifySecurityFiltersOnRecordAsync(IRecordBuffer, FilterFieldDictionary, bool, bool)
+            // — called from InternalFindRecordWithoutCheckingValuesAsync; NREs through Session
+            // permission infrastructure. No-op (returns completed ValueTask).
+            foreach (var m in recImplType.GetMethods(BindingFlags.NonPublic | BindingFlags.Instance)
+                .Where(m => m.Name == "VerifySecurityFiltersOnRecordAsync"))
+            {
+                var p = m.GetParameters().Length;
+                Hook(m, p switch {
+                    2 => nameof(ReturnValueTask3),  // self + 2 args
+                    3 => nameof(ReturnValueTask4),
+                    4 => nameof(ReturnValueTask5),
+                    _ => nameof(ReturnValueTask3)
+                }, $"RecordImplementation.VerifySecurityFiltersOnRecordAsync/{p}");
+            }
+            // VerifySecurityFiltersAsync(MutableRecordBuffer, SecurityFilterType) — write-path equivalent.
+            var verifySecAsync = recImplType.GetMethods(BindingFlags.NonPublic | BindingFlags.Instance)
+                .FirstOrDefault(m => m.Name == "VerifySecurityFiltersAsync" && m.GetParameters().Length == 2);
+            if (verifySecAsync != null)
+                Hook(verifySecAsync, nameof(ReturnValueTask3), "RecordImplementation.VerifySecurityFiltersAsync");
+
             // RecordImplementation.get_IsOpen — diagnose null tree.
             // IsOpen = !base.IsDisposed && initialized. base.IsDisposed = tree.IsDisposed.
             // If tree is null, NRE here (inlined into ThrowIfRecordStaleOrNotOpen).
@@ -489,6 +541,36 @@ public static class BcRuntime
                 Console.Error.WriteLine($"[BcRuntime] RecordImplementation.IsOpen found: {getIsOpen}");
                 Hook(getIsOpen, nameof(ReturnTrue), "RecordImplementation.get_IsOpen");
             }
+        }
+
+        // NavServerEventSource.WritePermissionUncheckedEvent — telemetry event called from
+        // RecordImplementation.InternalFindRecordWithoutCheckingValuesAsync; the property
+        // get_NavServerTracingEvents NREs because the singleton EventSource is uninitialized in
+        // headless mode. No-op the public method (the class-internal NavServerTracingEvents
+        // forwarder is unreachable once we skip the entry point).
+        var navServerEventSourceType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavServerEventSource");
+        if (navServerEventSourceType != null)
+        {
+            var writePerm = navServerEventSourceType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                .FirstOrDefault(m => m.Name == "WritePermissionUncheckedEvent" && m.GetParameters().Length == 10);
+            if (writePerm != null)
+                Hook(writePerm, nameof(NavServerEventSource_WritePermissionUncheckedEvent),
+                    "NavServerEventSource.WritePermissionUncheckedEvent");
+        }
+
+        // NavSession.get_SortingProperties — Database.SqlSortingProperties path. Belt-and-suspenders
+        // hook in case the skeleton Database's pre-poked sqlSortingProperties field is bypassed
+        // by JIT inlining of the chained property accesses.
+        if (sessType != null)
+        {
+            var getSortingProps = sessType.GetProperty("SortingProperties",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)?.GetGetMethod(true);
+            if (getSortingProps != null)
+                Hook(getSortingProps,
+                    typeof(AlRunnerV2.Patches.RecordPatches).GetMethod(
+                        nameof(AlRunnerV2.Patches.RecordPatches.NavSession_get_SortingProperties),
+                        BindingFlags.Public | BindingFlags.Static)!,
+                    "NavSession.get_SortingProperties");
         }
 
         // SequentialUuidCreator.NativeMethods.NewSequentialId — P/Invokes rpcrt4.dll (Windows only).
@@ -882,6 +964,9 @@ public static class BcRuntime
     [MethodImpl(MethodImplOptions.NoInlining)] public static bool ReturnFalse_0Args() => false;
     [MethodImpl(MethodImplOptions.NoInlining)] public static bool ReturnFalse_1Arg(object? a) => false;
     [MethodImpl(MethodImplOptions.NoInlining)] public static bool ReturnFalse_2Args(object? a, object? b) => false;
+    [MethodImpl(MethodImplOptions.NoInlining)] public static System.Threading.Tasks.ValueTask ReturnValueTask3(object? a, object? b, object? c) => default;
+    [MethodImpl(MethodImplOptions.NoInlining)] public static System.Threading.Tasks.ValueTask ReturnValueTask4(object? a, object? b, object? c, object? d) => default;
+    [MethodImpl(MethodImplOptions.NoInlining)] public static System.Threading.Tasks.ValueTask ReturnValueTask5(object? a, object? b, object? c, object? d, object? e) => default;
     [MethodImpl(MethodImplOptions.NoInlining)] public static object? ReturnNull_OneArg(object a) => null;
     [MethodImpl(MethodImplOptions.NoInlining)] public static object? GetSkeletonCompanyReplacement(object self) => _skeletonCompany;
 
@@ -1035,6 +1120,49 @@ public static class BcRuntime
                     BindingFlags.NonPublic | BindingFlags.Instance, null, Type.EmptyTypes, null);
                 onRun0?.Invoke(self, null);
             }
+            return new System.Threading.Tasks.ValueTask<bool>(true);
+        }
+        catch (TargetInvocationException tie) when (tie.InnerException != null)
+        {
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(tie.InnerException);
+            return default; // unreachable
+        }
+    }
+
+    /// <summary>
+    /// No-op for NavServerEventSource.WritePermissionUncheckedEvent — instance method with 10 args
+    /// (4 strings + 6 ints). The replacement is static so first arg is the receiver.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void NavServerEventSource_WritePermissionUncheckedEvent(
+        object self,
+        string serverInstanceName, string navTenantId, string environmentName, string environmentType,
+        int sessionId, int objectType, int objectId, int permissions, int callingObjectType, int callingObjectId)
+    { }
+
+    /// <summary>
+    /// Replacement for NavRecord.InsertAsync(DataError, bool, bool, bool).
+    /// Bypasses all the trigger/event/extension dispatch that NREs on a skeleton session
+    /// (NavCurrentThread.ResolveAppGroup, DataModificationListener, etc.) and delegates straight
+    /// to recordImplementation.InsertRecordAsync, which goes through our hooked
+    /// TempTableDataProvider DataAccessSource. W-8 will layer trigger dispatch back on top of
+    /// this once permanent-table semantics are wired up.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static System.Threading.Tasks.ValueTask<bool> NavRecord_InsertAsync(
+        Microsoft.Dynamics.Nav.Runtime.NavRecord self,
+        Microsoft.Dynamics.Nav.Types.DataError errorLevel,
+        bool runApplicationTrigger,
+        bool runGlobalTrigger,
+        bool insertWithSystemId)
+    {
+        try
+        {
+            var recImpl = _fNavRecordRecordImplementation?.GetValue(self);
+            if (recImpl == null || _mRecordImplementationInsertRecordAsync == null)
+                return new System.Threading.Tasks.ValueTask<bool>(false);
+            var result = _mRecordImplementationInsertRecordAsync.Invoke(recImpl, new object?[] { errorLevel });
+            if (result is System.Threading.Tasks.ValueTask<bool> vt) return vt;
             return new System.Threading.Tasks.ValueTask<bool>(true);
         }
         catch (TargetInvocationException tie) when (tie.InnerException != null)
