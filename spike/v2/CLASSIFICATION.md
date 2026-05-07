@@ -41,9 +41,9 @@ v2 wall-clock per bucket — projected after in-process AL emit (W-5): **~0.3s**
   test execution:             ~0.02s
 ```
 
-**Projection: an entire bucket of tests runs in ~0.3 seconds.** That's the whole bucket — every Test method combined, including AL→C# emission, Roslyn compile against real BC DLLs, JMP-hook-patched runtime, and per-test invocation. Test execution itself is already ~0.02s for the full bucket; the only meaningful work left is the compile pipeline. The 0.3s projection is grounded in measured numbers — the only changing variable is replacing a subprocess (`dotnet AlRunner.dll`, ~1.8s of which ~1.6s is JIT/init overhead) with an in-process call to `Microsoft.Dynamics.Nav.CodeAnalysis.Compilation.Emit`. That subprocess is currently the only reason a bucket takes seconds rather than fractions of a second.
+**Projection: a single test bucket (one al-runner.json directory, e.g. `01-pure-function` with its 6 test methods) runs in ~0.3 seconds.** That's everything for one bucket: AL→C# emission, Roslyn compile against real BC DLLs, JMP-hook-patched runtime, and per-test invocation. Test execution itself is already ~0.02s/bucket; the only meaningful work left is the compile pipeline. The 0.3s projection is grounded in measured numbers — the only changing variable is replacing a subprocess (`dotnet AlRunner.dll`, ~1.8s of which ~1.6s is JIT/init overhead) with an in-process call to `Microsoft.Dynamics.Nav.CodeAnalysis.Compilation.Emit`. That subprocess is currently the only reason a bucket takes seconds rather than fractions of a second.
 
-For reference, the existing AL Runner takes ~5–10s per bucket end-to-end. The v2 approach is on track for **~30× faster** post-W-5.
+For reference, the existing AL Runner takes ~5–10s per single bucket end-to-end. The v2 approach is on track for **~30× faster per bucket** post-W-5. (The full corpus of ~117 buckets remains a sequential aggregate — running everything in parallel is a separate scaling discussion.)
 
 ## Work-item breakdown for parallel execution
 

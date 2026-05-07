@@ -136,22 +136,28 @@ public static class Reporter
 
     private static string ClassifyTest(string message, string full)
     {
-        // Most-specific BC-internal patterns first
-        if (full.Contains("NavGlobal.get_SystemTenant")) return "runtime/navglobal-systemtenant";
-        if (full.Contains("NavGlobal.get_NCLMetadata")) return "runtime/navglobal-nclmetadata";
-        if (full.Contains("NavGlobal.")) return "runtime/navglobal-other";
-        if (full.Contains("NavCodeunitHandle")) return "runtime/codeunit-handle";
-        if (full.Contains("NavRecordHandle") || full.Contains("NavRecord..")) return "runtime/record-handle";
-        if (full.Contains("NavMethodScope")) return "runtime/method-scope";
-        if (full.Contains("NavSession")) return "runtime/session";
-        if (full.Contains("WindowsIdentity")) return "runtime/windows-identity";
+        // Classify by the FIRST (innermost) BC stack frame — that's where the actual NRE
+        // originates. Looking anywhere in the stack mis-buckets every AL test as
+        // NavMethodScope because every AL method body wraps in a NavMethodScope.
+        var first = full.Split('\n')
+            .Select(l => l.Trim())
+            .FirstOrDefault(l => l.StartsWith("at Microsoft.Dynamics.Nav."));
+        if (first != null)
+        {
+            // Strip "at Microsoft.Dynamics.Nav.<Group>." prefix and the parameter list.
+            var cleaned = first;
+            int paren = cleaned.IndexOf('(');
+            if (paren > 0) cleaned = cleaned[..paren];
+            cleaned = cleaned.Replace("at Microsoft.Dynamics.Nav.", "");
+            return $"runtime/{cleaned}";
+        }
+        // Fallbacks for non-BC frames or empty stacks.
         if (message.Contains("MissingMethodException")) return "runtime/missing-method";
         if (message.Contains("MissingFieldException")) return "runtime/missing-field";
         if (message.Contains("TypeInitializationException")) return "runtime/cctor";
         if (message.Contains("InvalidCastException")) return "runtime/cast";
         if (message.Contains("PlatformNotSupportedException")) return "runtime/platform-not-supported";
         if (message.Contains("NullReferenceException")) return "runtime/null-deref";
-        if (full.Contains("Assert.")) return "test/assertion";
         return "runtime/other";
     }
 }
