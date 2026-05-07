@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <AssemblyName>SpikeBuild</AssemblyName>
+    <RootNamespace>SpikeBuild</RootNamespace>
+    <Nullable>disable</Nullable>
+    <NoWarn>CS0108;CS0114;CS0162;CS0168;CS0219;CS0414;CS0436;CS0612;CS0618;CS0626;CS0628;CS0649;CS1591;CS8019;CS8073;CS8602;CS8603;CS8625;CS8629;CS8632;CS8765;CS8766;CS8767;CS8794;CS9113</NoWarn>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <ServiceTierPath>$(HOME)/.local/share/al-runner/artifacts/27.5.46862.48827</ServiceTierPath>
+  </PropertyGroup>
+  <PropertyGroup>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="generated/*.cs" />
+    <Compile Include="shims/*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="Microsoft.Dynamics.Nav.Types"><HintPath>$(ServiceTierPath)/Microsoft.Dynamics.Nav.Types.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Microsoft.Dynamics.Nav.Ncl"><HintPath>$(ServiceTierPath)/Microsoft.Dynamics.Nav.Ncl.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Microsoft.Dynamics.Nav.Common"><HintPath>$(ServiceTierPath)/Microsoft.Dynamics.Nav.Common.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Microsoft.Dynamics.Nav.Language"><HintPath>$(ServiceTierPath)/Microsoft.Dynamics.Nav.Language.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Microsoft.Dynamics.Nav.Types.Report"><HintPath>$(ServiceTierPath)/Microsoft.Dynamics.Nav.Types.Report.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Microsoft.Dynamics.Nav.Types.Report.Base"><HintPath>$(ServiceTierPath)/Microsoft.Dynamics.Nav.Types.Report.Base.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Microsoft.Dynamics.Nav.Types.Report.Runtime"><HintPath>$(ServiceTierPath)/Microsoft.Dynamics.Nav.Types.Report.Runtime.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+</Project>
