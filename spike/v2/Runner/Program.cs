@@ -45,6 +45,9 @@ foreach (var bucket in bucketDirs)
     var (config, srcDir, testDir) = ReadBucketConfig(bucket);
     if (config == null) { Console.WriteLine("SKIP (no al-runner.json)"); continue; }
 
+    // Register AL table sources so RecordPatches can build NCLMetaTable instances.
+    if (srcDir != null) AlRunnerV2.Patches.RecordPatches.AddSourceDir(srcDir);
+
     var emitTimer = System.Diagnostics.Stopwatch.StartNew();
     IReadOnlyList<EmittedSource> sources;
     try { sources = emitter.Emit(srcDir!, testDir!); }
@@ -69,7 +72,6 @@ foreach (var bucket in bucketDirs)
             emitTimer.Elapsed, compTimer.Elapsed, TimeSpan.Zero));
         continue;
     }
-
     var runTimer = System.Diagnostics.Stopwatch.StartNew();
     IReadOnlyList<TestResult> tests;
     try
