@@ -1,0 +1,86 @@
+{
+  "generated": "2026-05-07T06:52:40.3889356Z",
+  "total_failures": 6,
+  "classifications": [
+    {
+      "classification": "runtime/null-deref",
+      "count": 6,
+      "examples": [
+        {
+          "bucket": "/home/stefan/Documents/Repos/community/BusinessCentral.AL.Runner/tests/bucket-1/codeunit-runtime/01-pure-function",
+          "kind": "fail",
+          "codeunit": "Codeunit50900",
+          "method": "TestApplyDiscount_100Percent",
+          "message": "NullReferenceException: Object reference not set to an instance of an object.",
+          "classification": "runtime/null-deref"
+        },
+        {
+          "bucket": "/home/stefan/Documents/Repos/community/BusinessCentral.AL.Runner/tests/bucket-1/codeunit-runtime/01-pure-function",
+          "kind": "fail",
+          "codeunit": "Codeunit50900",
+          "method": "TestApplyDiscount_10Percent",
+          "message": "NullReferenceException: Object reference not set to an instance of an object.",
+          "classification": "runtime/null-deref"
+        },
+        {
+          "bucket": "/home/stefan/Documents/Repos/community/BusinessCentral.AL.Runner/tests/bucket-1/codeunit-runtime/01-pure-function",
+          "kind": "fail",
+          "codeunit": "Codeunit50900",
+          "method": "TestApplyDiscount_NegativePercent",
+          "message": "NullReferenceException: Object reference not set to an instance of an object.",
+          "classification": "runtime/null-deref"
+        }
+      ]
+    }
+  ],
+  "all_failures": [
+    {
+      "bucket": "/home/stefan/Documents/Repos/community/BusinessCentral.AL.Runner/tests/bucket-1/codeunit-runtime/01-pure-function",
+      "kind": "fail",
+      "codeunit": "Codeunit50900",
+      "method": "TestApplyDiscount_100Percent",
+      "message": "NullReferenceException: Object reference not set to an instance of an object.",
+      "classification": "runtime/null-deref"
+    },
+    {
+      "bucket": "/home/stefan/Documents/Repos/community/BusinessCentral.AL.Runner/tests/bucket-1/codeunit-runtime/01-pure-function",
+      "kind": "fail",
+      "codeunit": "Codeunit50900",
+      "method": "TestApplyDiscount_10Percent",
+      "message": "NullReferenceException: Object reference not set to an instance of an object.",
+      "classification": "runtime/null-deref"
+    },
+    {
+      "bucket": "/home/stefan/Documents/Repos/community/BusinessCentral.AL.Runner/tests/bucket-1/codeunit-runtime/01-pure-function",
+      "kind": "fail",
+      "codeunit": "Codeunit50900",
+      "method": "TestApplyDiscount_NegativePercent",
+      "message": "NullReferenceException: Object reference not set to an instance of an object.",
+      "classification": "runtime/null-deref"
+    },
+    {
+      "bucket": "/home/stefan/Documents/Repos/community/BusinessCentral.AL.Runner/tests/bucket-1/codeunit-runtime/01-pure-function",
+      "kind": "fail",
+      "codeunit": "Codeunit50900",
+      "method": "TestApplyDiscount_Over100Percent",
+      "message": "NullReferenceException: Object reference not set to an instance of an object.",
+      "classification": "runtime/null-deref"
+    },
+    {
+      "bucket": "/home/stefan/Documents/Repos/community/BusinessCentral.AL.Runner/tests/bucket-1/codeunit-runtime/01-pure-function",
+      "kind": "fail",
+      "codeunit": "Codeunit50900",
+      "method": "TestApplyDiscount_ZeroPercent",
+      "message": "NullReferenceException: Object reference not set to an instance of an object.",
+      "classification": "runtime/null-deref"
+    },
+    {
+      "bucket": "/home/stefan/Documents/Repos/community/BusinessCentral.AL.Runner/tests/bucket-1/codeunit-runtime/01-pure-function",
+      "kind": "fail",
+      "codeunit": "Codeunit50900",
+      "method": "TestCalculateVAT",
+      "message": "NullReferenceException: Object reference not set to an instance of an object.",
+      "classification": "runtime/null-deref"
+    }
+  ]
+}
