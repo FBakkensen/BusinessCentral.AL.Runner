@@ -1,7 +1,17 @@
-// BcAssembler — Roslyn-compiles emitted C# (unmodified) against real BC DLLs.
-// Replaces the AL Runner's RoslynRewriter step entirely.
+// BcAssembler — Roslyn-compiles emitted C# against real BC DLLs.
+//
+// Two transformations are applied to the AL-emitter output before compile:
+//   1. ApplyPolyfillRedirects — string substitutions that route AL-compiler-emitted
+//      symbol references for APIs that don't exist on the real BC service-tier DLLs
+//      to small in-process polyfill shims (defined inline below as PolyfillSource).
+//   2. ByRefWrapRewriter — the ONE mechanical syntax transformation BC's own service
+//      tier applies at extension install time but `--dump-csharp` doesn't include:
+//      every parameter marked `[NavByReferenceAttribute] T` gets its type wrapped to
+//      `ByRef<T>`, and the matching backing field's declared type is wrapped too.
+//      Microsoft's pre-compiled DLLs prove this convention (8K+ ByRef<>, 0 NavByRef).
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using AlRunnerV2.Rewriters;
 
 namespace AlRunnerV2;
 
@@ -21,9 +31,10 @@ public sealed class BcAssembler
         var sourceList = sources.ToList();
         if (Environment.GetEnvironmentVariable("DUMP_CS") == "1")
             foreach (var s in sourceList) File.WriteAllText($"/tmp/gen_{s.Name}.cs", s.Code);
-        var trees = sourceList.Select(s => CSharpSyntaxTree.ParseText(
-                                            ApplyPolyfillRedirects(s.Code), path: s.Name + ".cs"))
-                           .ToList();
+        var trees = sourceList
+            .Select(s => CSharpSyntaxTree.ParseText(ApplyPolyfillRedirects(s.Code), path: s.Name + ".cs"))
+            .Select(ByRefWrapRewriter.Rewrite)   // wrap [NavByReferenceAttribute] params in ByRef<T>
+            .ToList();
         // Inject the missing helpers the AL compiler 17.0.34 emits but the BC 27.5
         // service tier doesn't expose. Source patches above redirect callers.
         trees.Add(CSharpSyntaxTree.ParseText(PolyfillSource, path: "_polyfill.cs"));
