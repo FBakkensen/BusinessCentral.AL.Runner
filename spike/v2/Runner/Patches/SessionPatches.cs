@@ -4,6 +4,7 @@
 // internal state (globalLanguageStack, Database.SecurityAndLicense, cultureSettings,
 // Diagnostics, …) is null. These replacements give safe defaults that let downstream
 // code paths complete without NREs.
+using System.Globalization;
 using System.Runtime.CompilerServices;
 
 namespace AlRunnerV2;
@@ -50,4 +51,14 @@ public static partial class BcRuntime
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static Microsoft.Dynamics.Nav.Runtime.FormatSettings NavSession_SyncFormatSettings(object? self)
         => new Microsoft.Dynamics.Nav.Runtime.FormatSettings();
+
+    /// <summary>
+    /// Replacement for NavSession.get_Culture / get_WindowsCulture.
+    /// The real getters call CultureInfo.GetCultureInfo(int) with a culture id that
+    /// is 0 on the skeleton session (uninitialized field) and throws
+    /// ArgumentOutOfRangeException ("culture must be a non-negative and non-zero value").
+    /// Return InvariantCulture so format/parse paths work in headless mode.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static CultureInfo NavSession_get_Culture(object? self) => CultureInfo.InvariantCulture;
 }

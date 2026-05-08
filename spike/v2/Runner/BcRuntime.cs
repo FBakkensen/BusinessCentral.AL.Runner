@@ -190,6 +190,16 @@ public static partial class BcRuntime
             var syncFmt = sessType.GetMethod("SyncFormatSettings", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
             if (syncFmt != null) Hook(syncFmt, nameof(NavSession_SyncFormatSettings), "NavSession.SyncFormatSettings");
 
+            // get_Culture / get_WindowsCulture — real getters call CultureInfo.GetCultureInfo(int)
+            // with a 0 culture id on the skeleton session and throw ArgumentOutOfRangeException.
+            // Return InvariantCulture so format/parse paths work headlessly.
+            foreach (var propName in new[] { "Culture", "WindowsCulture" })
+            {
+                var getter = sessType.GetProperty(propName,
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)?.GetGetMethod(true);
+                if (getter != null) Hook(getter, nameof(NavSession_get_Culture), $"NavSession.get_{propName}");
+            }
+
             // NavSession.Company getter — NavRecord.GetCompanyNameToken reads Session.Company.CompanyNameToken.
             // Build skeleton NavCompany and inject into both the property and the backing field.
             var navCompanyType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavCompany");
