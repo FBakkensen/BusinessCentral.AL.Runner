@@ -168,13 +168,40 @@ public sealed class DependencyLoader
         return sb.ToString();
     }
 
+    /// <summary>
+    /// Idempotent install of the default-ALC Resolving handler. Public so callers
+    /// (e.g. Program.cs at startup) can install it before BcRuntime applies patches,
+    /// in case a patch's reflection on a BC type triggers an assembly load for a
+    /// transitively-referenced service-tier DLL that's not in the application bin.
+    /// </summary>
+    public static void EnsureResolverInstalled_Public() => EnsureResolverInstalled();
+
     private static void EnsureResolverInstalled()
     {
         if (Interlocked.Exchange(ref _resolverInstalled, 1) != 0) return;
+        // BC service-tier artifact dir — same path BcRuntime/BcAssembler/Runner.csproj
+        // resolve the 5 we project-reference (Types, Ncl, Common, Language, CodeAnalysis).
+        // Microsoft.Dynamics.Nav.Ncl.dll transitively references ~24 BC DLLs, of which
+        // we only project-reference 5; the rest sit in the artifact dir but aren't on
+        // any probing path. When a generic instantiation or reflection call inside MS
+        // R2R code reaches one (e.g. Microsoft.Dynamics.Nav.Core, .AL.Common, .Apps,
+        // .TableProxyBuilder), it fails to load and the call NREs deep in MS code. The
+        // probe below catches every Microsoft.Dynamics.Nav.* assembly request and serves
+        // it from the artifact dir.
+        var serviceTierPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            ".local/share/al-runner/artifacts/27.5.46862.48827");
         AssemblyLoadContext.Default.Resolving += (ctx, name) =>
         {
-            if (name.Name != null && _byName.TryGetValue(name.Name, out var asm))
+            if (name.Name == null) return null;
+            if (_byName.TryGetValue(name.Name, out var asm))
                 return asm;
+            if (name.Name.StartsWith("Microsoft.Dynamics.Nav.", StringComparison.Ordinal))
+            {
+                var probe = Path.Combine(serviceTierPath, name.Name + ".dll");
+                if (File.Exists(probe))
+                    return ctx.LoadFromAssemblyPath(probe);
+            }
             return null;
         };
     }

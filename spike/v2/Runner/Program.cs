@@ -47,6 +47,11 @@ var packageCacheDirs = packageCacheArgs.Count > 0
 Console.WriteLine($"  package caches: {packageCacheDirs.Count} dir(s)");
 
 // One-time runtime setup. Must happen BEFORE any BC type is touched.
+// Install the assembly Resolving handler FIRST so patch reflection or generic
+// instantiation in BC code can resolve transitively-referenced service-tier DLLs
+// (Microsoft.Dynamics.Nav.Core, .AL.Common, .Apps, .TableProxyBuilder, etc. — 19
+// of the 24 BC DLLs Ncl.dll references aren't project-referenced).
+DependencyLoader.EnsureResolverInstalled_Public();
 var t0 = System.Diagnostics.Stopwatch.StartNew();
 BcRuntime.EnsureApplied();
 Console.WriteLine($"BC runtime patches applied ({t0.ElapsedMilliseconds}ms)");

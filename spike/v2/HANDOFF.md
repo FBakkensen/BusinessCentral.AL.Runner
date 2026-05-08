@@ -861,3 +861,89 @@ final). Final state: **563P/412F/0E (+18P)**.
   metadata. If a single TestField-internal hook unblocks the cluster, big win.
 - Pursuing event-subscription / async-hook strategies remains blocked on
   the JmpHook ABI limitations per §K.
+
+---
+
+## §M — Bucket-2 wiring + bucket-1/record-table baseline (this session)
+
+**Goal:** wire `tests/bucket-2/` to AL Runner v2 using the same dep-loading
+pattern that works for `tests/bucket-1/codeunit-runtime` (§J/§K), and capture
+baseline numbers for the remaining unmeasured sub-buckets.
+
+**Wiring change (commit `0f5ac5d2`):**
+- `tests/bucket-2/app.json`: dropped sentinel deps `Tests-TestLibraries` and
+  `System Application Test Library` (Compilation.Emit silently zero-emits
+  these). `Business Foundation Test Libraries` was already absent.
+- `tests/bucket-2/_shared/Assert.Codeunit.al`: copied verbatim from
+  `tests/bucket-1/_shared/Assert.Codeunit.al` (slim, ~595 lines, the same
+  hand-trimmed Assert that bucket-1 uses).
+- `tests/bucket-1/record-table` already shares `tests/bucket-1/app.json` and
+  `tests/bucket-1/_shared/`, so no wiring change was needed.
+- `Program.cs CollectSuitePaths` already auto-includes `<bucketRoot>/_shared/`,
+  so no runner-code change was needed (verified by clean compile and runs).
+
+**Baseline numbers (cold):**
+
+| Sub-bucket | Pass | Fail | Total | Pass % | Wall |
+|---|---:|---:|---:|---:|---:|
+| `bucket-2/data-formats` | 1162 | 412 | 1574 | 73.8% | 8m38s |
+| `bucket-2/page-report`  |  246 | 436 |  682 | 36.1% | 7m03s |
+| `bucket-1/record-table` |  265 | 641 |  906 | 29.2% | 10m09s |
+
+All three sub-buckets ran end-to-end with **0 compile-fail and 0 exec-fail
+buckets** — the wiring works. `record-table` reported 1 suite error (one
+suite among 906 tests); not a pattern.
+
+**Top failure classes per sub-bucket:**
+
+`bucket-2/data-formats` (412F):
+- 70 `NavDialog.ALError`
+- 60 `NavStream.get_Target`
+- 45 `LogWriterHelper.LogExceptionEvent`
+- 33 `NavDateFormatter.GetStandardFormat`
+- 27 `NavApplicationObjectBaseHandle\`1.get_Target`
+
+`bucket-2/page-report` (436F):
+- 154 `NavApplicationObjectBaseHandle\`1.get_Target`  (Pages/Forms — out of scope per §K)
+- 125 `NavGlobal.get_NCLMetadata`
+- 53 `NavReport.RunReportAsync` (async — JmpHook unsafe per §K)
+- 27 `NavStream.get_Target`
+- 20 `NavDialog.ALError`
+
+`bucket-1/record-table` (641F):
+- 157 `NavGlobal.get_NCLMetadata`
+- 153 `NavDialog.ALError`
+- 32  `RecordImplementation.InternalFindRecordWithoutCheckingValuesAsync`
+- 26  `RecordImplementation.IssueFindRequestAsync`
+- 25  `NavRecord.ALFieldCaptionAsync` (async)
+
+**Structural observations:**
+- No new shimmed codeunits were needed beyond `Assert.Codeunit.al`. Neither
+  sub-bucket dumped a uniform "missing codeunit X" pattern that would
+  indicate a sentinel-dep gap requiring `LibraryRandom`, `LibraryUtility`,
+  etc. as plain AL.
+- `bucket-2/page-report` is dominated (154/436 ≈ 35%) by
+  `NavApplicationObjectBaseHandle\`1.get_Target` — Pages/Forms emission, the
+  same out-of-scope JmpHook-unsafe class flagged in §K. Largely a structural
+  ceiling for this sub-bucket, not a wiring gap.
+- `bucket-1/record-table` and `bucket-2/data-formats` failure heads look like
+  the same long-tail mix as bucket-1/codeunit-runtime did pre-§K — the per-
+  stack surgical-patch strategy from §K/§L should apply here without
+  architecture change.
+
+**Combined corpus baseline (post-wiring):**
+
+| Bucket / sub-bucket | P | F | Total |
+|---|---:|---:|---:|
+| bucket-1/codeunit-runtime (§L) | 563 | 412 |  975 |
+| bucket-1/record-table          | 265 | 641 |  906 |
+| bucket-2/data-formats          |1162 | 412 | 1574 |
+| bucket-2/page-report           | 246 | 436 |  682 |
+| **total**                      |**2236**|**1901**|**4137**|
+
+Overall pass rate: **54.0%** across 4137 AL tests, with all four sub-buckets
+running end-to-end on the v2 runner.
+
+**Commits this session:**
+- `0f5ac5d2` — spike v2: wire bucket-2 — drop sentinel deps + add slim Assert at _shared
+- (HANDOFF §M commit follows)
