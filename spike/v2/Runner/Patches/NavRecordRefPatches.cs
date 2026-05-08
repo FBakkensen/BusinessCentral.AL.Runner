@@ -146,6 +146,16 @@ public static partial class BcRuntime
         lock (_alRandomLock) return _alRandom.Next(maxNumber) + 1;
     }
 
+    // ALSystemString.ALLowercase / ALUppercase — real impls reach NavCurrentThread.Session.Culture
+    // which is null on the skeleton. Fall back to InvariantCulture.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static string ALSystemString_ALLowercase(string value)
+        => string.IsNullOrEmpty(value) ? string.Empty : value.ToLower(System.Globalization.CultureInfo.InvariantCulture);
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static string ALSystemString_ALUppercase(string value)
+        => string.IsNullOrEmpty(value) ? string.Empty : value.ToUpper(System.Globalization.CultureInfo.InvariantCulture);
+
     // RecordImplementation.GetActiveCompany — touched by NavRecord.CloneRecord.
     // Real impl: Session.Database.CompanyTokens.Get(tableState.CompanyNameToken). Both
     // Database and tableState are null on the skeleton; return empty string. AL code

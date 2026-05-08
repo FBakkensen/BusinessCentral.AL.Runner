@@ -554,6 +554,21 @@ public static partial class BcRuntime
                 Hook(alRandom, nameof(ALSystemNumeric_ALRandom), "ALSystemNumeric.ALRandom(int)");
         }
 
+        // ALSystemString.ALLowercase / ALUppercase — real impls reach Session.Culture (null
+        // on skeleton). Fall back to InvariantCulture.
+        var alSysStrType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.ALSystemString");
+        if (alSysStrType != null)
+        {
+            var lower = alSysStrType.GetMethod("ALLowercase",
+                BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(string) }, null);
+            if (lower != null)
+                Hook(lower, nameof(ALSystemString_ALLowercase), "ALSystemString.ALLowercase");
+            var upper = alSysStrType.GetMethod("ALUppercase",
+                BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(string) }, null);
+            if (upper != null)
+                Hook(upper, nameof(ALSystemString_ALUppercase), "ALSystemString.ALUppercase");
+        }
+
         // RecordImplementation.GetActiveCompany — downstream NRE exposed by the get_Target
         // patch above. Real impl reaches Session.Database.CompanyTokens which is null on
         // the skeleton; return empty string.
