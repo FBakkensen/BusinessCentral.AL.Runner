@@ -500,6 +500,17 @@ public static partial class BcRuntime
                 Hook(createTarget, nameof(NavFormHandle_CreateTarget), "NavFormHandle.CreateTarget");
         }
 
+        // NavRecordRef.get_Target — bypass NRE on Session.Company.SharedObjects by
+        // constructing a SharedRecordRef parented to a process-wide skeleton container.
+        var navRecordRefType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavRecordRef");
+        if (navRecordRefType != null)
+        {
+            var targetGetter = navRecordRefType.GetProperty("Target",
+                BindingFlags.NonPublic | BindingFlags.Instance)?.GetGetMethod(true);
+            if (targetGetter != null)
+                Hook(targetGetter, nameof(NavRecordRef_get_Target), "NavRecordRef.get_Target");
+        }
+
         // ── Record / data-access plumbing (~300 lines) lives in RecordWritePatches.cs ──
         ApplyRecordPatches(navNcl);
 
