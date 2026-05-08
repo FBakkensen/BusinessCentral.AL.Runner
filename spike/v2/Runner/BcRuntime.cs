@@ -405,6 +405,34 @@ public static partial class BcRuntime
                 Hook(createTarget, nameof(NavCodeunitHandle_CreateTarget), "NavCodeunitHandle.CreateTarget");
         }
 
+        // NavDataTransfer.SetTables — uses NCLMetadata.GetMetaTableById to validate source/dest
+        // tables before staging the transfer. Validation is meaningless in headless mode (the
+        // actual data move happens via patched RecordImpl). No-op so AL DataTransfer.SetTables
+        // calls succeed and downstream Add{Constant,Field,Source}Value can proceed against
+        // skeleton-managed buffers.
+        var navDataTransferType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavDataTransfer");
+        if (navDataTransferType != null)
+        {
+            var setTables = navDataTransferType.GetMethod("SetTables",
+                BindingFlags.NonPublic | BindingFlags.Instance, null,
+                new[] { typeof(int), typeof(int) }, null);
+            if (setTables != null)
+                Hook(setTables, nameof(NoOp3), "NavDataTransfer.SetTables");
+        }
+
+        // ALTaskScheduler.CheckCodeUnit — calls NCLMetadata.GetMetaCodeunitById to verify the
+        // codeunit exists. We resolve codeunits via assembly-scan in CreateTarget; the metadata
+        // verification is redundant. No-op so ALCreateTaskAsync proceeds.
+        var alTaskSchedType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.ALTaskScheduler");
+        if (alTaskSchedType != null && sessType != null)
+        {
+            var checkCu = alTaskSchedType.GetMethod("CheckCodeUnit",
+                BindingFlags.NonPublic | BindingFlags.Static, null,
+                new[] { sessType, typeof(int) }, null);
+            if (checkCu != null)
+                Hook(checkCu, nameof(NoOp2), "ALTaskScheduler.CheckCodeUnit");
+        }
+
         // ALMethodScope.AssignScopeId — chains through Session.NCLMetadata which is null;
         // no-op leaves scopeId = null which is tolerated by the ScopeId getter.
         var alMethodScopeType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.ALMethodScope");
