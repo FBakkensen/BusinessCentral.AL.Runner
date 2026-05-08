@@ -947,3 +947,101 @@ running end-to-end on the v2 runner.
 **Commits this session:**
 - `0f5ac5d2` — spike v2: wire bucket-2 — drop sentinel deps + add slim Assert at _shared
 - (HANDOFF §M commit follows)
+
+---
+
+## §N — Real NavEnvironment ctor + skeleton SystemTenant/NCLMetadata injection
+
+**Goal:** unblock the 282 `NavGlobal.get_NCLMetadata` NRE failures (157 in
+bucket-1/record-table, 125 in bucket-2/page-report) by making
+`NavGlobal.SystemTenant` / `NavGlobal.NCLMetadata` return non-null skeletons.
+
+**Approach landed (commits this session):**
+
+| # | Commit | Patch | Δ pass |
+|---|---|---|---:|
+| 1 | `355b59f3` | Invoke real `NavEnvironment.InstantiateStandaloneNavEnvironment(true,false)` factory + 3 focused JMP-hooks (`Topology` backing-field pre-poke, `NavOpenTelemetryLogger..ctor` no-op, `ALFunctionTimingExecutionListener.EnsureRegistered` no-op) | (smoke-only) |
+| 2 | `be0745ae` | Null out `NavDiagnostics.OpenTelemetryLogger` post-ctor (heals +11 LogTelemetryEventTrace regression from #1's NoOp4-hooked OTL ctor) | — |
+| 3 | `6b3f3a22` | Manufacture skeleton `NavSystemTenant` + `NCLMetadata` via `GetUninitializedObject`; FieldPoke `nclMetadata` → systemTenant, `disposed=false` + `<Tree>k__BackingField` → root TreeHandler so `IsDisposed==false`; FieldPoke `Tenants.systemTenant` → skeleton | — |
+| 4 | `54ea8fc8` | Populate empty `NCLMetadata.metadataCacheEntries` / `metadataExtensionCacheEntries` ConcurrentDictionary arrays sized to the `ObjectType` enum (27 entries) — turns NRE in `GetEntryDictionary` into `NavNCLApplicationObjectNotFoundException` (typed, asserterror-trappable) | — |
+
+**Final headline numbers (post-#4, vs §M baseline):**
+
+| Sub-bucket | Pass before | Pass after | ΔP |
+|---|---:|---:|---:|
+| bucket-1/codeunit-runtime | 563 | 563 | +0 |
+| bucket-1/record-table     | 265 | 266 | +1 |
+| bucket-2/page-report      | 246 | 248 | +2 |
+
+**Why the headline ΔP is small (and what shifted):**
+
+The injection works mechanically: `[BcRuntime] InjectSkeletonSystemTenant:
+skeleton wired into Tenants.systemTenant` logs cleanly, and the failure
+classes shifted exactly one frame down the call stack:
+
+- `NavGlobal.get_NCLMetadata` (157) → `NCLMetadata.GetMetaApplicationObjectInternal` (157, post-#3) → `NCLMetadata.ThrowMetaApplicationObjectNotFound` (155, post-#4) on record-table.
+- Same shift on page-report (125 of those moved from `NavGlobal.get_NCLMetadata` to `ThrowMetaApplicationObjectNotFound`).
+
+Most of those 282 callers are AL `RecRef.Open(Database::"X")` /
+`Codeunit.Run(N)` style invocations that *require real metadata cache
+contents* (NCLMetaTable / NCLMetaCodeunit entries with field schemas, key
+lists, MetadataAppGroup, ApplicationObjectId, etc.) to proceed past the
+metadata lookup. Skeleton-only NCLMetadata can serve null-conditional probes
+but not "give me the schema for table 56270".
+
+**STOP per brief — sprawl bound:**
+
+Synthesizing real cache entries from compiled AL types (NavRecord<n>) is the
+exact ">100 LOC concrete dependency that itself sprawls" stop condition. The
+§L #1 patch on `NCLMetaApplicationObject.get_ApplicationObjectConstructor`
+was already the bypass for that sprawl — those callers fall through the
+NCLMetadata path entirely. The remaining 282 callers genuinely need cache
+hits.
+
+**Top remaining fail classes after §N:**
+
+`bucket-1/record-table` (640F):
+- 156 `NavDialog.ALError`
+- 155 `NCLMetadata.ThrowMetaApplicationObjectNotFound` (was `NavGlobal.get_NCLMetadata`)
+- 32  `RecordImplementation.InternalFindRecordWithoutCheckingValuesAsync`
+- 26  `RecordImplementation.IssueFindRequestAsync`
+- 25  `NavApplicationObjectBaseHandle\`1.get_Target`
+
+`bucket-2/page-report` (434F):
+- 154 `NavApplicationObjectBaseHandle\`1.get_Target` (out of scope per §K)
+- 125 `NCLMetadata.ThrowMetaApplicationObjectNotFound` (was `NavGlobal.get_NCLMetadata`)
+- 53  `NavReport.RunReportAsync` (async — JmpHook unsafe)
+
+`bucket-1/codeunit-runtime` (412F): unchanged from §L.
+
+**Net structural value (independent of headline ΔP):**
+
+- `NavEnvironment.Instance` is now a *real* fully-initialised env with a real
+  `NavTenantCollection`, real `Topology`, real `NavAppGroupResolver`, real
+  `Tenants`. Any future patch needing one of those properties no longer has
+  to skeleton it from scratch.
+- The 282 NRE callers now throw a *typed* `NavNCLApplicationObjectNotFoundException`
+  rather than an opaque NRE — this is `asserterror`-trappable on the AL side
+  and routes through the same exception machinery as the rest of BC.
+- `NavGlobal.{SystemTenant, NCLMetadata, MetaObjectCache, NCLCodeLoader,
+  NavAppClrTypeRetriever, NCLObjectXmlMetadataLoader, MetadataProvider,
+  EventSubscriptionMetadata, NavAppGroupCleanupTimer, ...}` all now return
+  non-null (NCLMetadata field-pokes set; the rest are fields on the skeleton
+  SystemTenant — `null` initially, but addressable for future field-pokes
+  without further plumbing).
+
+**Suggested next steps (not pursued — out of brief scope):**
+
+- **Synthetic NCLMetaTable cache populator** — scan loaded test assembly,
+  build a stripped NCLMetaTable per Record\<n\> type with field metadata
+  reflected from `[NavTableField]` attributes (or whatever decoration v2 emit
+  uses), insert into the cache dictionaries. Expected unblocks ~280 of the
+  combined 282 failures, but is the sprawl the brief told me to stop on.
+- **`NavApplicationObjectBaseHandle\`1.get_Target` (154)** — open generic;
+  same JmpHook safety constraint flagged in §K.
+
+**Commits this session:**
+- `355b59f3` — invoke real NavEnvironment ctor (3 patches)
+- `be0745ae` — null OpenTelemetryLogger post-ctor (heal regression)
+- `6b3f3a22` — inject skeleton NavSystemTenant+NCLMetadata into Tenants
+- `54ea8fc8` — populate empty NCLMetadata cache arrays (NRE → typed)
