@@ -41,6 +41,31 @@ public static partial class BcRuntime
         // 1. Build skeleton NCLMetadata (no ctor call — its ctor needs NavDatabase).
         _skeletonNCLMetadata = RuntimeHelpers.GetUninitializedObject(nclMetadataType);
 
+        // GetEntryDictionary() walks `metadataCacheEntries[(int)objectType]`. With null arrays,
+        // every call NREs at `dictionaries.Length`. Populate both with empty ConcurrentDictionary
+        // entries sized to the ObjectType enum so callers get a defined "not in cache" path —
+        // which translates to `NavNCLApplicationObjectNotFoundException` rather than NRE.
+        var navTypesAsm0 = AppDomain.CurrentDomain.GetAssemblies()
+            .First(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Types");
+        var objectTypeEnum = navTypesAsm0.GetType("Microsoft.Dynamics.Nav.Types.ObjectType");
+        var enumSize = objectTypeEnum != null ? Enum.GetValues(objectTypeEnum).Length : 27;
+
+        void PopulateCacheArray(string fieldName, Type entryValueType)
+        {
+            var f = nclMetadataType.GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Instance);
+            if (f == null) return;
+            var dictType = typeof(System.Collections.Concurrent.ConcurrentDictionary<,>)
+                .MakeGenericType(typeof(int), entryValueType);
+            var arr = Array.CreateInstance(dictType, enumSize);
+            for (int i = 0; i < enumSize; i++)
+                arr.SetValue(Activator.CreateInstance(dictType), i);
+            FieldPoke.SetInstance(f, _skeletonNCLMetadata, arr);
+        }
+        var entryT  = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NCLMetadataCacheEntry");
+        var extEntT = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NCLMetadataExtensionCacheEntry");
+        if (entryT  != null) PopulateCacheArray("metadataCacheEntries",          entryT);
+        if (extEntT != null) PopulateCacheArray("metadataExtensionCacheEntries", extEntT);
+
         // 2. Build skeleton NavSystemTenant.
         _skeletonSystemTenant = RuntimeHelpers.GetUninitializedObject(systemTenantType);
 
