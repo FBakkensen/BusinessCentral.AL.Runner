@@ -146,6 +146,11 @@ public static partial class BcRuntime
         lock (_alRandomLock) return _alRandom.Next(maxNumber) + 1;
     }
 
+    // NavDialog.ALOpen — UI dialog open. Real impl reaches Tree.Session which is null.
+    // No-op for skeleton tests; AL test code just needs the call to not throw.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void NavDialog_ALOpen(object self, Guid automationId, string message, object[] getters) { }
+
     // ALSystemString.ALLowercase / ALUppercase — real impls reach NavCurrentThread.Session.Culture
     // which is null on the skeleton. Fall back to InvariantCulture.
     [MethodImpl(MethodImplOptions.NoInlining)]

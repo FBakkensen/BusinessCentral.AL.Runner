@@ -554,6 +554,17 @@ public static partial class BcRuntime
                 Hook(alRandom, nameof(ALSystemNumeric_ALRandom), "ALSystemNumeric.ALRandom(int)");
         }
 
+        // NavDialog.ALOpen — UI dialog open NREs reaching Tree.Session on skeleton. No-op.
+        var navDialogType2 = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavDialog");
+        if (navDialogType2 != null)
+        {
+            foreach (var m in navDialogType2.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+                .Where(m => m.Name == "ALOpen" && m.GetParameters().Length == 3))
+            {
+                Hook(m, nameof(NavDialog_ALOpen), $"NavDialog.ALOpen/3");
+            }
+        }
+
         // ALSystemString.ALLowercase / ALUppercase — real impls reach Session.Culture (null
         // on skeleton). Fall back to InvariantCulture.
         var alSysStrType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.ALSystemString");
