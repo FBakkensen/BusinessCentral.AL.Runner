@@ -493,7 +493,32 @@ codeunit 130000 Assert
         if Left.IsDotNet or Right.IsDotNet then
             exit((Format(Left, 0, 2) = Format(Right, 0, 2)));
 
+        // Slim Assert: for non-primitive variants (Record, RecordRef, FieldRef,
+        // Codeunit, etc.) skip TypeOf(...) — its `else Error(UnsupportedTypeErr)`
+        // branch trips on the very kinds tests routinely compare. Format(_, 0, 2)
+        // already encodes type identity for these kinds (e.g. Records format their
+        // table+key, RecordRefs their table name, FieldRefs their qualified name),
+        // so a string-equal check on Format is sufficient and matches MS behaviour.
+        if not (IsPrimitive(Left) and IsPrimitive(Right)) then
+            exit(Format(Left, 0, 2) = Format(Right, 0, 2));
+
         exit((TypeOf(Left) = TypeOf(Right)) and (Format(Left, 0, 2) = Format(Right, 0, 2)))
+    end;
+
+    local procedure IsPrimitive(Value: Variant): Boolean
+    begin
+        exit(Value.IsBoolean or
+             Value.IsOption or Value.IsInteger or Value.IsByte or
+             Value.IsBigInteger or
+             Value.IsDecimal or
+             Value.IsText or Value.IsCode or Value.IsChar or Value.IsTextConstant or
+             Value.IsDate or
+             Value.IsTime or
+             Value.IsDuration or
+             Value.IsDateTime or
+             Value.IsDateFormula or
+             Value.IsGuid or
+             Value.IsRecordId);
     end;
 
     local procedure EqualNumbers(Left: Decimal; Right: Decimal): Boolean
