@@ -1,3 +1,4 @@
+// QUARANTINED — TestPage.RunPageBackgroundTask 1-arg overload not in BC 27.5 runtime: emits ALRunPageBackgroundTask(int) but NavTestPageHandle has no matching overload (CS1501). Pre-existing baseline failure. See HANDOFF §Q/§R.
 /// Tests for TestPage.RunPageBackgroundTask and TestHttpRequestMessage.QueryParameters — issue #950.
 codeunit 50140 "TIS Test"
 {

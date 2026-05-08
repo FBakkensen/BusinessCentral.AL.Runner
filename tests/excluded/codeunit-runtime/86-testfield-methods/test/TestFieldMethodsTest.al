@@ -1,3 +1,4 @@
+// QUARANTINED — TestField.GetOption 0-arg overload not in BC 27.5 runtime: emits ALGetOption() but NavTestField requires int index (CS7036). Pre-existing baseline failure. See HANDOFF §Q/§R.
 /// Tests for the missing TestField methods: AsBoolean, AsInteger, AsDate, AsTime,
 /// AssertEquals, ValidationErrorCount, OptionCount, Activate, AssistEdit,
 /// HideValue, ShowMandatory, Invoke, GetOption, GetValidationError.
