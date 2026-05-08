@@ -163,6 +163,16 @@ public static partial class BcRuntime
                 factory.Invoke(null, new object[] { true, false });
                 ctorOk = instField?.GetValue(null) != null;
                 if (ctorOk) Console.Error.WriteLine("[BcRuntime] NavEnvironment ctor: OK (full init)");
+
+                // The NoOp4-hooked NavOpenTelemetryLogger ctor leaves the inner readonly fields
+                // (openTelemetryLoggerInstanceForNstLog, ...SpanLoggerInstance, ...) null. The env
+                // ctor assigned this half-initialised instance to NavDiagnostics.OpenTelemetryLogger;
+                // every trace call routes through `OpenTelemetryLogger?.LogTelemetryEvent(...)` which
+                // dispatches to LogTelemetryEventTrace and NREs on the null inner. Setting the static
+                // back to null routes through the existing `?.` null-conditional and skips telemetry.
+                var navDiagT = navTypesAsm?.GetType("Microsoft.Dynamics.Nav.Diagnostic.NavDiagnostics");
+                var pOtl = navDiagT?.GetProperty("OpenTelemetryLogger", BindingFlags.Public | BindingFlags.Static);
+                pOtl?.SetValue(null, null);
             }
             catch (Exception ex)
             {
