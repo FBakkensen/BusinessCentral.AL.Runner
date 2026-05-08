@@ -405,6 +405,28 @@ public static partial class BcRuntime
                 Hook(createTarget, nameof(NavCodeunitHandle_CreateTarget), "NavCodeunitHandle.CreateTarget");
         }
 
+        // ALSystemErrorHandling.get_AL{GetLastErrorText,GetLastErrorCode,GetLastErrorCallStack}
+        // and ALClearLastError — real getters chain through NavCurrentThread.Session which is
+        // null on the skeleton thread. Hook to read/clear via the skeleton session directly.
+        var alSysErrType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.ALSystemErrorHandling");
+        if (alSysErrType != null)
+        {
+            void HookAlErrProp(string propName, string replName, string desc)
+            {
+                var p = alSysErrType.GetProperty(propName,
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
+                var g = p?.GetGetMethod(true);
+                if (g != null) Hook(g, replName, desc);
+            }
+            HookAlErrProp("ALGetLastErrorText",     nameof(ALSystemErrorHandling_get_ALGetLastErrorText),     "ALSystemErrorHandling.get_ALGetLastErrorText");
+            HookAlErrProp("ALGetLastErrorCode",     nameof(ALSystemErrorHandling_get_ALGetLastErrorCode),     "ALSystemErrorHandling.get_ALGetLastErrorCode");
+            HookAlErrProp("ALGetLastErrorCallStack",nameof(ALSystemErrorHandling_get_ALGetLastErrorCallStack),"ALSystemErrorHandling.get_ALGetLastErrorCallStack");
+            var clearMethod = alSysErrType.GetMethod("ALClearLastError",
+                BindingFlags.Public | BindingFlags.Static, null, Type.EmptyTypes, null);
+            if (clearMethod != null)
+                Hook(clearMethod, nameof(ALSystemErrorHandling_ALClearLastError), "ALSystemErrorHandling.ALClearLastError");
+        }
+
         // NavTestPageHandle.CreateTarget — same shape as NavCodeunitHandle: bypass the
         // NCLMetadata lookup and construct TestPage{ID} from the loaded test assembly.
         var testPageHandleType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavTestPageHandle");

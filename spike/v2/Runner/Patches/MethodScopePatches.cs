@@ -90,8 +90,26 @@ public static partial class BcRuntime
     public static void NavMethodScope_AssertError(object self, Action body)
     {
         try { body(); }
-        catch { return; /* asserterror passed: body threw something */ }
+        catch (Exception ex)
+        {
+            // Store the caught exception in skeleton session.lastException so that
+            // ALSystemErrorHandling.get_ALGetLastErrorText (and the patched override
+            // in MiscPatches) can return its message — Assert.ExpectedError / Library
+            // Assert depend on this round-trip.
+            StoreLastExceptionOnSkeletonSession(ex);
+            return; /* asserterror passed: body threw something */
+        }
         throw new Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException();
+    }
+
+    private static System.Reflection.FieldInfo? _fSessLastException;
+    private static void StoreLastExceptionOnSkeletonSession(Exception ex)
+    {
+        if (_skeletonSession == null) return;
+        if (_fSessLastException == null)
+            _fSessLastException = _skeletonSession.GetType().GetField("lastException",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        _fSessLastException?.SetValue(_skeletonSession, ex);
     }
 
     /// <summary>
