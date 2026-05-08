@@ -34,45 +34,56 @@ public static partial class RecordPatches
 
     private static void TryParseTableFile(string text)
     {
-        var tableMatch = RxTable.Match(text);
-        if (!tableMatch.Success) return;
+        // Multiple `table N "Name" { ... }` declarations may live in one .al file.
+        // Slice the text between consecutive RxTable matches so each table only sees
+        // its own fields/keys.
+        var tableMatches = RxTable.Matches(text);
+        if (tableMatches.Count == 0) return;
 
-        if (!int.TryParse(tableMatch.Groups[1].Value, out int tableId)) return;
-        var tableName = tableMatch.Groups[2].Success ? tableMatch.Groups[2].Value : tableMatch.Groups[3].Value;
-
-        var fields = new List<ParsedField>();
-        foreach (Match fm in RxField.Matches(text))
+        for (int i = 0; i < tableMatches.Count; i++)
         {
-            if (!int.TryParse(fm.Groups[1].Value, out int fid)) continue;
-            var fname = fm.Groups[2].Success ? fm.Groups[2].Value : fm.Groups[3].Value;
-            var ftype = fm.Groups[4].Value.Trim();
-            int length = 0;
-            var lm = Regex.Match(ftype, @"\[(\d+)\]");
-            if (lm.Success) int.TryParse(lm.Groups[1].Value, out length);
-            fields.Add(new ParsedField(fid, fname, ftype, length));
-        }
+            var tableMatch = tableMatches[i];
+            int sliceStart = tableMatch.Index;
+            int sliceEnd = (i + 1 < tableMatches.Count) ? tableMatches[i + 1].Index : text.Length;
+            var slice = text.Substring(sliceStart, sliceEnd - sliceStart);
 
-        // Parse first key as PK
-        var pkFieldIds = new List<int>();
-        var keyMatch = RxKey.Match(text);
-        if (keyMatch.Success)
-        {
-            var keyFieldNames = keyMatch.Groups[1].Value
-                .Split(',')
-                .Select(s => s.Trim().Trim('"'))
-                .ToList();
-            foreach (var kn in keyFieldNames)
+            if (!int.TryParse(tableMatch.Groups[1].Value, out int tableId)) continue;
+            var tableName = tableMatch.Groups[2].Success ? tableMatch.Groups[2].Value : tableMatch.Groups[3].Value;
+
+            var fields = new List<ParsedField>();
+            foreach (Match fm in RxField.Matches(slice))
             {
-                var f = fields.FirstOrDefault(x =>
-                    string.Equals(x.FieldName, kn, StringComparison.OrdinalIgnoreCase));
-                if (f != null) pkFieldIds.Add(f.FieldId);
+                if (!int.TryParse(fm.Groups[1].Value, out int fid)) continue;
+                var fname = fm.Groups[2].Success ? fm.Groups[2].Value : fm.Groups[3].Value;
+                var ftype = fm.Groups[4].Value.Trim();
+                int length = 0;
+                var lm = Regex.Match(ftype, @"\[(\d+)\]");
+                if (lm.Success) int.TryParse(lm.Groups[1].Value, out length);
+                fields.Add(new ParsedField(fid, fname, ftype, length));
             }
-        }
-        // Fallback: first field is PK
-        if (pkFieldIds.Count == 0 && fields.Count > 0)
-            pkFieldIds.Add(fields[0].FieldId);
 
-        _parsedTables[tableId] = new ParsedTable(tableId, tableName, fields, pkFieldIds);
+            // Parse first key as PK
+            var pkFieldIds = new List<int>();
+            var keyMatch = RxKey.Match(slice);
+            if (keyMatch.Success)
+            {
+                var keyFieldNames = keyMatch.Groups[1].Value
+                    .Split(',')
+                    .Select(s => s.Trim().Trim('"'))
+                    .ToList();
+                foreach (var kn in keyFieldNames)
+                {
+                    var f = fields.FirstOrDefault(x =>
+                        string.Equals(x.FieldName, kn, StringComparison.OrdinalIgnoreCase));
+                    if (f != null) pkFieldIds.Add(f.FieldId);
+                }
+            }
+            // Fallback: first field is PK
+            if (pkFieldIds.Count == 0 && fields.Count > 0)
+                pkFieldIds.Add(fields[0].FieldId);
+
+            _parsedTables[tableId] = new ParsedTable(tableId, tableName, fields, pkFieldIds);
+        }
     }
 }
 
