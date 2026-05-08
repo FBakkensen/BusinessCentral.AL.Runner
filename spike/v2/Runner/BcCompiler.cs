@@ -187,22 +187,73 @@ public sealed class BcCompiler
 
         var outputter = new CaptureOutputter();
         Exception? caught = null;
+        Microsoft.Dynamics.Nav.CodeAnalysis.Emit.EmitResult? emitResult = null;
         try
         {
-            compilation.Emit(NavCA.EmitOptions.Default, outputter);
+            // Compilation.Emit returns an EmitResult with Success + Diagnostics. The
+            // silent-zero failure mode (captured=0, no thrown exception) is when
+            // EmitResult.Success=false because the internal Compile step caught
+            // diagnostics rather than throwing. Capture the result so the diag
+            // block can surface them — otherwise we have no signal at all.
+            emitResult = compilation.Emit(NavCA.EmitOptions.Default, outputter);
         }
         catch (Exception ex) { caught = ex; }
 
         if (Environment.GetEnvironmentVariable("BCCOMPILER_DIAG") == "1")
         {
-            Console.Error.WriteLine($"[BcCompiler-diag] module={moduleName} alFiles={alFiles.Count} addCalls={outputter.AddCalls} captured={outputter.Captured.Count} lastAdded={outputter.LastAddedName ?? "<none>"} caught={caught?.GetType().Name ?? "<none>"}");
+            Console.Error.WriteLine($"[BcCompiler-diag] module={moduleName} alFiles={alFiles.Count} addCalls={outputter.AddCalls} captured={outputter.Captured.Count} lastAdded={outputter.LastAddedName ?? "<none>"} caught={caught?.GetType().Name ?? "<none>"} emitSuccess={emitResult?.Success}");
+            if (emitResult != null && !emitResult.Success)
+            {
+                var emitErrs = emitResult.Diagnostics
+                    .Where(d => d.Severity == NavDiag.DiagnosticSeverity.Error)
+                    .ToList();
+                Console.Error.WriteLine($"  EmitResult.Diagnostics: {emitErrs.Count} error(s)");
+                foreach (var d in emitErrs.Take(20))
+                    Console.Error.WriteLine($"    emit[{d.Id}] @ {d.Location}: {d.GetMessage().Split('\n', 2)[0]}");
+                if (emitErrs.Count > 20)
+                    Console.Error.WriteLine($"    ... and {emitErrs.Count - 20} more");
+            }
             if (caught != null)
             {
                 Console.Error.WriteLine($"  msg: {caught.Message.Split('\n', 2)[0]}");
                 if (caught is AggregateException agg)
                 {
-                    foreach (var inner in agg.Flatten().InnerExceptions.Take(5))
-                        Console.Error.WriteLine($"  inner[{inner.GetType().Name}]: {inner.Message.Split('\n', 2)[0]}");
+                    var inners = agg.Flatten().InnerExceptions.ToList();
+                    Console.Error.WriteLine($"  inner exceptions: {inners.Count}");
+                    int verbose = Environment.GetEnvironmentVariable("BCCOMPILER_DIAG_VERBOSE") == "1" ? 50 : 5;
+                    foreach (var inner in inners.Take(verbose))
+                    {
+                        // Group object+method extracted from the AggregateException.Message
+                        // (each AL emit failure includes "Object:'X' Method:'Y'" in the
+                        // AggregateException line for that inner — but the inner itself
+                        // only carries the BC-internal NRE/InvalidOpEx). Print full inner
+                        // message + stack to surface the actual BC emit code path.
+                        Console.Error.WriteLine($"  inner[{inner.GetType().Name}]: {inner.Message}");
+                        if (inner.StackTrace != null)
+                        {
+                            // Show the top BC-emitter frames so the failing CodeGenerator
+                            // method is visible (Microsoft.Dynamics.Nav.CodeAnalysis.* path).
+                            var topFrames = inner.StackTrace
+                                .Split('\n')
+                                .Where(l => l.Contains("Microsoft.Dynamics.Nav.CodeAnalysis"))
+                                .Take(8);
+                            foreach (var frame in topFrames)
+                                Console.Error.WriteLine($"    {frame.Trim()}");
+                        }
+                        if (inner.InnerException != null)
+                            Console.Error.WriteLine($"    causedby[{inner.InnerException.GetType().Name}]: {inner.InnerException.Message.Split('\n', 2)[0]}");
+                    }
+                    // The outer AggregateException.Message has "Object:'X' Method:'Y'"
+                    // for each inner. Extract and print as a clean per-method list.
+                    Console.Error.WriteLine("  failing methods (extracted from AggregateException msg):");
+                    var rx = new System.Text.RegularExpressions.Regex(
+                        @"Object:'([^']+)' Method:'([^']+)' \(([^)]+)\)");
+                    foreach (System.Text.RegularExpressions.Match m in rx.Matches(caught.Message))
+                        Console.Error.WriteLine($"    {m.Groups[1].Value} :: {m.Groups[2].Value}  [{m.Groups[3].Value}]");
+                }
+                else if (Environment.GetEnvironmentVariable("BCCOMPILER_DIAG_VERBOSE") == "1")
+                {
+                    Console.Error.WriteLine($"  full: {caught}");
                 }
             }
             var declErrs = compilation.GetDeclarationDiagnostics()
