@@ -359,6 +359,11 @@ public static partial class BcRuntime
             }
         }
 
+        // After the real NavEnvironment ctor + skeleton root scope are both ready,
+        // inject a skeleton NavSystemTenant + NCLMetadata into the real Tenants collection.
+        // No-op if env ctor fell back to skeleton (Tenants is null).
+        InjectSkeletonSystemTenant(navNcl);
+
         // Hook the 3-arg NavMethodScope ctor that all generated test-scope nested classes call.
         // The BC ctor body dereferences properties on the skeleton session/root-scope that NRE
         // once earlier-bucket test scopes have mutated shared state (e.g. session.CurrentMethodScope
