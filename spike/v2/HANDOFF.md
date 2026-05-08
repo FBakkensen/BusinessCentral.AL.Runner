@@ -1137,3 +1137,106 @@ SkeletonNCLMetadata).
   existing `NavCodeunitHandle.CreateTarget` JMP hook bypasses the lookup
   for direct calls; only metadata-introspection code paths (test
   framework codeunit-discovery) would benefit from a populator entry.
+
+## §P — Page/Report cache populator (extend §O to NCLMetaForm/NCLMetaReport)
+
+**Goal:** extend the §O lazy-cache-populate strategy from tables to pages/forms
+and reports so the 122 `ThrowMetaApplicationObjectNotFound` failures on
+`bucket-2/page-report` (the §O leftover) collapse.
+
+**Approach landed (commits this session):**
+
+| # | Commit | Patch |
+|---|---|---|
+| 1 | `a277bb5d` | Page/report parser + builder + populator extension. New: `RecordPatches.AlPageParser.cs` (regex-parse `page` / `pageextension`), `RecordPatches.AlReportParser.cs` (regex-parse `report` / `reportextension`), `RecordPatches.NclMetaFormReportBuilder.cs` (call internal-static `NCLMetaForm.CreateEmptyNCLMetaForm` / `NCLMetaReport.CreateEmptyNCLMetaReport` with `loader=null`, `NavAppGroup.BaseGroup`, `depOrder=-1`). Extended: `NclMetadataCachePopulator.PopulateOneObjectType` to handle `Table=1`, `Report=3`, `Page=8` cache slots. `NCLMetaApplicationObject_get_ApplicationObjectClrType` now branches on `ObjectId.ObjectType` to look up `Form{N}` / `Report{N}` (was `Record{N}`-only). |
+| 2 | `245fc20d` | `NavReportHandle.CreateTarget` JMP hook — mirror `NavFormHandle.CreateTarget`, bypass `NCLMetaReport.CreateObjectInstance` (which NREs on the populated skeleton because `ApplicationObjectConstructor` is null and there is no fallback path the way `NCLMetaTable.CreateObjectInstance` has one). Direct-construct `Report{ID}` from the test assembly via 1-arg `ITreeObject` ctor. |
+
+**Headline numbers (§O baseline → §P):**
+
+| Sub-bucket | Pass before (§O) | Pass after (§P) | ΔP |
+|---|---:|---:|---:|
+| bucket-1/codeunit-runtime | 566 | 566 | 0 |
+| bucket-1/record-table     | 349 | 349 | 0 |
+| bucket-2/page-report      | 248 | 248 | **0** |
+| bucket-2/data-formats     | 1162 | _pending_ | _pending_ |
+
+**Failure-class shift on bucket-2/page-report (482→434F as classified, total 434F):**
+
+| Class | §O | §P-after-cache-only (commit 1) | §P-final (commit 2) |
+|---|---:|---:|---:|
+| `NCLMetadata.ThrowMetaApplicationObjectNotFound` | 122 | 62 | 62 |
+| `NCLMetaReport.CreateObjectInstance` | 0 | 58 | 0 |
+| `NavApplicationObjectBaseHandle\`1.get_Target` | 154 | 154 | 212 |
+
+So:
+
+- The cache populator demonstrably hits — 60 of the 122 metadata-not-found
+  failures advanced to the next frame (mostly Reports — `ThrowMetaApplicationObjectNotFound`
+  → `NCLMetaReport.CreateObjectInstance`).
+- `NavReportHandle.CreateTarget` hook then absorbs those 58 by direct-constructing
+  `Report{ID}` — but reports/pages aren't actually emitted to the test assembly
+  by `BcCompiler` / `BcAssembler`, so the new hook throws
+  `Report{N} is not present in the test assembly or any loaded dependency` /
+  `Form{N} is not present...`. Those re-emerge as
+  `NavApplicationObjectBaseHandle\`1.get_Target` failures at the AL caller.
+- Net: **the failures moved one frame down the stack but no test passes were unlocked.**
+
+**Why ΔP is zero:**
+
+Per `tests/bucket-2/page-report/1262-page-bookmarktype/test/PageBookmarkTypeTest.al:1`:
+> "BC emits these members on Page<N> classes; without stubs the Roslyn compilation
+> fails with CS1061 after the NavForm base class is stripped."
+
+The v2 emit pipeline currently does not emit pages or reports as concrete
+`Form{N}` / `Report{N}` C# classes in the test assembly. They exist only as AL
+declarations the cache populator can find. Without the C# class to construct,
+neither `NCLMetaForm.CreateObjectInstance` (legacy path) nor our
+`NavReportHandle.CreateTarget` hook (new bypass) can produce a target instance
+— the test that calls `Page.Run(N, ...)` or `Report.Run(N)` always errors.
+
+**Net structural value (independent of headline ΔP):**
+
+- Page-report metadata cache is now populated structurally identical to the
+  table cache — any future patch that does NEED to read page/report metadata
+  finds an entry instead of throwing `NavNCLApplicationObjectNotFoundException`.
+- The exception class on those 60 calls is now an `InvalidOperationException`
+  with a *concrete* "Form{N} is not present" / "Report{N} is not present"
+  message naming the missing AL artefact, instead of an opaque
+  `NavNCLApplicationObjectNotFoundException` — much easier to diagnose when
+  page-emit work lands.
+- No regressions: codeunit-runtime 566→566, record-table 349→349.
+
+**Top remaining fail classes after §P on bucket-2/page-report (434F):**
+
+- 212 `NavApplicationObjectBaseHandle\`1.get_Target` (Form{N}/Report{N} not in assembly — root cause: page/report emit gap, not a metadata issue)
+- 62  `NCLMetadata.ThrowMetaApplicationObjectNotFound` (residue — likely page/report IDs that aren't declared in any *.al under the suite's source dirs; or referenced via aliases the parser doesn't catch)
+- 53  `NavReport.RunReportAsync` (async path — JmpHook unsafe, §K)
+- 27  `NavStream.get_Target`
+- 18  `NavDialog.ALError`
+- 13  `NavRecord.ValidateExpectedType`
+
+**STOP per brief — bound reached:**
+
+The brief stop condition "needs ≥150 LOC of skeleton state per kind" did not
+hit — `CreateEmptyNCLMetaForm`/`CreateEmptyNCLMetaReport` factories made the
+populator additions trivial (~50 LOC parser, ~80 LOC builder/populator, ~40 LOC
+NavReportHandle hook). But the *next* layer down — page/report C# emit in
+`BcCompiler` — is the real blocker for ΔP, and that is squarely "C# rewrite
+path" territory (binary-compat violation per the brief's hard constraint).
+
+**Suggested next steps (out of brief scope per binary-compat constraint):**
+
+- **Page/report emit in `BcCompiler`** — emit `Form{N}` / `Report{N}` classes
+  into the test assembly (mirror of `Codeunit{N}` emit). After that, this §P
+  cache populator + `NavReportHandle`/`NavFormHandle.CreateTarget` hooks
+  collapse the 154+58 "not present" failures to actual ΔP. Estimate: 200-300
+  LOC, requires understanding existing emit IL/Roslyn pipeline.
+- **`NavApplicationObjectBaseHandle\`1.get_Target`** — open generic; same
+  JmpHook safety constraint flagged in §K. With page/report emit landed, this
+  becomes obsolete because the inner `CreateTarget` hooks intercept first.
+
+**Commits this session:**
+
+- `a277bb5d` — page/report cache populator (parser + builder + populator
+  extension + ApplicationObjectClrType ObjectType branch)
+- `245fc20d` — NavReportHandle.CreateTarget hook (mirror of NavFormHandle)
