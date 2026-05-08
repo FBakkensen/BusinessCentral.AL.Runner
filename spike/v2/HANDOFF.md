@@ -1158,7 +1158,7 @@ and reports so the 122 `ThrowMetaApplicationObjectNotFound` failures on
 | bucket-1/codeunit-runtime | 566 | 566 | 0 |
 | bucket-1/record-table     | 349 | 349 | 0 |
 | bucket-2/page-report      | 248 | 248 | **0** |
-| bucket-2/data-formats     | 1162 | _pending_ | _pending_ |
+| bucket-2/data-formats     | 1162 | 1164 | +2 (noise) |
 
 **Failure-class shift on bucket-2/page-report (482→434F as classified, total 434F):**
 
