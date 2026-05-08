@@ -405,6 +405,17 @@ public static partial class BcRuntime
                 Hook(createTarget, nameof(NavCodeunitHandle_CreateTarget), "NavCodeunitHandle.CreateTarget");
         }
 
+        // NavTestPageHandle.CreateTarget — same shape as NavCodeunitHandle: bypass the
+        // NCLMetadata lookup and construct TestPage{ID} from the loaded test assembly.
+        var testPageHandleType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavTestPageHandle");
+        if (testPageHandleType != null)
+        {
+            var createTarget = testPageHandleType.GetMethod("CreateTarget",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            if (createTarget != null)
+                Hook(createTarget, nameof(NavTestPageHandle_CreateTarget), "NavTestPageHandle.CreateTarget");
+        }
+
         // ── Record / data-access plumbing (~300 lines) lives in RecordWritePatches.cs ──
         ApplyRecordPatches(navNcl);
 

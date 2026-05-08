@@ -72,6 +72,76 @@ public static partial class BcRuntime
         return (Microsoft.Dynamics.Nav.Runtime.NavCodeunit)ctor.Invoke(new object[] { self });
     }
 
+    // Cache: test-page ID → generated TestPage Type.
+    private static readonly ConcurrentDictionary<int, Type?> _testPageTypeCache = new();
+
+    /// <summary>
+    /// Replacement for NavTestPageHandle.CreateTarget().
+    /// Same shape as NavCodeunitHandle_CreateTarget — bypass NavGlobal.NCLMetadata
+    /// by scanning the loaded test assembly for `TestPage{ID}` and constructing
+    /// via the 1-arg ITreeObject ctor.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static object NavTestPageHandle_CreateTarget(object self)
+    {
+        // self is NavTestPageHandle. ObjectId.ObjectNumber via reflection so we don't
+        // need a using import for the type (it lives in the same Runtime namespace).
+        var objIdProp = self.GetType().GetProperty("ObjectId",
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        var objId = objIdProp!.GetValue(self)!;
+        var idProp = objId.GetType().GetProperty("ObjectNumber",
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        int id = (int)idProp!.GetValue(objId)!;
+
+        var pageType = _testPageTypeCache.GetOrAdd(id, FindTestPageType);
+        if (pageType == null)
+            throw new InvalidOperationException(
+                $"TestPage{id} is not present in the test assembly or any loaded dependency.");
+        var ctor = pageType.GetConstructors()
+            .FirstOrDefault(c => c.GetParameters().Length == 1 &&
+                typeof(Microsoft.Dynamics.Nav.Runtime.ITreeObject)
+                    .IsAssignableFrom(c.GetParameters()[0].ParameterType));
+        if (ctor == null)
+            throw new InvalidOperationException(
+                $"TestPage{id} has no single-arg ITreeObject constructor");
+        return ctor.Invoke(new object[] { self });
+    }
+
+    private static Type? FindTestPageType(int id)
+    {
+        // TestPage classes derive from a TestPage base in Microsoft.Dynamics.Nav.Runtime;
+        // we find the base by name to avoid hard-coding the type ref.
+        var navNcl = AppDomain.CurrentDomain.GetAssemblies()
+            .FirstOrDefault(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Ncl");
+        Type? testPageBase = null;
+        if (navNcl != null)
+            testPageBase = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavTestPage")
+                ?? navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.TestPage");
+        var name = $"TestPage{id}";
+        if (_currentTestAssembly != null)
+        {
+            try
+            {
+                var t = Array.Find(_currentTestAssembly.GetTypes(),
+                    x => x.Name == name && (testPageBase == null || testPageBase.IsAssignableFrom(x)));
+                if (t != null) return t;
+            }
+            catch { }
+        }
+        foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            if (asm == _currentTestAssembly) continue;
+            try
+            {
+                var t = Array.Find(asm.GetTypes(),
+                    x => x.Name == name && (testPageBase == null || testPageBase.IsAssignableFrom(x)));
+                if (t != null) return t;
+            }
+            catch { }
+        }
+        return null;
+    }
+
     // Well-known codeunit IDs that ship inside Microsoft dependency apps. When the
     // test compile resolves a `Codeunit X` reference against a Microsoft .app at
     // symbol-resolution time but the runtime has no DLL for that .app loaded,
