@@ -77,6 +77,31 @@ public static partial class BcRuntime
         return string.Compare(sv, ov, StringComparison.Ordinal);
     }
 
+    // ALSystemNumeric.ALRandomize / ALRandom — real impls hit NavCurrentThread.Session.Random
+    // which is null on the skeleton. Back the statics with a process-static Random.
+    private static System.Random _alRandom = new System.Random();
+    private static readonly object _alRandomLock = new object();
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void ALSystemNumeric_ALRandomize()
+    {
+        lock (_alRandomLock) _alRandom = new System.Random();
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void ALSystemNumeric_ALRandomize_Seed(int seed)
+    {
+        lock (_alRandomLock) _alRandom = new System.Random(seed);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static int ALSystemNumeric_ALRandom(int maxNumber)
+    {
+        if (maxNumber < 0) maxNumber = -maxNumber;
+        if (maxNumber == 0) maxNumber = 1;
+        lock (_alRandomLock) return _alRandom.Next(maxNumber) + 1;
+    }
+
     // RecordImplementation.GetActiveCompany — touched by NavRecord.CloneRecord.
     // Real impl: Session.Database.CompanyTokens.Get(tableState.CompanyNameToken). Both
     // Database and tableState are null on the skeleton; return empty string. AL code

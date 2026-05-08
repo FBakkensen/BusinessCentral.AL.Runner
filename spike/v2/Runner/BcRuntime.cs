@@ -523,6 +523,25 @@ public static partial class BcRuntime
                     "NavStringValue.CompareTo(NavStringValue)");
         }
 
+        // ALSystemNumeric.ALRandomize/ALRandom — real impls reach NavCurrentThread.Session.Random
+        // (null on skeleton). Back with a process-static Random.
+        var alSysNumType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.ALSystemNumeric");
+        if (alSysNumType != null)
+        {
+            var randomizeNoArg = alSysNumType.GetMethod("ALRandomize",
+                BindingFlags.Public | BindingFlags.Static, null, Type.EmptyTypes, null);
+            if (randomizeNoArg != null)
+                Hook(randomizeNoArg, nameof(ALSystemNumeric_ALRandomize), "ALSystemNumeric.ALRandomize()");
+            var randomizeSeed = alSysNumType.GetMethod("ALRandomize",
+                BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(int) }, null);
+            if (randomizeSeed != null)
+                Hook(randomizeSeed, nameof(ALSystemNumeric_ALRandomize_Seed), "ALSystemNumeric.ALRandomize(int)");
+            var alRandom = alSysNumType.GetMethod("ALRandom",
+                BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(int) }, null);
+            if (alRandom != null)
+                Hook(alRandom, nameof(ALSystemNumeric_ALRandom), "ALSystemNumeric.ALRandom(int)");
+        }
+
         // RecordImplementation.GetActiveCompany — downstream NRE exposed by the get_Target
         // patch above. Real impl reaches Session.Database.CompanyTokens which is null on
         // the skeleton; return empty string.
