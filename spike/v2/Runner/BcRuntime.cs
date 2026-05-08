@@ -789,6 +789,21 @@ public static partial class BcRuntime
                     "CallStackElement.TryGetSourceInfo");
         }
 
+        // NCLMetaApplicationObject.get_ApplicationObjectConstructor — real getter calls
+        // CompileAndLoadClrObject under a lock on `nclMetaObjectCLRTypeContainer`, which
+        // is null on a skeleton meta-object → NRE in Monitor.ReliableEnter. Returning null
+        // is safe: callers like NCLMetaTable.CreateObjectInstance fall back to constructing
+        // NavRecord directly via `new NavRecord(parent, TableId, this, ...)`.
+        var metaAoType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NCLMetaApplicationObject");
+        if (metaAoType != null)
+        {
+            var aoCtorGetter = metaAoType.GetProperty("ApplicationObjectConstructor",
+                BindingFlags.NonPublic | BindingFlags.Instance)?.GetGetMethod(true);
+            if (aoCtorGetter != null)
+                Hook(aoCtorGetter, nameof(ReturnNull_OneArg),
+                    "NCLMetaApplicationObject.get_ApplicationObjectConstructor");
+        }
+
     }
 
     private static void HookProperty(Type t, string propName, bool isStatic, string replacementName)
