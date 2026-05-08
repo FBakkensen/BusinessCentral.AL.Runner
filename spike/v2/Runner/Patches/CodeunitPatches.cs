@@ -107,6 +107,69 @@ public static partial class BcRuntime
         return ctor.Invoke(new object[] { self });
     }
 
+    // Cache: form ID → generated Form Type.
+    private static readonly ConcurrentDictionary<int, Type?> _formTypeCache = new();
+
+    /// <summary>
+    /// Replacement for NavFormHandle.CreateTarget().
+    /// Same shape as NavCodeunitHandle/NavTestPageHandle — bypass NavGlobal.NCLMetadata
+    /// by scanning the loaded test assembly for `Form{ID}` and constructing via the
+    /// 1-arg ITreeObject ctor.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static object NavFormHandle_CreateTarget(object self)
+    {
+        var objIdProp = self.GetType().GetProperty("ObjectId",
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        var objId = objIdProp!.GetValue(self)!;
+        var idProp = objId.GetType().GetProperty("ObjectNumber",
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        int id = (int)idProp!.GetValue(objId)!;
+
+        var formType = _formTypeCache.GetOrAdd(id, FindFormType);
+        if (formType == null)
+            throw new InvalidOperationException(
+                $"Form{id} is not present in the test assembly or any loaded dependency.");
+        var ctor = formType.GetConstructors()
+            .FirstOrDefault(c => c.GetParameters().Length == 1 &&
+                typeof(Microsoft.Dynamics.Nav.Runtime.ITreeObject)
+                    .IsAssignableFrom(c.GetParameters()[0].ParameterType));
+        if (ctor == null)
+            throw new InvalidOperationException(
+                $"Form{id} has no single-arg ITreeObject constructor");
+        return ctor.Invoke(new object[] { self });
+    }
+
+    private static Type? FindFormType(int id)
+    {
+        var navNcl = AppDomain.CurrentDomain.GetAssemblies()
+            .FirstOrDefault(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Ncl");
+        Type? formBase = navNcl?.GetType("Microsoft.Dynamics.Nav.Runtime.NavForm");
+        var name = $"Form{id}";
+        if (_currentTestAssembly != null)
+        {
+            try
+            {
+                var t = Array.Find(_currentTestAssembly.GetTypes(),
+                    x => x.Name == name && (formBase == null || formBase.IsAssignableFrom(x)));
+                if (t != null) return t;
+            }
+            catch { }
+        }
+        foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            if (asm == _currentTestAssembly) continue;
+            try
+            {
+                var t = Array.Find(asm.GetTypes(),
+                    x => x.Name == name && (formBase == null || formBase.IsAssignableFrom(x)));
+                if (t != null) return t;
+            }
+            catch { }
+        }
+        return null;
+    }
+
     private static Type? FindTestPageType(int id)
     {
         // TestPage classes derive from a TestPage base in Microsoft.Dynamics.Nav.Runtime;
