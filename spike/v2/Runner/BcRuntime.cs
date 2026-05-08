@@ -511,6 +511,19 @@ public static partial class BcRuntime
                 Hook(targetGetter, nameof(NavRecordRef_get_Target), "NavRecordRef.get_Target");
         }
 
+        // RecordImplementation.GetActiveCompany — downstream NRE exposed by the get_Target
+        // patch above. Real impl reaches Session.Database.CompanyTokens which is null on
+        // the skeleton; return empty string.
+        var recImplType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.RecordImplementation");
+        if (recImplType != null)
+        {
+            var getActiveCompany = recImplType.GetMethod("GetActiveCompany",
+                BindingFlags.NonPublic | BindingFlags.Instance, null, Type.EmptyTypes, null);
+            if (getActiveCompany != null)
+                Hook(getActiveCompany, nameof(RecordImplementation_GetActiveCompany),
+                    "RecordImplementation.GetActiveCompany");
+        }
+
         // ── Record / data-access plumbing (~300 lines) lives in RecordWritePatches.cs ──
         ApplyRecordPatches(navNcl);
 

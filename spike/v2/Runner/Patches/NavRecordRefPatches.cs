@@ -60,4 +60,11 @@ public static partial class BcRuntime
         _mTreeSetReferenceTarget?.Invoke(tree, new object?[] { srr });
         return srr;
     }
+
+    // RecordImplementation.GetActiveCompany — touched by NavRecord.CloneRecord.
+    // Real impl: Session.Database.CompanyTokens.Get(tableState.CompanyNameToken). Both
+    // Database and tableState are null on the skeleton; return empty string. AL code
+    // that compares company names will see "" == "" which is fine for most tests.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static string RecordImplementation_GetActiveCompany(object self) => "";
 }
