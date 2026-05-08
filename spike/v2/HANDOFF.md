@@ -1,7 +1,17 @@
-# AL Runner v2 — handoff (2026-05-07 late evening)
+# AL Runner v2 — handoff (2026-05-08)
 
-**Latest update (post-/compact):** Step 1 (AppLoader) and Step 2 (BcCompiler
-in-process) landed. See §H below for what was learned this session.
+**Latest update (2026-05-08):** Dependency-loading scaffolding landed
+(AppLoader.Dependencies/IsR2R, DependencyResolver, DependencyLoader,
+BcCompiler dep-driven specs, Program.cs CLI/--precompile, bucket
+app.json files). End-to-end run confirms R2R deps load cleanly
+(System Application 506 codeunits, Library Assert 130002, etc.) but
+**Tests-TestLibraries — which provides `Codeunit 130000 "Assert"` —
+triggers BC's silent zero-output sentinel during the source-only
+Tier-3 compile.** Per the original brief, stopped and reported.
+Pass count regressed 39→16 because the previous baseline's compile-
+time symbol set (allow-list) covered apps the runtime now no longer
+hides behind missing types. Details in §I below. Step 1 (older AppLoader)
+and Step 2 (BcCompiler in-process) earlier baseline retained at §H.
 
 This is the live entry point. **§A below supersedes the older mission/§3
 text further down** (kept for diff/history; treat as historical).
@@ -316,6 +326,90 @@ once the test DLL stops using mock types — audit case-by-case after Step 5.
 2. **Per-suite emit perf headroom.** 39s for one tiny suite suggests BC's reference loader does eager I/O on every Compilation. If bundled emit can't be fixed, per-suite × 39s × 177 = 115 min/bucket — unacceptable. Either: reuse a single Compilation across suites with `AddSyntaxTrees` between emits (untested), or accept bundled emit and fix the silent-drop issue.
 
 3. ~~Step 3 + Step 4 must land together~~ — **landed.** `BcAssembler` no longer calls `ByRefWrapRewriter`; new `Rewriters/CallSiteArgWrap.cs` runs a throwaway Roslyn compile, finds CS1503 'cannot convert T to ByRef<T>' diagnostics, rewrites only those argument expressions to `new ByRef<T>(() => expr, v => expr = v)`. Verified on `tests/bucket-1/codeunit-runtime` (185 suites): 1000 tests discovered (+26 vs pre-Step-4), suite-level compile-fails 5→2, 39P/961F. The pass-count being flat reflects that the failures shifted from compile errors to runtime errors — top class is now `NavApplicationObjectBaseHandle\`1.get_Target` (716/961 = 74% of fails), exactly the §5 #1 patch gap. Next runtime patch lands → big pass-count jump.
+
+## §I. Session results (2026-05-08) — dependency-loading attempt
+
+**Architecture landed (commits 80c7d05d → b0add4ad → 06ad99d4):**
+
+- `AppManifest.Dependencies` populated from NavxManifest.xml's `<Dependencies>`.
+- `AppLoader.IsR2R(path)` probes for `publishedartifacts/*.dll`.
+- `AppLoader.ReadManifest` recurses into nested `.app` for R2R packages
+  (outer ZIP only has `readytorunappmanifest.json`; real manifest lives
+  inside the nested AL `.app`).
+- `DependencyResolver` indexes a list of cache dirs by AppId (with
+  (Name, Publisher) fallback), expands a root dep list into transitive
+  closure, post-order DFS for topo order, colour-marker cycle detection.
+- `DependencyLoader` three-tier resolution: Tier-1 `<bucket>/.deps-bin/*.dll`,
+  Tier-2 R2R extract, Tier-3 source-only via BcCompiler+BcAssembler.
+  Caches by AppId. Installs `AssemblyLoadContext.Default.Resolving` so
+  byte-loaded deps satisfy by-name reference resolution.
+- `BcCompiler.SetResolvedDeps(...)` replaces the hard-coded allow-list:
+  symbol specs are derived from the resolved dep set, so compile-time
+  references and runtime-loaded types are the same set by construction.
+- `Program.cs` now parses `--package-cache` (repeatable), `--precompile`
+  subcommand for snapshotting Tier-3 deps to Tier-1 DLLs, locates each
+  bucket's `app.json`, runs DependencyResolver+DependencyLoader before
+  per-suite emit/compile/run.
+- `tests/bucket-1/app.json` and `tests/bucket-2/app.json` declare the
+  MS dep set. GUIDs sourced from each `.app`'s NavxManifest.xml.
+
+**Empirical (cold run, `bucket-1/codeunit-runtime`):**
+
+- 991 tests, 16P/975F/0E (down from 39P/952F/0E baseline).
+- 12 deps resolved; 8 dep assemblies loaded (R2R Tier-2):
+  - System Application R2R DLL: 506 codeunits (verified via lookup-diag).
+  - Library Assert R2R DLL: Codeunit130002 (NOT 130000).
+  - Other R2R deps (Base App, Application meta, Business Foundation, etc.)
+    all loaded cleanly.
+- **3 deps hit BC's silent-zero-output sentinel during Tier-3 compile:**
+  - `Tests-TestLibraries` — contains `src/Assert.Codeunit.al` (Codeunit
+    130000 "Assert"), which is what most of the corpus references via
+    `var Assert: Codeunit Assert;`. Without this dep, ~700 failures
+    surface as `Codeunit 130000 ("Assert") is not present`.
+  - `System Application Test Library`
+  - `Business Foundation Test Libraries`
+- Wall time: 5m 48s cold (300.7s pipeline; 249.3s emit / 20.5s compile /
+  31.0s run).
+- Top failure classes: 692 `NavApplicationObjectBaseHandle\`1.get_Target`
+  (most still tracing back to `Codeunit 130000 "Assert"` not present).
+
+**Hard blocker — Tests-TestLibraries silent-zero-emit.**
+
+The Tier-3 source-only compile path runs `BcCompiler.Emit` on the
+extracted `src/*.al`. For the three packages above, BC's
+`Compilation.Emit` returns 0 captured sources without raising — the
+same sentinel pattern §H documents for `tests/bucket-1/codeunit-runtime/
+310400-misc-single-method-gaps`. The brief explicitly says: if this
+fires, STOP and report. So this halt is by design.
+
+The architecture is sound — Tier-1/Tier-2/Tier-3 all work, the resolver
+and loader compose cleanly, R2R packages load and expose their codeunit
+types correctly. What's blocked is the on-the-fly compile of MS test-
+framework AL when fed through bundled emit. Two paths forward:
+
+1. **Skip Tier-3 entirely; require Tier-1.** Pre-compile the
+   silent-zero-output deps via an external tool (alc subprocess?
+   `--generatecode+`?) and commit the DLLs to `tests/bucket-1/.deps-bin/`.
+   Fastest unblock for CI; users without the precompiled set need to
+   run a separate snapshot tool. This is what `--precompile` was
+   designed for, but `--precompile` itself uses the same Tier-3
+   compile path that's failing.
+2. **Diagnose the silent-zero-emit.** The Tests-TestLibraries .app
+   (45 KB total) is small — bisect the AL files to find the trigger.
+   §H documents this is a real BC 27.5 CodeAnalysis quirk on certain
+   AL patterns; cleanup is suite-by-suite.
+
+The pass-count regression (39→16) is a separate side-effect of dropping
+the allow-list: removing `BcCompiler`'s static allow-list also removed
+some packages from the symbol-reference set that the corpus implicitly
+depended on at compile time. Putting Tier-1 DLLs in place resolves both
+the runtime lookup and the compile-time symbols (since
+`SetResolvedDeps` derives specs from the final resolved set).
+
+**Pending steps (not run):**
+
+- Step 9 verification at scale (the cold run above is the data point).
+- Step 10 — pre-compile + commit Tier-1 DLLs.
 
 ## §G. Operating notes
 
