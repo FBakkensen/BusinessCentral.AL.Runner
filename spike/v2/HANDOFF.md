@@ -698,3 +698,43 @@ done
 - `spike/v2/Runner/BcRuntime.cs` + `Patches/` — current patch surface.
 - `~/Documents/Repos/community/bc-linux/src/StartupHook/StartupHook.cs` — JMP-hook
   technique reference.
+
+---
+
+## §J. Runtime patch hooks (2026-05-08)
+
+After dependency-loading + bucket-shared Assert landed (baseline 418P/557F/0E
+on `tests/bucket-1/codeunit-runtime`, 975 tests), six runtime patches were
+added against the top failure classes from `v2-classification.json`. All
+landed cleanly with no regressions. Final state: **493P/482F/0E (+75P, 1.18×)**.
+
+| # | Patch | Δ pass | Notes |
+|---|---|---|---|
+| 1 | Slim Assert `Equal(Variant,Variant)` — skip `TypeOf` for non-primitive variants (Records / RecordRefs / FieldRefs / Codeunits route directly through `Format(_,0,2)` equality) | +10 | AL-source change in `tests/bucket-1/_shared/Assert.Codeunit.al`; all other patches are JMP-hooks. |
+| 2 | `NavSession.get_Culture` + `get_WindowsCulture` → `CultureInfo.InvariantCulture` | +6 | Real getters call `CultureInfo.GetCultureInfo(0)` on the skeleton session and throw `ArgumentOutOfRangeException`. |
+| 3 | `NavTestPageHandle.CreateTarget` — assembly-scan for `TestPage{ID}` (mirrors `NavCodeunitHandle_CreateTarget`) | +0 | The 18 NavTestPageHandle classifications cleared; failures move to deeper layers. Patch verified working. |
+| 4 | `ALSystemErrorHandling.{get_ALGetLastErrorText, get_ALGetLastErrorCode, get_ALGetLastErrorCallStack, ALClearLastError}` — read/clear via skeleton session directly. Plus: `NavMethodScope.AssertError` now stores caught exception in `skeletonSession.lastException` so `Assert.ExpectedError` round-trip works. | +26 | Real getters chain through `NavCurrentThread.Session` (null on skeleton thread). |
+| 5 | `ALMethodScope.AssignScopeId` → no-op | +33 | Real body chains through `Session.NCLMetadata.CodeEnvironment.AssignScopeId(this)`; `scopeId` stays null and `ScopeId` getter tolerates that via `value.HasValue ? value.Value : 0`. Largest single win. |
+| 6 | `NavDataTransfer.SetTables` + `ALTaskScheduler.CheckCodeUnit` → no-op (caller-side rather than reimplementing NCLMetadata) | +0 | Used caller patches instead of singleton `NCLMetadata` because the type's surface (GetMetaTableById, GetMetaCodeunitById, EventSubscriptionMetadata, MetadataProvider, etc.) is unbounded. NCLMetadata classification dropped 39 → 30 (residual is `NavFormHandle.CreateTarget` — a different handle type). |
+
+**Top remaining failure classes after this pass:**
+
+| Count | Class | Notes |
+|---|---|---|
+| 70 | `NavDialog.ALError` | 4-arg overload `(NavSession, Guid, NavTextConstant, NavValue[])` — different from the 3-arg already hooked. Also surfaces because patch #4 routed errors via skeleton session (so they hit different paths now). |
+| 38 | `NavRecordRef.get_Target` | RecordRef → underlying NavRecord lookup via NCLMetadata. |
+| 30 | `NavGlobal.get_NCLMetadata` | All from `NavFormHandle.CreateTarget`. Add NavFormHandle assembly-scan patch like NavCodeunit/NavTestPage. |
+| 25 | `NavApplicationObjectBaseHandle\`1.get_Target` | Generic handle Target getter; some of these fall under Form/Report/Query handles. |
+| 13 | `NavIntegerFormatter.FormatWithFormatNumber` | Formatter chains through session culture; pre-#2 was bigger, residual likely the NumberFormatInfo path. |
+
+**Wall time:** roughly 5m 30s per cold run (≈0% headroom over the 5m 23s
+baseline; emit dominates), so seven full-bucket runs across the session.
+Total wall-clock for the patch series ≈ 40 min.
+
+**Suggested next steps:**
+- `NavFormHandle.CreateTarget` — same pattern as TestPage, knocks out the
+  remaining 30 NCLMetadata fails.
+- `NavDialog.ALError` 4-arg overload — pick the right replacement
+  (matching NavValue[] varargs ABI shape).
+- `NavRecordRef.get_Target` — needs investigation of the `SetRecord(NavRecord)`
+  caller path; possibly a NCLMetaTable lookup gap.
