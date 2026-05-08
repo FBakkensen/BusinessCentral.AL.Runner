@@ -791,3 +791,73 @@ session = ~50 min in test runs alone.
 - Async-method JmpHook strategy: investigate whether we can hook the
   *callsite* (caller-replacement) rather than the async target. Out-of-scope
   for this session per the binary-compat rule.
+
+---
+
+## §L. Runtime patch hooks (2026-05-08, third session)
+
+Continuing from §K. Baseline at start: **545P/430F/0E** out of 975 (matches §K
+final). Final state: **563P/412F/0E (+18P)**.
+
+| # | Patch | Δ pass | Commit |
+|---|---|---|---|
+| 1 | `NCLMetaApplicationObject.get_ApplicationObjectConstructor` — return null delegate; lets `NCLMetaTable.CreateObjectInstance` fall back to the direct `new NavRecord(parent, TableId, this, ...)` path instead of NRE-locking on the null `nclMetaObjectCLRTypeContainer` | +18 | `e1ffb0c3` |
+| — | Cleanup: delete dead `Rewriters/ByRefWrapRewriter.cs` (285 LOC; BC emitter does the wrap natively, only a comment remained referencing it) | +0 | `ee212b88` |
+
+**Patches investigated and abandoned (per scope rules):**
+
+- `NCLOptionMetadata.GetOrdinals / GetNames` (9+8 fails). Base class method
+  unconditionally throws `NavNCLNotSupportedOperationException`. Real impl
+  lives in a derived enum-metadata subclass that we don't construct
+  (`NCLEnumMetadata_CreateById` already returns `NCLOptionMetadata.Default`,
+  the empty base). Returning empty lists wouldn't help: tests assert specific
+  ordinal values like `[0,1,2,3]` from `Enum::"EO Status".Ordinals()`, so
+  empty-fallback would just shift the failure shape. Real fix needs an enum
+  metadata loader — out of scope.
+- `NavCodeunit.get_MetaCodeunit` (8 fails). Most stacks land in
+  `BindSubscription` → `MetaCodeunit.IsEventManualBinding` then
+  `Tree.Session.EventBindings.Add(this)`. Even if we synthesize a skeleton
+  `NCLMetaCodeunit`, the next NRE is `Session.EventBindings == null`. Event
+  subscription/binding is not a single-frame fix — out of scope.
+- `NavGlobal.get_NCLMetadata` (14 fails). Per §K analysis: getter dereferences
+  `NavEnvironment.Instance.Tenants.SystemTenant` (Tenants null on skeleton).
+  The 14 callers are scattered (NavRecordRef, NavVariant.GetBySystemId,
+  NavReportHandle.CreateTarget, etc.) and each chains into a different
+  `NCLMetadata` method. Building a singleton skeleton was deferred in §J for
+  the same sprawl reason. Confirmed sprawl; STOP per brief.
+- `NavDialog.ALError` (84 fails, top class). Sampled exception messages: the
+  vast majority are *legitimate* AL test failures (`Assert.AreEqual failed.
+  Expected:<X>. Actual:<Y>`, `Assert.ExpectedError failed. Expected: must.
+  Actual: NRE.`) — the NavNCLDialogException is being thrown correctly. Root
+  causes are deeper and per-test (event subscriptions not firing,
+  `FieldRef.TestField` NREing instead of throwing the BC "must" error,
+  DataError tests, `--generate-stubs` AL feature gaps). 32 of these share the
+  pattern "Expected: must. Actual: NRE." pointing at FieldRef.TestField or
+  Record metadata NREs — needs surgical patches per stack, not an ALError
+  hook. Brief explicitly said "patch IT, not ALError."
+
+**Top remaining failure classes (post-session):**
+
+| Count | Class | Notes |
+|---|---|---|
+| 84 | `NavDialog.ALError` | Now mostly correct test failures with deeper root causes. Per-stack work, not a single fix. |
+| 36 | `NavApplicationObjectBaseHandle\`1.get_Target` | Out-of-scope per §K (AL Pages/Forms not emitted by v2). |
+| 14 | `NavGlobal.get_NCLMetadata` | Sprawl-bound (see above). |
+| 12 | `NavRecord.ALFieldCaptionAsync` | Async — JmpHook unsafe. |
+| 10 | `NavMethodScope.RunBehaviorAsync` | Async — JmpHook unsafe. |
+| 9 | `NavObjectDictionary\`2.get_Target` | Open-generic — JmpHook unsafe. |
+| 9 | `NCLOptionMetadata.GetOrdinals` | Base-class throw; needs enum metadata loader. |
+| 9 | `NavRecord.ValidateExpectedType` | New post-#1; investigate next session. |
+| 8 | `NavCodeunit.get_MetaCodeunit` | Event subscription chain (out of scope). |
+| 8 | `NCLOptionMetadata.GetNames` | Same as GetOrdinals. |
+
+**Wall time:** 5m 30s per cold run; 2 full bucket runs this session.
+
+**Suggested next steps:**
+- `NavRecord.ValidateExpectedType` (9 fails) is new on top, exposed by patch
+  #1 (CloneRecord now reaches further). Worth sampling stacks; small surface.
+- Surgical per-stack patches for the 32 "Expected: must. Actual: NRE." cluster
+  in `NavDialog.ALError` — likely all `FieldRef.TestField` NRE in skeleton
+  metadata. If a single TestField-internal hook unblocks the cluster, big win.
+- Pursuing event-subscription / async-hook strategies remains blocked on
+  the JmpHook ABI limitations per §K.
