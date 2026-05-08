@@ -5,6 +5,7 @@
 // Diagnostics, …) is null. These replacements give safe defaults that let downstream
 // code paths complete without NREs.
 using System.Globalization;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 
 namespace AlRunnerV2;
@@ -51,6 +52,38 @@ public static partial class BcRuntime
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static Microsoft.Dynamics.Nav.Runtime.FormatSettings NavSession_SyncFormatSettings(object? self)
         => new Microsoft.Dynamics.Nav.Runtime.FormatSettings();
+
+    /// <summary>
+    /// Replacement for NavIntegerFormatter.FormatWithFormatNumber.
+    /// Real body calls value.ToInt32().ToString("d", session.WindowsCulture); on the
+    /// skeleton runtime the NavValue passed in can be null (NavValue[] entries
+    /// uninitialized in the AL emit's varargs-build), which NREs. Bypass: format
+    /// any non-null int value with InvariantCulture; null becomes empty string.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static string NavIntegerFormatter_FormatWithFormatNumber(
+        object self,
+        object? session,
+        object? value,
+        int length,
+        int formatNumber,
+        object formatsetting)
+    {
+        if (value == null) return string.Empty;
+        try
+        {
+            // NavValue.ToInt32() — call via reflection to avoid hard reference.
+            var toInt32 = value.GetType().GetMethod("ToInt32",
+                BindingFlags.Public | BindingFlags.Instance, null, Type.EmptyTypes, null);
+            if (toInt32 != null)
+            {
+                var i = (int)toInt32.Invoke(value, null)!;
+                return i.ToString("d", CultureInfo.InvariantCulture);
+            }
+        }
+        catch { }
+        return value.ToString() ?? string.Empty;
+    }
 
     /// <summary>
     /// Replacement for NavSession.get_Culture / get_WindowsCulture.

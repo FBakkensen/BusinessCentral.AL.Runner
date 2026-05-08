@@ -466,6 +466,18 @@ public static partial class BcRuntime
                 Hook(clearMethod, nameof(ALSystemErrorHandling_ALClearLastError), "ALSystemErrorHandling.ALClearLastError");
         }
 
+        // NavIntegerFormatter.FormatWithFormatNumber — value passed via NavValue[] varargs
+        // is sometimes null on the skeleton runtime; real body NREs on value.ToInt32().
+        var navIntFmtType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavIntegerFormatter");
+        if (navIntFmtType != null)
+        {
+            var fmtMethod = navIntFmtType.GetMethod("FormatWithFormatNumber",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            if (fmtMethod != null)
+                Hook(fmtMethod, nameof(NavIntegerFormatter_FormatWithFormatNumber),
+                    "NavIntegerFormatter.FormatWithFormatNumber");
+        }
+
         // NavTestPageHandle.CreateTarget — same shape as NavCodeunitHandle: bypass the
         // NCLMetadata lookup and construct TestPage{ID} from the loaded test assembly.
         var testPageHandleType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavTestPageHandle");
