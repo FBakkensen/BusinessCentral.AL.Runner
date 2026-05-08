@@ -30,6 +30,41 @@ if (args[0] == "--precompile")
     return RunPrecompile(args.Skip(1).ToArray());
 }
 
+// ── --bundled-experiment <suite-dir>... — experimental, doesn't run tests ──
+// Diagnose whether bundled emit (one Compilation per bucket) is viable.
+// Collects every suite's src/test/app* dir + bucket _shared/ into ONE Emit call.
+if (args[0] == "--bundled-experiment")
+{
+    var inputs = args.Skip(1).ToArray();
+    var allSuites = new List<string>();
+    foreach (var input in inputs)
+        allSuites.AddRange(EnumerateSuites(Path.GetFullPath(input)));
+    Console.WriteLine($"[bundled-exp] suites: {allSuites.Count}");
+    string? bucketRoot = allSuites.Count > 0 ? FindBucketRoot(allSuites[0]) : null;
+    var allPaths = new List<string>();
+    foreach (var s in allSuites)
+        allPaths.AddRange(CollectSuitePaths(s, bucketRoot));
+    allPaths = allPaths.Distinct().ToList();
+    Console.WriteLine($"[bundled-exp] paths: {allPaths.Count}");
+    DependencyLoader.EnsureResolverInstalled_Public();
+    BcRuntime.EnsureApplied();
+    var compiler = new BcCompiler();
+    var sw = System.Diagnostics.Stopwatch.StartNew();
+    Environment.SetEnvironmentVariable("BCCOMPILER_DIAG", "1");
+    try
+    {
+        var sources = compiler.Emit(allPaths, "V2_BundledExperiment");
+        sw.Stop();
+        Console.WriteLine($"[bundled-exp] emit: captured={sources.Count}  in {sw.Elapsed.TotalSeconds:F1}s");
+    }
+    catch (Exception ex)
+    {
+        sw.Stop();
+        Console.WriteLine($"[bundled-exp] emit FAILED: {ex.GetType().Name}: {ex.Message.Split('\n', 2)[0]}  in {sw.Elapsed.TotalSeconds:F1}s");
+    }
+    return 0;
+}
+
 string outPath = "v2-classification.json";
 var bundles = new List<string>();
 var packageCacheArgs = new List<string>();
