@@ -69,8 +69,21 @@ public static partial class RecordPatches
                 ?? tAppGroup.GetField("BaseGroup",
                     BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
 
-            return (NCLMetaTable?)_mCreateFromMetaTable.Invoke(null,
+            var built = (NCLMetaTable?)_mCreateFromMetaTable.Invoke(null,
                 new object?[] { defaultMetaTable, baseGroup });
+
+            // §O — mark metadataLoaded=true on every NCLMetaTable we construct, so when
+            // NCLMetadata.GetMetaApplicationObjectInternal later loops and re-checks
+            // `!nclMetaApplicationObject.MetadataLoaded`, it sees true and skips Populate()
+            // (which would NRE on our hand-built instance — no NCLObjectXmlMetadataLoader,
+            // no NavAppMetadata, etc.).
+            if (built != null)
+            {
+                EnsureCachePopulatorReflection();
+                if (_fNCLMetaAppObjMetadataLoaded != null)
+                    AlRunnerV2.Infrastructure.FieldPoke.SetInstance(_fNCLMetaAppObjMetadataLoaded, built, true);
+            }
+            return built;
         }
         catch (Exception ex)
         {

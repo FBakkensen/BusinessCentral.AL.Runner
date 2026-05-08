@@ -73,11 +73,13 @@ public static partial class RecordPatches
     {
         if (!Directory.Exists(dir)) return;
         _sourceDirs.Add(dir);
-        // If Register() already ran (it runs before the bucket loop), parse immediately.
+        // If Register() already ran (it runs before the bucket loop), parse immediately
+        // and feed the freshly-parsed tables into the NCLMetadata cache.
         if (_registered)
         {
             foreach (var file in Directory.GetFiles(dir, "*.al", SearchOption.AllDirectories))
                 TryParseTableFile(File.ReadAllText(file));
+            PopulateNclMetadataCache();
         }
     }
 
@@ -183,6 +185,12 @@ public static partial class RecordPatches
 
         // Parse AL source files
         ParseAllSources();
+
+        // §O: lazy-populate the skeleton NCLMetadata cache with one NCLMetaTable
+        // per parsed table so NavGlobal.NCLMetadata.GetMetaTableById / Codeunit.Run
+        // call sites find an entry instead of throwing
+        // NavNCLApplicationObjectNotFoundException.
+        PopulateNclMetadataCache();
 
         // NavRecordHandle private field 'temp'
         var tRecHandle = nclAsm.GetType("Microsoft.Dynamics.Nav.Runtime.NavRecordHandle")!;
