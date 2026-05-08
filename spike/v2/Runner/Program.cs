@@ -116,7 +116,7 @@ foreach (var bundle in bundles)
     {
         si++;
         var suiteName = Path.GetRelativePath(bundleAbs, suite);
-        var suitePaths = CollectSuitePaths(suite);
+        var suitePaths = CollectSuitePaths(suite, bucketRoot);
         if (suitePaths.Count == 0) continue;
 
         var et = System.Diagnostics.Stopwatch.StartNew();
@@ -319,7 +319,10 @@ static IEnumerable<DependencyRef> ReadDependencies(string appJsonPath)
 
 // Collect this single suite's src/test/app* dirs for emit. Per-suite isolation
 // avoids the cross-suite object-id collisions that silently zeroed-out bundled emit.
-static List<string> CollectSuitePaths(string suite)
+// When a bucket root is supplied, also include `<bucketRoot>/_shared/` so AL
+// files at the bucket level (e.g. an Assert.Codeunit.al that satisfies a
+// dependency without a runtime DLL) compile into every suite.
+static List<string> CollectSuitePaths(string suite, string? bucketRoot = null)
 {
     var all = new List<string>();
     var s = Path.Combine(suite, "src");
@@ -328,6 +331,11 @@ static List<string> CollectSuitePaths(string suite)
     foreach (var app in Directory.EnumerateDirectories(suite, "app*"))
         all.Add(app);
     if (Directory.Exists(t)) all.Add(t);
+    if (bucketRoot != null)
+    {
+        var shared = Path.Combine(bucketRoot, "_shared");
+        if (Directory.Exists(shared)) all.Add(shared);
+    }
     return all;
 }
 
