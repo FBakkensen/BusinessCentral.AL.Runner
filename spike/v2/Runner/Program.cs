@@ -19,8 +19,9 @@ using AlRunnerV2;
 if (args.Length == 0)
 {
     Console.Error.WriteLine(
-        "Usage: Runner [--out PATH] [--package-cache PATH ...] <bundle-dir>...\n" +
-        "       Runner --precompile <input.app> --out <output.dll>");
+        "Usage: Runner [--out PATH] [--package-cache PATH ...] [--bundled] <bundle-dir>...\n" +
+        "       Runner --precompile <input.app> --out <output.dll>\n" +
+        "       Runner --bundled-experiment <bundle-dir>...   (diagnostic only)");
     return 2;
 }
 
@@ -68,10 +69,12 @@ if (args[0] == "--bundled-experiment")
 string outPath = "v2-classification.json";
 var bundles = new List<string>();
 var packageCacheArgs = new List<string>();
+bool bundledMode = false;
 for (int i = 0; i < args.Length; i++)
 {
     if (args[i] == "--out" && i + 1 < args.Length) { outPath = args[++i]; continue; }
     if (args[i] == "--package-cache" && i + 1 < args.Length) { packageCacheArgs.Add(args[++i]); continue; }
+    if (args[i] == "--bundled") { bundledMode = true; continue; }
     bundles.Add(args[i]);
 }
 Console.WriteLine($"AlRunner v2 — running {bundles.Count} bundle(s)");
@@ -151,53 +154,112 @@ foreach (var bundle in bundles)
     var bundleStage = BucketStage.Ran;
     int sP = 0, sF = 0, sE = 0;
 
-    int si = 0;
-    foreach (var suite in suites)
+    if (bundledMode)
     {
-        si++;
-        var suiteName = Path.GetRelativePath(bundleAbs, suite);
-        var suitePaths = CollectSuitePaths(suite, bucketRoot);
-        if (suitePaths.Count == 0) continue;
+        // ── Bundled mode: ONE Emit + ONE Compile + ONE Run across all suites ──
+        // ~5×+ speedup vs per-suite (eliminates per-suite emit cold-start
+        // amortised against the symbol-loader, which is the dominant cost).
+        // Requires sentinel suites that trigger BC 27.5 emit bugs to be
+        // quarantined (see HANDOFF §Q/§R).
+        var allPaths = new List<string>();
+        foreach (var suite in suites)
+            allPaths.AddRange(CollectSuitePaths(suite, bucketRoot));
+        allPaths = allPaths.Distinct().ToList();
 
         var et = System.Diagnostics.Stopwatch.StartNew();
         IReadOnlyList<EmittedSource> sources;
-        try { sources = emitter.Emit(suitePaths, $"V2_{Path.GetFileName(suite)}"); }
+        try { sources = emitter.Emit(allPaths, $"V2_{Path.GetFileName(bundleAbs)}"); }
         catch (Exception ex)
         {
             et.Stop(); bundleEmit += et.Elapsed;
-            bundleErrors.Add($"{suiteName}: EMIT-FAIL: {ex.Message.Split('\n')[0]}");
-            continue;
+            bundleErrors.Add($"<bundled>: EMIT-FAIL: {ex.Message.Split('\n')[0]}");
+            sources = Array.Empty<EmittedSource>();
         }
         et.Stop(); bundleEmit += et.Elapsed;
 
-        var ct = System.Diagnostics.Stopwatch.StartNew();
-        var compile = assembler.Compile($"V2_{Path.GetFileName(suite)}", sources);
-        ct.Stop(); bundleComp += ct.Elapsed;
-        if (!compile.Success)
+        if (sources.Count > 0)
         {
-            bundleErrors.Add($"{suiteName}: COMPILE-FAIL ({compile.Errors.Count}): {compile.Errors.FirstOrDefault()?.Split('\n')[0]}");
-            continue;
+            var ct = System.Diagnostics.Stopwatch.StartNew();
+            var compile = assembler.Compile($"V2_{Path.GetFileName(bundleAbs)}", sources);
+            ct.Stop(); bundleComp += ct.Elapsed;
+            if (!compile.Success)
+            {
+                bundleErrors.Add($"<bundled>: COMPILE-FAIL ({compile.Errors.Count}): {compile.Errors.FirstOrDefault()?.Split('\n')[0]}");
+            }
+            else
+            {
+                var rt = System.Diagnostics.Stopwatch.StartNew();
+                IReadOnlyList<TestResult> tests;
+                try
+                {
+                    var asm = Assembly.Load(compile.AssemblyBytes!);
+                    BcRuntime.SetTestAssembly(asm);
+                    tests = executor.Run(asm);
+                }
+                catch (Exception ex)
+                {
+                    rt.Stop(); bundleRun += rt.Elapsed;
+                    bundleErrors.Add($"<bundled>: EXEC-FAIL: {ex.Message.Split('\n')[0]}");
+                    tests = Array.Empty<TestResult>();
+                }
+                rt.Stop(); bundleRun += rt.Elapsed;
+                bundleTests.AddRange(tests);
+                sP += tests.Count(t => t.Outcome == TestOutcome.Pass);
+                sF += tests.Count(t => t.Outcome == TestOutcome.Fail);
+                sE += tests.Count(t => t.Outcome == TestOutcome.Error);
+            }
         }
+    }
+    else
+    {
+        int si = 0;
+        foreach (var suite in suites)
+        {
+            si++;
+            var suiteName = Path.GetRelativePath(bundleAbs, suite);
+            var suitePaths = CollectSuitePaths(suite, bucketRoot);
+            if (suitePaths.Count == 0) continue;
 
-        var rt = System.Diagnostics.Stopwatch.StartNew();
-        IReadOnlyList<TestResult> tests;
-        try
-        {
-            var asm = Assembly.Load(compile.AssemblyBytes!);
-            BcRuntime.SetTestAssembly(asm);
-            tests = executor.Run(asm);
-        }
-        catch (Exception ex)
-        {
+            var et = System.Diagnostics.Stopwatch.StartNew();
+            IReadOnlyList<EmittedSource> sources;
+            try { sources = emitter.Emit(suitePaths, $"V2_{Path.GetFileName(suite)}"); }
+            catch (Exception ex)
+            {
+                et.Stop(); bundleEmit += et.Elapsed;
+                bundleErrors.Add($"{suiteName}: EMIT-FAIL: {ex.Message.Split('\n')[0]}");
+                continue;
+            }
+            et.Stop(); bundleEmit += et.Elapsed;
+
+            var ct = System.Diagnostics.Stopwatch.StartNew();
+            var compile = assembler.Compile($"V2_{Path.GetFileName(suite)}", sources);
+            ct.Stop(); bundleComp += ct.Elapsed;
+            if (!compile.Success)
+            {
+                bundleErrors.Add($"{suiteName}: COMPILE-FAIL ({compile.Errors.Count}): {compile.Errors.FirstOrDefault()?.Split('\n')[0]}");
+                continue;
+            }
+
+            var rt = System.Diagnostics.Stopwatch.StartNew();
+            IReadOnlyList<TestResult> tests;
+            try
+            {
+                var asm = Assembly.Load(compile.AssemblyBytes!);
+                BcRuntime.SetTestAssembly(asm);
+                tests = executor.Run(asm);
+            }
+            catch (Exception ex)
+            {
+                rt.Stop(); bundleRun += rt.Elapsed;
+                bundleErrors.Add($"{suiteName}: EXEC-FAIL: {ex.Message.Split('\n')[0]}");
+                continue;
+            }
             rt.Stop(); bundleRun += rt.Elapsed;
-            bundleErrors.Add($"{suiteName}: EXEC-FAIL: {ex.Message.Split('\n')[0]}");
-            continue;
+            bundleTests.AddRange(tests);
+            sP += tests.Count(t => t.Outcome == TestOutcome.Pass);
+            sF += tests.Count(t => t.Outcome == TestOutcome.Fail);
+            sE += tests.Count(t => t.Outcome == TestOutcome.Error);
         }
-        rt.Stop(); bundleRun += rt.Elapsed;
-        bundleTests.AddRange(tests);
-        sP += tests.Count(t => t.Outcome == TestOutcome.Pass);
-        sF += tests.Count(t => t.Outcome == TestOutcome.Fail);
-        sE += tests.Count(t => t.Outcome == TestOutcome.Error);
     }
 
     Console.WriteLine($"  → {sP}P/{sF}F/{sE}E across {bundleTests.Count} tests, {bundleErrors.Count} suite errors ({(bundleEmit + bundleComp + bundleRun).TotalSeconds:F1}s)");
