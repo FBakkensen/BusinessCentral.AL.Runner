@@ -132,14 +132,14 @@ public static partial class BcRuntime
         var formType = _formTypeCache.GetOrAdd(id, FindFormType);
         if (formType == null)
             throw new InvalidOperationException(
-                $"Form{id} is not present in the test assembly or any loaded dependency.");
+                $"Page{id} is not present in the test assembly or any loaded dependency.");
         var ctor = formType.GetConstructors()
             .FirstOrDefault(c => c.GetParameters().Length == 1 &&
                 typeof(Microsoft.Dynamics.Nav.Runtime.ITreeObject)
                     .IsAssignableFrom(c.GetParameters()[0].ParameterType));
         if (ctor == null)
             throw new InvalidOperationException(
-                $"Form{id} has no single-arg ITreeObject constructor");
+                $"Page{id} has no single-arg ITreeObject constructor");
         return ctor.Invoke(new object[] { self });
     }
 
@@ -206,10 +206,13 @@ public static partial class BcRuntime
 
     private static Type? FindFormType(int id)
     {
+        // BC's Compilation.Emit produces `class Page{id} : NavForm` for AL `page` objects
+        // (the NavForm base class is what the runtime calls "form", but the C# class name
+        // is `Page{id}`). The "Form{id}" name was a false guess in the §P session.
         var navNcl = AppDomain.CurrentDomain.GetAssemblies()
             .FirstOrDefault(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Ncl");
         Type? formBase = navNcl?.GetType("Microsoft.Dynamics.Nav.Runtime.NavForm");
-        var name = $"Form{id}";
+        var name = $"Page{id}";
         if (_currentTestAssembly != null)
         {
             try

@@ -295,9 +295,17 @@ public sealed class BcCompiler
         {
             AddCalls++;
             LastAddedName = symbol.Name;
-            Captured.Add(new EmittedSource(symbol.Name, System.Text.Encoding.UTF8.GetString(code)));
+            var src = System.Text.Encoding.UTF8.GetString(code);
+            Captured.Add(new EmittedSource(symbol.Name, src));
             if (Environment.GetEnvironmentVariable("BCCOMPILER_TRACE") == "1")
                 Console.Error.WriteLine($"  emit[{AddCalls}]: {symbol.Name}");
+            if (Environment.GetEnvironmentVariable("BCCOMPILER_DUMP_CS") == "1")
+            {
+                var dir = Path.Combine(Path.GetTempPath(), "bccompiler-dump");
+                Directory.CreateDirectory(dir);
+                var fname = string.Concat(symbol.Name.Select(c => char.IsLetterOrDigit(c) ? c : '_')) + ".cs";
+                File.WriteAllText(Path.Combine(dir, fname), src);
+            }
         }
 
         public override void AddProfileObject(
