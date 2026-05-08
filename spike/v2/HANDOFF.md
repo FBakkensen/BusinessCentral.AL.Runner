@@ -1532,3 +1532,41 @@ diagnostic) carrying into the other three sub-buckets when they're migrated.
 `4fba767d` `a277bb5d` `245fc20d` `6c3977e8` `329b81f2` `d092711c` `a263fc47`
 `998b4e67` `85b10bce` `86c69a22` `ddbc48e9` `62d1e262` `e79ee22d` `90759b78`
 `c8f6f4d0` `c26f244e`
+
+---
+
+## §T — Picking up in a clean session
+
+**Reading order:** §A → §K → §S. ~3 min, covers everything load-bearing. The
+intervening chronology (§B–§R) is historical — useful for *why* but not for
+*what to do next*.
+
+**Branch:** `spike/bc-abi-identity`. Don't push, don't PR.
+
+**Working dir:** `/home/stefan/Documents/Repos/community/BusinessCentral.AL.Runner`.
+
+**Build / run:**
+```bash
+dotnet build spike/v2/Runner/Runner.csproj
+dotnet run --project spike/v2/Runner --no-build -- --bundled tests/bucket-1/codeunit-runtime
+dotnet run --project spike/v2/Runner --no-build -- tests/bucket-1/record-table       # per-suite
+BCCOMPILER_DIAG=1 ...                                                                 # verbose emit diagnostics
+```
+
+**Commit signing — known gotcha:**
+The 1Password SSH agent occasionally drops with
+`error: 1Password: failed to fill whole buffer / fatal: failed to write commit object`.
+On 2026-05-08 the user authorized unsigned commits for that session via
+`git -c commit.gpgsign=false commit -m "..."`. **That authorization does not
+carry across sessions** — re-confirm with the user before bypassing signing
+on any fresh session.
+
+**Subagent delegation pattern:** the multi-step iterative work in this spike
+(patch loops, renumbering, sentinel-fixing) was effectively done by background
+Opus agents. Brief shape that worked well:
+- Self-contained, no expected back-and-forth
+- Hard binary-compat constraint stated up front + STOP conditions
+- One commit per logical step (we can bisect)
+- Final report ≤300 words
+
+See HANDOFF §J–§S for what each agent landed.
