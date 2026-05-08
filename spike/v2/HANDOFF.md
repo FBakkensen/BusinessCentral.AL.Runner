@@ -1356,3 +1356,179 @@ Sequential per-kind from 50000 over the entire bucket
   after first invocation and per-suite vs bundled both cold-start the same
   service-tier DLLs once). Symbol-loader cache is the dominant cost; the
   6× win comes from amortising it across 178 suites instead of 1.
+
+---
+
+## §S — End-of-day state (2026-05-08, post-bundled-investigation)
+
+**Status: bundled emit working at scale on bucket-1/codeunit-runtime.**
+**bucket-1/codeunit-runtime: 583P / 991 = 58.8%. Per-suite mode 495s wall, --bundled mode 83s wall (5.8× speedup, parity pass count).**
+
+This entry **supersedes §Q + §R's narrative about the 17 quarantined suites.**
+Most of those quarantines turned out to be false positives. Read this section
+for the canonical story.
+
+### What landed today
+
+| Time | Commit | What |
+|---|---|---|
+| morning | `33d62578` | ALC.Default Resolving probes BC artifact dir (5→24 BC service-tier DLLs reachable; orthogonal to NCLMetadata gap but plumbing for the future) |
+| morning | `355b59f3`,`be0745ae` | Real `NavEnvironment.InstantiateStandaloneNavEnvironment` ctor invoked (replaces `GetUninitializedObject` skeleton). 4 targeted hooks on heavy ctor lines (Topology, NavOpenTelemetryLogger, ALFunctionTimingExecutionListener.EnsureRegistered, post-ctor null-out). +0P direct but full real env state available going forward. |
+| afternoon | `6b3f3a22` `54ea8fc8` | Skeleton `NavSystemTenant` + `NCLMetadata` injected into the real `Tenants.systemTenant`. NRE chain `NavGlobal.NCLMetadata → SystemTenant → ...` now non-null. Failures shifted from opaque NRE to typed `NavNCLApplicationObjectNotFoundException`. |
+| afternoon | `f7cf3120` | NCLMetadata cache populator from registered AL source. JMP-hooks `Populate` and `CompileAndLoadClrObject` to no-op. Routes through the existing `NclMetaTableBuilder`. **+83P on bucket-1/record-table (266→349)** by collapsing the metadata-not-found cluster. |
+| afternoon | `a277bb5d` `245fc20d` `6c3977e8` | Page/Report cache populator (parallel to table populator). New parsers + builders. NavReportHandle.CreateTarget added. ΔP=0 because pages/reports weren't being emitted as `Page{N}/Report{N}` C# classes — the §P misdiagnosis. |
+| afternoon | `329b81f2` `d092711c` `a263fc47` | **Real fix for page/report**: `NavFormHandle.CreateTarget` was looking up `Form{N}` but BC emits `Page{N}`. Same for `NavTestPageHandle` (`TestPage{N}` → `Page{N}`). `NavReportHandle` extended to handle BC's 2-arg `(ITreeObject, NCLMetaReport)` ctor. `NavSession.NavAppGroup` patched to return `BaseGroup` so `NavForm..ctor` completes. **+9P on bucket-2/page-report**. |
+| evening | `998b4e67` | `--bundled-experiment` diagnostic flag (NOTE: skips SetResolvedDeps — see warning below). |
+| evening | `85b10bce..90759b78` | Background subagent landed: al-inventory.py renumber tool + `--bundled` mode in Program.cs + 17 sentinel-suite quarantines + HANDOFF §Q+§R. Headline: **6× speedup** on bucket-1/codeunit-runtime. **BUT** the quarantine list was wrong (see below). |
+| late evening | `c8f6f4d0` | Restored 102-library-any (proven false positive). Added v1 library stubs (LibraryRandom, LibraryUtility) to bucket-1/_shared/. |
+| late evening | `c26f244e` | **Captured & surfaced `Compilation.Emit`'s `EmitResult.Diagnostics`.** This is the diagnostic that was missing all along — the silent-zero failure mode now prints `emit[AL0132] @ <file>:<line>: <message>`. Restored 13 more sentinels with this insight. Re-quarantined only one (`75-library-variable-storage`) which is the only one with a real AL incompatibility. |
+
+### Final corpus state (end of session)
+
+| Sub-bucket | Mode | Pass / Total | Wall | Notes |
+|---|---|---:|---:|---|
+| bucket-1/codeunit-runtime | per-suite | 583 / 991 | 495s | parity with bundled |
+| bucket-1/codeunit-runtime | **`--bundled`** | **583 / 991** | **83s** | 5.8× faster, canonical fast path |
+| bucket-1/record-table | per-suite | 349 / 906 | ~10 min | not yet bundled, no regression from §O |
+| bucket-2/page-report | per-suite | 257 / 682 | ~7 min | post-§Q Form/Page lookup fixes |
+| bucket-2/data-formats | per-suite | 1162 / 1574 | ~9 min | last measured §M, untouched |
+| **Combined** | | **2351 / 4153** = 56.6% | | |
+
+bucket-1/codeunit-runtime is the only bucket migrated to bundled emit. The
+other three sub-buckets stay per-suite for now.
+
+### Quarantines (3 suites total, in `tests/excluded/codeunit-runtime/`)
+
+Down from the 17 the §R agent quarantined. Each here has been investigated
+and confirmed real:
+
+1. **`75-library-variable-storage`** — test calls `LibraryVariableStorage.IsEmpty()`
+   but the MS-shipped `Library - Variable Storage` codeunit (loaded via
+   `bucket-1/app.json`) does not expose `IsEmpty`. The v1 corpus had this
+   method on its local stub; the v2 dep-loaded version from MS doesn't.
+   **Resolution intent:** either (a) drop a v1-style local stub at
+   `tests/bucket-1/_shared/LibraryVariableStorage.al` and stop loading the
+   MS dep for it (risk: name collision), or (b) rewrite the two failing
+   methods to use `LibraryVariableStorage.Length() = 0` instead of
+   `IsEmpty()`. Option (b) is cleanest.
+
+2. **`190-test-infra-stubs`** — uses `ALRunPageBackgroundTask`. Pre-existing
+   Roslyn CS1501 — the BC API our project-references doesn't expose this
+   method with a matching signature. Always failed; reflected in the
+   per-suite "2 suite errors" report. Quarantine until BC API is verified.
+
+3. **`86-testfield-methods`** — uses `ALGetOption`. Pre-existing Roslyn CS7036.
+   Same kind of issue as `190-test-infra-stubs`. Quarantine.
+
+### How to bisect a future "silent-zero" or AggregateException
+
+The diagnostic infrastructure is now in place — `c26f244e` made it actionable:
+
+```bash
+BCCOMPILER_DIAG=1 dotnet run --project spike/v2/Runner --no-build -- --bundled <bucket-path>
+```
+
+Will print:
+- `emitSuccess=True/False`
+- `EmitResult.Diagnostics: <count> error(s)` with `emit[AL<id>] @ <file>:<line>: <message>` per error
+- For AggregateException paths: `inner[<Type>]: <full-message>` + top BC.CodeAnalysis stack frames + InnerException chain + a regex-extracted per-method "Object :: Method [Reason]" list
+
+`BCCOMPILER_DIAG_VERBOSE=1` extends to 50 inner exceptions instead of 5.
+
+### **DO NOT use `--bundled-experiment` to diagnose bundled-mode bugs.**
+
+That flag (commit `998b4e67`) skips `SetResolvedDeps`, so Library codeunits
+appear missing → BC's emitter NREs on unresolved overloads → looks like a
+"BC emit bug" when it's really a symbol-resolution issue. The §R agent's
+17-suite quarantine was based on this flawed signal; ~13 of those 15 were
+false positives. **Always use the real `--bundled` flag for triage.** The
+`--bundled-experiment` flag is for verifying that emit *works at all* on a
+naive call (no specs); leave it for that purpose only.
+
+### Architectural picture (LOC + structural)
+
+| | Size | Role |
+|---|---|---|
+| BC service-tier DLLs loaded at runtime | ~29 MB across 24 DLLs | Real MS code, unmodified |
+| MS R2R `.app` deps loaded per-bucket | ~25 MB (System Application 17.9 MB + Base App + Application + Business Foundation + Library Assert + Library Variable Storage + Test Runner + Any + Permissions Mock) | Real MS code, unmodified, called from our compiled tests |
+| Our `Patches/*.cs` | ~2 500 LOC across 78+ JMP-hooks | Surgical overrides where BC's runtime expects a service tier |
+| Our `Rewriters/CallSiteArgWrap.cs` | 121 LOC | Only IL-equivalent C# rewrite (matches BC's emitter shape) |
+| Total `spike/v2/Runner/` | ~5 400 LOC | vs v1's ~43 000 LOC + closed mock world |
+
+Binary compatibility is preserved: empirically verified by 583+ tests in
+bucket-1/codeunit-runtime calling between our test code and MS R2R DLLs
+through standard .NET method dispatch with no type renames.
+
+### Open threads — explicit intent for next session
+
+**Highest priority:**
+
+1. **Migrate bucket-1/record-table, bucket-2/data-formats, bucket-2/page-report
+   to `--bundled` mode.** The script `scripts/al-inventory.py` is reusable
+   per-bucket. The `--bundled` flag in Program.cs already handles any bucket
+   pointed at it. Per-bucket steps:
+   - Run `--bundled-experiment` (or better, `--bundled`) to discover any
+     real (not interference-induced) sentinels.
+   - Check each EmitResult diagnostic — usually surfaces an AL0132/AL0185
+     pointing at a fix.
+   - Quarantine only the suites with confirmed irrecoverable AL.
+   - Confirm pass-count parity between per-suite and bundled.
+
+2. **Re-attempt the 14 sentinels currently in bucket** that the §R agent had
+   quarantined. They WORK now (they're in the bucket and the bundled run
+   passes). But each one's pass rate may be lower than per-suite if there's
+   any residual interaction. Compare per-test pass counts between bucket-1
+   per-suite and bundled to confirm no individual-test regressions.
+
+**Cleanup priority (from earlier in session, deferred until floor stable):**
+
+3. **Patch redundancy audit.** Three candidates likely now redundant after
+   the real `NavEnvironment` ctor + skeleton SystemTenant + cache populator:
+   - `NavEnvironment.Instance` getter hook (real ctor populates instance)
+   - `NavEnvironment.instance` skeleton pre-poke (now in fallback path only)
+   - `NCLMetaApplicationObject.get_ApplicationObjectConstructor` patch
+     (`e1ffb0c3`) — was a workaround returning null delegate; with the
+     populated cache, the real impl might work. Test by reverting + re-running.
+
+4. **Async/generic JmpHook gaps.** Per §K: the current JmpHook implementation
+   is unsafe on `async`/`ValueTask`-returning methods (state-machine ABI) and
+   on generic methods on closed instantiations of generic types. Top remaining
+   page-report failures are `NavForm.GetAutoFormatStringAsync` (100), `NavReport.RunReportAsync` (53),
+   `NavReport.SaveAsAsync` (9). A safer hooking mechanism would unlock these
+   classes. Likely needs a different dispatch model — out of pure-runtime-patch
+   scope.
+
+5. **The `--bundled-experiment` flag should probably be removed or fixed.**
+   It's a footgun for future investigation. Either delete it or make it call
+   `SetResolvedDeps` like `--bundled` does.
+
+### Cumulative arc this session (bucket-1/codeunit-runtime alone)
+
+```
+Session start (post-revert):                39P (4.0%)  per-suite
++ deps loading + slim Assert at _shared/:  418P (42.9%)  +379
++ batch 1 (6 patches):                     493P (50.6%)  +75
++ table-parse fix:                         494P (50.7%)  +1
++ NavIntegerFormatter:                     494P (50.7%)  +0 (TBD)
++ batch 2 (7 patches):                     545P (55.9%)  +51
++ batch 3 (NCLMetaApplicationObject):      563P (57.7%)  +18
++ ALC service-tier resolver:               563P (57.7%)  +0 (orthogonal)
++ Real NavEnvironment ctor:                563P (57.7%)  +0 (architectural)
++ Skeleton SystemTenant + cache:           566P (58.1%)  +3
++ Form/TestPage/Report lookup fixes:       569P (58.4%)  +3
++ NavSession.NavAppGroup:                  569P (58.4%)  +0 on this bucket
++ Bundled emit + 17-suite quarantine:      519P (52.6% over reduced 908) -50
++ Restoring 14 false-positive quarantines: 583P (58.8%)  +64 over the 519P baseline
+                                                               (or +14 over the 569P pre-bundled)
+```
+
+End-of-session: **583P / 991 in bucket-1/codeunit-runtime**, plus structural wins
+(real env, dep loading, cache populator, page/report lookup fixes, EmitResult
+diagnostic) carrying into the other three sub-buckets when they're migrated.
+
+### Commits this session (in chronological order)
+
+`33d62578` `355b59f3` `be0745ae` `6b3f3a22` `54ea8fc8` `df1c7701` `f7cf3120`
+`4fba767d` `a277bb5d` `245fc20d` `6c3977e8` `329b81f2` `d092711c` `a263fc47`
+`998b4e67` `85b10bce` `86c69a22` `ddbc48e9` `62d1e262` `e79ee22d` `90759b78`
+`c8f6f4d0` `c26f244e`
