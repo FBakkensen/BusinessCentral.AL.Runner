@@ -27,6 +27,30 @@ public static partial class BcRuntime
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static object? TreeHandler_get_Session(object self) => _skeletonSession;
 
+    private static object? _baseAppGroup;
+
+    /// <summary>
+    /// Replacement for NavSession.get_NavAppGroup. The real getter accesses
+    /// <c>tenant.NavAppGroup</c>; on the skeleton session, <c>tenant</c> is null
+    /// so the original NREs. NavForm..ctor reads this to resolve the page's
+    /// owning app group. Return <c>NavAppGroup.BaseGroup</c> (the platform-base
+    /// singleton already used by the metadata cache builders) so page/report
+    /// ctors can complete.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static object? NavSession_NavAppGroup(object? self)
+    {
+        if (_baseAppGroup != null) return _baseAppGroup;
+        var nclAsm = AppDomain.CurrentDomain.GetAssemblies()
+            .FirstOrDefault(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Ncl");
+        var tAppGroup = nclAsm?.GetType("Microsoft.Dynamics.Nav.Runtime.Apps.NavAppGroup");
+        _baseAppGroup = tAppGroup?.GetProperty("BaseGroup",
+                BindingFlags.Public | BindingFlags.Static)?.GetValue(null)
+            ?? tAppGroup?.GetField("BaseGroup",
+                BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
+        return _baseAppGroup;
+    }
+
     /// <summary>
     /// Replacement for NavSession.get_LocalLanguageNoFallback.
     /// The real getter reads globalLanguageStack which is null in our skeleton session.

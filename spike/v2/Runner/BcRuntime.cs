@@ -236,6 +236,9 @@ public static partial class BcRuntime
         if (sessType != null)
         {
             HookProperty(sessType, "CurrentMethodScope", false, nameof(GetCurrentMethodScopeReplacement));
+            // NavAppGroup reads tenant.NavAppGroup which NREs on the skeleton (tenant null).
+            // Return NavAppGroup.BaseGroup so NavForm..ctor and other consumers can complete.
+            HookProperty(sessType, "NavAppGroup", false, nameof(NavSession_NavAppGroup));
             // LocalLanguageNoFallback reads globalLanguageStack which is null in skeleton session; return -1 (use default).
             HookProperty(sessType, "LocalLanguageNoFallback", false, nameof(NavSession_LocalLanguageNoFallback));
             // IsLocalLanguage reads globalLanguageStack.Count — same NRE source. Return false: the
