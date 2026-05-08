@@ -1,4 +1,3 @@
-// QUARANTINED — triggers BC 27.5 Compilation.Emit bug: None NavTypeKind in Variant routing through codeunit 130002 facade. See spike/v2/HANDOFF.md §Q/§R.
 codeunit 50049 "Assert 130002 Test"
 {
     Subtype = Test;

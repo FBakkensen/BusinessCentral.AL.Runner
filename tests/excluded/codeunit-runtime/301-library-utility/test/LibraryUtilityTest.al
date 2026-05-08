@@ -1,4 +1,3 @@
-// QUARANTINED — triggers BC 27.5 Compilation.Emit bug: NoConversion ConversionKind in GenerateGUID/Code overload against Library - Utility auto-stub. See spike/v2/HANDOFF.md §Q/§R.
 // Tests for Library - Utility (codeunit 131003) stub.
 // Exercises GenerateGUID, GenerateRandomCode, GenerateRandomCode20, and GenerateRandomText.
 codeunit 50206 "Library - Utility Test"

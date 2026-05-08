@@ -1,4 +1,3 @@
-// QUARANTINED — triggers BC 27.5 Compilation.Emit bug: None NavTypeKind in No. Series.GetNextNo 1-arg overload. See spike/v2/HANDOFF.md §Q/§R.
 /// Regression tests for issue #1577.
 ///
 /// Calling multi-arg overloads of the auto-stubbed Codeunit "No. Series"

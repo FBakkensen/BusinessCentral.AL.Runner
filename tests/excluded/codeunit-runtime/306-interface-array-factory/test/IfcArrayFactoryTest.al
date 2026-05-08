@@ -1,4 +1,3 @@
-// QUARANTINED — triggers BC 27.5 Compilation.Emit bug: IndexOutOfRange in array[N] of Interface element-assignment emit. See spike/v2/HANDOFF.md §Q/§R.
 codeunit 50212 "IfcArr Factory Test"
 {
     Subtype = Test;

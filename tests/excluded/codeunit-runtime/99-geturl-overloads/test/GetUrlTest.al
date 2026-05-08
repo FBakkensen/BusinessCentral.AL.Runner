@@ -1,4 +1,3 @@
-// QUARANTINED — triggers BC 27.5 Compilation.Emit bug: IndexOutOfRange in GetUrl(Client/Tenant)-overload picker. See spike/v2/HANDOFF.md §Q/§R.
 codeunit 50376 "GetUrl Overload Tests"
 {
     Subtype = Test;

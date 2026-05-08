@@ -1,4 +1,3 @@
-// QUARANTINED — triggers BC 27.5 Compilation.Emit bug: BadExpression in SendNotification handler bind. See spike/v2/HANDOFF.md §Q/§R.
 codeunit 50080 "Notification Handler Tests"
 {
     Subtype = Test;

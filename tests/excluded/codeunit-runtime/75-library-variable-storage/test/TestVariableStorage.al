@@ -1,4 +1,3 @@
-// QUARANTINED — triggers BC 27.5 Compilation.Emit bug: BadExpression in EnqueueDequeueText routing through Variant queue. See spike/v2/HANDOFF.md §Q/§R.
 // Renumbered from 50700 to avoid collision in new bucket layout (#1385).
 codeunit 50342 "Test Variable Storage"
 {

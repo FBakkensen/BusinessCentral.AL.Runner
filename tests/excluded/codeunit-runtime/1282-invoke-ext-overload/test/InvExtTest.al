@@ -1,4 +1,3 @@
-// QUARANTINED — triggers BC 27.5 Compilation.Emit bug: IndexOutOfRange in PageExtension Invoke overload resolution. See spike/v2/HANDOFF.md §Q/§R.
 codeunit 50076 "Inv Ext Overload Test"
 {
     Subtype = Test;

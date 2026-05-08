@@ -1,4 +1,3 @@
-// QUARANTINED — triggers BC 27.5 Compilation.Emit bug: IndexOutOfRange (BoundKind issue with user-defined ToText override resolution). See spike/v2/HANDOFF.md §Q/§R.
 // Tests for issue #1528: user-defined ToText() method must not be rewritten
 // by the Roslyn rewriter's `.ToText() → AlCompat.Format()` rule.
 

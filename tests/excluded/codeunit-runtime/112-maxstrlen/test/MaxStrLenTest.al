@@ -1,4 +1,3 @@
-// QUARANTINED — triggers BC 27.5 Compilation.Emit bug: IndexOutOfRange in MaxStrLen against table-field record type. See spike/v2/HANDOFF.md §Q/§R.
 codeunit 50059 "MaxStrLen Test"
 {
     Subtype = Test;

@@ -1,4 +1,3 @@
-// QUARANTINED — triggers BC 27.5 Compilation.Emit bug: IndexOutOfRange in same-arity overload pick across multiple matching auto-stubs. See spike/v2/HANDOFF.md §Q/§R.
 codeunit 50058 "Same Arity Dispatch Test"
 {
     Subtype = Test;

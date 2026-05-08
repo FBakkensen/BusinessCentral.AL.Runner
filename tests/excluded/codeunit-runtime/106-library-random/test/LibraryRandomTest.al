@@ -1,4 +1,3 @@
-// QUARANTINED — triggers BC 27.5 Compilation.Emit bug: NoConversion ConversionKind in RandInt(Integer) → auto-stub symbol shape. See spike/v2/HANDOFF.md §Q/§R.
 codeunit 50054 "Library Random Test"
 {
     Subtype = Test;

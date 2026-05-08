@@ -1,4 +1,3 @@
-// QUARANTINED — triggers BC 27.5 Compilation.Emit bug: IndexOutOfRange in CalcDate(Text formula) auto-stub overload. See spike/v2/HANDOFF.md §Q/§R.
 /// Test suite for System overloads from issue #1375:
 ///   CalcDate(Text, Date), Clear(Joker), Clear(SecretText),
 ///   Format(Joker, Integer, Text), GetLastErrorText(Boolean),

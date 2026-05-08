@@ -1,4 +1,3 @@
-// QUARANTINED — triggers BC 27.5 Compilation.Emit bug: None NavTypeKind in IntegerInRange/DateInRange overload resolution against auto-stub symbols. See spike/v2/HANDOFF.md §Q/§R.
 // Tests for codeunit 130500 "Any" — pseudo-random test data generator.
 // The stub is auto-loaded from AlRunner/stubs/LibraryAny.al.
 codeunit 50038 "Library Any Test"

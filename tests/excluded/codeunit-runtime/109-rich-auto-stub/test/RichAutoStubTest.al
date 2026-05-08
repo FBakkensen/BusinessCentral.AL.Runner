@@ -1,4 +1,3 @@
-// QUARANTINED — triggers BC 27.5 Compilation.Emit bug: None NavTypeKind in dependency-codeunit method invocation. See spike/v2/HANDOFF.md §Q/§R.
 // Renumbered from 109001 to avoid collision in new bucket layout (#1385).
 codeunit 50056 "Rich Auto Stub Test"
 {
