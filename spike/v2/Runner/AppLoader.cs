@@ -22,7 +22,14 @@ using System.Xml.Linq;
 
 namespace AlRunnerV2;
 
-public sealed record AppManifest(string Publisher, string Name, Version Version, Guid AppId);
+public sealed record DependencyRef(Guid AppId, string Name, string Publisher, Version Version);
+
+public sealed record AppManifest(
+    string Publisher,
+    string Name,
+    Version Version,
+    Guid AppId,
+    IReadOnlyList<DependencyRef> Dependencies);
 
 public static class AppLoader
 {
@@ -50,9 +57,49 @@ public static class AppLoader
             var verStr = app.Attribute("Version")?.Value ?? "1.0.0.0";
             if (idStr == null || !Guid.TryParse(idStr, out var id)) return null;
             if (!Version.TryParse(verStr, out var ver)) return null;
-            return new AppManifest(publisher, name, ver, id);
+
+            // <Dependencies><Dependency Id="..." Name="..." Publisher="..."
+            //   MinVersion="..." CompatibilityId="..." /></Dependencies>
+            var deps = new List<DependencyRef>();
+            var depsRoot = doc.Root?.Element(ns + "Dependencies");
+            if (depsRoot != null)
+            {
+                foreach (var dep in depsRoot.Elements(ns + "Dependency"))
+                {
+                    var depIdStr = dep.Attribute("Id")?.Value;
+                    var depName = dep.Attribute("Name")?.Value ?? "";
+                    var depPub = dep.Attribute("Publisher")?.Value ?? "";
+                    var depVerStr = dep.Attribute("MinVersion")?.Value
+                        ?? dep.Attribute("Version")?.Value
+                        ?? "0.0.0.0";
+                    Guid depId = Guid.Empty;
+                    if (!string.IsNullOrEmpty(depIdStr))
+                        Guid.TryParse(depIdStr, out depId);
+                    if (!Version.TryParse(depVerStr, out var depVer))
+                        depVer = new Version(0, 0, 0, 0);
+                    deps.Add(new DependencyRef(depId, depName, depPub, depVer));
+                }
+            }
+            return new AppManifest(publisher, name, ver, id, deps);
         }
         catch { return null; }
+    }
+
+    /// <summary>
+    /// True if the package contains an R2R `publishedartifacts/*.dll`.
+    /// Used by the loader to pick between Tier-2 (R2R extract) and Tier-3
+    /// (source-only on-the-fly compile).
+    /// </summary>
+    public static bool IsR2R(string appPath)
+    {
+        try
+        {
+            using var zip = OpenAppZip(appPath);
+            return zip.Entries.Any(e =>
+                e.FullName.StartsWith("publishedartifacts/", StringComparison.OrdinalIgnoreCase)
+                && e.FullName.EndsWith(".dll", StringComparison.OrdinalIgnoreCase));
+        }
+        catch { return false; }
     }
 
 
