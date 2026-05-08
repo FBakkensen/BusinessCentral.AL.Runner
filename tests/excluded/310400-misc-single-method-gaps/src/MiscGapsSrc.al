@@ -1,5 +1,5 @@
 /// Table used by RecordRef gap tests (FieldExist by name, FullyQualifiedName) and Media tests.
-table 310400 "Misc Gaps Table"
+table 50019 "Misc Gaps Table"
 {
     DataClassification = CustomerContent;
     fields
@@ -16,7 +16,7 @@ table 310400 "Misc Gaps Table"
 }
 
 /// Blob table used to create InStream/OutStream values in tests.
-table 310401 "Misc Gaps Blob Table"
+table 50020 "Misc Gaps Blob Table"
 {
     fields
     {
@@ -27,7 +27,7 @@ table 310401 "Misc Gaps Blob Table"
 }
 
 /// Helper codeunit for RecordRef gap tests.
-codeunit 310402 "Misc Gaps RecordRef Helper"
+codeunit 50073 "Misc Gaps RecordRef Helper"
 {
     /// RecordRef.FieldExist(Text) — look up a field by name.
     procedure FieldExistByName(TableNo: Integer; FieldName: Text): Boolean
@@ -49,7 +49,7 @@ codeunit 310402 "Misc Gaps RecordRef Helper"
 }
 
 /// Helper codeunit for Version.Create(4-arg) test.
-codeunit 310403 "Misc Gaps Version Helper"
+codeunit 50074 "Misc Gaps Version Helper"
 {
     /// Version.Create(major, minor, build, revision) via local Integer variables.
     procedure CreateVersion(Major: Integer; Minor: Integer; Build: Integer; Revision: Integer): Version
@@ -59,7 +59,7 @@ codeunit 310403 "Misc Gaps Version Helper"
 }
 
 /// Target codeunit for Codeunit.Run(Text, Table) test.
-codeunit 310404 "Misc Gaps Run Target"
+codeunit 50075 "Misc Gaps Run Target"
 {
     TableNo = "Misc Gaps Table";
 
@@ -72,7 +72,7 @@ codeunit 310404 "Misc Gaps Run Target"
 }
 
 /// Helper codeunit that calls Codeunit.Run(Text, var Record) using a Text name.
-codeunit 310405 "Misc Gaps Codeunit Run Helper"
+codeunit 50076 "Misc Gaps Codeunit Run Helper"
 {
     procedure RunByTextName(var Rec: Record "Misc Gaps Table")
     var
@@ -84,7 +84,7 @@ codeunit 310405 "Misc Gaps Codeunit Run Helper"
 }
 
 /// Helper codeunit for Media.ImportStream(InStream, Text, Text, Text) — 4-arg form.
-codeunit 310406 "Misc Gaps Media Helper"
+codeunit 50077 "Misc Gaps Media Helper"
 {
     procedure ImportStream4Arg(var Rec: Record "Misc Gaps Table"; var InStr: InStream; FileName: Text; MimeType: Text; Description: Text)
     begin
@@ -107,7 +107,7 @@ codeunit 310406 "Misc Gaps Media Helper"
 }
 
 /// Helper codeunit for DataTransfer.AddDestinationFilter(Integer, Text, Joker).
-codeunit 310407 "Misc Gaps DataTransfer Helper"
+codeunit 50078 "Misc Gaps DataTransfer Helper"
 {
     procedure AddDestinationFilterVariant(TableNoFrom: Integer; TableNoTo: Integer)
     var
@@ -119,7 +119,7 @@ codeunit 310407 "Misc Gaps DataTransfer Helper"
 }
 
 /// Helper codeunit for Database.SelectLatestVersion(Integer).
-codeunit 310408 "Misc Gaps Database Helper"
+codeunit 50079 "Misc Gaps Database Helper"
 {
     procedure CallSelectLatestVersionWithCompany(CompanyId: Integer)
     begin
@@ -128,7 +128,7 @@ codeunit 310408 "Misc Gaps Database Helper"
 }
 
 /// Helper codeunit for Session.LogMessage 9-arg form.
-codeunit 310409 "Misc Gaps Session Helper"
+codeunit 50080 "Misc Gaps Session Helper"
 {
     procedure LogMessage9Arg(
         EventId: Text;

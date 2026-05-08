@@ -20,5 +20,6 @@
     <Reference Include="Microsoft.Dynamics.Nav.Ncl"><HintPath>$(ServiceTierPath)/Microsoft.Dynamics.Nav.Ncl.dll</HintPath></Reference>
     <Reference Include="Microsoft.Dynamics.Nav.Common"><HintPath>$(ServiceTierPath)/Microsoft.Dynamics.Nav.Common.dll</HintPath></Reference>
     <Reference Include="Microsoft.Dynamics.Nav.Language"><HintPath>$(ServiceTierPath)/Microsoft.Dynamics.Nav.Language.dll</HintPath></Reference>
+    <Reference Include="Microsoft.Dynamics.Nav.CodeAnalysis"><HintPath>$(ServiceTierPath)/Microsoft.Dynamics.Nav.CodeAnalysis.dll</HintPath></Reference>
   </ItemGroup>
 </Project>

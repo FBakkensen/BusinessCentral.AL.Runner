@@ -1,14 +1,14 @@
 // BcAssembler — Roslyn-compiles emitted C# against real BC DLLs.
 //
-// Two transformations are applied to the AL-emitter output before compile:
-//   1. ApplyPolyfillRedirects — string substitutions that route AL-compiler-emitted
-//      symbol references for APIs that don't exist on the real BC service-tier DLLs
-//      to small in-process polyfill shims (defined inline below as PolyfillSource).
-//   2. ByRefWrapRewriter — the ONE mechanical syntax transformation BC's own service
-//      tier applies at extension install time but `--dump-csharp` doesn't include:
-//      every parameter marked `[NavByReferenceAttribute] T` gets its type wrapped to
-//      `ByRef<T>`, and the matching backing field's declared type is wrapped too.
-//      Microsoft's pre-compiled DLLs prove this convention (8K+ ByRef<>, 0 NavByRef).
+// Pre-compile passes:
+//   1. ApplyPolyfillRedirects — string substitutions routing AL-compiler-emitted
+//      references for APIs that don't exist on the real service-tier DLLs to
+//      small in-process polyfill shims (defined inline as PolyfillSource).
+//   2. CallSiteArgWrap — fixes the residual call-site ByRef gap BC's emitter
+//      doesn't cover (e.g. `dict.ALGet(K, fieldOfHandleT)` → wraps the field arg
+//      as `new ByRef<T>(() => expr, v => expr = v)`). BC's emitter handles
+//      parameter-declaration ByRef wraps natively at codeanalysis.cs:342854 —
+//      no syntax rewriter needed for those.
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using AlRunnerV2.Rewriters;
@@ -33,13 +33,16 @@ public sealed class BcAssembler
             foreach (var s in sourceList) File.WriteAllText($"/tmp/gen_{s.Name}.cs", s.Code);
         var trees = sourceList
             .Select(s => CSharpSyntaxTree.ParseText(ApplyPolyfillRedirects(s.Code), path: s.Name + ".cs"))
-            .Select(ByRefWrapRewriter.Rewrite)   // wrap [NavByReferenceAttribute] params in ByRef<T>
             .ToList();
-        // Inject the missing helpers the AL compiler 17.0.34 emits but the BC 27.5
-        // service tier doesn't expose. Source patches above redirect callers.
+        // Inject helpers for runtime-API mismatches between alc-emit and the
+        // service-tier DLLs. PolyfillRedirects above route callers here.
         trees.Add(CSharpSyntaxTree.ParseText(PolyfillSource, path: "_polyfill.cs"));
 
         var refs = ReferencePaths().Select(p => MetadataReference.CreateFromFile(p)).ToList();
+
+        // Fill BC's call-site ByRef gap. Runs a throwaway compile to find CS1503
+        // 'cannot convert T to ByRef<T>' errors and rewrites only those args.
+        trees = CallSiteArgWrap.Apply(trees, refs).ToList();
 
         var compilation = CSharpCompilation.Create(
             assemblyName,

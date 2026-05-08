@@ -3,7 +3,7 @@
 ///   Codeunit.Run(Text,Table), DataTransfer.AddDestinationFilter,
 ///   Database.SelectLatestVersion(Integer), Session.LogMessage(9-arg),
 ///   Media.ImportStream(InStream,Text,Text,Text), Version.Create(4-arg).
-codeunit 310490 "Misc Gaps Test"
+codeunit 50081 "Misc Gaps Test"
 {
     Subtype = Test;
 

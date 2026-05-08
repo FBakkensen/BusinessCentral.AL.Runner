@@ -1,4 +1,4 @@
-codeunit 30002 "Record Format Test"
+codeunit 80002 "Record Format Test"
 {
     Subtype = Test;
     var Assert: Codeunit Assert;

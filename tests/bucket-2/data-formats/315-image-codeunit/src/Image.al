@@ -5,7 +5,7 @@
 // This stub is needed so AL that references "Codeunit Image" compiles when
 // the SA package is not present in --packages. Users who need real image
 // behaviour must provide their own stub (see docs/limitations.md).
-codeunit 3971 "Image"
+codeunit 53971 "Image"
 {
     procedure Clear(Alpha: Integer; Red: Integer; Green: Integer; Blue: Integer)
     begin

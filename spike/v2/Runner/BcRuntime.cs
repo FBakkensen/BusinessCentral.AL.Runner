@@ -66,7 +66,34 @@ public static partial class BcRuntime
         var navNcl = AppDomain.CurrentDomain.GetAssemblies()
             .First(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Ncl");
         RootTreeStub = new RootTreeObject();
+        SuppressEventLogWriter();
         ApplyAllPatches(navNcl);
+    }
+
+    /// <summary>
+    /// Sets `Microsoft.Dynamics.Nav.Types.EventLogWriter.CustomWriter` to a no-op so
+    /// `Write(...)` short-circuits before enqueueing into the background thread that
+    /// calls into `System.Diagnostics.EventLog.WriteEntry` — which P/Invokes
+    /// `kernel32.dll!WaitForSingleObject` from `System.Diagnostics.EventLog.dll`
+    /// (an assembly Win32Stubs' Nav-only resolver doesn't cover, so we avoid the
+    /// path entirely instead of broadening the resolver scope).
+    /// </summary>
+    private static void SuppressEventLogWriter()
+    {
+        var typesAsm = AppDomain.CurrentDomain.GetAssemblies()
+            .FirstOrDefault(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Types");
+        var elw = typesAsm?.GetType("Microsoft.Dynamics.Nav.Types.EventLogWriter");
+        var prop = elw?.GetProperty("CustomWriter", BindingFlags.Public | BindingFlags.Static);
+        if (prop?.SetMethod == null) return;
+        // CustomWriter is Action<string, EventLogEntryType, string>. Build a
+        // matching no-op via DynamicMethod so we don't have to import
+        // System.Diagnostics.EventLog (which is what we're avoiding).
+        var args = prop.PropertyType.GetGenericArguments(); // [string, EventLogEntryType, string]
+        var dm = new System.Reflection.Emit.DynamicMethod(
+            "EventLogNoOpDyn", typeof(void), args, typeof(BcRuntime).Module);
+        var il = dm.GetILGenerator();
+        il.Emit(System.Reflection.Emit.OpCodes.Ret);
+        prop.SetValue(null, dm.CreateDelegate(prop.PropertyType));
     }
 
     private static void ForceLoadBcDlls()

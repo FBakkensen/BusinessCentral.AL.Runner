@@ -37,7 +37,7 @@ var t0 = System.Diagnostics.Stopwatch.StartNew();
 BcRuntime.EnsureApplied();
 Console.WriteLine($"BC runtime patches applied ({t0.ElapsedMilliseconds}ms)");
 
-var emitter = new AlEmitter();
+var emitter = new BcCompiler();
 var assembler = new BcAssembler();
 var executor = new TestExecutor();
 var results = new List<BucketResult>();
@@ -48,64 +48,80 @@ foreach (var bundle in bundles)
     i2++;
     var bundleAbs = Path.GetFullPath(bundle);
     var rel = Path.GetRelativePath(Environment.CurrentDirectory, bundleAbs);
-    Console.Write($"[{i2}/{bundles.Count}] {rel} ... ");
 
-    // Collect every src/test/app* dir under the bundle.
-    var (paths, srcDirs) = CollectBundlePaths(bundleAbs);
-    if (paths.Count == 0) { Console.WriteLine("SKIP (no src/test/app dirs)"); continue; }
+    var suites = EnumerateSuites(bundleAbs).ToList();
+    if (suites.Count == 0) { Console.WriteLine($"[{i2}/{bundles.Count}] {rel} ... SKIP (no suites)"); continue; }
+    Console.WriteLine($"[{i2}/{bundles.Count}] {rel} — {suites.Count} suites");
 
-    // Register every src dir so RecordPatches can build NCLMetaTable instances
-    // for any AL table referenced anywhere in the bundle.
-    foreach (var s in srcDirs) AlRunnerV2.Patches.RecordPatches.AddSourceDir(s);
+    // Pre-register every src dir for RecordPatches at the bundle level.
+    foreach (var suite in suites)
+    {
+        var s = Path.Combine(suite, "src");
+        if (Directory.Exists(s)) AlRunnerV2.Patches.RecordPatches.AddSourceDir(s);
+    }
 
-    var emitTimer = System.Diagnostics.Stopwatch.StartNew();
-    IReadOnlyList<EmittedSource> sources;
-    try { sources = emitter.Emit(paths); }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"EMIT-FAIL: {ex.Message.Split('\n')[0]}");
-        results.Add(new BucketResult(bundleAbs, BucketStage.ExecuteFailed,
-            Array.Empty<string>(), ex.Message, Array.Empty<TestResult>(),
-            emitTimer.Elapsed, TimeSpan.Zero, TimeSpan.Zero));
-        continue;
-    }
-    emitTimer.Stop();
+    var bundleEmit = TimeSpan.Zero;
+    var bundleComp = TimeSpan.Zero;
+    var bundleRun = TimeSpan.Zero;
+    var bundleTests = new List<TestResult>();
+    var bundleErrors = new List<string>();
+    var bundleStage = BucketStage.Ran;
+    int sP = 0, sF = 0, sE = 0;
 
-    var compTimer = System.Diagnostics.Stopwatch.StartNew();
-    var compile = assembler.Compile($"V2_{Path.GetFileName(bundleAbs)}", sources);
-    compTimer.Stop();
-    if (!compile.Success)
+    int si = 0;
+    foreach (var suite in suites)
     {
-        Console.WriteLine($"COMPILE-FAIL ({compile.Errors.Count} errors): {compile.Errors.FirstOrDefault()?.Split('\n')[0]}");
-        results.Add(new BucketResult(bundleAbs, BucketStage.CompileFailed,
-            compile.Errors, null, Array.Empty<TestResult>(),
-            emitTimer.Elapsed, compTimer.Elapsed, TimeSpan.Zero));
-        continue;
+        si++;
+        var suiteName = Path.GetRelativePath(bundleAbs, suite);
+        var suitePaths = CollectSuitePaths(suite);
+        if (suitePaths.Count == 0) continue;
+
+        var et = System.Diagnostics.Stopwatch.StartNew();
+        IReadOnlyList<EmittedSource> sources;
+        try { sources = emitter.Emit(suitePaths, $"V2_{Path.GetFileName(suite)}"); }
+        catch (Exception ex)
+        {
+            et.Stop(); bundleEmit += et.Elapsed;
+            bundleErrors.Add($"{suiteName}: EMIT-FAIL: {ex.Message.Split('\n')[0]}");
+            continue;
+        }
+        et.Stop(); bundleEmit += et.Elapsed;
+
+        var ct = System.Diagnostics.Stopwatch.StartNew();
+        var compile = assembler.Compile($"V2_{Path.GetFileName(suite)}", sources);
+        ct.Stop(); bundleComp += ct.Elapsed;
+        if (!compile.Success)
+        {
+            bundleErrors.Add($"{suiteName}: COMPILE-FAIL ({compile.Errors.Count}): {compile.Errors.FirstOrDefault()?.Split('\n')[0]}");
+            continue;
+        }
+
+        var rt = System.Diagnostics.Stopwatch.StartNew();
+        IReadOnlyList<TestResult> tests;
+        try
+        {
+            var asm = Assembly.Load(compile.AssemblyBytes!);
+            BcRuntime.SetTestAssembly(asm);
+            tests = executor.Run(asm);
+        }
+        catch (Exception ex)
+        {
+            rt.Stop(); bundleRun += rt.Elapsed;
+            bundleErrors.Add($"{suiteName}: EXEC-FAIL: {ex.Message.Split('\n')[0]}");
+            continue;
+        }
+        rt.Stop(); bundleRun += rt.Elapsed;
+        bundleTests.AddRange(tests);
+        sP += tests.Count(t => t.Outcome == TestOutcome.Pass);
+        sF += tests.Count(t => t.Outcome == TestOutcome.Fail);
+        sE += tests.Count(t => t.Outcome == TestOutcome.Error);
     }
-    var runTimer = System.Diagnostics.Stopwatch.StartNew();
-    IReadOnlyList<TestResult> tests;
-    try
-    {
-        var asm = Assembly.Load(compile.AssemblyBytes!);
-        BcRuntime.SetTestAssembly(asm);
-        tests = executor.Run(asm);
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"EXEC-FAIL: {ex.Message.Split('\n')[0]}");
-        results.Add(new BucketResult(bundleAbs, BucketStage.ExecuteFailed,
-            Array.Empty<string>(), ex.ToString(), Array.Empty<TestResult>(),
-            emitTimer.Elapsed, compTimer.Elapsed, runTimer.Elapsed));
-        continue;
-    }
-    runTimer.Stop();
-    var p = tests.Count(t => t.Outcome == TestOutcome.Pass);
-    var f = tests.Count(t => t.Outcome == TestOutcome.Fail);
-    var e = tests.Count(t => t.Outcome == TestOutcome.Error);
-    Console.WriteLine($"{p}P/{f}F/{e}E ({(emitTimer.Elapsed + compTimer.Elapsed + runTimer.Elapsed).TotalSeconds:F1}s)");
-    results.Add(new BucketResult(bundleAbs, BucketStage.Ran,
-        Array.Empty<string>(), null, tests,
-        emitTimer.Elapsed, compTimer.Elapsed, runTimer.Elapsed));
+
+    Console.WriteLine($"  → {sP}P/{sF}F/{sE}E across {bundleTests.Count} tests, {bundleErrors.Count} suite errors ({(bundleEmit + bundleComp + bundleRun).TotalSeconds:F1}s)");
+    if (bundleTests.Count == 0 && bundleErrors.Count > 0) bundleStage = BucketStage.CompileFailed;
+    results.Add(new BucketResult(bundleAbs, bundleStage,
+        bundleErrors, null, bundleTests,
+        bundleEmit, bundleComp, bundleRun));
 }
 
 Reporter.PrintSummary(results, Console.Out);
@@ -115,30 +131,18 @@ return 0;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-// Collect every (src, test, app*) dir under the bundle root, in a stable order
-// (parent suite first, then children — matches the existing CI loop's iteration).
-// Also returns the set of "src" dirs separately so RecordPatches can register them
-// for AL table parsing.
-static (List<string> all, List<string> srcOnly) CollectBundlePaths(string bundleRoot)
+// Collect this single suite's src/test/app* dirs for emit. Per-suite isolation
+// avoids the cross-suite object-id collisions that silently zeroed-out bundled emit.
+static List<string> CollectSuitePaths(string suite)
 {
     var all = new List<string>();
-    var src = new List<string>();
-    if (!Directory.Exists(bundleRoot)) return (all, src);
-
-    // A "suite" is any directory that has either a `test/` subdir or a `src/` subdir.
-    // We walk the bundle root recursively and collect every suite's contributing dirs.
-    foreach (var suite in EnumerateSuites(bundleRoot))
-    {
-        var s = Path.Combine(suite, "src");
-        var t = Path.Combine(suite, "test");
-        if (Directory.Exists(s)) { all.Add(s); src.Add(s); }
-        // Any sibling directory matching app* (app1, app2, …) also counts — these are
-        // extension app dependencies declared inside a suite.
-        foreach (var app in Directory.EnumerateDirectories(suite, "app*"))
-            all.Add(app);
-        if (Directory.Exists(t)) all.Add(t);
-    }
-    return (all, src);
+    var s = Path.Combine(suite, "src");
+    var t = Path.Combine(suite, "test");
+    if (Directory.Exists(s)) all.Add(s);
+    foreach (var app in Directory.EnumerateDirectories(suite, "app*"))
+        all.Add(app);
+    if (Directory.Exists(t)) all.Add(t);
+    return all;
 }
 
 static IEnumerable<string> EnumerateSuites(string root)

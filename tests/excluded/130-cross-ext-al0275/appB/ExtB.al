@@ -14,7 +14,7 @@ pageextension 56302 "ItemCardExt" extends "Test Item Card 130"
 }
 
 // Renumbered from 56301 to avoid collision in new bucket layout (#1385).
-codeunit 1056301 "AppB Helper"
+codeunit 50023 "AppB Helper"
 {
     procedure GetAppBValue(): Text
     begin

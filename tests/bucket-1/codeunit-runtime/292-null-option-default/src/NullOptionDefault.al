@@ -2,7 +2,7 @@
 /// When an enum/option field on a record is read before it has been
 /// explicitly written the underlying NavOption variable is null.
 /// CloneTaggedOption must not crash in that case.
-table 29201 "NullOpt Record"
+table 79201 "NullOpt Record"
 {
     DataClassification = ToBeClassified;
 
@@ -24,7 +24,7 @@ table 29201 "NullOpt Record"
     }
 }
 
-enum 29201 "NullOpt Status"
+enum 79201 "NullOpt Status"
 {
     Extensible = false;
 
@@ -33,7 +33,7 @@ enum 29201 "NullOpt Status"
     value(2; Closed)  { }
 }
 
-codeunit 29201 "NullOpt Helper"
+codeunit 79201 "NullOpt Helper"
 {
     /// Read the Status field from a record that was inserted with Init()
     /// only (no explicit Status assignment). The NavOption backing the

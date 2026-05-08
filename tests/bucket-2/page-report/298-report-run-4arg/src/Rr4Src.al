@@ -1,5 +1,5 @@
 /// Source objects for Report.Run 4-arg overload test (issue #1156).
-table 29800 "RR4 Table"
+table 79800 "RR4 Table"
 {
     fields
     {
@@ -10,7 +10,7 @@ table 29800 "RR4 Table"
 }
 
 /// Report that accepts RR4 Table as a data item.
-report 29800 "RR4 Report"
+report 79800 "RR4 Report"
 {
     dataset
     {
@@ -21,7 +21,7 @@ report 29800 "RR4 Report"
 }
 
 /// Exercises Report.Run with 4 arguments: (ReportId, RequestPage, SystemPrinter, Record)
-codeunit 29801 "RR4 Source"
+codeunit 79801 "RR4 Source"
 {
     procedure CallRunFourArgs(ReportId: Integer; Rec: Record "RR4 Table")
     begin

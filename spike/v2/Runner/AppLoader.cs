@@ -1,0 +1,159 @@
+// AppLoader — universal `.app` package reader.
+//
+// BC `.app` files are a NAVX header (4-byte magic "NAVX" + 4-byte LE uint32 ZIP
+// offset) followed by a ZIP archive. Two flavours we care about:
+//
+//   1. R2R packages (Microsoft-shipped: System Application, Base Application).
+//      Outer ZIP contains `readytorunappmanifest.json`, a nested AL `.app`,
+//      and `publishedartifacts/.../<HASH>.dll` — the pre-compiled IL DLL
+//      we want to load directly.
+//
+//   2. alc `/generatecode+` output. ZIP contains `bin/COD<id>.cs` (and `.xml`)
+//      — C# source per AL object, post BC's Compilation.Emit. This is what
+//      v2 feeds into Roslyn for the AL-source path.
+//
+// One method per shape so the bundle pipeline can ask the right question.
+//
+// Reference for NAVX wrapper handling: AlRunner/Program.cs:4540
+// (AppPackageReader.ExtractAlSources in v1).
+using System.IO.Compression;
+using System.Text;
+using System.Xml.Linq;
+
+namespace AlRunnerV2;
+
+public sealed record AppManifest(string Publisher, string Name, Version Version, Guid AppId);
+
+public static class AppLoader
+{
+    /// <summary>
+    /// Reads NavxManifest.xml from an `.app` package and returns the App element's
+    /// Publisher / Name / Version / Id. Returns null if the file is malformed or
+    /// missing the manifest.
+    /// </summary>
+    public static AppManifest? ReadManifest(string appPath)
+    {
+        try
+        {
+            using var zip = OpenAppZip(appPath);
+            var entry = zip.Entries.FirstOrDefault(e =>
+                string.Equals(e.FullName, "NavxManifest.xml", StringComparison.OrdinalIgnoreCase));
+            if (entry == null) return null;
+            using var s = entry.Open();
+            var doc = XDocument.Load(s);
+            XNamespace ns = "http://schemas.microsoft.com/navx/2015/manifest";
+            var app = doc.Root?.Element(ns + "App");
+            if (app == null) return null;
+            var idStr = app.Attribute("Id")?.Value;
+            var name = app.Attribute("Name")?.Value ?? "";
+            var publisher = app.Attribute("Publisher")?.Value ?? "";
+            var verStr = app.Attribute("Version")?.Value ?? "1.0.0.0";
+            if (idStr == null || !Guid.TryParse(idStr, out var id)) return null;
+            if (!Version.TryParse(verStr, out var ver)) return null;
+            return new AppManifest(publisher, name, ver, id);
+        }
+        catch { return null; }
+    }
+
+
+    /// <summary>
+    /// Returns the IL DLL bytes from a Microsoft R2R `.app` package, or null
+    /// if no `publishedartifacts/*.dll` is present (i.e. the package is not R2R).
+    /// </summary>
+    public static byte[]? ExtractDll(string appPath)
+    {
+        using var zip = OpenAppZip(appPath);
+        var dllEntry = zip.Entries.FirstOrDefault(e =>
+            e.FullName.StartsWith("publishedartifacts/", StringComparison.OrdinalIgnoreCase)
+            && e.FullName.EndsWith(".dll", StringComparison.OrdinalIgnoreCase));
+        if (dllEntry == null) return null;
+        using var s = dllEntry.Open();
+        using var ms = new MemoryStream();
+        s.CopyTo(ms);
+        return ms.ToArray();
+    }
+
+    /// <summary>
+    /// Returns the per-AL-object C# sources from an alc `/generatecode+` `.app`
+    /// (the `bin/*.cs` entries). Empty list if the package contains no `bin/*.cs`.
+    /// </summary>
+    public static IReadOnlyList<EmittedSource> ExtractCSharp(string appPath)
+    {
+        using var zip = OpenAppZip(appPath);
+        var result = new List<EmittedSource>();
+        foreach (var entry in zip.Entries
+            .Where(e => e.FullName.StartsWith("bin/", StringComparison.OrdinalIgnoreCase)
+                     && e.FullName.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(e => e.FullName, StringComparer.Ordinal))
+        {
+            using var s = entry.Open();
+            using var reader = new StreamReader(s, Encoding.UTF8);
+            result.Add(new EmittedSource(entry.Name, reader.ReadToEnd()));
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Returns the AL `.al` sources from an `.app` package's `src/`. Handles
+    /// the R2R nested-app shape (outer ZIP contains a nested `.app` whose
+    /// inner ZIP holds `src/*.al`). Returned as (Name, Source) for parity
+    /// with v1's AppPackageReader.
+    /// </summary>
+    public static IReadOnlyList<(string Name, string Source)> ExtractAl(string appPath)
+    {
+        var bytes = File.ReadAllBytes(appPath);
+        var direct = ReadAlFromNavx(bytes);
+        if (direct.Count > 0) return direct;
+
+        // R2R nested case.
+        using var zipStream = new MemoryStream(bytes, NavxZipOffset(bytes), bytes.Length - NavxZipOffset(bytes));
+        using var zip = new ZipArchive(zipStream, ZipArchiveMode.Read);
+        var nested = zip.Entries.FirstOrDefault(e =>
+            e.FullName.EndsWith(".app", StringComparison.OrdinalIgnoreCase)
+            && !e.FullName.Contains('/'));
+        if (nested == null) return Array.Empty<(string, string)>();
+
+        using var ns = nested.Open();
+        using var nms = new MemoryStream();
+        ns.CopyTo(nms);
+        return ReadAlFromNavx(nms.ToArray());
+    }
+
+    // ── internals ────────────────────────────────────────────────────────────
+
+    private static ZipArchive OpenAppZip(string appPath)
+    {
+        var bytes = File.ReadAllBytes(appPath);
+        var offset = NavxZipOffset(bytes);
+        // Caller-owned MemoryStream; ZipArchive ctor with leaveOpen=false will dispose it.
+        var ms = new MemoryStream(bytes, offset, bytes.Length - offset, writable: false);
+        return new ZipArchive(ms, ZipArchiveMode.Read);
+    }
+
+    private static int NavxZipOffset(byte[] bytes)
+    {
+        if (bytes.Length >= 8
+            && bytes[0] == (byte)'N' && bytes[1] == (byte)'A'
+            && bytes[2] == (byte)'V' && bytes[3] == (byte)'X')
+            return (int)BitConverter.ToUInt32(bytes, 4);
+        return 0;
+    }
+
+    private static List<(string Name, string Source)> ReadAlFromNavx(byte[] data)
+    {
+        var offset = NavxZipOffset(data);
+        var result = new List<(string, string)>();
+        using var ms = new MemoryStream(data, offset, data.Length - offset, writable: false);
+        using var zip = new ZipArchive(ms, ZipArchiveMode.Read);
+        foreach (var entry in zip.Entries
+            .Where(e => e.FullName.StartsWith("src/", StringComparison.OrdinalIgnoreCase)
+                     && e.FullName.EndsWith(".al", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(e => e.FullName, StringComparer.Ordinal))
+        {
+            using var s = entry.Open();
+            using var reader = new StreamReader(s, Encoding.UTF8);
+            result.Add((entry.Name, reader.ReadToEnd()));
+        }
+        return result;
+    }
+}

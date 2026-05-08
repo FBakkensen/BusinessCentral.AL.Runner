@@ -7,7 +7,7 @@
 /// Negative test: GetProbeVersion() with wrong expected value fires Assert.AreEqual error —
 ///   proves the assertion framework is live and would catch a broken stub.
 /// </summary>
-codeunit 1251 "HTTP ReadAs Bool Test"
+codeunit 51251 "HTTP ReadAs Bool Test"
 {
     Subtype = Test;
 

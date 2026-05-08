@@ -6,7 +6,7 @@
 /// Fix: inject `public static implicit operator NavForm(PageN p) => default!`
 /// into every generated Page<N> class so implicit conversions succeed.
 
-codeunit 29100 "PRV Source"
+codeunit 79100 "PRV Source"
 {
     /// Calls Page.Run with a record variable — BC lowers to NavForm.Run(pageId, rec.Target).
     /// The record arg (MockRecordHandle) is not NavForm, so this tests the most common
@@ -51,7 +51,7 @@ codeunit 29100 "PRV Source"
     end;
 }
 
-table 29100 "PRV Row"
+table 79100 "PRV Row"
 {
     fields
     {
@@ -61,7 +61,7 @@ table 29100 "PRV Row"
     keys { key(PK; Id) { Clustered = true; } }
 }
 
-page 29100 "PRV Card"
+page 79100 "PRV Card"
 {
     PageType = Card;
     SourceTable = "PRV Row";

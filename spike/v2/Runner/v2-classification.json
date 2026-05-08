@@ -1,6 +1,30 @@
 {
-  "generated": "2026-05-07T12:06:58.5110665Z",
-  "total_failures": 0,
-  "classifications": [],
-  "all_failures": []
+  "generated": "2026-05-07T15:38:12.5557358Z",
+  "total_failures": 1,
+  "classifications": [
+    {
+      "classification": "compile/signature-mismatch",
+      "count": 1,
+      "examples": [
+        {
+          "bucket": "/home/stefan/Documents/Repos/community/BusinessCentral.AL.Runner/tests/bucket-1/codeunit-runtime/1239-dict-codeunit-value",
+          "kind": "compile",
+          "errors": [
+            "Dict Cu Manager.cs(280,101): error CS1503: Argument 3: cannot convert from \u0027Microsoft.Dynamics.Nav.Runtime.NavCodeunitHandle\u0027 to \u0027Microsoft.Dynamics.Nav.Runtime.ByRef\u003CMicrosoft.Dynamics.Nav.Runtime.NavCodeunitHandle\u003E\u0027"
+          ],
+          "classification": "compile/signature-mismatch"
+        }
+      ]
+    }
+  ],
+  "all_failures": [
+    {
+      "bucket": "/home/stefan/Documents/Repos/community/BusinessCentral.AL.Runner/tests/bucket-1/codeunit-runtime/1239-dict-codeunit-value",
+      "kind": "compile",
+      "errors": [
+        "Dict Cu Manager.cs(280,101): error CS1503: Argument 3: cannot convert from \u0027Microsoft.Dynamics.Nav.Runtime.NavCodeunitHandle\u0027 to \u0027Microsoft.Dynamics.Nav.Runtime.ByRef\u003CMicrosoft.Dynamics.Nav.Runtime.NavCodeunitHandle\u003E\u0027"
+      ],
+      "classification": "compile/signature-mismatch"
+    }
+  ]
 }

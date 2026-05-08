@@ -1,5 +1,5 @@
 // Renumbered from 56300 to avoid collision in new bucket layout (#1385).
-table 1056300 "Test Item 130"
+table 50006 "Test Item 130"
 {
     fields
     {
