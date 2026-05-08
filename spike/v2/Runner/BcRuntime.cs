@@ -523,6 +523,18 @@ public static partial class BcRuntime
                     "NavStringValue.CompareTo(NavStringValue)");
         }
 
+        // NavHttpRequestMessage.get_Target — same shape as NavRecordRef. Construct
+        // SharedNavHttpRequestMessage parented to skeleton container.
+        var navHttpReqType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavHttpRequestMessage");
+        if (navHttpReqType != null)
+        {
+            var targetGetter = navHttpReqType.GetProperty("Target",
+                BindingFlags.NonPublic | BindingFlags.Instance)?.GetGetMethod(true);
+            if (targetGetter != null)
+                Hook(targetGetter, nameof(NavHttpRequestMessage_get_Target),
+                    "NavHttpRequestMessage.get_Target");
+        }
+
         // ALSystemNumeric.ALRandomize/ALRandom — real impls reach NavCurrentThread.Session.Random
         // (null on skeleton). Back with a process-static Random.
         var alSysNumType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.ALSystemNumeric");

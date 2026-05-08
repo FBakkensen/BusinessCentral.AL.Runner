@@ -77,6 +77,50 @@ public static partial class BcRuntime
         return string.Compare(sv, ov, StringComparison.Ordinal);
     }
 
+    // NavHttpRequestMessage.get_Target — same shape as NavRecordRef.Target. Construct
+    // SharedNavHttpRequestMessage parented to the skeleton container.
+    private static ConstructorInfo? _ctorSharedHttpReq;
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static object NavHttpRequestMessage_get_Target(object self)
+    {
+        if (_pNavRecordRefTree == null) // reuse Tree-property lookup logic per type below
+            _pNavRecordRefTree = self.GetType().GetProperty("Tree",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        // Tree property is on TreeObject base — look up on the actual self type:
+        var treeProp = self.GetType().GetProperty("Tree",
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy);
+        var tree = treeProp!.GetValue(self)!;
+        if (_mTreeGetReferenceTarget == null)
+            _mTreeGetReferenceTarget = tree.GetType().GetMethod("GetReferenceTarget",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance,
+                null, Type.EmptyTypes, null);
+        if (_mTreeSetReferenceTarget == null)
+            _mTreeSetReferenceTarget = tree.GetType().GetMethod("SetReferenceTarget",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        var existing = _mTreeGetReferenceTarget?.Invoke(tree, null);
+        if (existing != null) return existing;
+
+        var navNcl = AppDomain.CurrentDomain.GetAssemblies()
+            .First(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Ncl");
+        if (_skeletonSharedObjectContainer == null)
+        {
+            var tContainer = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.TreeSharedObjectContainer")!;
+            var tITree = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.ITreeObject")!;
+            _skeletonSharedObjectContainer = tContainer.GetConstructor(new[] { tITree })!
+                .Invoke(new object?[] { RootTreeStub });
+        }
+        if (_ctorSharedHttpReq == null)
+        {
+            var tShared = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.SharedNavHttpRequestMessage")!;
+            var tIContainer = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.ITreeSharedObjectContainer")!;
+            _ctorSharedHttpReq = tShared.GetConstructor(
+                BindingFlags.NonPublic | BindingFlags.Instance, null, new[] { tIContainer }, null);
+        }
+        var shared = _ctorSharedHttpReq!.Invoke(new object?[] { _skeletonSharedObjectContainer });
+        _mTreeSetReferenceTarget?.Invoke(tree, new object?[] { shared });
+        return shared;
+    }
+
     // ALSystemNumeric.ALRandomize / ALRandom — real impls hit NavCurrentThread.Session.Random
     // which is null on the skeleton. Back the statics with a process-static Random.
     private static System.Random _alRandom = new System.Random();
