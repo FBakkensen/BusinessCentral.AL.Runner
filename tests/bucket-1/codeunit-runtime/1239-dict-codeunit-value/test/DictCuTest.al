@@ -1,7 +1,7 @@
 /// Tests for Dictionary of [Guid, Codeunit X] — issues #1239, #1240, #1241.
 /// Verifies that NavObjectDictionary with a codeunit value type compiles and runs
 /// in al-runner without ITreeObject constraint errors.
-codeunit 1239003 "Dict Cu Test"
+codeunit 50071 "Dict Cu Test"
 {
     Subtype = Test;
 

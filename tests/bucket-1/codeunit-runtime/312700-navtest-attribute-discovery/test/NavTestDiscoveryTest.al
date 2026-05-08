@@ -10,7 +10,7 @@
 ///
 /// GREEN after fix: exactly one test is reported; no phantom TestSomething entry.
 /// </summary>
-codeunit 1312702 "NAD Discovery Tests"
+codeunit 50234 "NAD Discovery Tests"
 {
     Subtype = Test;
 

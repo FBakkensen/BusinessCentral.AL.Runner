@@ -6,7 +6,7 @@
 ///         Table.TestField(Joker, Code),    Table.TestField(Joker, Code, ErrorInfo),
 ///         Table.TestField(Joker, Text),    Table.TestField(Joker, Text, ErrorInfo),
 ///         Table.TestField(Joker, ErrorInfo) — issue #1369.
-table 309100 "TFTO Item"
+table 50034 "TFTO Item"
 {
     fields
     {

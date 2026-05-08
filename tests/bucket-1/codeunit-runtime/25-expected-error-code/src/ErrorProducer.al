@@ -1,4 +1,4 @@
-codeunit 50500 ErrorProducer
+codeunit 50176 ErrorProducer
 {
     procedure RaiseDialogError()
     begin

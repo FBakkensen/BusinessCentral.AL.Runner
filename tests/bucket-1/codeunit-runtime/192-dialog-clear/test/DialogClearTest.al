@@ -1,6 +1,6 @@
 /// Tests proving that Clear(dlg) on a Dialog variable compiles and runs without error.
 /// Covers issue #964: MockDialog was missing Clear(), causing CS1061 at Roslyn compile time.
-codeunit 97707 "Dialog Clear Tests"
+codeunit 50144 "Dialog Clear Tests"
 {
     Subtype = Test;
 

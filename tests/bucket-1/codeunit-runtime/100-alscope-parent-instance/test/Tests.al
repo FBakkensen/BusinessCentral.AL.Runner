@@ -4,7 +4,7 @@
 // scope classes that access the parent codeunit via `this.Parent` (an instance
 // reference on the AlScope base class). With AlScope.Parent as static, the
 // generated C# fails with CS0176. The fix changes Parent to an instance property.
-codeunit 98302 "Scope Parent Instance Tests"
+codeunit 50015 "Scope Parent Instance Tests"
 {
     Subtype = Test;
 

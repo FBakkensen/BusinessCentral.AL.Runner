@@ -1,5 +1,5 @@
 // Renumbered from 50901 to avoid collision in new bucket layout (#1385).
-codeunit 1050901 "Session Api Test"
+codeunit 50351 "Session Api Test"
 {
     Subtype = Test;
 

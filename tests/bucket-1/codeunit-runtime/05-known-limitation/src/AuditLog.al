@@ -1,4 +1,4 @@
-table 50102 "Audit Log Entry"
+table 50000 "Audit Log Entry"
 {
     DataClassification = ToBeClassified;
 
@@ -27,7 +27,7 @@ table 50102 "Audit Log Entry"
     }
 }
 
-table 50103 "Customer Balance"
+table 50001 "Customer Balance"
 {
     DataClassification = ToBeClassified;
 
@@ -68,7 +68,7 @@ table 50103 "Customer Balance"
     // subscribers are not supported. See the test codeunit for details.
 }
 
-codeunit 50105 "Balance Manager"
+codeunit 50009 "Balance Manager"
 {
     procedure UpdateBalance(CustomerNo: Code[20]; NewBalance: Decimal)
     var

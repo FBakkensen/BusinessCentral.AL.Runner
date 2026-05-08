@@ -1,4 +1,4 @@
-codeunit 50115 "Adder"
+codeunit 50092 "Adder"
 {
     procedure Add(A: Integer; B: Integer): Integer
     begin

@@ -1,4 +1,4 @@
-table 50700 TestFieldTable
+table 50028 TestFieldTable
 {
     DataClassification = SystemMetadata;
 
@@ -21,7 +21,7 @@ table 50700 TestFieldTable
     }
 }
 
-codeunit 50700 TestFieldHelper
+codeunit 50190 TestFieldHelper
 {
     procedure ValidateRecord(var Rec: Record TestFieldTable)
     begin

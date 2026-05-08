@@ -1,4 +1,4 @@
-codeunit 50860 "Global Language Api"
+codeunit 50366 "Global Language Api"
 {
     procedure GetCurrentLanguage(): Integer
     begin

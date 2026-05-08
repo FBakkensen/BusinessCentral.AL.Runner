@@ -1,5 +1,5 @@
 /// Helper codeunit that exercises ErrorInfo.DataClassification get and set.
-codeunit 61950 "EI DataClass Src"
+codeunit 50182 "EI DataClass Src"
 {
     procedure SetCustomerContent()
     var

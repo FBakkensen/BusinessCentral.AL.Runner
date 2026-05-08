@@ -4,7 +4,7 @@
 // (DataError, ByRef taskId, int codeunitId, NavDictionary params, int timeout, NavOption errorLevel).
 
 // ── Minimal page ─────────────────────────────────────────────────────────────
-page 307300 "EBT5 Page"
+page 50000 "EBT5 Page"
 {
     PageType = Card;
     ApplicationArea = All;
@@ -13,7 +13,7 @@ page 307300 "EBT5 Page"
 }
 
 // ── Page extension exercising all overloads of EnqueueBackgroundTask ──────────
-pageextension 307301 "EBT5 Page Ext" extends "EBT5 Page"
+pageextension 50000 "EBT5 Page Ext" extends "EBT5 Page"
 {
     var
         TaskId1: Integer;
@@ -41,12 +41,12 @@ pageextension 307301 "EBT5 Page Ext" extends "EBT5 Page"
 }
 
 // ── Worker codeunit (just needs to exist) ────────────────────────────────────
-codeunit 307302 "EBT5 Worker"
+codeunit 50019 "EBT5 Worker"
 {
 }
 
 // ── Helper accessible from the test codeunit ─────────────────────────────────
-codeunit 307303 "EBT5 Helper"
+codeunit 50020 "EBT5 Helper"
 {
     procedure AllOverloadsCompile(): Boolean
     begin

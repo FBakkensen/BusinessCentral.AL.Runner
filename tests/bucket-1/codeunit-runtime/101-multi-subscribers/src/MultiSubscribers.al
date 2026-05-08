@@ -1,4 +1,4 @@
-codeunit 51011 "MS Publisher"
+codeunit 50033 "MS Publisher"
 {
     [IntegrationEvent(false, false)]
     procedure OnDoCalc(var Value: Integer)
@@ -15,7 +15,7 @@ codeunit 51011 "MS Publisher"
     end;
 }
 
-codeunit 51012 "MS Subscriber A"
+codeunit 50034 "MS Subscriber A"
 {
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"MS Publisher", 'OnDoCalc', '', true, true)]
     local procedure HandleCalcA(var Value: Integer)
@@ -24,7 +24,7 @@ codeunit 51012 "MS Subscriber A"
     end;
 }
 
-codeunit 51013 "MS Subscriber B"
+codeunit 50035 "MS Subscriber B"
 {
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"MS Publisher", 'OnDoCalc', '', true, true)]
     local procedure HandleCalcB(var Value: Integer)

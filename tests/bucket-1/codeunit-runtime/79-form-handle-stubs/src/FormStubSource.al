@@ -1,5 +1,5 @@
 // Renumbered from 57900 to avoid collision in new bucket layout (#1385).
-table 1057900 "Form Stub Data"
+table 50052 "Form Stub Data"
 {
     fields
     {
@@ -9,7 +9,7 @@ table 1057900 "Form Stub Data"
     keys { key(PK; Id) { Clustered = true; } }
 }
 
-page 57900 "Form Stub Page"
+page 50011 "Form Stub Page"
 {
     PageType = Card;
     SourceTable = "Form Stub Data";
@@ -36,7 +36,7 @@ page 57900 "Form Stub Page"
     }
 }
 
-codeunit 57900 "Form Stub Logic"
+codeunit 50347 "Form Stub Logic"
 {
     /// Exercises Page variable stubs (SetTableView, LookupMode, Editable, PageCaption, Clear, GetRecord)
     procedure ExercisePageStubs()

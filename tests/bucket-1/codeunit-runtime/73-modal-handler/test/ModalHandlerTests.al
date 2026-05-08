@@ -1,4 +1,4 @@
-codeunit 56721 "Modal Handler Tests"
+codeunit 50338 "Modal Handler Tests"
 {
     Subtype = Test;
 

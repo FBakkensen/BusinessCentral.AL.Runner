@@ -1,4 +1,4 @@
-table 50300 "Item Staging"
+table 50012 "Item Staging"
 {
     DataClassification = CustomerContent;
 

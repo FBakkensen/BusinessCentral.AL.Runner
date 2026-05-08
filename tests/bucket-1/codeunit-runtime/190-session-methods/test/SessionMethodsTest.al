@@ -1,4 +1,4 @@
-codeunit 60161 "SES Test"
+codeunit 50139 "SES Test"
 {
     Subtype = Test;
 

@@ -1,4 +1,4 @@
-table 1282001 "Inv Ext Tbl"
+table 50011 "Inv Ext Tbl"
 {
     DataClassification = ToBeClassified;
 

@@ -10,7 +10,7 @@
 /// different types, the differing positions are widened to Variant so that both
 /// NavOption (Enum callers) and NavCode (Code callers) pass without a cast error.
 
-enum 1315001 "Multi OL Doc Type"
+enum 50003 "Multi OL Doc Type"
 {
     Extensible = false;
 
@@ -22,7 +22,7 @@ enum 1315001 "Multi OL Doc Type"
 
 /// Codeunit that deliberately overloads CreateHeader with (Enum, Code) and (Code, Code).
 /// In production use this would come from an auto-stubbed library package.
-codeunit 1315002 "Multi OL Sales Lib"
+codeunit 50245 "Multi OL Sales Lib"
 {
     /// Enum-typed overload — call site emits NavOption for the second arg.
     procedure CreateHeader(var DocHeader: Record "Multi OL Doc Header"; DocType: Enum "Multi OL Doc Type"; CustomerNo: Code[20])
@@ -45,7 +45,7 @@ codeunit 1315002 "Multi OL Sales Lib"
 }
 
 /// Minimal table used as the var-record parameter in CreateHeader.
-table 1315003 "Multi OL Doc Header"
+table 50039 "Multi OL Doc Header"
 {
     DataClassification = SystemMetadata;
     fields

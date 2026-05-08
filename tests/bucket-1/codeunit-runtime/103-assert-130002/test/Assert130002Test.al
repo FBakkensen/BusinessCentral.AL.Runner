@@ -1,4 +1,4 @@
-codeunit 100006 "Assert 130002 Test"
+codeunit 50049 "Assert 130002 Test"
 {
     Subtype = Test;
 

@@ -7,7 +7,7 @@
 //
 // Test codeunit ID: 159603.
 
-codeunit 159603 "SMC Tests"
+codeunit 50106 "SMC Tests"
 {
     Subtype = Test;
 

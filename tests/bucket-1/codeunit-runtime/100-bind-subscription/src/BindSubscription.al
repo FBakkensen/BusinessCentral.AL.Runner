@@ -1,4 +1,4 @@
-table 51001 "BS Counter"
+table 50002 "BS Counter"
 {
     fields
     {
@@ -8,7 +8,7 @@ table 51001 "BS Counter"
     keys { key(PK; PK) { Clustered = true; } }
 }
 
-codeunit 51001 "BS Publisher"
+codeunit 50016 "BS Publisher"
 {
     [IntegrationEvent(false, false)]
     procedure OnDoSomething()
@@ -21,7 +21,7 @@ codeunit 51001 "BS Publisher"
     end;
 }
 
-codeunit 51002 "BS Manual Subscriber"
+codeunit 50017 "BS Manual Subscriber"
 {
     EventSubscriberInstance = Manual;
 

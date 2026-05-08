@@ -1,4 +1,4 @@
-codeunit 50104 "Input Validator"
+codeunit 50007 "Input Validator"
 {
     procedure ValidateEmail(Email: Text[250])
     begin

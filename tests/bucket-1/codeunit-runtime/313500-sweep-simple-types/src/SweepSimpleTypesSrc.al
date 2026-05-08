@@ -8,7 +8,7 @@
 ///   Guid.ToText (Boolean)
 ///   FieldRef.FieldError (Text)
 ///   Notification.AddAction (Text, Integer, Text, Text)
-codeunit 313500 "Sweep Simple Src"
+codeunit 50240 "Sweep Simple Src"
 {
     // ── BigText.AddText (Text, Integer) ──────────────────────────────────────
     // Inserts text at a 1-based position within an existing BigText.
@@ -104,7 +104,7 @@ codeunit 313500 "Sweep Simple Src"
     end;
 }
 
-table 313500 "SST Rec"
+table 50037 "SST Rec"
 {
     fields
     {

@@ -1,4 +1,4 @@
-codeunit 311444 "StopSession Comment Test"
+codeunit 50230 "StopSession Comment Test"
 {
     Subtype = Test;
 

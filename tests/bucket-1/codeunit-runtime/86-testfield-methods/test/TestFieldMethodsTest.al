@@ -1,7 +1,7 @@
 /// Tests for the missing TestField methods: AsBoolean, AsInteger, AsDate, AsTime,
 /// AssertEquals, ValidationErrorCount, OptionCount, Activate, AssistEdit,
 /// HideValue, ShowMandatory, Invoke, GetOption, GetValidationError.
-codeunit 86101 "TFM Test"
+codeunit 50368 "TFM Test"
 {
     Subtype = Test;
 

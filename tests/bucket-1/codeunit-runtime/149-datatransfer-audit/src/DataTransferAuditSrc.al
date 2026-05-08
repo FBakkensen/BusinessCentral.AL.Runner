@@ -1,4 +1,4 @@
-table 59560 "DTA Item"
+table 50015 "DTA Item"
 {
     DataClassification = CustomerContent;
     fields
@@ -16,7 +16,7 @@ table 59560 "DTA Item"
 
 /// Helper codeunit exercising DataTransfer.UpdateAuditFields — the property
 /// issue #475 says is not stubbed.
-codeunit 59560 "DTA Src"
+codeunit 50090 "DTA Src"
 {
     procedure GetUpdateAuditFieldsDefault(): Boolean
     var

@@ -1,5 +1,5 @@
 // Renumbered from 57901 to avoid collision in new bucket layout (#1385).
-codeunit 1057901 "Form Stub Tests"
+codeunit 50348 "Form Stub Tests"
 {
     Subtype = Test;
 

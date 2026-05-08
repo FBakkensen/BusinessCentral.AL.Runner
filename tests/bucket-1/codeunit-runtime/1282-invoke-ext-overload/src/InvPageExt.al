@@ -1,4 +1,4 @@
-pageextension 1282001 "Inv Ext PgExt" extends "Inv Ext Pg"
+pageextension 50001 "Inv Ext PgExt" extends "Inv Ext Pg"
 {
     procedure GetExtNumber(Input: Integer): Integer
     begin

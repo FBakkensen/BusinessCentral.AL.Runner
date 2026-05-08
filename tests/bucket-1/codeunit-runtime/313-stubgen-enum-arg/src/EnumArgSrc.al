@@ -9,7 +9,7 @@
 /// This fixture compiles the callee codeunit from source so the test suite can run
 /// without a package; the companion C# test (AutoStubEnumParamTests.cs) covers the
 /// actual auto-stub path end-to-end when alc.exe is available.
-enum 1313001 "Enum Arg Status"
+enum 50002 "Enum Arg Status"
 {
     Extensible = false;
 
@@ -21,7 +21,7 @@ enum 1313001 "Enum Arg Status"
 
 /// Simulates the codeunit whose methods have Enum/Option-typed parameters.
 /// In production use this would come from a missing library package (auto-stubbed).
-codeunit 1313002 "Enum Arg Helper"
+codeunit 50238 "Enum Arg Helper"
 {
     /// Method with a named Enum parameter — the canonical #1419 failure pattern.
     /// Returns the ordinal of the passed enum value so the test can assert a

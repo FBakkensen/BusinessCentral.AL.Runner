@@ -1,4 +1,4 @@
-codeunit 84700 "CE Src"
+codeunit 50192 "CE Src"
 {
     /// Raises two collectible errors (no [ErrorBehavior] here — caller must be in collect mode).
     procedure RaiseTwoErrors()

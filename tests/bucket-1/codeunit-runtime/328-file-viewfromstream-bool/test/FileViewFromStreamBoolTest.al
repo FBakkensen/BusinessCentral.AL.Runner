@@ -1,4 +1,4 @@
-codeunit 1320409 "File ViewFromStream Bool Test"
+codeunit 50272 "File ViewFromStream Bool Test"
 {
     Subtype = Test;
 

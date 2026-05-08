@@ -1,4 +1,4 @@
-codeunit 58000 "Fluent Builder"
+codeunit 50345 "Fluent Builder"
 {
     var
         myValue: Integer;

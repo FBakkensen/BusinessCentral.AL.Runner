@@ -1,4 +1,4 @@
-codeunit 310000 "ECP Helper"
+codeunit 50000 "ECP Helper"
 {
     /// <summary>
     /// Simple helper: multiply two integers.

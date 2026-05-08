@@ -1,4 +1,4 @@
-codeunit 50111 "Stats Calculator"
+codeunit 50012 "Stats Calculator"
 {
     var
         MathHelper: Codeunit "Math Helper";

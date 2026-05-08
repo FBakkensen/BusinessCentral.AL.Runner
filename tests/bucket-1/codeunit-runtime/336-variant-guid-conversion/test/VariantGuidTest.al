@@ -1,4 +1,4 @@
-codeunit 1320507 "VG Test"
+codeunit 50288 "VG Test"
 {
     Subtype = Test;
 

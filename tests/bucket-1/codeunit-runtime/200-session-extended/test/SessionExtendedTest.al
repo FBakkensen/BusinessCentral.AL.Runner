@@ -1,4 +1,4 @@
-codeunit 60271 "SXE Test"
+codeunit 50154 "SXE Test"
 {
     Subtype = Test;
 

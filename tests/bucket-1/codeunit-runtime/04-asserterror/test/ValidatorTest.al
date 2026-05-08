@@ -1,4 +1,4 @@
-codeunit 50903 "Input Validator Tests"
+codeunit 50008 "Input Validator Tests"
 {
     Subtype = Test;
 

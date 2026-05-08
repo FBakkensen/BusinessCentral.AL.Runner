@@ -3,7 +3,7 @@
 /// that auto-stubbing produces a class with callable methods (not just empty).
 /// In real usage, this codeunit would come from an .app package and be
 /// auto-stubbed via AL compilation from SymbolReference.json metadata.
-codeunit 130999 "Rich Stub Helper"
+codeunit 50055 "Rich Stub Helper"
 {
     procedure ComputeValue(Input: Integer): Integer
     begin

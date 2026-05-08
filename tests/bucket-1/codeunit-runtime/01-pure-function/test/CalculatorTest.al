@@ -1,4 +1,4 @@
-codeunit 50900 "Discount Calculator Tests"
+codeunit 50003 "Discount Calculator Tests"
 {
     Subtype = Test;
 

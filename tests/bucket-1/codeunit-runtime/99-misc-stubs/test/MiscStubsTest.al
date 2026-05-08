@@ -1,4 +1,4 @@
-codeunit 111002 MiscStubsTest
+codeunit 50378 MiscStubsTest
 {
     Subtype = Test;
     var Assert: Codeunit Assert;

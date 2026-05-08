@@ -1,7 +1,7 @@
 /// Source codeunit exercising the 4 missing method overloads.
 /// Issues: #1180 (Report.Execute), #1183 (File.Create bool return),
 ///         #1187 (RecordRef.AddLink), #1192 (RecordRef.GetView(false)).
-codeunit 302100 "OG Src"
+codeunit 50207 "OG Src"
 {
     // Issue #1180 — Report.Execute(XmlText) on an instance variable.
     procedure CallReportExecute(var Rep: Report "OG Dummy Report"; XmlText: Text)

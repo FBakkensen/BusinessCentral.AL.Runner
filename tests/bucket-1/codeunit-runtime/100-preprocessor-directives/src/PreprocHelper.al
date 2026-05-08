@@ -1,7 +1,7 @@
 // Codeunit that uses #if/#endif preprocessor guards.
 // The runner must handle these directives gracefully: undefined symbols
 // cause their guarded blocks to be excluded, and the codeunit still compiles.
-codeunit 1900007 "Preproc Helper"
+codeunit 50023 "Preproc Helper"
 {
     // This block is always included (no guard).
     procedure AlwaysPresent(): Integer

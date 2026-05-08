@@ -9,7 +9,7 @@
 /// "dispatch picks the right overload and the auto-stub returns the type default (empty Code)."
 /// A constant-default mock would also pass these — the discriminating proof is in
 /// MockCodeunitHandleScoreTests.cs (C# unit tests for ScoreMethodMatch tiers).
-codeunit 1577002 "No Series GetNextNo OL Test"
+codeunit 50247 "No Series GetNextNo OL Test"
 {
     Subtype = Test;
     TestPermissions = Disabled;

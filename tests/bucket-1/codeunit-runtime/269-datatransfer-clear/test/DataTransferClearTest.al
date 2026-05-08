@@ -1,4 +1,4 @@
-codeunit 1269002 "DTC Test"
+codeunit 50189 "DTC Test"
 {
     Subtype = Test;
 

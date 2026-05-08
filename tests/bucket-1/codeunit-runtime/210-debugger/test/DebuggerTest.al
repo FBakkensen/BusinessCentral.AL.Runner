@@ -1,4 +1,4 @@
-codeunit 60371 "DBG Test"
+codeunit 50160 "DBG Test"
 {
     Subtype = Test;
 

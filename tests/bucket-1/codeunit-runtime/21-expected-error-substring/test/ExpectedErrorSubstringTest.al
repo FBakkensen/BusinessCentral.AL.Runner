@@ -1,4 +1,4 @@
-codeunit 50921 "Expected Error Substring Tests"
+codeunit 50158 "Expected Error Substring Tests"
 {
     Subtype = Test;
 

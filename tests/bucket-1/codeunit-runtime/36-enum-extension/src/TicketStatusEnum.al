@@ -1,4 +1,4 @@
-enum 52820 "Ticket Status"
+enum 50004 "Ticket Status"
 {
     Extensible = true;
 

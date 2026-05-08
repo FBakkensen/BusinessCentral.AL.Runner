@@ -1,4 +1,4 @@
-codeunit 82001 "AI Attribute Item Tests"
+codeunit 50355 "AI Attribute Item Tests"
 {
     Subtype = Test;
 

@@ -1,6 +1,6 @@
 /// Helper codeunit wrapping the AL `CurrentDateTime` built-in so tests can
 /// assert against its value the way issue #463 asks.
-codeunit 50830 "CDT Src"
+codeunit 50356 "CDT Src"
 {
     procedure GetNow(): DateTime
     begin

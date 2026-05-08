@@ -1,4 +1,4 @@
-codeunit 1320416 "JsonObject Bool Src"
+codeunit 50275 "JsonObject Bool Src"
 {
     procedure GetObjectRequireExists(): Boolean
     var

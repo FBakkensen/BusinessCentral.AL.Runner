@@ -1,4 +1,4 @@
-codeunit 59821 "BigText Helper"
+codeunit 50064 "BigText Helper"
 {
     procedure AddAndGetLength(): Integer
     var

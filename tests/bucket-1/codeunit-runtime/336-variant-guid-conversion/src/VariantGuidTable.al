@@ -1,4 +1,4 @@
-table 1320600 "VG Table"
+table 50043 "VG Table"
 {
     DataClassification = ToBeClassified;
 

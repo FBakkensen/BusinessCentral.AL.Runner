@@ -1,6 +1,6 @@
 /// Helper for Notification.Default tests (issue #1189).
 /// Uses a GLOBAL Notification variable — BC generates MockNotification.Default for global fields.
-codeunit 229001 "ND Helper"
+codeunit 50170 "ND Helper"
 {
     var
         GlobalNotification: Notification;

@@ -2,7 +2,7 @@
 // Tests that the default CLEANSCHEMA set (1..25) is applied correctly:
 // CLEANSCHEMA1 is active, so #if not CLEANSCHEMA1 blocks are excluded,
 // and #if CLEANSCHEMA1 blocks are included.
-codeunit 1587100 "CS Version Helper"
+codeunit 50101 "CS Version Helper"
 {
     // Always present (no guard). Base case.
     procedure AlwaysPresent(): Integer

@@ -1,4 +1,4 @@
-codeunit 1314002 "Char Evaluate Repro Tests"
+codeunit 50244 "Char Evaluate Repro Tests"
 {
     Subtype = Test;
 

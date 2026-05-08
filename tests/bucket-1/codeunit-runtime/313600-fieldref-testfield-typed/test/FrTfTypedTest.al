@@ -17,7 +17,7 @@
 ///   FieldRef.TestField (DateTime, ErrorInfo)
 ///   FieldRef.TestField (ErrorInfo)         — non-empty check with ErrorInfo
 ///   FieldRef.FieldError (Text)             — already covered in 313500 but double-counting here too
-codeunit 313601 "FrTf Typed Test"
+codeunit 50242 "FrTf Typed Test"
 {
     Subtype = Test;
 

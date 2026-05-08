@@ -2,7 +2,7 @@
 /// ApplicationArea, GetExecutionContext, GetModuleExecutionContext,
 /// GetCurrentModuleExecutionContext, SendTraceTag, LogSecurityAudit,
 /// EnableVerboseTelemetry, ApplicationIdentifier, SetDocumentServiceToken.
-codeunit 60270 "SXE Src"
+codeunit 50153 "SXE Src"
 {
     procedure GetAppArea(): Text
     begin

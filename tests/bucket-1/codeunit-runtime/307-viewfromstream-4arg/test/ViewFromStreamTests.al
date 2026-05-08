@@ -1,4 +1,4 @@
-codeunit 307501 "ViewFromStream Tests"
+codeunit 50214 "ViewFromStream Tests"
 {
     Subtype = Test;
 

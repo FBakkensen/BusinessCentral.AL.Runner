@@ -1,4 +1,4 @@
-codeunit 52920 "Enum Extension Tests"
+codeunit 50308 "Enum Extension Tests"
 {
     Subtype = Test;
 

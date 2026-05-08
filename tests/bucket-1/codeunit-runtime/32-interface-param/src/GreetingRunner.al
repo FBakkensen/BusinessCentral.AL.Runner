@@ -1,4 +1,4 @@
-codeunit 53203 "Greeting Runner"
+codeunit 50254 "Greeting Runner"
 {
     var
         Greeter: Interface "IGreeter";

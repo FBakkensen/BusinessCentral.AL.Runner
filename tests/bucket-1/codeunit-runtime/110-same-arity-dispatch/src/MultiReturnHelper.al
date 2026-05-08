@@ -1,7 +1,7 @@
 /// Helper codeunit with multiple methods that share the same parameter count
 /// but return different types. Exercises the dispatch mechanism when the
 /// arg-count fallback must disambiguate by method name (not just arity).
-codeunit 294001 "Multi Return Helper"
+codeunit 50057 "Multi Return Helper"
 {
     procedure GetCode(Input: Integer): Code[20]
     begin

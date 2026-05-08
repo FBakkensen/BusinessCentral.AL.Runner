@@ -1,7 +1,7 @@
 /// Source codeunit for Dictionary of [Guid, Codeunit] tests (issues #1239, #1240, #1241).
 /// Exercises NavObjectDictionary<TKey, TValue> where TValue is a codeunit type:
 ///   - Add / ContainsKey / Get (out-param and return) / Remove / Keys()
-codeunit 1239001 "Dict Cu Manager"
+codeunit 50069 "Dict Cu Manager"
 {
     var
         ActiveTasks: Dictionary of [Guid, Codeunit "Dict Cu Task Handle"];
@@ -43,7 +43,7 @@ codeunit 1239001 "Dict Cu Manager"
     end;
 }
 
-codeunit 1239002 "Dict Cu Task Handle"
+codeunit 50070 "Dict Cu Task Handle"
 {
     var
         Name: Text;

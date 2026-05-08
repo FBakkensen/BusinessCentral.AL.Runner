@@ -1,4 +1,4 @@
-codeunit 1320512 "FR Validate NoArg Tests"
+codeunit 50022 "FR Validate NoArg Tests"
 {
     Subtype = Test;
 

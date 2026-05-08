@@ -1,5 +1,5 @@
 // Renumbered from 109001 to avoid collision in new bucket layout (#1385).
-codeunit 1109001 "Rich Auto Stub Test"
+codeunit 50056 "Rich Auto Stub Test"
 {
     Subtype = Test;
 

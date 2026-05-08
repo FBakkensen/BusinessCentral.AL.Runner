@@ -1,4 +1,4 @@
-table 1320513 "FR Validate NoArg"
+table 50003 "FR Validate NoArg"
 {
     fields
     {

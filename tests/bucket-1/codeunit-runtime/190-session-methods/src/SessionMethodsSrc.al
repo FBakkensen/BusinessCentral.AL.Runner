@@ -1,5 +1,5 @@
 /// Helper codeunit exercising the Session built-in's static methods.
-codeunit 60160 "SES Src"
+codeunit 50138 "SES Src"
 {
     procedure GetClientType(): ClientType
     begin

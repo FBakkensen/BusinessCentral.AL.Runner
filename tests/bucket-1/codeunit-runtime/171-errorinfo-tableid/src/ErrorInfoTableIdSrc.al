@@ -1,5 +1,5 @@
 /// Helper codeunit exercising ErrorInfo.TableId getter/setter.
-codeunit 59920 "EIT Tid Src"
+codeunit 50122 "EIT Tid Src"
 {
     procedure SetAndGet(tableId: Integer): Integer
     var

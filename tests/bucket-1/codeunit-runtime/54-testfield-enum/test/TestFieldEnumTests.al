@@ -1,4 +1,4 @@
-codeunit 56101 "TestField Enum Tests"
+codeunit 50322 "TestField Enum Tests"
 {
     Subtype = Test;
 

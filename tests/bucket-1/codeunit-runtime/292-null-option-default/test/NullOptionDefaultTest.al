@@ -6,7 +6,7 @@
 /// NavOption for every enum field is null.  Any subsequent re-assignment of
 /// that field to a local enum variable triggers CloneTaggedOption(null, ordinal)
 /// which previously threw a NullReferenceException / ArgumentNullException.
-codeunit 79901 "NullOpt Tests"
+codeunit 50205 "NullOpt Tests"
 {
     Subtype = Test;
 

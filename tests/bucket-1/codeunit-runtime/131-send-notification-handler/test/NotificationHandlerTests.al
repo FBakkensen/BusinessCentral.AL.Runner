@@ -1,4 +1,4 @@
-codeunit 59981 "Notification Handler Tests"
+codeunit 50080 "Notification Handler Tests"
 {
     Subtype = Test;
 

@@ -1,4 +1,4 @@
-table 296003 "MaxStrLen InitValue Test"
+table 50007 "MaxStrLen InitValue Test"
 {
     // Table with Text/Code fields that have InitValue declarations.
     // Used to test that MaxStrLen() returns the declared field length

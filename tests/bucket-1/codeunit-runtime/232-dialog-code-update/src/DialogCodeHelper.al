@@ -1,4 +1,4 @@
-table 232000 "DCU Item"
+table 50026 "DCU Item"
 {
     DataClassification = ToBeClassified;
 
@@ -14,7 +14,7 @@ table 232000 "DCU Item"
     }
 }
 
-codeunit 232000 "DCU Helper"
+codeunit 50174 "DCU Helper"
 {
     /// <summary>
     /// Uses Dialog.Update with a Code field value.

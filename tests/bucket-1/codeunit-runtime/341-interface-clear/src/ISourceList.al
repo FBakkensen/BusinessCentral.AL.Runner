@@ -4,7 +4,7 @@ interface "IC Source List"
     procedure GetName(): Text;
 }
 
-codeunit 1900004 "IC Source List Impl A" implements "IC Source List"
+codeunit 50302 "IC Source List Impl A" implements "IC Source List"
 {
     procedure GetCount(): Integer
     begin
@@ -17,7 +17,7 @@ codeunit 1900004 "IC Source List Impl A" implements "IC Source List"
     end;
 }
 
-codeunit 1900005 "IC Source List Impl B" implements "IC Source List"
+codeunit 50303 "IC Source List Impl B" implements "IC Source List"
 {
     procedure GetCount(): Integer
     begin

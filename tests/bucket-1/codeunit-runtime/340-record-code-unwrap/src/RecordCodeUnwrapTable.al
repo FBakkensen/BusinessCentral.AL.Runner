@@ -1,4 +1,4 @@
-table 1320610 "Record Code Unwrap Table"
+table 50044 "Record Code Unwrap Table"
 {
     DataClassification = CustomerContent;
 

@@ -6,7 +6,7 @@
 //
 // This source codeunit exercises a pattern where scope classes access
 // codeunit-level variables through the Parent reference.
-codeunit 60290 "Scope Parent Source"
+codeunit 50201 "Scope Parent Source"
 {
     var
         StepCounter: Integer;

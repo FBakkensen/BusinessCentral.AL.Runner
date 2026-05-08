@@ -2,7 +2,7 @@
 // MockDialog.ALUpdate has both NavValue and string overloads; NavCode satisfies both
 // (NavCode extends NavValue and has implicit string conversion) → CS0121.
 // Fix: add explicit NavCode overload to MockDialog.ALUpdate.
-codeunit 232001 "DCU Tests"
+codeunit 50175 "DCU Tests"
 {
     Subtype = Test;
 

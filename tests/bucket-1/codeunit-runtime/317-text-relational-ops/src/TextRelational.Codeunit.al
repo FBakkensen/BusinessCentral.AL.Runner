@@ -1,4 +1,4 @@
-codeunit 1314003 "Text Relational Helper"
+codeunit 50248 "Text Relational Helper"
 {
     procedure GreaterText(A: Text; B: Text): Boolean
     begin

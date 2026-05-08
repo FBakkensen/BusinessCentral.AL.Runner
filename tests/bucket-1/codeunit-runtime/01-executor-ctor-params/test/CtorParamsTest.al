@@ -11,7 +11,7 @@
 /// After the fix, the executor supplies default values for extra ctor params so
 /// the scope is constructed correctly and execution continues.
 /// </summary>
-codeunit 310001 "ECP Tests"
+codeunit 50001 "ECP Tests"
 {
     Subtype = Test;
 

@@ -1,4 +1,4 @@
-codeunit 85001 "NAS Test"
+codeunit 50365 "NAS Test"
 {
     Subtype = Test;
 

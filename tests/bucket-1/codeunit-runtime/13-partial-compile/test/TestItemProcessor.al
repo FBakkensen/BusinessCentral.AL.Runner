@@ -1,4 +1,4 @@
-codeunit 50390 "Test Item Processor"
+codeunit 50078 "Test Item Processor"
 {
     Subtype = Test;
 

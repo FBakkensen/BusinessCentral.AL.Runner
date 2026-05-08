@@ -1,4 +1,4 @@
-codeunit 56280 "Missing CU Probe"
+codeunit 50073 "Missing CU Probe"
 {
     procedure CallMissingUserCodeunit()
     begin
@@ -28,7 +28,7 @@ codeunit 56280 "Missing CU Probe"
     procedure CallExistingCodeunit()
     begin
         // Call a codeunit that does exist in the assembly (positive path)
-        Codeunit.Run(56282);
+        Codeunit.Run(50072);
     end;
 
     procedure SetFiredFlag(var Fired: Boolean)

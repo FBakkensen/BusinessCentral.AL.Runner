@@ -1,4 +1,4 @@
-codeunit 1314004 "Text Relational Test"
+codeunit 50249 "Text Relational Test"
 {
     Subtype = Test;
 

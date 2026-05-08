@@ -1,4 +1,4 @@
-codeunit 1320419 "InStream Position Test"
+codeunit 50278 "InStream Position Test"
 {
     Subtype = Test;
 

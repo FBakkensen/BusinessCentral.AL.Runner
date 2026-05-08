@@ -1,4 +1,4 @@
-codeunit 1320400 "HC UseDefaultNetwork Bool Src"
+codeunit 50263 "HC UseDefaultNetwork Bool Src"
 {
     /// <summary>
     /// Exercises UseDefaultNetworkWindowsAuthentication() in a boolean context.

@@ -1,4 +1,4 @@
-codeunit 60281 "NAR Test"
+codeunit 50156 "NAR Test"
 {
     Subtype = Test;
 

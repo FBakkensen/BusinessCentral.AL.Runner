@@ -1,4 +1,4 @@
-codeunit 228002 "Notification Gaps Tests"
+codeunit 50169 "Notification Gaps Tests"
 {
     Subtype = Test;
 

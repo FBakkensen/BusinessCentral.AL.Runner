@@ -1,4 +1,4 @@
-codeunit 50861 "Global Language Test"
+codeunit 50367 "Global Language Test"
 {
     Subtype = Test;
 

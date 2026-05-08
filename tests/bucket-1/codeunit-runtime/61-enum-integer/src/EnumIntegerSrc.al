@@ -1,4 +1,4 @@
-enum 57700 "EI Color"
+enum 50009 "EI Color"
 {
     Extensible = false;
 
@@ -13,7 +13,7 @@ enum 57700 "EI Color"
     }
 }
 
-codeunit 57701 "EI Enum Converter"
+codeunit 50325 "EI Enum Converter"
 {
     procedure ToInteger(C: Enum "EI Color"): Integer
     begin

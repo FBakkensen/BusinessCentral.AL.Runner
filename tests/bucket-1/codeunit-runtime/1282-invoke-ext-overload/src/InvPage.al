@@ -1,4 +1,4 @@
-page 1282001 "Inv Ext Pg"
+page 50001 "Inv Ext Pg"
 {
     PageType = Card;
     SourceTable = "Inv Ext Tbl";

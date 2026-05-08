@@ -1,4 +1,4 @@
-codeunit 103000 "SEU Src"
+codeunit 50132 "SEU Src"
 {
     procedure GetLastErrText(): Text
     begin

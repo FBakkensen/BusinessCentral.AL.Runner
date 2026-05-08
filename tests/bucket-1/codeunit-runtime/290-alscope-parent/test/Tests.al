@@ -7,7 +7,7 @@
 //
 // These tests exercise codeunit-level variable access through scope classes
 // (the base.Parent.xxx rewrite) and verify correct runtime behaviour.
-codeunit 60291 "Scope Parent Tests"
+codeunit 50202 "Scope Parent Tests"
 {
     Subtype = Test;
 

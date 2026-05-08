@@ -1,5 +1,5 @@
 // Renumbered from 59401 to avoid collision in new bucket layout (#1385).
-codeunit 1059401 "DataError Suppress Tests"
+codeunit 50053 "DataError Suppress Tests"
 {
     Subtype = Test;
 

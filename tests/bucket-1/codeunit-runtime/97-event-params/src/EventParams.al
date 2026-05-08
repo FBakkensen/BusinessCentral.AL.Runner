@@ -1,4 +1,4 @@
-codeunit 59701 "EP Publisher"
+codeunit 50372 "EP Publisher"
 {
     [IntegrationEvent(false, false)]
     procedure OnBeforeCalc(var Amount: Integer; var IsHandled: Boolean)
@@ -19,7 +19,7 @@ codeunit 59701 "EP Publisher"
     end;
 }
 
-codeunit 59702 "EP Subscriber"
+codeunit 50373 "EP Subscriber"
 {
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"EP Publisher", 'OnBeforeCalc', '', true, true)]
     local procedure HandleBeforeCalc(var Amount: Integer; var IsHandled: Boolean)

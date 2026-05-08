@@ -6,7 +6,7 @@
 //
 // Object IDs 159600-159602 (table 159600).
 
-table 159600 "SMC Event Log"
+table 50016 "SMC Event Log"
 {
     fields
     {
@@ -18,7 +18,7 @@ table 159600 "SMC Event Log"
     keys { key(PK; PK) { Clustered = true; } }
 }
 
-codeunit 159600 "SMC Publisher"
+codeunit 50103 "SMC Publisher"
 {
     [IntegrationEvent(false, false)]
     procedure OnAfterCalculate(Input: Integer; Result: Integer)
@@ -35,7 +35,7 @@ codeunit 159600 "SMC Publisher"
     end;
 }
 
-codeunit 159601 "SMC Subscriber"
+codeunit 50104 "SMC Subscriber"
 {
     // Normal subscriber to a publisher that IS in the slice — must fire at runtime.
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"SMC Publisher", 'OnAfterCalculate', '', true, true)]
@@ -58,7 +58,7 @@ codeunit 159601 "SMC Subscriber"
     end;
 }
 
-codeunit 159602 "SMC Log Helper"
+codeunit 50105 "SMC Log Helper"
 {
     procedure Reset()
     var

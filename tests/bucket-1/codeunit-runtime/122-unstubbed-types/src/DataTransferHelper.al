@@ -1,4 +1,4 @@
-table 59810 "DT Source"
+table 50009 "DT Source"
 {
     DataClassification = ToBeClassified;
 
@@ -14,7 +14,7 @@ table 59810 "DT Source"
     }
 }
 
-table 59811 "DT Target"
+table 50010 "DT Target"
 {
     DataClassification = ToBeClassified;
 
@@ -30,7 +30,7 @@ table 59811 "DT Target"
     }
 }
 
-codeunit 59823 "DataTransfer Helper"
+codeunit 50065 "DataTransfer Helper"
 {
     procedure CopyRowsLeavesTargetEmpty(): Boolean
     var

@@ -1,4 +1,4 @@
-codeunit 50133 "Test EFI From Integer"
+codeunit 50032 "Test EFI From Integer"
 {
     Subtype = Test;
 

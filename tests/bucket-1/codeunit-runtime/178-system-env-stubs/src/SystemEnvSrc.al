@@ -1,4 +1,4 @@
-codeunit 105000 "SEVS Src"
+codeunit 50134 "SEVS Src"
 {
     procedure GetApplicationPath(): Text
     begin

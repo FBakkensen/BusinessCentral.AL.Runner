@@ -1,4 +1,4 @@
-codeunit 59820 "Notification Helper"
+codeunit 50066 "Notification Helper"
 {
     procedure CreateAndSend(): Guid
     var

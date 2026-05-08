@@ -14,7 +14,7 @@
 // A table with a local procedure called TestSomething — reproduces the
 // exact shape from the bug report (NALICF Component Line, etc.).
 // -------------------------------------------------------------------
-table 1312700 "NAD Demo Table"
+table 50036 "NAD Demo Table"
 {
     fields
     {
@@ -44,7 +44,7 @@ table 1312700 "NAD Demo Table"
 // A plain (non-Test) codeunit with a public Test* procedure — another
 // shape that caused false positives.
 // -------------------------------------------------------------------
-codeunit 1312701 "NAD Helper"
+codeunit 50233 "NAD Helper"
 {
     /// <summary>
     /// A public helper procedure whose name starts with "Test".

@@ -4,7 +4,7 @@
 // always pass a session argument (null! or a real session) — user-defined
 // ToText() methods have 0 arguments and must be left untouched.
 
-codeunit 1319001 "ToText User Method Src"
+codeunit 50026 "ToText User Method Src"
 {
     /// Returns a fixed string. Used to verify that calling a user-defined
     /// ToText() method (0 args, returns Text) does not trigger the

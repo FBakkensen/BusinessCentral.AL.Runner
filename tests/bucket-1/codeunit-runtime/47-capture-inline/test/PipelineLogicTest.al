@@ -1,4 +1,4 @@
-codeunit 50471 "CI Pipeline Tests"
+codeunit 50316 "CI Pipeline Tests"
 {
     Subtype = Test;
 

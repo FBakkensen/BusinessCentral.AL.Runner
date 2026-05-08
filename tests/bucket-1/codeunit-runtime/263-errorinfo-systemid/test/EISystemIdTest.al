@@ -1,4 +1,4 @@
-codeunit 61931 "EI SystemId Test"
+codeunit 50181 "EI SystemId Test"
 {
     Subtype = Test;
 

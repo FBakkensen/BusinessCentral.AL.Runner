@@ -1,5 +1,5 @@
 /// Table with DataClassification on the table and each field.
-table 82000 "AI Test Record"
+table 50054 "AI Test Record"
 {
     DataClassification = CustomerContent;
 
@@ -35,7 +35,7 @@ table 82000 "AI Test Record"
 }
 
 /// Table extension that adds a field with DataClassification.
-tableextension 82000 "AI Test Record Ext" extends "AI Test Record"
+tableextension 50000 "AI Test Record Ext" extends "AI Test Record"
 {
     fields
     {
@@ -47,7 +47,7 @@ tableextension 82000 "AI Test Record Ext" extends "AI Test Record"
 }
 
 /// Codeunit that exercises the table with attribute-annotated fields.
-codeunit 82000 "AI Attribute Item Lib"
+codeunit 50354 "AI Attribute Item Lib"
 {
     procedure InsertRecord(Id: Integer; Name: Text[100]): Boolean
     var

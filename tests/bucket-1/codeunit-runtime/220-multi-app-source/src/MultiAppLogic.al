@@ -5,7 +5,7 @@
 // contains the compiled .app of an extension that is also provided as AL
 // source, the runner must skip the package reference and compile from source.
 
-codeunit 72001 "Multi App Helper"
+codeunit 50165 "Multi App Helper"
 {
     procedure GetAnswerToEverything(): Integer
     begin
@@ -18,7 +18,7 @@ codeunit 72001 "Multi App Helper"
     end;
 }
 
-table 72001 "Multi App Entry"
+table 50023 "Multi App Entry"
 {
     fields
     {

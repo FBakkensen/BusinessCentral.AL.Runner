@@ -1,4 +1,4 @@
-codeunit 1282002 "Inv Ext Overload Test"
+codeunit 50076 "Inv Ext Overload Test"
 {
     Subtype = Test;
 

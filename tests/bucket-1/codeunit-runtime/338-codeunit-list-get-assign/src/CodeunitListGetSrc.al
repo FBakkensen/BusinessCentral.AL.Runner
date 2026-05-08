@@ -1,4 +1,4 @@
-codeunit 1320510 "CLG Worker"
+codeunit 50291 "CLG Worker"
 {
     procedure GetValue(): Integer
     begin

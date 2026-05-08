@@ -2,7 +2,7 @@
 // "using (var δretValParent = new NavScope(this))" for FindSet/Find results).
 // This exercises the compilation path that triggered CS1729 (object ctor 1-arg)
 // and CS1674 (object not IDisposable) — issues #1085 and #1090.
-table 167001 "NSU Payment"
+table 50017 "NSU Payment"
 {
     fields
     {
@@ -15,7 +15,7 @@ table 167001 "NSU Payment"
     }
 }
 
-codeunit 167002 "NSU Source"
+codeunit 50109 "NSU Source"
 {
     /// <summary>
     /// Returns a record from FindSet — this is the exact pattern that caused

@@ -1,5 +1,5 @@
 // Renumbered from 50700 to avoid collision in new bucket layout (#1385).
-codeunit 1050700 "Test Variable Storage"
+codeunit 50342 "Test Variable Storage"
 {
     Subtype = Test;
 

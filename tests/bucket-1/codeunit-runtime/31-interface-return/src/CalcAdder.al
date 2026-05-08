@@ -1,4 +1,4 @@
-codeunit 53101 "Calc Adder" implements "ICalc"
+codeunit 50220 "Calc Adder" implements "ICalc"
 {
     procedure Calculate(A: Decimal; B: Decimal): Decimal
     begin

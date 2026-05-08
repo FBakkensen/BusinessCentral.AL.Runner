@@ -1,4 +1,4 @@
-codeunit 50103 "Mock Pricing Service" implements "IPricing Service"
+codeunit 50005 "Mock Pricing Service" implements "IPricing Service"
 {
     var
         MockPrice: Decimal;

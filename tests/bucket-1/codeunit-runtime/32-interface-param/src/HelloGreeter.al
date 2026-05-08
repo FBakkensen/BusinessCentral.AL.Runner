@@ -1,4 +1,4 @@
-codeunit 53201 "Hello Greeter" implements "IGreeter"
+codeunit 50256 "Hello Greeter" implements "IGreeter"
 {
     procedure Greet(Name: Text): Text
     begin

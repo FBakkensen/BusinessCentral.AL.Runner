@@ -1,4 +1,4 @@
-codeunit 1312004 "StartSession 2-Arg Test"
+codeunit 50228 "StartSession 2-Arg Test"
 {
     Subtype = Test;
 

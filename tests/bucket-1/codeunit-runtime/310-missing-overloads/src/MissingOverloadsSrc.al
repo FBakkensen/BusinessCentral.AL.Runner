@@ -1,5 +1,5 @@
 /// Source table and page for the TestField.Lookup(RecordRef) test.
-table 310200 "MOv Rec"
+table 50035 "MOv Rec"
 {
     fields
     {
@@ -10,7 +10,7 @@ table 310200 "MOv Rec"
     keys { key(PK; Id) { Clustered = true; } }
 }
 
-page 310200 "MOv Card"
+page 50005 "MOv Card"
 {
     PageType = Card;
     SourceTable = "MOv Rec";
@@ -27,7 +27,7 @@ page 310200 "MOv Card"
 /// Source helpers for the missing-overloads gap tests (issue #1380).
 /// Tests Dialog.Error(Text,Joker), ErrorInfo.AddAction/AddNavigationAction 4-arg,
 /// FilterPageBuilder.AddField(Text,Joker,Text), and TestField.Lookup(RecordRef).
-codeunit 310201 "MOv Src"
+codeunit 50223 "MOv Src"
 {
     // ── Dialog.Error(Text, Joker) ────────────────────────────────────────────
 

@@ -1,4 +1,4 @@
-codeunit 50902 "Order Processor Tests"
+codeunit 50006 "Order Processor Tests"
 {
     Subtype = Test;
 

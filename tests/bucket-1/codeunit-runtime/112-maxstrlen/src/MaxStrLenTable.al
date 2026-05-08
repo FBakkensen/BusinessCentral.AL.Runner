@@ -1,4 +1,4 @@
-table 296001 "MaxStrLen Test"
+table 50008 "MaxStrLen Test"
 {
     fields
     {

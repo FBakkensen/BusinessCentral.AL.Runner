@@ -1,4 +1,4 @@
-enum 56610 "EN Stage"
+enum 50010 "EN Stage"
 {
     Extensible = true;
     value(0; Draft) { }
@@ -6,7 +6,7 @@ enum 56610 "EN Stage"
     value(2; Published) { }
 }
 
-codeunit 56610 "EN Probe"
+codeunit 50327 "EN Probe"
 {
     procedure NamesCount(): Integer
     var

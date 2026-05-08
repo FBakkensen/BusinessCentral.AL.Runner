@@ -1,4 +1,4 @@
-codeunit 1320407 "HRM GetHeaders Bool Test"
+codeunit 50270 "HRM GetHeaders Bool Test"
 {
     Subtype = Test;
 

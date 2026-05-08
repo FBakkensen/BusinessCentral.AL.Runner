@@ -1,4 +1,4 @@
-table 50400 "Error Map Item"
+table 50025 "Error Map Item"
 {
     DataClassification = CustomerContent;
 

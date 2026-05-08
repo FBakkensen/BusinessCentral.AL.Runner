@@ -1,4 +1,4 @@
-codeunit 294002 "Same Arity Dispatch Test"
+codeunit 50058 "Same Arity Dispatch Test"
 {
     Subtype = Test;
 

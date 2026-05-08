@@ -1,4 +1,4 @@
-codeunit 59822 "TaskScheduler Helper"
+codeunit 50067 "TaskScheduler Helper"
 {
     procedure CreateTaskReturnsGuid(): Guid
     begin

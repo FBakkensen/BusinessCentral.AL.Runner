@@ -1,4 +1,4 @@
-codeunit 131002 "OGap Test"
+codeunit 50196 "OGap Test"
 {
     Subtype = Test;
     var

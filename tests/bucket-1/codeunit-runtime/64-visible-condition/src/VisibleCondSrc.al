@@ -1,5 +1,5 @@
 /// Table backing the page used to test conditional Visible attributes.
-table 81200 "VCond Item"
+table 50047 "VCond Item"
 {
     fields
     {
@@ -16,7 +16,7 @@ table 81200 "VCond Item"
 
 /// Page that uses conditional Visible on several fields.
 /// Tests that expressions (variable, record field comparison) compile correctly.
-page 81200 "VCond Item Page"
+page 50008 "VCond Item Page"
 {
     PageType = Card;
     SourceTable = "VCond Item";

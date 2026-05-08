@@ -1,5 +1,5 @@
 // Renumbered from 59400 to avoid collision in new bucket layout (#1385).
-table 1059400 "DataError Probe"
+table 50006 "DataError Probe"
 {
     fields
     {

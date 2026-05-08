@@ -4,7 +4,7 @@ interface "ILV Greeter"
     procedure GreetName(Name: Text): Text;
 }
 
-codeunit 58300 "ILV Hello Greeter" implements "ILV Greeter"
+codeunit 50334 "ILV Hello Greeter" implements "ILV Greeter"
 {
     procedure Greet(): Text
     begin
@@ -17,7 +17,7 @@ codeunit 58300 "ILV Hello Greeter" implements "ILV Greeter"
     end;
 }
 
-codeunit 58301 "ILV Goodbye Greeter" implements "ILV Greeter"
+codeunit 50335 "ILV Goodbye Greeter" implements "ILV Greeter"
 {
     procedure Greet(): Text
     begin

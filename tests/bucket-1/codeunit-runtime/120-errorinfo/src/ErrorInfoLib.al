@@ -1,4 +1,4 @@
-codeunit 50950 "ErrorInfo Lib"
+codeunit 50060 "ErrorInfo Lib"
 {
     procedure RaiseErrorInfo(Msg: Text)
     var

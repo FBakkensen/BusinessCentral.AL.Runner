@@ -1,4 +1,4 @@
-codeunit 50701 TestFieldErrorTest
+codeunit 50191 TestFieldErrorTest
 {
     Subtype = Test;
 

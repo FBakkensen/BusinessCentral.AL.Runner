@@ -1,5 +1,5 @@
 /// Source table used as the dataitem for the base report.
-table 59340 "ADM Item"
+table 50014 "ADM Item"
 {
     DataClassification = CustomerContent;
     fields
@@ -16,7 +16,7 @@ table 59340 "ADM Item"
 }
 
 /// Base report — the reportextension adds columns to its single dataitem.
-report 59340 "ADM Base Report"
+report 50000 "ADM Base Report"
 {
     dataset
     {
@@ -30,7 +30,7 @@ report 59340 "ADM Base Report"
 
 /// reportextension using add(DataItem) to append columns to an existing
 /// dataitem. This is the exact construct issue #449 says fails to compile.
-reportextension 59341 "ADM Report Ext" extends "ADM Base Report"
+reportextension 50000 "ADM Report Ext" extends "ADM Base Report"
 {
     dataset
     {
@@ -42,7 +42,7 @@ reportextension 59341 "ADM Report Ext" extends "ADM Base Report"
 }
 
 /// reportextension using add(DataItem) with multiple columns added in one block.
-reportextension 59342 "ADM Report Ext Multi" extends "ADM Base Report"
+reportextension 50001 "ADM Report Ext Multi" extends "ADM Base Report"
 {
     dataset
     {
@@ -56,7 +56,7 @@ reportextension 59342 "ADM Report Ext Multi" extends "ADM Base Report"
 
 /// Helper codeunit — proves the compilation unit containing reportextensions
 /// with add() in the dataset area compiles and codeunits alongside remain callable.
-codeunit 59340 "ADM Helper"
+codeunit 50086 "ADM Helper"
 {
     procedure GetLabel(): Text
     begin

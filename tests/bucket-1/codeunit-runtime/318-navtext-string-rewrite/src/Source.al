@@ -11,7 +11,7 @@
 //
 // The fix: exclude calls where the first argument is bare `this`, which
 // signals a user-defined scope→parent call, not a BC runtime session call.
-codeunit 1318001 "NavText Rewrite Source"
+codeunit 50250 "NavText Rewrite Source"
 {
     // User-defined ToText() — no parameters. When called from within the
     // same codeunit via a scope class, BC generates _parent.ToText(this).

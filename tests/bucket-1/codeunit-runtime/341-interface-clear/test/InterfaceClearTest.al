@@ -3,7 +3,7 @@
 /// BC lowers Clear(IfaceVar) to IfaceVar.ClearReference() — this requires
 /// MockInterfaceHandle.ClearReference() which was missing (issue #1565).
 /// </summary>
-codeunit 1900006 "IC Interface Clear Tests"
+codeunit 50304 "IC Interface Clear Tests"
 {
     Subtype = Test;
 

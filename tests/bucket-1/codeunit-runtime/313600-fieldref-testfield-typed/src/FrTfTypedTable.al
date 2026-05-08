@@ -1,5 +1,5 @@
 /// Table fixture for FieldRef.TestField typed overload tests (issue #1400).
-table 313600 "FrTf Rec"
+table 50038 "FrTf Rec"
 {
     fields
     {

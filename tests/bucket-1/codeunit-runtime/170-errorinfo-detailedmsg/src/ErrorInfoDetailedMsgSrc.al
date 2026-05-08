@@ -1,5 +1,5 @@
 /// Helper codeunit exercising ErrorInfo.DetailedMessage() getter and setter.
-codeunit 59910 "EID Src"
+codeunit 50120 "EID Src"
 {
     procedure SetAndGet(detail: Text): Text
     var

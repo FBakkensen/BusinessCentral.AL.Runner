@@ -1,5 +1,5 @@
 /// Helper codeunit exercising ErrorInfo.ControlName() get/set.
-codeunit 81300 "EICN Src"
+codeunit 50352 "EICN Src"
 {
     /// Sets ControlName and returns it (round-trip test).
     procedure SetAndGet(): Text

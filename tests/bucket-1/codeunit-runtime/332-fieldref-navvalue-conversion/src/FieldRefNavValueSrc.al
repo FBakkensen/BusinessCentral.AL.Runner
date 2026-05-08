@@ -1,4 +1,4 @@
-table 1320424 "FieldRef Conv Table"
+table 50042 "FieldRef Conv Table"
 {
     fields
     {
@@ -11,7 +11,7 @@ table 1320424 "FieldRef Conv Table"
     }
 }
 
-codeunit 1320425 "FieldRef NavValue Src"
+codeunit 50279 "FieldRef NavValue Src"
 {
     procedure StrSubstNo_WithFieldRef(): Text
     var

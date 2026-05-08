@@ -1,4 +1,4 @@
-codeunit 52820 "Ticket Helper"
+codeunit 50307 "Ticket Helper"
 {
     procedure GetPendingApproval(): Enum "Ticket Status"
     begin

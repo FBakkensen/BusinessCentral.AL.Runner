@@ -5,7 +5,7 @@
 /// fundamental runtime pattern (Enum literal → codeunit method param).  The
 /// companion C# test (AutoStubEnumParamTests.cs) exercises the actual stub
 /// generator path when alc.exe is available.
-codeunit 1313003 "Enum Arg Tests"
+codeunit 50239 "Enum Arg Tests"
 {
     Subtype = Test;
 

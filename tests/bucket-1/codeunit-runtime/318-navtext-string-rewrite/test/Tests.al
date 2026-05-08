@@ -5,7 +5,7 @@
 // call _parent.ToText(this) (passing the scope as first arg), the rewriter
 // treated it as a BC runtime session call and wrongly replaced it.
 // After the fix, bare-`this` first-arg calls are excluded from the replacement.
-codeunit 1318002 "NavText Rewrite Tests"
+codeunit 50251 "NavText Rewrite Tests"
 {
     Subtype = Test;
 

@@ -1,4 +1,4 @@
-codeunit 57702 "EI Enum Integer Tests"
+codeunit 50326 "EI Enum Integer Tests"
 {
     Subtype = Test;
 

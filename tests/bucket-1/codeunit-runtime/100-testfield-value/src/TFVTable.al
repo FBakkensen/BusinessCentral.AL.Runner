@@ -1,5 +1,5 @@
 // Renumbered from 63000 to avoid collision in new bucket layout (#1385).
-table 1063000 "TFV Item"
+table 50004 "TFV Item"
 {
     DataClassification = CustomerContent;
 

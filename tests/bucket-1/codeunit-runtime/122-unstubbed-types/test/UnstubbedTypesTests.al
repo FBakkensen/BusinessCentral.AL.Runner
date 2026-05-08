@@ -1,4 +1,4 @@
-codeunit 59830 "Unstubbed Types Tests"
+codeunit 50068 "Unstubbed Types Tests"
 {
     Subtype = Test;
 

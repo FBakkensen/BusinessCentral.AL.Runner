@@ -2,7 +2,7 @@
 // Verifies that codeunit try-function error propagation compiles and executes
 // correctly; these are the patterns that were at risk when BC's emit phase
 // threw exceptions for unresolved NavTypeKind.None type references.
-codeunit 50086 "Emit Resilience Tests"
+codeunit 50306 "Emit Resilience Tests"
 {
     Subtype = Test;
 

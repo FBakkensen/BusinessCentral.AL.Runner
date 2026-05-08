@@ -1,6 +1,6 @@
 // Supporting codeunit that writes a known value so the test can verify
 // the session codeunit actually ran (not a no-op).
-codeunit 1312001 "StartSession2Arg Counter"
+codeunit 50225 "StartSession2Arg Counter"
 {
     trigger OnRun()
     begin
@@ -17,7 +17,7 @@ codeunit 1312001 "StartSession2Arg Counter"
     end;
 }
 
-codeunit 1312002 "StartSession2Arg Api"
+codeunit 50226 "StartSession2Arg Api"
 {
     procedure TryStartSessionNoCompany(var SessionId: Integer): Boolean
     begin
@@ -34,7 +34,7 @@ codeunit 1312002 "StartSession2Arg Api"
     end;
 }
 
-codeunit 1312003 "StartSession2Arg Worker"
+codeunit 50227 "StartSession2Arg Worker"
 {
     trigger OnRun()
     begin

@@ -1,4 +1,4 @@
-table 1320423 "IS Position Data"
+table 50041 "IS Position Data"
 {
     fields
     {
@@ -12,7 +12,7 @@ table 1320423 "IS Position Data"
     }
 }
 
-codeunit 1320418 "InStream Position Src"
+codeunit 50277 "InStream Position Src"
 {
     procedure ReadFromPosition(): Text
     var

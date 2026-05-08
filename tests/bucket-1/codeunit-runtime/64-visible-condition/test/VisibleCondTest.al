@@ -1,4 +1,4 @@
-codeunit 81201 "VCond Visible Tests"
+codeunit 50330 "VCond Visible Tests"
 {
     Subtype = Test;
 

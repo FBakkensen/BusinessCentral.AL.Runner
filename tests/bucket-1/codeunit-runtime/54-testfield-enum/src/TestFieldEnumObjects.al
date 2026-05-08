@@ -1,4 +1,4 @@
-enum 56100 "TFE Status"
+enum 50008 "TFE Status"
 {
     Extensible = false;
 
@@ -13,7 +13,7 @@ enum 56100 "TFE Status"
     }
 }
 
-table 56100 "TFE Order"
+table 50045 "TFE Order"
 {
     DataClassification = ToBeClassified;
 

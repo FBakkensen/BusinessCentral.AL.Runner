@@ -1,4 +1,4 @@
-codeunit 50951 "ErrorInfo Test"
+codeunit 50061 "ErrorInfo Test"
 {
     Subtype = Test;
 

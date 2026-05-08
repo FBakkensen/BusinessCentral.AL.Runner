@@ -1,6 +1,6 @@
 /// Codeunit with an OnRun trigger and a reader procedure so tests can verify
 /// that `.Run()` on a codeunit variable actually fires the trigger.
-codeunit 59570 "CIR Processor"
+codeunit 50094 "CIR Processor"
 {
     trigger OnRun()
     begin
@@ -25,7 +25,7 @@ codeunit 59570 "CIR Processor"
 
 /// Codeunit that takes an instance-bearing codeunit variable by reference
 /// and calls `.Run()` on it — the exact pattern issue #474 names.
-codeunit 59571 "CIR Src"
+codeunit 50095 "CIR Src"
 {
     procedure RunAndGetValue(var Proc: Codeunit "CIR Processor"): Integer
     begin

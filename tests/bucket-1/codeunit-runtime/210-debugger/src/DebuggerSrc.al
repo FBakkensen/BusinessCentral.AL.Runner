@@ -1,6 +1,6 @@
 /// Exercises Debugger.IsActive and Debugger.DeactivateDebugger — the two
 /// that are most likely to appear in production AL (test helpers).
-codeunit 60370 "DBG Src"
+codeunit 50159 "DBG Src"
 {
     procedure IsDebuggerActive(): Boolean
     begin

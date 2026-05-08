@@ -1,7 +1,7 @@
 /// Proving tests for not-tested overloads sweep (issue #1400).
 /// Each test asserts a concrete non-default value, proving the overload
 /// is dispatched and not returning a stub default.
-codeunit 313501 "Sweep Simple Test"
+codeunit 50241 "Sweep Simple Test"
 {
     Subtype = Test;
 

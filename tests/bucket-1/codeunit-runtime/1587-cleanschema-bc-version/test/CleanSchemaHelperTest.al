@@ -1,7 +1,7 @@
 // Tests for issue #1587: CLEANSCHEMA symbols derive from BC version.
 // Verifies that the default CLEANSCHEMA set (1..25) is applied correctly
 // so code guarded by active symbols compiles and runs as expected.
-codeunit 1587101 "CS Version Helper Test"
+codeunit 50102 "CS Version Helper Test"
 {
     Subtype = Test;
 

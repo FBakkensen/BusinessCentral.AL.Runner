@@ -1,5 +1,5 @@
 /// Tests for TestPage.RunPageBackgroundTask and TestHttpRequestMessage.QueryParameters — issue #950.
-codeunit 128001 "TIS Test"
+codeunit 50140 "TIS Test"
 {
     Subtype = Test;
 

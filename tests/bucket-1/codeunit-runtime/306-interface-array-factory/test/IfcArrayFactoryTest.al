@@ -1,4 +1,4 @@
-codeunit 305008 "IfcArr Factory Test"
+codeunit 50212 "IfcArr Factory Test"
 {
     Subtype = Test;
 

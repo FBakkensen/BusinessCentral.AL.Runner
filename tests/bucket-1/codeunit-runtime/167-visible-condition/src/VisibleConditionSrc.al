@@ -1,4 +1,4 @@
-table 59870 "VCA Item"
+table 50018 "VCA Item"
 {
     DataClassification = CustomerContent;
     fields
@@ -20,7 +20,7 @@ table 59870 "VCA Item"
 /// The Visible property value is captured at render time; the runner has no UI
 /// so the Visible expression never affects execution, but the compilation unit
 /// must still compile with these constructs present.
-page 59870 "VCA Item Card"
+page 50002 "VCA Item Card"
 {
     PageType = Card;
     SourceTable = "VCA Item";
@@ -57,7 +57,7 @@ page 59870 "VCA Item Card"
 
 /// Helper codeunit — proves the compilation unit containing a page with
 /// conditional Visible attributes compiles and codeunits remain callable.
-codeunit 59870 "VCA Helper"
+codeunit 50111 "VCA Helper"
 {
     procedure GetLabel(): Text
     begin

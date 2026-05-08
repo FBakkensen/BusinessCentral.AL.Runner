@@ -1,5 +1,5 @@
 /// Helper codeunit exercising ProductName — issue #755.
-codeunit 98000 "TAPN Src"
+codeunit 50124 "TAPN Src"
 {
     // ProductName.Full() — must not throw
     procedure ProductNameFull(): Text
@@ -21,7 +21,7 @@ codeunit 98000 "TAPN Src"
 }
 
 // Minimal table and page for TestAction testing
-table 98000 "TAPN Record"
+table 50020 "TAPN Record"
 {
     fields
     {
@@ -31,7 +31,7 @@ table 98000 "TAPN Record"
     keys { key(PK; Id) { Clustered = true; } }
 }
 
-page 98000 "TAPN Card"
+page 50003 "TAPN Card"
 {
     PageType = Card;
     SourceTable = "TAPN Record";

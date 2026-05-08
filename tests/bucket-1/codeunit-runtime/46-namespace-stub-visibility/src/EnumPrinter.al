@@ -5,7 +5,7 @@
 
 namespace MySales.Document;
 
-enum 50540 "Print Option"
+enum 50005 "Print Option"
 {
     Extensible = false;
     value(0; None) { Caption = 'None'; }
@@ -13,7 +13,7 @@ enum 50540 "Print Option"
     value(2; Final) { Caption = 'Final'; }
 }
 
-codeunit 50541 "Print Option Helper"
+codeunit 50313 "Print Option Helper"
 {
     procedure GetDefault(): Enum "Print Option"
     var

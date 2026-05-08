@@ -1,7 +1,7 @@
 /// Table with an Integer field exercising TestField inside a table procedure.
 /// Reproduces CS1503 'object' → 'NavValue' when the BC transpiler emits
 /// ALTestFieldNavValueSafe(fieldNo, NavType, intObjectValue) for Rec.TestField("Table No.").
-table 307100 "TFO Table"
+table 50005 "TFO Table"
 {
     DataClassification = CustomerContent;
 

@@ -1,4 +1,4 @@
-codeunit 1900008 "Preproc Helper Test"
+codeunit 50024 "Preproc Helper Test"
 {
     Subtype = Test;
 

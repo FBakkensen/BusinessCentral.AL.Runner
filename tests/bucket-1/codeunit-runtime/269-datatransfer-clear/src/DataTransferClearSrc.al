@@ -1,4 +1,4 @@
-table 1269001 "DTC Item"
+table 50027 "DTC Item"
 {
     DataClassification = CustomerContent;
     fields
@@ -12,7 +12,7 @@ table 1269001 "DTC Item"
     }
 }
 
-codeunit 1269001 "DTC Src"
+codeunit 50188 "DTC Src"
 {
     procedure ClearAfterSetup_DoesNotThrow()
     var

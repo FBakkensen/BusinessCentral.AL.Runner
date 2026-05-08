@@ -2,7 +2,7 @@
 /// Avoid ErrorInfo.Create(msg) — it hits a separate DLL-loading gap (loads
 /// Microsoft.Dynamics.Nav.CodeAnalysis 16.4.x which is absent standalone).
 /// Default-initialised ErrorInfo values work fine for AddAction tests.
-codeunit 59890 "EIA Src"
+codeunit 50118 "EIA Src"
 {
     procedure AddSingleAction(caption: Text): Boolean
     var

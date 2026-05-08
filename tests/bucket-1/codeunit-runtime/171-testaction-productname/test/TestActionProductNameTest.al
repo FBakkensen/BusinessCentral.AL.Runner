@@ -1,4 +1,4 @@
-codeunit 98001 "TAPN Test"
+codeunit 50125 "TAPN Test"
 {
     Subtype = Test;
 

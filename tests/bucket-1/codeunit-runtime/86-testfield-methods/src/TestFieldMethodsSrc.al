@@ -1,6 +1,6 @@
 /// Table and page used by the TestField-methods test suite.
 /// Tests AsBoolean, AsInteger, AsDate, AsTime, AssertEquals, ValidationErrorCount, etc.
-table 86100 "TFM Record"
+table 50055 "TFM Record"
 {
     fields
     {
@@ -16,7 +16,7 @@ table 86100 "TFM Record"
     keys { key(PK; Id) { Clustered = true; } }
 }
 
-page 86100 "TFM Card"
+page 50012 "TFM Card"
 {
     PageType = Card;
     SourceTable = "TFM Record";

@@ -1,4 +1,4 @@
-codeunit 50915 "Codeunit Assign Tests"
+codeunit 50093 "Codeunit Assign Tests"
 {
     Subtype = Test;
 

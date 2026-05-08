@@ -1,5 +1,5 @@
 /// Helper codeunit that exercises ErrorInfo.SystemId get and set.
-codeunit 61930 "EI SystemId Src"
+codeunit 50180 "EI SystemId Src"
 {
     procedure SetAndGet(): Guid
     var

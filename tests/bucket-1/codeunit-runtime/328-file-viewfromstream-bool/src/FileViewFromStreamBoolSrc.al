@@ -1,4 +1,4 @@
-codeunit 1320408 "File ViewFromStream Bool Src"
+codeunit 50271 "File ViewFromStream Bool Src"
 {
     /// <summary>
     /// Exercises File.ViewFromStream(InStream, FileName) in a boolean context.

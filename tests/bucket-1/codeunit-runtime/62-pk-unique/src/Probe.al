@@ -1,4 +1,4 @@
-table 56620 "PK Probe Row"
+table 50046 "PK Probe Row"
 {
     fields
     {

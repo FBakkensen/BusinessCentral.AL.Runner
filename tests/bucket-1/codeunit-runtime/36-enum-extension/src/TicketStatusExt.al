@@ -1,4 +1,4 @@
-enumextension 52821 "Ticket Status Ext" extends "Ticket Status"
+enumextension 50000 "Ticket Status Ext" extends "Ticket Status"
 {
     value(100; "Pending Approval")
     {

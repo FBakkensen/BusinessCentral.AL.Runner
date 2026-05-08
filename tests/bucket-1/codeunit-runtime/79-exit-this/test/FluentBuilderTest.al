@@ -1,4 +1,4 @@
-codeunit 58001 "Fluent Builder Test"
+codeunit 50346 "Fluent Builder Test"
 {
     Subtype = Test;
 

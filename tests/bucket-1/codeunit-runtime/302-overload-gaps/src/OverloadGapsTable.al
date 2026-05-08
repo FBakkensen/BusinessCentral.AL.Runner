@@ -1,5 +1,5 @@
 // Shared table for overload-gaps test suite (issues #1180, #1183, #1187, #1192)
-table 302000 "OG Table"
+table 50032 "OG Table"
 {
     fields
     {

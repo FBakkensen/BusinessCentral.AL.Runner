@@ -2,7 +2,7 @@
 /// Tests: Ascending (get/set), CurrentKey (get), SetCurrentKey (set),
 /// SetFilter (store), GetFilter (retrieve).
 
-table 96000 "TPF Test Record"
+table 50056 "TPF Test Record"
 {
     fields
     {
@@ -17,7 +17,7 @@ table 96000 "TPF Test Record"
     }
 }
 
-page 96000 "TPF Test Page"
+page 50013 "TPF Test Page"
 {
     PageType = List;
     SourceTable = "TPF Test Record";

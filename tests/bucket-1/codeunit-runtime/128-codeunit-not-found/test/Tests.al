@@ -1,4 +1,4 @@
-codeunit 56281 "Missing CU Tests"
+codeunit 50074 "Missing CU Tests"
 {
     Subtype = Test;
     var

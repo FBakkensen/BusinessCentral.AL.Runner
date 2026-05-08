@@ -1,4 +1,4 @@
-codeunit 59891 "EIA Test"
+codeunit 50119 "EIA Test"
 {
     Subtype = Test;
 

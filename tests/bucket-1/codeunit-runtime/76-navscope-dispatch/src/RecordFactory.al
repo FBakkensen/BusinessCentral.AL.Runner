@@ -1,4 +1,4 @@
-table 50760 "NS Item"
+table 50051 "NS Item"
 {
     fields
     {
@@ -12,7 +12,7 @@ table 50760 "NS Item"
     }
 }
 
-codeunit 50760 "NS Record Factory"
+codeunit 50343 "NS Record Factory"
 {
     // A method that returns a record causes the BC compiler to emit
     // a hidden NavScope parameter (γReturnValueParent) for ownership

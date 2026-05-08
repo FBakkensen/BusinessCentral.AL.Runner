@@ -1,5 +1,5 @@
 /// Helper codeunit that exercises NavApp resource methods in standalone mode.
-codeunit 85100 "NavApp Resource Src"
+codeunit 50186 "NavApp Resource Src"
 {
     procedure GetTextResource(ResourceName: Text): Text
     begin

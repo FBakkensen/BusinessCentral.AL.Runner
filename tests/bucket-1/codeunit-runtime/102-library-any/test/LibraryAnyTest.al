@@ -1,6 +1,6 @@
 // Tests for codeunit 130500 "Any" — pseudo-random test data generator.
 // The stub is auto-loaded from AlRunner/stubs/LibraryAny.al.
-codeunit 100003 "Library Any Test"
+codeunit 50038 "Library Any Test"
 {
     Subtype = Test;
 

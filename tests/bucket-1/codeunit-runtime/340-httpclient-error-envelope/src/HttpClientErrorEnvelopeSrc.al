@@ -1,4 +1,4 @@
-codeunit 1320517 "HC Error Envelope Src"
+codeunit 50298 "HC Error Envelope Src"
 {
     procedure SendTimeoutResponse()
     var

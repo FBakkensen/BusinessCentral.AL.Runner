@@ -1,4 +1,4 @@
-codeunit 1320506 "VG Src"
+codeunit 50287 "VG Src"
 {
     procedure GetBySystemIdFromVariant(reference: Variant): Boolean
     var

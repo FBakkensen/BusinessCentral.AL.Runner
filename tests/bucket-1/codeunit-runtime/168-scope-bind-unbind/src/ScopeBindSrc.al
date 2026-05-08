@@ -4,7 +4,7 @@
 // The rewriter converts base.Parent.Bind() → _parent.Bind(), so the
 // codeunit class must expose Bind()/Unbind().
 
-table 168001 "SBU Counter"
+table 50019 "SBU Counter"
 {
     fields
     {
@@ -17,7 +17,7 @@ table 168001 "SBU Counter"
     }
 }
 
-codeunit 168001 "SBU Publisher"
+codeunit 50115 "SBU Publisher"
 {
     [IntegrationEvent(false, false)]
     procedure OnTrigger()
@@ -30,7 +30,7 @@ codeunit 168001 "SBU Publisher"
     end;
 }
 
-codeunit 168002 "SBU Manual Sub"
+codeunit 50116 "SBU Manual Sub"
 {
     EventSubscriberInstance = Manual;
 

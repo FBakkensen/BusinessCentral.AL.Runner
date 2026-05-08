@@ -2,7 +2,7 @@
 // Exercises try-function error propagation — the pattern the emit-resilience
 // fix ensures can be compiled even when unrelated AL in the same compilation
 // batch triggers BC emit exceptions.
-codeunit 50085 "Emit Resilience Helper"
+codeunit 50305 "Emit Resilience Helper"
 {
     procedure DivideInts(Numerator: Integer; Denominator: Integer): Integer
     begin

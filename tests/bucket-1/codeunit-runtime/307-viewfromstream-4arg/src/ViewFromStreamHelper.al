@@ -1,4 +1,4 @@
-codeunit 307500 "ViewFromStream Helper"
+codeunit 50213 "ViewFromStream Helper"
 {
     /// <summary>
     /// Calls ViewFromStream with 3 AL args: InStream, FileName, IsEditable.

@@ -1,4 +1,4 @@
-codeunit 1320405 "HC GetHeaders Bool Test"
+codeunit 50268 "HC GetHeaders Bool Test"
 {
     Subtype = Test;
 

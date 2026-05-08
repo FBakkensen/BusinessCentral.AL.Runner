@@ -1,4 +1,4 @@
-table 309900 "Sys MO Dummy"
+table 50033 "Sys MO Dummy"
 {
     DataClassification = SystemMetadata;
 
