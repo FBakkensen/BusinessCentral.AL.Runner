@@ -2,6 +2,11 @@
 bin/
 obj/
 
+# Spike v2 runner — repo-root v2-classification.json is the runtime output of
+# `dotnet run --project spike/v2/Runner` and is regenerated on every run.
+# The committed snapshot lives at spike/v2/Runner/v2-classification.json.
+/v2-classification.json
+
 # Visual Studio / Rider
 .vs/
 *.user
