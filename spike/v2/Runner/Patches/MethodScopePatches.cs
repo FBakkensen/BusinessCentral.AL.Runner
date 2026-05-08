@@ -121,4 +121,13 @@ public static partial class BcRuntime
     /// </summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static bool NavMethodScope_ProcessException(object? self, Exception? exception) => false;
+
+    /// <summary>
+    /// Replacement for ALMethodScope.AssignScopeId(). Real body chains through
+    /// `Session.NCLMetadata.CodeEnvironment.AssignScopeId(this)` — NCLMetadata is null
+    /// on the skeleton session and NREs. No-op: scopeId stays null and ALMethodScope's
+    /// `ScopeId` getter tolerates that (`value.HasValue ? value.Value : 0`).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void ALMethodScope_AssignScopeId(object? self) { }
 }

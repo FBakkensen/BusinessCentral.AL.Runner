@@ -405,6 +405,17 @@ public static partial class BcRuntime
                 Hook(createTarget, nameof(NavCodeunitHandle_CreateTarget), "NavCodeunitHandle.CreateTarget");
         }
 
+        // ALMethodScope.AssignScopeId — chains through Session.NCLMetadata which is null;
+        // no-op leaves scopeId = null which is tolerated by the ScopeId getter.
+        var alMethodScopeType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.ALMethodScope");
+        if (alMethodScopeType != null)
+        {
+            var assignScopeId = alMethodScopeType.GetMethod("AssignScopeId",
+                BindingFlags.NonPublic | BindingFlags.Instance, null, Type.EmptyTypes, null);
+            if (assignScopeId != null)
+                Hook(assignScopeId, nameof(ALMethodScope_AssignScopeId), "ALMethodScope.AssignScopeId");
+        }
+
         // ALSystemErrorHandling.get_AL{GetLastErrorText,GetLastErrorCode,GetLastErrorCallStack}
         // and ALClearLastError — real getters chain through NavCurrentThread.Session which is
         // null on the skeleton thread. Hook to read/clear via the skeleton session directly.
