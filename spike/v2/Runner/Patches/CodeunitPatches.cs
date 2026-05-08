@@ -110,6 +110,9 @@ public static partial class BcRuntime
     // Cache: form ID → generated Form Type.
     private static readonly ConcurrentDictionary<int, Type?> _formTypeCache = new();
 
+    // Cache: report ID → generated Report Type.
+    private static readonly ConcurrentDictionary<int, Type?> _reportTypeCache = new();
+
     /// <summary>
     /// Replacement for NavFormHandle.CreateTarget().
     /// Same shape as NavCodeunitHandle/NavTestPageHandle — bypass NavGlobal.NCLMetadata
@@ -138,6 +141,67 @@ public static partial class BcRuntime
             throw new InvalidOperationException(
                 $"Form{id} has no single-arg ITreeObject constructor");
         return ctor.Invoke(new object[] { self });
+    }
+
+    /// <summary>
+    /// Replacement for NavReportHandle.CreateTarget().
+    /// Same shape as NavFormHandle: bypass NavGlobal.NCLMetadata.GetMetaReportById +
+    /// NCLMetaReport.CreateObjectInstance (which NREs on a skeleton meta because
+    /// ApplicationObjectConstructor returns null), and construct Report{ID} directly
+    /// from the loaded test assembly via a 1-arg ITreeObject ctor.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static object NavReportHandle_CreateTarget(object self)
+    {
+        var objIdProp = self.GetType().GetProperty("ObjectId",
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        var objId = objIdProp!.GetValue(self)!;
+        var idProp = objId.GetType().GetProperty("ObjectNumber",
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        int id = (int)idProp!.GetValue(objId)!;
+
+        var reportType = _reportTypeCache.GetOrAdd(id, FindReportType);
+        if (reportType == null)
+            throw new InvalidOperationException(
+                $"Report{id} is not present in the test assembly or any loaded dependency.");
+        var ctor = reportType.GetConstructors()
+            .FirstOrDefault(c => c.GetParameters().Length == 1 &&
+                typeof(Microsoft.Dynamics.Nav.Runtime.ITreeObject)
+                    .IsAssignableFrom(c.GetParameters()[0].ParameterType));
+        if (ctor == null)
+            throw new InvalidOperationException(
+                $"Report{id} has no single-arg ITreeObject constructor");
+        return ctor.Invoke(new object[] { self });
+    }
+
+    private static Type? FindReportType(int id)
+    {
+        var navNcl = AppDomain.CurrentDomain.GetAssemblies()
+            .FirstOrDefault(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Ncl");
+        Type? reportBase = navNcl?.GetType("Microsoft.Dynamics.Nav.Runtime.NavReport");
+        var name = $"Report{id}";
+        if (_currentTestAssembly != null)
+        {
+            try
+            {
+                var t = Array.Find(_currentTestAssembly.GetTypes(),
+                    x => x.Name == name && (reportBase == null || reportBase.IsAssignableFrom(x)));
+                if (t != null) return t;
+            }
+            catch { }
+        }
+        foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            if (asm == _currentTestAssembly) continue;
+            try
+            {
+                var t = Array.Find(asm.GetTypes(),
+                    x => x.Name == name && (reportBase == null || reportBase.IsAssignableFrom(x)));
+                if (t != null) return t;
+            }
+            catch { }
+        }
+        return null;
     }
 
     private static Type? FindFormType(int id)

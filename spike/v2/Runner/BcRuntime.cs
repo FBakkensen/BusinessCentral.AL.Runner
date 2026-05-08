@@ -572,6 +572,21 @@ public static partial class BcRuntime
                 Hook(createTarget, nameof(NavFormHandle_CreateTarget), "NavFormHandle.CreateTarget");
         }
 
+        // NavReportHandle.CreateTarget — §P, same shape as NavFormHandle. The default
+        // implementation `NCLMetadata.GetMetaReportById(id, true).CreateObjectInstance(this)`
+        // works after the §P cache populator (so the GetMetaReportById no longer NREs),
+        // but CreateObjectInstance then dereferences a null ApplicationObjectConstructor
+        // delegate (skeleton metas have no NCLMetaObjectCLRTypeContainer). Replace with
+        // a direct construction of `Report{ID}` from the test assembly.
+        var reportHandleType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavReportHandle");
+        if (reportHandleType != null)
+        {
+            var createTarget = reportHandleType.GetMethod("CreateTarget",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            if (createTarget != null)
+                Hook(createTarget, nameof(NavReportHandle_CreateTarget), "NavReportHandle.CreateTarget");
+        }
+
         // NavRecordRef.get_Target — bypass NRE on Session.Company.SharedObjects by
         // constructing a SharedRecordRef parented to a process-wide skeleton container.
         var navRecordRefType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavRecordRef");
