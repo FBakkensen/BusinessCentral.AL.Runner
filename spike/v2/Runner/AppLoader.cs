@@ -42,10 +42,31 @@ public static class AppLoader
     {
         try
         {
-            using var zip = OpenAppZip(appPath);
+            var bytes = File.ReadAllBytes(appPath);
+            return ReadManifestFromBytes(bytes);
+        }
+        catch { return null; }
+    }
+
+    private static AppManifest? ReadManifestFromBytes(byte[] bytes)
+    {
+        try
+        {
+            using var zip = OpenZipFromNavx(bytes);
             var entry = zip.Entries.FirstOrDefault(e =>
                 string.Equals(e.FullName, "NavxManifest.xml", StringComparison.OrdinalIgnoreCase));
-            if (entry == null) return null;
+            if (entry == null)
+            {
+                // R2R outer .app — recurse into nested .app
+                var nested = zip.Entries.FirstOrDefault(e =>
+                    e.FullName.EndsWith(".app", StringComparison.OrdinalIgnoreCase)
+                    && !e.FullName.Contains('/'));
+                if (nested == null) return null;
+                using var nestedStream = nested.Open();
+                using var nms = new MemoryStream();
+                nestedStream.CopyTo(nms);
+                return ReadManifestFromBytes(nms.ToArray());
+            }
             using var s = entry.Open();
             var doc = XDocument.Load(s);
             XNamespace ns = "http://schemas.microsoft.com/navx/2015/manifest";
@@ -171,8 +192,12 @@ public static class AppLoader
     private static ZipArchive OpenAppZip(string appPath)
     {
         var bytes = File.ReadAllBytes(appPath);
+        return OpenZipFromNavx(bytes);
+    }
+
+    private static ZipArchive OpenZipFromNavx(byte[] bytes)
+    {
         var offset = NavxZipOffset(bytes);
-        // Caller-owned MemoryStream; ZipArchive ctor with leaveOpen=false will dispose it.
         var ms = new MemoryStream(bytes, offset, bytes.Length - offset, writable: false);
         return new ZipArchive(ms, ZipArchiveMode.Read);
     }
