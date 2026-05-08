@@ -119,9 +119,66 @@ public static partial class BcRuntime
             BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance,
             (m) => m.IsStatic ? nameof(NoOp2) : nameof(NoOp3));
 
-        // Pre-populate NavEnvironment.instance to a skeleton; hook Instance getter.
+        // No-op `new NavOpenTelemetryLogger(...)` — its ctor opens an OpenTelemetry pipeline that
+        // tries to add the Geneva ETW exporter, which throws on Linux. The NavEnvironment ctor
+        // assigns the result to NavDiagnostics.OpenTelemetryLogger and never reads members until
+        // a trace is sent later (already suppressed via existing trace hooks).
+        var navTypesAsm = AppDomain.CurrentDomain.GetAssemblies()
+            .FirstOrDefault(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Types");
+        var navOtl = navTypesAsm?.GetType("Microsoft.Dynamics.Nav.Diagnostic.NavOpenTelemetryLogger");
+        if (navOtl != null)
+        {
+            foreach (var c in navOtl.GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
+            {
+                var ps = c.GetParameters().Length;
+                var noop = ps switch { 1 => nameof(NoOp_OneArg), 2 => nameof(NoOp2), 3 => nameof(NoOp3), 4 => nameof(NoOp4), _ => null };
+                if (noop != null) Hook(c, noop, $"NavOpenTelemetryLogger..ctor/{ps}");
+            }
+        }
+
+        // No-op `ALFunctionTimingExecutionListener.EnsureRegistered()` — the real env ctor
+        // (line 1107) registers a process-global listener whose Start(NavMethodScope) reads
+        // `methodScope.AppId.HasValue` and other metadata that NREs on AL test scopes that
+        // run with our minimal NavMethodScopeCtorReplacement. With the skeleton init path
+        // the listener was never registered. Easiest cleanup: don't register it.
+        var alFnTimingT = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.ALFunctionTimingExecutionListener");
+        var ensureReg = alFnTimingT?.GetMethod("EnsureRegistered", BindingFlags.Public | BindingFlags.Static);
+        if (ensureReg != null)
+            Hook(ensureReg, nameof(NoOp_0Args), "ALFunctionTimingExecutionListener.EnsureRegistered");
+
+        // Try the real factory first: NavEnvironment.InstantiateStandaloneNavEnvironment(true, false).
+        // The cctor replacement above already wired the static `lockObject`/`instanceId`/
+        // `serviceInstanceName` so the factory's MonitorLock(lockObject, ...) succeeds.
+        // If the ctor throws (Linux-incompatible deps, missing settings file, KeyVault, DB...),
+        // fall back to the skeleton so the runner still boots; per-throw JMP-hooks should be
+        // added one-by-one until the real ctor runs to completion.
         var instField = envType.GetField("instance", BindingFlags.NonPublic | BindingFlags.Static);
-        if (instField != null)
+        var factory = envType.GetMethod("InstantiateStandaloneNavEnvironment",
+            BindingFlags.NonPublic | BindingFlags.Static);
+        bool ctorOk = false;
+        if (factory != null)
+        {
+            try
+            {
+                factory.Invoke(null, new object[] { true, false });
+                ctorOk = instField?.GetValue(null) != null;
+                if (ctorOk) Console.Error.WriteLine("[BcRuntime] NavEnvironment ctor: OK (full init)");
+            }
+            catch (Exception ex)
+            {
+                var inner = ex is TargetInvocationException tie ? tie.InnerException ?? ex : ex;
+                Console.Error.WriteLine("[BcRuntime] NavEnvironment ctor THREW — falling back to skeleton:");
+                Console.Error.WriteLine($"  {inner.GetType().FullName}: {inner.Message}");
+                var st = new System.Diagnostics.StackTrace(inner, fNeedFileInfo: true);
+                for (int fi = 0; fi < st.FrameCount; fi++)
+                {
+                    var frame = st.GetFrame(fi);
+                    var m = frame?.GetMethod();
+                    Console.Error.WriteLine($"    [{fi}] IL+0x{frame?.GetILOffset():X4} native+0x{frame?.GetNativeOffset():X4}  {m?.DeclaringType?.FullName}.{m?.Name}({string.Join(",", m?.GetParameters().Select(p=>p.ParameterType.Name) ?? Array.Empty<string>())})");
+                }
+            }
+        }
+        if (!ctorOk && instField != null)
         {
             var skel = RuntimeHelpers.GetUninitializedObject(envType);
             var instLock = envType.GetField("lockObject", BindingFlags.NonPublic | BindingFlags.Instance);

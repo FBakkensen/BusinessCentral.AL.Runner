@@ -20,6 +20,16 @@ public static partial class BcRuntime
         FieldPoke.TryInitDefault(t, "TerminatedSessionsMetric");
         FieldPoke.TryInitDefault(t, "defaultAwaitedShutdownConnectionTypesList");
         FieldPoke.TryInitDefault(t, "defaultRestartNotificationConnectionTypesList");
+
+        // Topology is a static auto-prop the ctor reads at IL_0201 — a null backing field
+        // NREs the very first non-trivial line of the real ctor. StandardServiceTopology
+        // is the on-prem/standalone impl (matches the headless mode shape we want).
+        var topoType = t.Assembly.GetType("Microsoft.Dynamics.Nav.Runtime.StandardServiceTopology");
+        if (topoType != null)
+        {
+            var topo = Activator.CreateInstance(topoType);
+            FieldPoke.SetStatic(t, "<Topology>k__BackingField", topo!);
+        }
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
