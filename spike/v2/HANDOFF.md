@@ -1045,3 +1045,95 @@ hits.
 - `be0745ae` — null OpenTelemetryLogger post-ctor (heal regression)
 - `6b3f3a22` — inject skeleton NavSystemTenant+NCLMetadata into Tenants
 - `54ea8fc8` — populate empty NCLMetadata cache arrays (NRE → typed)
+
+## §O — Lazy-populate NCLMetadata cache from parsed AL tables
+
+**Goal:** turn the 155+125 `NCLMetadata.ThrowMetaApplicationObjectNotFound`
+failures from §N (skeleton cache arrays were empty) into cache hits by lazy-
+populating one `NCLMetadataCacheEntry` per parsed AL table.
+
+**Approach landed (single commit `f7cf3120`):**
+
+1. `RecordPatches.NclMetadataCachePopulator.cs` (new) — iterates `_parsedTables`,
+   reuses the existing `BuildNCLMetaTable` factory (which calls
+   `NCLMetaTable.CreateFromMetaTable` internally), wraps each in
+   `NCLMetadataCacheEntry.CreateWithBase(meta)`, and inserts into
+   `NCLMetadata.metadataCacheEntries[(int)ObjectType.Table]`. Hooked from
+   `RecordPatches.Register()` and re-run from `AddSourceDir` for late suite
+   registration.
+2. `BuildNCLMetaTable` — also FieldPokes `metadataLoaded=true` on every freshly-
+   built `NCLMetaTable` so paths that go through `NavRecordHandle.CreateTarget`
+   share the flag.
+3. `MetadataPatches.cs` — JMP-hooks `NCLMetaApplicationObject.Populate` and
+   `CompileAndLoadClrObject` to `NoOp_OneArg`. Empirical finding: FieldPoking
+   `metadataLoaded=true` alone is not enough. `GetMetaApplicationObjectInternal`
+   still reaches `Populate()` along the lock-retry path on some calls (likely
+   re-entry / inlined property read race), and `requireCompiled=true` callers
+   go through `CompileAndLoadClrObject` which NREs because
+   `nclMetaObjectCLRTypeContainer` is null on hand-built metas. The downstream
+   `ApplicationObjectClrType` getter is already JMP-hooked to look up
+   `Record{ID}` from the loaded test assembly, so no-op'ing both is safe.
+
+**Final headline numbers:**
+
+| Sub-bucket | Pass before (§N) | Pass after (§O) | ΔP |
+|---|---:|---:|---:|
+| bucket-1/codeunit-runtime | 563 | 566 | +3 |
+| bucket-1/record-table     | 266 | 349 | **+83** |
+| bucket-2/page-report      | 248 | 248 | +0  |
+
+**Smoke (bucket-1/record-table/127-recref-fieldref-api):** 0P/21F → 15P/6F.
+
+**Per-iteration ΔP on smoke:**
+- Initial cache populator + metadataLoaded poke only: 0P/21F. All fails =
+  `NCLMetaTable.LoadTableMetadata` NRE — `Populate` was still being called on
+  cache-hit metas despite the field-poke.
+- + JMP-hook `Populate` → NoOp: 0P/21F. Fails moved to
+  `NCLMetaApplicationObject.LoadClrType` — `requireCompiled=true` path.
+- + JMP-hook `CompileAndLoadClrObject` → NoOp: **15P/21**. Remaining 6 fails
+  are downstream classes (`NavDialog.ALError`, `NavRecord.ALFieldCaptionAsync`,
+  `RecordImplementation.IssueFindRequestAsync`) — no longer metadata-cache
+  related.
+
+**bucket-2/page-report:** unchanged at 248P. Page/report metadata is a
+separate `NCLMetaForm` / `NCLMetaReport` cache problem; the populator only
+covers `ObjectType.Table` (parser only handles `table N "Name"` declarations).
+The remaining 122 `ThrowMetaApplicationObjectNotFound` failures on bucket-2
+are page/report lookups that hit the still-empty `metadataCacheEntries[Page]`
+/ `[Report]` dictionaries. Same pattern would extend the populator to those
+once a parallel `BuildNCLMetaForm` / `BuildNCLMetaReport` factory exists —
+out of scope for §O (the brief was specifically tables).
+
+**Top remaining fail classes after §O:**
+
+`bucket-1/record-table` (557F) — most-common 8:
+- `NavDialog.ALError`, `RecordImplementation.IssueFindRequestAsync`,
+  `NavApplicationObjectBaseHandle\`1.get_Target` and friends. The big shift:
+  `NCLMetadata.ThrowMetaApplicationObjectNotFound` (was 155 in §N) is now 0
+  for record-table.
+
+`bucket-2/page-report` (434F):
+- 154 `NavApplicationObjectBaseHandle\`1.get_Target` (out of scope, §K)
+- 122 `NCLMetadata.ThrowMetaApplicationObjectNotFound` (page/report cache
+  not populated — see "out of scope" above)
+- 53  `NavReport.RunReportAsync` (async — JmpHook unsafe per §K)
+
+`bucket-1/codeunit-runtime` (409F): unchanged from §L apart from +3 noise.
+
+**Commit:** `f7cf3120` — single squash containing all four file changes
+(populator, builder poke, Populate/CompileAndLoadClrObject NoOp, accessor on
+SkeletonNCLMetadata).
+
+**Suggested next steps (not pursued):**
+- Extend `RecordPatches.AlSourceParser` to parse `page N "Name"` and
+  `report N "Name"` declarations; add `BuildNCLMetaForm` /
+  `BuildNCLMetaReport` factories using the same
+  `CreateFromMetaForm` / `CreateFromMetaReport` reflection pattern; wire into
+  the populator to fill `metadataCacheEntries[Page]` /
+  `metadataCacheEntries[Report]`. Expected: collapses ~122 of the bucket-2
+  `ThrowMetaApplicationObjectNotFound` failures.
+- Codeunits aren't covered by the populator either (`NCLMetaCodeunit` only
+  has `CreateEmptyNCLMetaCodeunit`, no `CreateFromMetaCodeunit`). The
+  existing `NavCodeunitHandle.CreateTarget` JMP hook bypasses the lookup
+  for direct calls; only metadata-introspection code paths (test
+  framework codeunit-discovery) would benefit from a populator entry.
