@@ -511,6 +511,18 @@ public static partial class BcRuntime
                 Hook(targetGetter, nameof(NavRecordRef_get_Target), "NavRecordRef.get_Target");
         }
 
+        // NavStringValue.CompareTo(NavStringValue) — real impl uses NavCurrentThread.Session.Culture
+        // (null on skeleton). Replace with ordinal Value comparison.
+        var navStringValueType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavStringValue");
+        if (navStringValueType != null)
+        {
+            var compareTo = navStringValueType.GetMethod("CompareTo",
+                BindingFlags.Public | BindingFlags.Instance, null, new[] { navStringValueType }, null);
+            if (compareTo != null)
+                Hook(compareTo, nameof(NavStringValue_CompareTo),
+                    "NavStringValue.CompareTo(NavStringValue)");
+        }
+
         // RecordImplementation.GetActiveCompany — downstream NRE exposed by the get_Target
         // patch above. Real impl reaches Session.Database.CompanyTokens which is null on
         // the skeleton; return empty string.

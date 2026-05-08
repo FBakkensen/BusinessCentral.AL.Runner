@@ -61,6 +61,22 @@ public static partial class BcRuntime
         return srr;
     }
 
+    // NavStringValue.CompareTo(NavStringValue) — real impl reaches NavCurrentThread.Session.Culture
+    // which is null on the skeleton. Fall back to ordinal comparison via the public Value property.
+    private static PropertyInfo? _pNavStringValue_Value;
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static int NavStringValue_CompareTo(object self, object? other)
+    {
+        if (other == null) return 1;
+        if (ReferenceEquals(other, self)) return 0;
+        if (_pNavStringValue_Value == null)
+            _pNavStringValue_Value = self.GetType().GetProperty("Value",
+                BindingFlags.Public | BindingFlags.Instance);
+        var sv = _pNavStringValue_Value!.GetValue(self) as string ?? "";
+        var ov = _pNavStringValue_Value!.GetValue(other) as string ?? "";
+        return string.Compare(sv, ov, StringComparison.Ordinal);
+    }
+
     // RecordImplementation.GetActiveCompany — touched by NavRecord.CloneRecord.
     // Real impl: Session.Database.CompanyTokens.Get(tableState.CompanyNameToken). Both
     // Database and tableState are null on the skeleton; return empty string. AL code
