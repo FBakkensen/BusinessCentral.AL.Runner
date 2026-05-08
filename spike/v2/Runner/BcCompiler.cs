@@ -58,6 +58,28 @@ public sealed class BcCompiler
     private static NavCA.ISymbolReferenceLoader? _refLoader;
     private static NavCA.SymbolReferenceSpecification[]? _refSpecs;
     private static readonly object _refSync = new();
+    // Set by Program.cs once after dep resolution. The compile-time symbol set
+    // mirrors the runtime-loaded dep set by construction — no allow-list drift.
+    private static IReadOnlyList<(AppManifest Manifest, string AppPath)>? _resolvedDeps;
+    private static IReadOnlyList<string>? _packageCacheDirs;
+
+    /// <summary>
+    /// Set by Program.cs after DependencyResolver runs. The set of .app paths
+    /// passed here is exactly what DependencyLoader will load at runtime, so
+    /// compile-time symbols == runtime types by construction.
+    /// </summary>
+    public static void SetResolvedDeps(
+        IReadOnlyList<(AppManifest Manifest, string AppPath)> deps,
+        IReadOnlyList<string> packageCacheDirs)
+    {
+        lock (_refSync)
+        {
+            _resolvedDeps = deps;
+            _packageCacheDirs = packageCacheDirs;
+            _refLoader = null;
+            _refSpecs = null;
+        }
+    }
 
     private static (NavCA.ISymbolReferenceLoader? Loader, NavCA.SymbolReferenceSpecification[] Specs)
         GetSharedReferences(IEnumerable<string> bundleAlpackagesDirs)
@@ -67,44 +89,39 @@ public sealed class BcCompiler
             if (_refLoader != null && _refSpecs != null)
                 return (_refLoader, _refSpecs);
 
+            // Reference loader scans whole package cache dirs (so it can resolve
+            // anything BC's emitter walks), but Specs is the explicit list of
+            // resolved deps — no allow-list, no drift between compile and runtime.
             var packageDirs = bundleAlpackagesDirs
                 .Where(Directory.Exists)
                 .Distinct()
                 .ToList();
-            packageDirs.AddRange(ResolveSymbolDirs());
+            if (_packageCacheDirs != null)
+                packageDirs.AddRange(_packageCacheDirs.Where(Directory.Exists));
+            else
+                packageDirs.AddRange(ResolveSymbolDirs());
             packageDirs = packageDirs.Distinct().ToList();
             if (packageDirs.Count == 0) return (null, Array.Empty<NavCA.SymbolReferenceSpecification>());
 
-            // Whitelist core system + test-framework apps. Adding every .app from
-            // W1/Extensions (~121 files) makes BC's reference loader hang.
-            var allow = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            {
-                "Application",
-                "Base Application",
-                "System Application",
-                "Business Foundation",
-                "Library Assert",
-                "Library Variable Storage",
-                "Test Runner",
-                "System Application Test Library",
-                "Tests-TestLibraries",
-                "Any",
-                "Permissions Mock",
-            };
             _refLoader = NavSymRef.ReferenceLoaderFactory.CreateReferenceLoader(packageDirs);
-            _refSpecs = packageDirs
-                .SelectMany(d => Directory.EnumerateFiles(d, "*.app", SearchOption.AllDirectories))
-                .Select(f => (Path: f, Manifest: AppLoader.ReadManifest(f)))
-                .Where(t => t.Manifest != null && allow.Contains(t.Manifest!.Name))
-                .Select(t => new NavCA.SymbolReferenceSpecification(
-                    publisher: t.Manifest!.Publisher,
-                    name: t.Manifest.Name,
-                    version: t.Manifest.Version,
-                    exact: false,
-                    appId: t.Manifest.AppId,
-                    isPropagated: false,
-                    alternateIds: ImmutableArray<Guid>.Empty))
-                .ToArray();
+
+            if (_resolvedDeps != null && _resolvedDeps.Count > 0)
+            {
+                _refSpecs = _resolvedDeps
+                    .Select(d => new NavCA.SymbolReferenceSpecification(
+                        publisher: d.Manifest.Publisher,
+                        name: d.Manifest.Name,
+                        version: d.Manifest.Version,
+                        exact: false,
+                        appId: d.Manifest.AppId,
+                        isPropagated: false,
+                        alternateIds: ImmutableArray<Guid>.Empty))
+                    .ToArray();
+            }
+            else
+            {
+                _refSpecs = Array.Empty<NavCA.SymbolReferenceSpecification>();
+            }
             return (_refLoader, _refSpecs);
         }
     }
