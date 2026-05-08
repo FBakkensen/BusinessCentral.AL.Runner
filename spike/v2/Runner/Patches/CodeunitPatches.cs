@@ -96,14 +96,14 @@ public static partial class BcRuntime
         var pageType = _testPageTypeCache.GetOrAdd(id, FindTestPageType);
         if (pageType == null)
             throw new InvalidOperationException(
-                $"TestPage{id} is not present in the test assembly or any loaded dependency.");
+                $"TestPage handle target Page{id} is not present in the test assembly or any loaded dependency.");
         var ctor = pageType.GetConstructors()
             .FirstOrDefault(c => c.GetParameters().Length == 1 &&
                 typeof(Microsoft.Dynamics.Nav.Runtime.ITreeObject)
                     .IsAssignableFrom(c.GetParameters()[0].ParameterType));
         if (ctor == null)
             throw new InvalidOperationException(
-                $"TestPage{id} has no single-arg ITreeObject constructor");
+                $"Page{id} has no single-arg ITreeObject constructor (TestPage handle path)");
         return ctor.Invoke(new object[] { self });
     }
 
@@ -164,14 +164,47 @@ public static partial class BcRuntime
         if (reportType == null)
             throw new InvalidOperationException(
                 $"Report{id} is not present in the test assembly or any loaded dependency.");
-        var ctor = reportType.GetConstructors()
-            .FirstOrDefault(c => c.GetParameters().Length == 1 &&
-                typeof(Microsoft.Dynamics.Nav.Runtime.ITreeObject)
-                    .IsAssignableFrom(c.GetParameters()[0].ParameterType));
-        if (ctor == null)
-            throw new InvalidOperationException(
-                $"Report{id} has no single-arg ITreeObject constructor");
-        return ctor.Invoke(new object[] { self });
+        // BC emits report ctors as either:
+        //   (ITreeObject parent)
+        //   (ITreeObject parent, NCLMetaReport metadata)
+        // depending on AL features used. Try 1-arg first, then 2-arg with metadata
+        // pulled from our populated SystemTenant cache (skeleton OK — NavReport.ctor
+        // tolerates the cache-built skeleton entry).
+        var ctors = reportType.GetConstructors();
+        var oneArg = ctors.FirstOrDefault(c => c.GetParameters().Length == 1 &&
+            typeof(Microsoft.Dynamics.Nav.Runtime.ITreeObject)
+                .IsAssignableFrom(c.GetParameters()[0].ParameterType));
+        if (oneArg != null) return oneArg.Invoke(new object[] { self });
+        var twoArg = ctors.FirstOrDefault(c => c.GetParameters().Length == 2 &&
+            typeof(Microsoft.Dynamics.Nav.Runtime.ITreeObject)
+                .IsAssignableFrom(c.GetParameters()[0].ParameterType));
+        if (twoArg != null)
+        {
+            var metaParamType = twoArg.GetParameters()[1].ParameterType;
+            object? metaArg = null;
+            try { metaArg = LookupNclMetaForReport(id, metaParamType); }
+            catch { metaArg = null; }
+            return twoArg.Invoke(new object?[] { self, metaArg });
+        }
+        throw new InvalidOperationException(
+            $"Report{id} has no (ITreeObject) or (ITreeObject, NCLMetaReport) constructor");
+    }
+
+    private static object? LookupNclMetaForReport(int id, Type expectedMetaType)
+    {
+        // Reach into NavGlobal.SystemTenant.NCLMetadata's report-cache slot, populated
+        // by the §O/§P cache populator. Falls back to null if anything in the chain
+        // is missing — call sites are robust enough that NavReport.ctor proceeds.
+        var navNcl = AppDomain.CurrentDomain.GetAssemblies()
+            .FirstOrDefault(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Ncl");
+        var navGlobal = navNcl?.GetType("Microsoft.Dynamics.Nav.Runtime.NavGlobal");
+        var nclMeta = navGlobal?.GetProperty("NCLMetadata", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
+        if (nclMeta == null) return null;
+        var getMeta = nclMeta.GetType().GetMethod("GetMetaReportById",
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance, null,
+            new[] { typeof(int) }, null);
+        try { return getMeta?.Invoke(nclMeta, new object[] { id }); }
+        catch { return null; }
     }
 
     private static Type? FindReportType(int id)
@@ -239,15 +272,14 @@ public static partial class BcRuntime
 
     private static Type? FindTestPageType(int id)
     {
-        // TestPage classes derive from a TestPage base in Microsoft.Dynamics.Nav.Runtime;
-        // we find the base by name to avoid hard-coding the type ref.
+        // BC's Compilation.Emit produces `class Page{id} : NavForm` even for AL pages
+        // that test code references via `TestPage "Name"` — there is NO separate
+        // TestPage{id} class. NavTestPageHandle wraps the same Page{id} behaviorally.
+        // Match by NavForm base (NavTestPage doesn't exist as a real type).
         var navNcl = AppDomain.CurrentDomain.GetAssemblies()
             .FirstOrDefault(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Ncl");
-        Type? testPageBase = null;
-        if (navNcl != null)
-            testPageBase = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavTestPage")
-                ?? navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.TestPage");
-        var name = $"TestPage{id}";
+        Type? testPageBase = navNcl?.GetType("Microsoft.Dynamics.Nav.Runtime.NavForm");
+        var name = $"Page{id}";
         if (_currentTestAssembly != null)
         {
             try
