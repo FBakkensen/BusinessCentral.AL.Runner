@@ -61,8 +61,7 @@ public static partial class BcRuntime
         int id = self.ObjectId.ObjectNumber;
         var codeunitType = _codeunitTypeCache.GetOrAdd(id, FindCodeunitType);
         if (codeunitType == null)
-            throw new InvalidOperationException(
-                $"NavCodeunitHandle.CreateTarget: no loaded type Codeunit{id} found");
+            throw new InvalidOperationException(BuildMissingCodeunitMessage(id));
         var ctor = codeunitType.GetConstructors()
             .FirstOrDefault(c => c.GetParameters().Length == 1 &&
                 typeof(Microsoft.Dynamics.Nav.Runtime.ITreeObject)
@@ -71,6 +70,43 @@ public static partial class BcRuntime
             throw new InvalidOperationException(
                 $"Codeunit{id} has no single-arg ITreeObject constructor");
         return (Microsoft.Dynamics.Nav.Runtime.NavCodeunit)ctor.Invoke(new object[] { self });
+    }
+
+    // Well-known codeunit IDs that ship inside Microsoft dependency apps. When the
+    // test compile resolves a `Codeunit X` reference against a Microsoft .app at
+    // symbol-resolution time but the runtime has no DLL for that .app loaded,
+    // CreateTarget can't find the type. We surface the dependency name instead of
+    // a bare numeric id so the user knows which dependency is missing.
+    private static readonly Dictionary<int, (string Name, string Package)> _knownDependencyCodeunits = new()
+    {
+        [130000] = ("Assert",                  "Library Assert (test framework)"),
+        [130002] = ("Library Assert",          "Library Assert (test framework)"),
+        [130440] = ("Library Variable Storage","Library Variable Storage (test framework)"),
+        [130500] = ("Test Runner",             "Test Runner (test framework)"),
+        [131000] = ("Library - Test Initialize","Library - Test Initialize (test framework)"),
+        [310]    = ("No. Series",              "Base Application"),
+    };
+
+    private static string BuildMissingCodeunitMessage(int id)
+    {
+        if (_knownDependencyCodeunits.TryGetValue(id, out var known))
+        {
+            return
+                $"Codeunit {id} (\"{known.Name}\") is not present in the test " +
+                $"assembly or any loaded dependency. It belongs to {known.Package}, " +
+                $"a Microsoft dependency app. AL Runner v2 does not yet load " +
+                $"Microsoft R2R packages at runtime — either provide an AL " +
+                $"implementation/stub for this codeunit at the bucket level, or " +
+                $"wait until runtime dependency loading lands.";
+        }
+        return
+            $"Codeunit {id} is not present in the test assembly or any loaded " +
+            $"dependency. It is most likely defined in a dependency .app " +
+            $"(e.g. System Application, Base Application, a test-framework " +
+            $"library, or a third-party app) whose runtime DLL is not loaded. " +
+            $"AL Runner v2 does not yet load dependency-app DLLs at runtime — " +
+            $"either provide an AL implementation/stub at the bucket level, " +
+            $"or wait until runtime dependency loading lands.";
     }
 
     private static Type? FindCodeunitType(int id)
