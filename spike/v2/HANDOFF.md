@@ -738,3 +738,56 @@ Total wall-clock for the patch series ≈ 40 min.
   (matching NavValue[] varargs ABI shape).
 - `NavRecordRef.get_Target` — needs investigation of the `SetRecord(NavRecord)`
   caller path; possibly a NCLMetaTable lookup gap.
+
+---
+
+## §K. Runtime patch hooks (2026-05-08, second session)
+
+Continuing from §J. Baseline at start of this session **506P/469F/0E** out of
+975 (after the prior `NavFormHandle.CreateTarget` and
+`NavIntegerFormatter.FormatWithFormatNumber` hooks landed at the tail end of
+§J's session, contributing roughly +13P together).
+
+Final state at end of this session: **545P/430F/0E (+39P over the start-of-session
+baseline, +52P over the §J 493P baseline)**.
+
+| # | Patch | Δ pass | Commit |
+|---|---|---|---|
+| 1 | `NavRecordRef.get_Target` — bypass `Session.Company.SharedObjects` NRE; construct `SharedRecordRef` parented to skeleton container | +0 | `bfcf2c34` |
+| 2 | `RecordImplementation.GetActiveCompany` → `""` (downstream NRE exposed by #1; reaches `Session.Database.CompanyTokens`) | +0 | `ce2f6ead` |
+| 3 | `NavStringValue.CompareTo(NavStringValue)` — ordinal compare via `Value` property reflection (real impl uses `Session.Culture`) | +12 | `b4907692` |
+| 4 | `ALSystemNumeric.ALRandomize() / ALRandomize(int) / ALRandom(int)` — process-static `System.Random` (real impls use `Session.Random`) | +12 | `ce99bd7b` |
+| 5 | `NavHttpRequestMessage.get_Target` — same shape as #1 (skeleton `SharedNavHttpRequestMessage`) | +7 | `10d42872` |
+| 6 | `ALSystemString.ALLowercase / ALUppercase` — `InvariantCulture` (real impls use `Session.Culture`) | +8 | `f4958ab7` |
+| 7 | `NavDialog.ALOpen(Guid, string, getters[])` — no-op the UI dialog open | +0 | `b6aac060` |
+
+**Patches attempted and abandoned:**
+- `NavRecord.ALFieldCaptionAsync(int)` — hooking the async method directly hangs
+  the test process (state-machine calling convention is non-trivial for
+  JmpHook). Hooking the sync `ALFieldCaption(int)` wrapper was considered, but
+  AL `Rec.TestField(...)` calls into the async path internally, so the sync
+  hook wouldn't be reached. Skipped.
+
+**Top remaining failure classes (post-session):**
+
+| Count | Class | Notes |
+|---|---|---|
+| 69 | `NavDialog.ALError` | Largely Assert.ExpectedError mismatches: AL test expects "must" / "AreEqual" but downstream NRE produces a different message. Each is a separate underlying NRE; need surgical patches per stack, not a single ALError fix. |
+| 46 | `NCLMetaApplicationObject.get_ApplicationObjectConstructor` | Downstream NRE exposed by patch #2. NavRecord.CloneRecord reaches into the application object metadata pipeline. Probably needs a singleton-skeleton `NCLMetaApplicationObject` — investigate but watch scope. |
+| 36 | `NavApplicationObjectBaseHandle\`1.get_Target` | These are now `InvalidOperationException` "TestPage{ID} / Form{ID} not present" thrown from our own CreateTarget patches — out of scope (AL pages/forms not compiled by v2). |
+| 14 | `NavGlobal.get_NCLMetadata` | Residual after the prior NCLMetadata caller-side patches; smaller than before. |
+| 12 | `NavRecord.ALFieldCaptionAsync` | See abandoned note above. Async hook unsafe with JmpHook today. |
+| 10 | `NavMethodScope.RunBehaviorAsync` | Async; same JmpHook safety concern. |
+| 9 | `NavObjectDictionary\`2.get_Target` | Generic — open-generic JMP-hook risky (each closed instantiation has separate code). Skipped. |
+
+**Wall time:** ~5m 20s per cold full-bucket run, ~9 full bucket runs this
+session = ~50 min in test runs alone.
+
+**Suggested next steps:**
+- `NCLMetaApplicationObject.get_ApplicationObjectConstructor` — top remaining
+  unblocked class; sample 2–3 stacks before patching to bound scope.
+- Sample residual `NavDialog.ALError` 4-arg overload stacks for shared
+  underlying NRE patterns; each one fixed unblocks ~3–8 tests.
+- Async-method JmpHook strategy: investigate whether we can hook the
+  *callsite* (caller-replacement) rather than the async target. Out-of-scope
+  for this session per the binary-compat rule.
