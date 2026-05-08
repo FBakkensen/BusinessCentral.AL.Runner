@@ -78,7 +78,12 @@ public static partial class RecordPatches
         if (_registered)
         {
             foreach (var file in Directory.GetFiles(dir, "*.al", SearchOption.AllDirectories))
-                TryParseTableFile(File.ReadAllText(file));
+            {
+                var text = File.ReadAllText(file);
+                TryParseTableFile(text);
+                TryParsePageFile(text);
+                TryParseReportFile(text);
+            }
             PopulateNclMetadataCache();
         }
     }
@@ -183,8 +188,10 @@ public static partial class RecordPatches
         _collationComparer = BuildCollationAwareComparer();
         Console.Error.WriteLine($"[RecordPatches] Collation comparer built: {_collationComparer?.GetType().Name ?? "null"}");
 
-        // Parse AL source files
+        // Parse AL source files (tables + pages + reports — same set of dirs).
         ParseAllSources();
+        ParseAllPageSources();
+        ParseAllReportSources();
 
         // §O: lazy-populate the skeleton NCLMetadata cache with one NCLMetaTable
         // per parsed table so NavGlobal.NCLMetadata.GetMetaTableById / Codeunit.Run
@@ -481,7 +488,32 @@ public static partial class RecordPatches
             BindingFlags.Public | BindingFlags.Instance);
         if (numProp == null) return null;
         int id = (int)numProp.GetValue(objId)!;
-        return FindRecordType(id);
+
+        // Branch on ObjectType so this getter resolves correctly when the receiver
+        // is an NCLMetaForm / NCLMetaReport (§P).  Tables are the §O default.
+        var typeProp = objId.GetType().GetProperty("ObjectType",
+            BindingFlags.Public | BindingFlags.Instance);
+        var ot = typeProp?.GetValue(objId)?.ToString();
+        return ot switch
+        {
+            "Page"   => FindClrTypeByName($"Form{id}"),
+            "Report" => FindClrTypeByName($"Report{id}"),
+            _        => FindRecordType(id),
+        };
+    }
+
+    private static Type? FindClrTypeByName(string name)
+    {
+        foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            try
+            {
+                var t = Array.Find(asm.GetTypes(), x => x.Name == name);
+                if (t != null) return t;
+            }
+            catch { }
+        }
+        return null;
     }
 
     /// <summary>

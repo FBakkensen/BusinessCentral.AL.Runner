@@ -50,38 +50,54 @@ public static partial class RecordPatches
         if (_fNCLMetadataCacheEntries == null || _mCreateWithBase == null) return;
 
         // metadataCacheEntries is a ConcurrentDictionary<int, NCLMetadataCacheEntry>[]
-        // — index 1 == ObjectType.Table.
+        // — indexes correspond to Microsoft.Dynamics.Nav.Types.ObjectType:
+        //   Table=1, Report=3, Page=8.
         var arr = _fNCLMetadataCacheEntries.GetValue(skeleton) as Array;
         if (arr == null) return;
-        const int objectTypeTable = 1;
-        if (arr.Length <= objectTypeTable) return;
-        var tableDict = arr.GetValue(objectTypeTable);
-        if (tableDict == null) return;
 
-        // Use the IDictionary view to avoid generics gymnastics across versions.
-        var dict = (System.Collections.IDictionary)tableDict;
+        const int objectTypeTable = 1;
+        const int objectTypeReport = 3;
+        const int objectTypePage = 8;
+
+        // Tables — existing §O path.
+        PopulateOneObjectType(arr, objectTypeTable, _parsedTables.Keys.ToArray(),
+            id => _metaTableCache.GetOrAdd(id, BuildNCLMetaTable), "Table");
+
+        // Pages — §P, mirror via BuildNCLMetaForm using NCLMetaForm.CreateEmptyNCLMetaForm.
+        PopulateOneObjectType(arr, objectTypePage, _parsedPages.Keys.ToArray(),
+            id => _metaFormCache.GetOrAdd(id, BuildNCLMetaForm), "Page");
+
+        // Reports — §P, mirror via BuildNCLMetaReport using NCLMetaReport.CreateEmptyNCLMetaReport.
+        PopulateOneObjectType(arr, objectTypeReport, _parsedReports.Keys.ToArray(),
+            id => _metaReportCache.GetOrAdd(id, BuildNCLMetaReport), "Report");
+    }
+
+    /// <summary>
+    /// Insert one cache-entry per parsed object-id into
+    /// metadataCacheEntries[objectTypeIndex]. Idempotent (TryAdd via dict[]= but skipped
+    /// if the key already exists). Errors are logged + counted, never thrown.
+    /// </summary>
+    private static void PopulateOneObjectType(Array arr, int objectTypeIndex,
+        int[] ids, Func<int, object?> buildMeta, string label)
+    {
+        if (_mCreateWithBase == null) return;
+        if (arr.Length <= objectTypeIndex) return;
+        var slotDict = arr.GetValue(objectTypeIndex);
+        if (slotDict == null) return;
+        var dict = (System.Collections.IDictionary)slotDict;
 
         int added = 0, failed = 0;
-        foreach (var kv in _parsedTables)
+        foreach (var id in ids)
         {
-            int tableId = kv.Key;
-            if (dict.Contains(tableId)) continue;
+            if (dict.Contains(id)) continue;
             object? meta;
-            try
-            {
-                meta = _metaTableCache.GetOrAdd(tableId, BuildNCLMetaTable);
-            }
-            catch
-            {
-                meta = null;
-            }
+            try { meta = buildMeta(id); }
+            catch { meta = null; }
             if (meta == null) { failed++; continue; }
 
-            // Mark metadataLoaded=true so NCLMetadata.GetMetaApplicationObjectInternal
-            // doesn't fall into the Populate()/LoadMetadata() path. (Belt-and-braces:
-            // NCLMetaApplicationObject.Populate is also JMP-hooked to NoOp by
-            // MetadataPatches.InjectSkeletonSystemTenant, in case the field-poke is
-            // raced by an inlined property read.)
+            // Mark metadataLoaded=true on the meta itself so the shared
+            // NCLMetaApplicationObject.Populate path is skipped (belt-and-braces with
+            // the §O JMP NoOp on Populate / CompileAndLoadClrObject).
             if (_fNCLMetaAppObjMetadataLoaded != null)
                 FieldPoke.SetInstance(_fNCLMetaAppObjMetadataLoaded, meta, true);
 
@@ -92,23 +108,19 @@ public static partial class RecordPatches
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"[RecordPatches] CacheEntry.CreateWithBase({tableId}) failed: " +
+                Console.Error.WriteLine($"[RecordPatches] CacheEntry.CreateWithBase({label} {id}) failed: " +
                     ((ex is TargetInvocationException tie ? tie.InnerException ?? ex : ex).Message));
                 failed++;
                 continue;
             }
             if (entry == null) { failed++; continue; }
 
-            try
-            {
-                dict[tableId] = entry;
-                added++;
-            }
+            try { dict[id] = entry; added++; }
             catch { failed++; }
         }
 
         if (added > 0 || failed > 0)
-            Console.Error.WriteLine($"[RecordPatches] PopulateNclMetadataCache: added={added}, failed={failed}, total={_parsedTables.Count}");
+            Console.Error.WriteLine($"[RecordPatches] PopulateNclMetadataCache[{label}]: added={added}, failed={failed}, total={ids.Length}");
     }
 
     private static void EnsureCachePopulatorReflection()
