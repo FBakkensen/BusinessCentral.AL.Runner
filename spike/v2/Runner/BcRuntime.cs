@@ -204,6 +204,17 @@ public static partial class BcRuntime
         var ensureReg = alFnTimingT?.GetMethod("EnsureRegistered", BindingFlags.Public | BindingFlags.Static);
         if (ensureReg != null)
             Hook(ensureReg, nameof(NoOp_0Args), "ALFunctionTimingExecutionListener.EnsureRegistered");
+        // Even with EnsureRegistered no-op'd, `Start(NavMethodScope)` is reachable directly
+        // via `ApplicationObjectRootScope.AddApplicationObjectRootScope -> NavForm.Update` —
+        // a different listener-registration path (likely server-listener add wired up
+        // earlier in the env init chain) installs the listener anyway. Start NREs because
+        // `methodScope.Session.ExtensionMetrics` is null on AL test scopes built via our
+        // minimal NavMethodScopeCtorReplacement. The method is purely a telemetry/diagnostic
+        // side effect — no AL semantic impact — so no-op it. Sync, single-arg, JmpHook-safe
+        // per HANDOFF §5.1 (callers in BusinessApplication.dll = external from NCL.dll).
+        var startM = alFnTimingT?.GetMethod("Start", BindingFlags.Public | BindingFlags.Static);
+        if (startM != null)
+            Hook(startM, nameof(NoOp_OneArg), "ALFunctionTimingExecutionListener.Start");
 
         // Try the real factory first: NavEnvironment.InstantiateStandaloneNavEnvironment(true, false).
         // The cctor replacement above already wired the static `lockObject`/`instanceId`/
