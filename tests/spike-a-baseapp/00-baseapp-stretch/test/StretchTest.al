@@ -69,22 +69,33 @@ codeunit 80002 "Spike A2 BaseApp Stretch"
 
     // Shape 2 — Record access against a Base App-defined table.
     //
-    // RED — DOCUMENTED GAP, NOT COMMITTED. See Spike A2 report.
+    // Record "Currency" is table 4, defined in Base App's compiled
+    // metadata (not in this test suite's src/). The NCLMetaTable
+    // populator's BcAppFallback path
+    // (RecordPatches.BcAppFallback.cs) extracts the AL source
+    // shipped inside the Base App `.app` NAVX zip and feeds it
+    // through the same parser that consumes test src/, so the
+    // resulting NCLMetaTable is indistinguishable from one built
+    // from the test's own AL.
     //
-    //   Record "Currency" is table 4, defined in Base App's compiled
-    //   metadata (NOT in our parsed AL source). At Init() the runner
-    //   throws InvalidOperationException("NavRecordHandle.CreateTarget:
-    //   no NCLMetaTable for table 4 (AL source not parsed)") from
-    //   RecordPatches.cs:401.
-    //
-    //   This is a runtime-engine cache-populator gap, not a Base App
-    //   issue. Fix: extend the NCLMetaTable populator to derive metadata
-    //   for tables defined in compiled BC dependency DLLs (introspect
-    //   the loaded Record{N} : NavRecord type rather than only parsing
-    //   AL source). Estimated >30 min — deferred per spike scope.
-    //
-    // Test left out so the bucket stays GREEN. Reinstate when populator
-    // gains compiled-metadata fallback.
+    // After Init():
+    //   - "Invoice Rounding Precision" (decimal field 86) defaults
+    //     to 0, the AL Record-level Init contract for unset numeric
+    //     fields. Asserting on the exact 0 catches any populator
+    //     change that inadvertently leaves the slot uninitialised.
+    [Test]
+    procedure Currency_Init_LeavesNumericFieldsZero()
+    var
+        Currency: Record Currency;
+    begin
+        Currency.Init();
+        Assert.AreEqual(
+            0, Currency."Invoice Rounding Precision",
+            'Currency.Init should leave Invoice Rounding Precision at 0');
+        Assert.AreEqual(
+            '', Currency.Code,
+            'Currency.Init should leave PK Code at empty string');
+    end;
 
     // Shape 3 — Error raising. GLN Calculator.IsValidCheckDigit13 calls
     // the local IsValidCheckDigit which calls Error() with a length
