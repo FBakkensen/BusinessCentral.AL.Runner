@@ -45,13 +45,25 @@ JMP-hook patches against service-tier runtime. v1's `RoslynRewriter`,
 
 ## §2. Invariants (do not violate)
 
-1. **No type-renaming rewrites.** Renaming `NavX → MockX` breaks R2R compat.
+0. **Precompiled-DLL respect.** The runner's whole point is that integration
+   tests run against unmodified MS-AL-compiled DLLs (`SystemApplication.dll`,
+   `BaseApplication.dll`, etc.) and ISV-AL-compiled extensions. **Their public
+   type surface and method bodies must behave exactly as compiled.** The
+   runtime engine (NCL.dll, Types.dll, dispatchers, framework wrappers) and
+   skeleton state are ours to modify however we need. See
+   `.claude/rules/precompiled-dll-respect.md` for the full table of what's
+   allowed vs forbidden and the mental model. Items #1 and #3 below are
+   consequences of this rule.
+1. **No type-renaming rewrites.** Renaming `NavX → MockX` breaks linking for
+   every R2R or AL-precompiled caller in the load chain. Consequence of #0.
 2. **No silent workarounds.** Gaps get fixed or quarantined with a documented
    reason in `tests/excluded/<bucket>/<suite>/`. Never paper over.
-3. **Argument-wrap rewriting only.** `Rewriters/CallSiteArgWrap.cs` (121 LOC) is
-   the only Roslyn rewrite. It wraps `expr → new ByRef<T>(getter, setter)` at
-   call-sites where BC's emitter couldn't statically prove the wrap was needed.
-   This produces IL byte-equivalent to BC's own pipeline.
+3. **Argument-wrap rewriting only on our own AL output.**
+   `Rewriters/CallSiteArgWrap.cs` (121 LOC) is the only Roslyn rewrite on AL
+   we emit. It wraps `expr → new ByRef<T>(getter, setter)` at call-sites
+   where BC's emitter couldn't statically prove the wrap was needed. This
+   produces IL byte-equivalent to BC's own pipeline. **Never rewrite IL of
+   precompiled AL-business-logic DLLs (MS or ISV)** — see #0.
 4. **Reuse service-tier code before patching.** Before writing a new JMP-hook in
    `Patches/*.cs`, check whether the real MS service-tier DLLs we already load
    can satisfy the call. Three checks, in order:
