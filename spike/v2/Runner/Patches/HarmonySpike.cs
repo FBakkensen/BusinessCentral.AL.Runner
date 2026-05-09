@@ -1,5 +1,39 @@
 // HarmonySpike.cs — empirical validation of Harmony IL-patching on MS R2R/precompiled BC types.
 //
+// ── SPIKE RESULT (2026-05-09) ── RED ────────────────────────────────────────────────────────────
+//
+// Harmony 2.3.3 / 2.4.2 with MonoMod.Core 1.1.0 does NOT work on this system.
+//
+// Root blocker: MonoMod.Core generates a native helper .so at runtime
+// (/tmp/mm-exhelper.so.<rand>) using non-PIC machine code (TEXTREL flag).
+// glibc 2.43 on Arch Linux kernel 7.0.3 rejects dlopen of TEXTREL shared objects
+// (W^X security enforcement: R_X86_64_RELATIVE reloc would require marking text
+// pages PROT_WRITE temporarily, which the kernel denies).
+//
+// Errors observed:
+//   Harmony 2.3.3 + redirect: Stack overflow in FxCoreBaseRuntime.get_Abi()
+//     (MonoMod ABI detection recursion, known issue on .NET 8)
+//   Harmony 2.3.3 without redirect: DllNotFoundException / "cannot enable executable stack"
+//   Harmony 2.4.2 + redirect (PIC exhelper): SIGSEGV (our assembly implementation incorrect)
+//   Harmony 2.4.2 without redirect: DllNotFoundException / "cannot enable executable stack"
+//
+// One workaround investigated (per brief stop condition):
+//   LD_PRELOAD redirect intercepting dlopen("mm-exhelper.so.*") → PIC replacement .so.
+//   Redirect works (MonoMod gets past the DllNotFoundException), but:
+//   - Harmony 2.3.3: hits FxCoreBaseRuntime.get_Abi() stack overflow
+//     (separate from exhelper — pure MonoMod.Core 1.1.0 + .NET 8 ABI detection bug)
+//   - Harmony 2.4.2: SIGSEGV because our hand-written naked-assembly exhelper
+//     functions don't precisely match the register-calling-convention MonoMod expects.
+//     Properly matching them would require byte-for-byte reverse engineering of
+//     MonoMod's expected calling convention -- that is a second workaround, not the first.
+//
+// Conclusion: Harmony is NOT viable on Arch Linux .NET 8 without significant
+// platform-level work (patching the TEXTREL .so or using a kernel that permits it).
+// The JmpHook mprotect approach (already in use) is the right foundation.
+//
+// Verdict: RED.
+// ───────────────────────────────────────────────────────────────────────────────────────────────
+//
 // TWO TARGETS:
 //   (a) NavRecord.ALFieldCaptionAsync(int)      — async / ValueTask<string>-returning method
 //   (b) NavObjectDictionary`2.get_Target        — property getter on a generic type
