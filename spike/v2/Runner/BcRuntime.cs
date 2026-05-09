@@ -380,6 +380,52 @@ public static partial class BcRuntime
                 }
             }
 
+            // cachedEnvironmentDefaultLcid — `private readonly LazyEx<int>` on NavSession
+            // initialized via field initializer to `new LazyEx<int>(() => NavEnvironment.DefaultLanguage)`.
+            // GetUninitializedObject skips field initializers → field is null on skeleton.
+            // NCLCaptionStrings.GetValueOrDefault(int, NavSession) reads
+            //   session.CachedEnvironmentDefaultLanguage  ⇒  cachedEnvironmentDefaultLcid.Value
+            // and NREs. Construct a LazyEx<int> that returns NavEnvironment.DefaultLanguage
+            // and plant it on the skeleton session so every caller (intra-NCL R2R included)
+            // sees a non-null Lazy. Decompile pin: NCL @ 206393, 207228, 146556.
+            var cachedLcidField = sessType.GetField("cachedEnvironmentDefaultLcid",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            if (cachedLcidField != null && cachedLcidField.GetValue(_skeletonSession) == null)
+            {
+                try
+                {
+                    var lazyExType = cachedLcidField.FieldType;          // LazyEx<int>
+                    var funcOfInt = typeof(Func<>).MakeGenericType(typeof(int));
+                    var lazyExCtor = lazyExType.GetConstructor(new[] { funcOfInt });
+                    if (lazyExCtor != null)
+                    {
+                        // Resolve NavEnvironment.DefaultLanguage at call time.
+                        var navEnvType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavEnvironment");
+                        var defaultLangProp = navEnvType?.GetProperty("DefaultLanguage",
+                            BindingFlags.Public | BindingFlags.Static);
+                        Func<int> producer = () =>
+                        {
+                            try
+                            {
+                                var v = defaultLangProp?.GetValue(null);
+                                return v is int i && i > 0 ? i : 1033; // en-US fallback
+                            }
+                            catch { return 1033; }
+                        };
+                        // Convert Func<int> producer to the right Func type via Delegate.CreateDelegate?
+                        // Simplest: invoke via a lambda using reflection-bound method.
+                        var producerDel = Delegate.CreateDelegate(funcOfInt, producer.Target!,
+                            producer.Method);
+                        var lazyExInstance = lazyExCtor.Invoke(new object[] { producerDel });
+                        FieldPoke.SetInstance(cachedLcidField, _skeletonSession!, lazyExInstance);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine($"[BcRuntime] WARN: cachedEnvironmentDefaultLcid populate failed: {ex.GetType().Name}: {ex.Message}");
+                }
+            }
+
             // VerifyExecutePermission overloads → no-op
             foreach (var m in sessType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
                 .Where(m => m.Name == "VerifyExecutePermission" && m.ReturnType == typeof(void)))
