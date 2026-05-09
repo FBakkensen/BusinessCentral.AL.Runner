@@ -241,8 +241,6 @@ foreach (var bundle in bundles)
 Reporter.PrintSummary(results, Console.Out);
 Reporter.WriteClassification(results, outPath);
 Console.WriteLine($"Classification → {outPath}");
-// [HarmonySpike] Print per-call stats so we can see hit counts and overhead.
-AlRunnerV2.Patches.HarmonySpike.PrintSummary();
 return 0;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

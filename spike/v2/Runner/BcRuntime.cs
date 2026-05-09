@@ -63,9 +63,6 @@ public static partial class BcRuntime
         _applied = true;
         Win32Stubs.Register();
         ForceLoadBcDlls();
-        // [HarmonySpike] Apply Harmony patches BEFORE JmpHook patches so Harmony can
-        // claim the async/generic methods that JmpHook intentionally skips.
-        AlRunnerV2.Patches.HarmonySpike.Apply();
         var navNcl = AppDomain.CurrentDomain.GetAssemblies()
             .First(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Ncl");
         RootTreeStub = new RootTreeObject();
