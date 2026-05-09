@@ -29,10 +29,6 @@ public static partial class BcRuntime
         return new System.Threading.Tasks.ValueTask<bool>(false);
     }
 
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    public static Microsoft.Dynamics.Nav.Runtime.NCLOptionMetadata NCLEnumMetadata_CreateById(int id)
-        => Microsoft.Dynamics.Nav.Runtime.NCLOptionMetadata.Default;
-
     // Cached reflection for skeleton-session error access.
     private static System.Reflection.PropertyInfo? _pSessGetLastErrorText;
     private static System.Reflection.PropertyInfo? _pSessGetLastErrorCode;

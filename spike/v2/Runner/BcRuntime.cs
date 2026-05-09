@@ -530,7 +530,7 @@ public static partial class BcRuntime
             var createById = nclEnumMeta.GetMethod("Create",
                 BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(int) }, null);
             if (createById != null)
-                Hook(createById, nameof(NCLEnumMetadata_CreateById), "NCLEnumMetadata.Create(int)");
+                Hook(createById, nameof(NCLEnumMetadata_CreateByIdAlAware), "NCLEnumMetadata.Create(int)");
         }
 
         // NavCodeunitHandle.CreateTarget — bypass NavGlobal.NCLMetadata by constructing

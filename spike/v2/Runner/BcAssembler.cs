@@ -85,6 +85,12 @@ public sealed class BcAssembler
             if (name.StartsWith("System.") || name == "mscorlib" || name == "netstandard")
                 yield return p;
         }
+        // The runner's own assembly — polyfill shims call back into AlRunnerV2.BcRuntime
+        // helpers (e.g. NCLEnumMetadata_CreateByIdAlAware) so AL emit-time captured
+        // metadata is reachable from compiled-AL call sites.
+        var runnerDll = typeof(BcAssembler).Assembly.Location;
+        if (!string.IsNullOrEmpty(runnerDll) && File.Exists(runnerDll))
+            yield return runnerDll;
     }
 
     // Source patches applied to emitted C# before parsing. Each entry redirects a
@@ -158,10 +164,13 @@ namespace AlRunnerV2Shim
             => Microsoft.Dynamics.Nav.Runtime.ALCompiler.ConvertToDotNetFormatString(format);
 
         // NCLEnumMetadata.Create(int) chains through NavGlobal.MetadataProvider which NREs on the
-        // skeleton session.  Return NCLOptionMetadata.Default instead — ordinal arithmetic and
-        // NavOption.Create both work correctly with the default stub metadata.
+        // skeleton session.  Forward to AlRunnerV2.BcRuntime.NCLEnumMetadata_CreateByIdAlAware
+        // which returns a real NCLOptionMetadata subclass populated with the AL enum's
+        // (names[], ordinals[]) so GetNames()/GetOrdinals() work; falls back to
+        // NCLOptionMetadata.Default for system / dependency enums whose metadata isn't
+        // captured at AL emit time.
         public static Microsoft.Dynamics.Nav.Runtime.NCLOptionMetadata NCLEnumMetadataCreate(int id)
-            => Microsoft.Dynamics.Nav.Runtime.NCLOptionMetadata.Default;
+            => global::AlRunnerV2.BcRuntime.NCLEnumMetadata_CreateByIdAlAware(id);
 
         // ALDebugger — all classic-debugger methods are obsolete stubs that throw.
         // Shims return false / no-op so Debugger.IsActive, .Activate, .Deactivate work in tests.

@@ -348,6 +348,25 @@ public sealed class BcCompiler
             LastAddedName = symbol.Name;
             var src = System.Text.Encoding.UTF8.GetString(code);
             Captured.Add(new EmittedSource(symbol.Name, src));
+
+            // Capture (id, name, options[], indexes[]) for AL enum types so the
+            // runtime NCLEnumMetadata.Create(int) hook can return real
+            // GetNames()/GetOrdinals() data instead of NCLOptionMetadata.Default
+            // (which throws NavNCLNotSupportedOperationException). Enum
+            // extensions also flow through here as IEnumExtensionTypeSymbol;
+            // both expose Values via the IEnumBaseTypeSymbol interface.
+            if (symbol is NavCA.IEnumBaseTypeSymbol enumSym)
+            {
+                var values = enumSym.Values;
+                var options = new string[values.Length];
+                var indexes = new int[values.Length];
+                for (int i = 0; i < values.Length; i++)
+                {
+                    options[i] = values[i].Name ?? string.Empty;
+                    indexes[i] = values[i].Ordinal;
+                }
+                AlEnumMetadataRegistry.Register(enumSym.Id, enumSym.Name, options, indexes);
+            }
             if (Environment.GetEnvironmentVariable("BCCOMPILER_TRACE") == "1")
                 Console.Error.WriteLine($"  emit[{AddCalls}]: {symbol.Name}");
             if (Environment.GetEnvironmentVariable("BCCOMPILER_DUMP_CS") == "1")
