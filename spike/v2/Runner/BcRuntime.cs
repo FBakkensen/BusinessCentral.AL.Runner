@@ -314,7 +314,12 @@ public static partial class BcRuntime
             // PushDynamicCaptionStack — language-stack manipulation, NREs on skeleton.
             var pushDyn = sessType.GetMethod("PushDynamicCaptionStack",
                 BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-            if (pushDyn != null) Hook(pushDyn, nameof(NoOp_OneArg), "NavSession.PushDynamicCaptionStack");
+            // PushDynamicCaptionStack is `bool (this, int, int)`. NoOp_OneArg leaves RAX
+            // undefined → callers occasionally see "true" and dive into await
+            // GetDynamicCaptionAsync which NREs (no UIHelperTriggers on skeleton). Force
+            // a deterministic `false` so the async wrapper falls through to the sync
+            // FieldCaption path (which is also patched to return FieldName).
+            if (pushDyn != null) Hook(pushDyn, nameof(ReturnFalse_3Args), "NavSession.PushDynamicCaptionStack");
             // SyncFormatSettings also accesses cultureSettings (null in skeleton); return new FormatSettings().
             var syncFmt = sessType.GetMethod("SyncFormatSettings", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
             if (syncFmt != null) Hook(syncFmt, nameof(NavSession_SyncFormatSettings), "NavSession.SyncFormatSettings");
@@ -647,6 +652,101 @@ public static partial class BcRuntime
                 BindingFlags.NonPublic | BindingFlags.Instance);
             if (createTarget != null)
                 Hook(createTarget, nameof(NavReportHandle_CreateTarget), "NavReportHandle.CreateTarget");
+        }
+
+        // NCLMetaField.get_FieldCaption — sync underbelly of NavRecord.ALFieldCaptionAsync.
+        // Original chains through NavCurrentThread.ResolveAppGroup(Session) →
+        // MetaField.GetMergedCaptionMultiLanguage → LanguageProvider/ServerUserSettings,
+        // none of which the skeleton runtime initializes. Replace with FieldName, which is
+        // what the original returns under FieldIsNotFromMetadata. Lights up the
+        // Rec.TestField → ALFieldCaptionAsync error-formatting cascade without hooking the
+        // async surface (HANDOFF §5.2 Option C).
+        var nclMetaFieldType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NCLMetaField");
+        if (nclMetaFieldType != null)
+        {
+            var fieldCaptionGetter = nclMetaFieldType.GetProperty("FieldCaption",
+                BindingFlags.Public | BindingFlags.Instance)?.GetGetMethod(true);
+            if (fieldCaptionGetter != null)
+            {
+                var repl = typeof(AlRunnerV2.Patches.RecordPatches).GetMethod(
+                    nameof(AlRunnerV2.Patches.RecordPatches.NCLMetaField_get_FieldCaption),
+                    BindingFlags.Public | BindingFlags.Static)!;
+                Hook(fieldCaptionGetter, repl, "NCLMetaField.get_FieldCaption");
+            }
+        }
+
+        // NavTextConstant.get_Value — every AL Label is emitted as a NavTextConstant. The
+        // implicit NavStringValue→string conversion (used by `new NavText(constant)`) reads
+        // Value, which dereferences NavCurrentThread.Session → NRE on skeleton thread. Replace
+        // with a session-free lookup of the first ENU entry. Lights up Assert codeunit's
+        // `LastErrorCode.Contains(testFieldValidationCodeTxt)` and friends (HANDOFF §5.2 Option C).
+        var navTextConstantType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavTextConstant");
+        if (navTextConstantType != null)
+        {
+            var valueGetter = navTextConstantType.GetProperty("Value",
+                BindingFlags.Public | BindingFlags.Instance)?.GetGetMethod(true);
+            if (valueGetter != null)
+            {
+                var repl = typeof(AlRunnerV2.Patches.RecordPatches).GetMethod(
+                    nameof(AlRunnerV2.Patches.RecordPatches.NavTextConstant_get_Value),
+                    BindingFlags.Public | BindingFlags.Static)!;
+                Hook(valueGetter, repl, "NavTextConstant.get_Value");
+            }
+        }
+        // Also hook NavStringValue.op_Implicit(NavStringValue → string). The C# compiler
+        // emits this for every `(string)stringValue` cast, including `new NavText(constant)`.
+        // The original is `value?.Value` — a virtual call that JIT may devirtualize+inline,
+        // bypassing the get_Value hook above. Patch the static op directly so the dispatch
+        // is unconditional regardless of JIT inlining decisions.
+        var navStringValueType_forOp = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavStringValue");
+        if (navStringValueType_forOp != null)
+        {
+            var opImplicit = navStringValueType_forOp.GetMethod("op_Implicit",
+                BindingFlags.Public | BindingFlags.Static, null,
+                new[] { navStringValueType_forOp }, null);
+            if (opImplicit != null)
+            {
+                var repl = typeof(AlRunnerV2.Patches.RecordPatches).GetMethod(
+                    nameof(AlRunnerV2.Patches.RecordPatches.NavStringValue_op_Implicit),
+                    BindingFlags.Public | BindingFlags.Static)!;
+                Hook(opImplicit, repl, "NavStringValue.op_Implicit");
+            }
+        }
+
+        // NavRecord.TestFieldNotBlank / TestFieldError — sync throw paths of Rec.TestField.
+        // Real bodies dereference Session.WindowsCulture, Session.Diagnostics (via
+        // TryAddTestFieldAction), Session.Permissions, NavGlobal.NCLMetadata — all null on
+        // skeleton runtime. The throw path raises NRE which surfaces as "NullReference"
+        // error code and breaks Assert.ExpectedTestFieldError's code-match check.
+        // Replace with clean NavTestFieldException factory calls (HANDOFF §5.2 Option C).
+        var navRecordType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavRecord");
+        if (navRecordType != null)
+        {
+            var nclMetaFieldT = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NCLMetaField");
+            var navAlErrorInfoT = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavALErrorInfo");
+            if (nclMetaFieldT != null && navAlErrorInfoT != null)
+            {
+                var testFieldNotBlank = navRecordType.GetMethod("TestFieldNotBlank",
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance,
+                    null, new[] { nclMetaFieldT, navAlErrorInfoT }, null);
+                if (testFieldNotBlank != null)
+                {
+                    var repl = typeof(AlRunnerV2.Patches.RecordPatches).GetMethod(
+                        nameof(AlRunnerV2.Patches.RecordPatches.NavRecord_TestFieldNotBlank),
+                        BindingFlags.Public | BindingFlags.Static)!;
+                    Hook(testFieldNotBlank, repl, "NavRecord.TestFieldNotBlank");
+                }
+                var testFieldError = navRecordType.GetMethod("TestFieldError",
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance,
+                    null, new[] { nclMetaFieldT, typeof(string), navAlErrorInfoT }, null);
+                if (testFieldError != null)
+                {
+                    var repl = typeof(AlRunnerV2.Patches.RecordPatches).GetMethod(
+                        nameof(AlRunnerV2.Patches.RecordPatches.NavRecord_TestFieldError),
+                        BindingFlags.Public | BindingFlags.Static)!;
+                    Hook(testFieldError, repl, "NavRecord.TestFieldError");
+                }
+            }
         }
 
         // NavRecordRef.get_Target — bypass NRE on Session.Company.SharedObjects by

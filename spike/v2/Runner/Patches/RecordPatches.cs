@@ -524,4 +524,286 @@ public static partial class RecordPatches
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static Guid NewSequentialId_Replacement()
         => Guid.NewGuid();
+
+    // ------------------------------------------------------------------
+    // NavTextConstant.get_Value — sync underbelly hit by every NavText(constant) ctor
+    // ------------------------------------------------------------------
+    //
+    // The real getter chains through `NavCurrentThread.ResolveAppGroup().GroupId` and
+    // `NavCurrentThread.Session.LocalLanguage / GlobalLanguage` to pick a language.
+    // NavCurrentThread.Session is null on the skeleton thread → NRE on every read of a
+    // NavTextConstant (which the AL emitter generates for every Label, including the
+    // five `TestFieldValidationCodeTxt`/`TestFieldCodeTxt`/etc. used by Assert codeunit).
+    //
+    // Empirically this is what causes `Assert.ExpectedTestFieldError` to NRE in Release
+    // mode: the AL-emit OnRun has expressions like
+    //     `NavTextExtensions.ALContains(this.lastErrorCode, new NavText(testFieldValidationCodeTxt))`
+    // and the `new NavText(constant)` invokes the implicit `NavStringValue → string`
+    // conversion which calls `NavTextConstant.Value` which NREs. Debug-mode emit happens
+    // to evaluate these in a different order that hides the NRE; Release-mode does not.
+    //
+    // Replace with a skeleton-safe lookup: pick the first English (LCID 1033) entry, or
+    // the first non-default entry, or empty. AL ships single-language ENU labels in v2,
+    // so the result is byte-identical to what the real getter returns under normal
+    // session state (LocalLanguage = 1033, fallback = 1033).
+
+    private static FieldInfo? _fNavTextConstant_multiLanguage;
+    private static FieldInfo? _fMultiLanguage_languageIds;
+    private static FieldInfo? _fMultiLanguage_texts;
+
+    /// <summary>
+    /// Replacement for NavStringValue.op_Implicit(NavStringValue → string). Original is
+    /// `value?.Value` — but `Value` on NavTextConstant NREs through NavCurrentThread.Session.
+    /// Route through our skeleton-safe NavTextConstant_get_Value when the input is a
+    /// NavTextConstant; otherwise read Value normally (other subtypes don't NRE).
+    /// </summary>
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, PropertyInfo?> _pValueByType = new();
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static string NavStringValue_op_Implicit(object? value)
+    {
+        if (value == null) return null!;
+        var t = value.GetType();
+        if (t.Name == "NavTextConstant")
+            return NavTextConstant_get_Value(value);
+        var prop = _pValueByType.GetOrAdd(t,
+            x => x.GetProperty("Value", BindingFlags.Public | BindingFlags.Instance));
+        return prop?.GetValue(value) as string ?? string.Empty;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static string NavTextConstant_get_Value(object self)
+    {
+        if (self == null) return string.Empty;
+        try
+        {
+            if (_fNavTextConstant_multiLanguage == null)
+                _fNavTextConstant_multiLanguage = self.GetType().GetField("multiLanguage",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+            var ml = _fNavTextConstant_multiLanguage?.GetValue(self);
+            if (ml == null) return string.Empty;
+            if (_fMultiLanguage_languageIds == null)
+                _fMultiLanguage_languageIds = ml.GetType().GetField("languageIds",
+                    BindingFlags.NonPublic | BindingFlags.Instance)
+                    ?? ml.GetType().GetField("LanguageIds",
+                        BindingFlags.NonPublic | BindingFlags.Instance);
+            if (_fMultiLanguage_texts == null)
+                _fMultiLanguage_texts = ml.GetType().GetField("texts",
+                    BindingFlags.NonPublic | BindingFlags.Instance)
+                    ?? ml.GetType().GetField("Texts",
+                        BindingFlags.NonPublic | BindingFlags.Instance);
+            // Try LanguageIds/Texts as properties (the public API on MultiLanguage).
+            var langProp = ml.GetType().GetProperty("LanguageIds",
+                BindingFlags.Public | BindingFlags.Instance);
+            var textProp = ml.GetType().GetProperty("Texts",
+                BindingFlags.Public | BindingFlags.Instance);
+            var langs = langProp?.GetValue(ml) ?? _fMultiLanguage_languageIds?.GetValue(ml);
+            var texts = textProp?.GetValue(ml) ?? _fMultiLanguage_texts?.GetValue(ml);
+            if (langs is System.Collections.IList ll && texts is System.Collections.IList tl && ll.Count > 0 && tl.Count > 0)
+            {
+                // Prefer English (1033) first, then any non-default.
+                for (int i = 0; i < ll.Count && i < tl.Count; i++)
+                {
+                    if (ll[i] is int lcid && lcid == 1033 && tl[i] is string s && !string.IsNullOrEmpty(s))
+                        return s;
+                }
+                if (tl[0] is string first) return first;
+            }
+        }
+        catch { }
+        return string.Empty;
+    }
+
+    // ------------------------------------------------------------------
+    // NavRecord.TestFieldNotBlank / TestFieldEquals / TestFieldError
+    // ------------------------------------------------------------------
+    //
+    // These three methods are the sync underbelly of `Rec.TestField(...)`.
+    // The real implementations format their failure message using:
+    //   - `base.Session.WindowsCulture`
+    //   - `ALFieldCaptionAsync(...).AsTask().GetAwaiter().GetResult()`
+    //   - `metaField.Parent.TableCaptionSafe`
+    //   - `PrimaryKeyString` (iterates key fields)
+    //   - `TryAddTestFieldAction(metaField)` (touches `Session.Diagnostics`,
+    //      `Session.Permissions`, `NavGlobal.NCLMetadata.GetMetaFormById` —
+    //      none of which the skeleton runtime initializes)
+    //
+    // Empirically (verified 2026-05-09 with Debug-mode emit) the throw path
+    // raises a NullReferenceException somewhere inside that argument list,
+    // which then surfaces with error code "NullReference" instead of
+    // "TestField". Assert.ExpectedTestFieldError sees the wrong code, calls
+    // its own Error path, and the test fails with NRE 12 times.
+    //
+    // Per HANDOFF §5.2 (Option C) we replace the throw path with a clean
+    // `NavTestFieldException.CreateNonblank/CreateMustBeEqualTo` call using
+    // safe arguments — same factory the real BC code uses, just with culture
+    // forced to InvariantCulture and PrimaryKeyValues="" to avoid the
+    // failing-skeleton property dives. The exception type is identical
+    // (`NavTestFieldException`) so `GetErrorCode` returns "TestField" and
+    // Assert.ExpectedTestFieldError's `LastErrorCode.Contains("TestField")`
+    // matches. The message contains the field caption, satisfying
+    // ExpectedTestFieldMessage's StrPos check.
+    //
+    // The pass path (value is non-blank / equal) is left to the real code:
+    // we delegate to it via reflection and only intercept the throw path.
+
+    private static MethodInfo? _mGetFieldValue;
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, PropertyInfo?> _pIsZeroOrEmptyByType = new();
+    private static MethodInfo? _mNavTestFieldException_CreateNonblank;
+    private static MethodInfo? _mNavTestFieldException_CreateMustBeEqualTo;
+    private static PropertyInfo? _pNCLMetaFieldFieldNo;
+    private static PropertyInfo? _pNCLMetaFieldFieldName;
+    private static PropertyInfo? _pNCLMetaFieldParent;
+    private static PropertyInfo? _pNCLMetaTableTableName;
+
+    private static string SafeFieldName(object? metaField)
+    {
+        if (metaField == null) return string.Empty;
+        if (_pNCLMetaFieldFieldName == null)
+            _pNCLMetaFieldFieldName = metaField.GetType().GetProperty("FieldName",
+                BindingFlags.Public | BindingFlags.Instance);
+        return (string?)_pNCLMetaFieldFieldName?.GetValue(metaField) ?? string.Empty;
+    }
+
+    private static string SafeTableName(object? metaField)
+    {
+        if (metaField == null) return string.Empty;
+        if (_pNCLMetaFieldParent == null)
+            _pNCLMetaFieldParent = metaField.GetType().GetProperty("Parent",
+                BindingFlags.Public | BindingFlags.Instance);
+        var parent = _pNCLMetaFieldParent?.GetValue(metaField);
+        if (parent == null) return string.Empty;
+        if (_pNCLMetaTableTableName == null)
+            _pNCLMetaTableTableName = parent.GetType().GetProperty("TableName",
+                BindingFlags.Public | BindingFlags.Instance);
+        return (string?)_pNCLMetaTableTableName?.GetValue(parent) ?? string.Empty;
+    }
+
+    private static object CreateNavTestFieldException_Nonblank(object metaField)
+    {
+        if (_mNavTestFieldException_CreateNonblank == null)
+        {
+            var navTypes = AppDomain.CurrentDomain.GetAssemblies()
+                .FirstOrDefault(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Types");
+            var t = navTypes?.GetType("Microsoft.Dynamics.Nav.Types.Exceptions.NavTestFieldException")
+                ?? navTypes?.GetType("Microsoft.Dynamics.Nav.Types.NavTestFieldException")
+                ?? navTypes?.GetTypes().FirstOrDefault(x => x.Name == "NavTestFieldException");
+            _mNavTestFieldException_CreateNonblank = t?.GetMethod("CreateNonblank",
+                BindingFlags.Public | BindingFlags.Static);
+        }
+        var m = _mNavTestFieldException_CreateNonblank
+            ?? throw new InvalidOperationException("NavTestFieldException.CreateNonblank not found");
+        // Signature: (CultureInfo, string fieldName, string tableName, string primaryKeyValues, ErrorInfoData=null)
+        var args = new object?[] { System.Globalization.CultureInfo.InvariantCulture,
+            SafeFieldName(metaField), SafeTableName(metaField), string.Empty, null };
+        return (Exception)m.Invoke(null, args)!;
+    }
+
+    private static object CreateNavTestFieldException_MustBeEqualTo(object metaField, string shouldBe, string current)
+    {
+        if (_mNavTestFieldException_CreateMustBeEqualTo == null)
+        {
+            var navTypes = AppDomain.CurrentDomain.GetAssemblies()
+                .FirstOrDefault(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Types");
+            var t = navTypes?.GetType("Microsoft.Dynamics.Nav.Types.Exceptions.NavTestFieldException")
+                ?? navTypes?.GetType("Microsoft.Dynamics.Nav.Types.NavTestFieldException")
+                ?? navTypes?.GetTypes().FirstOrDefault(x => x.Name == "NavTestFieldException");
+            _mNavTestFieldException_CreateMustBeEqualTo = t?.GetMethod("CreateMustBeEqualTo",
+                BindingFlags.Public | BindingFlags.Static);
+        }
+        var m = _mNavTestFieldException_CreateMustBeEqualTo
+            ?? throw new InvalidOperationException("NavTestFieldException.CreateMustBeEqualTo not found");
+        // Signature: (CultureInfo, string fieldName, string tableName, string shouldBeValue,
+        //            string currentValue, string primaryKeyValues, ErrorInfoData=null)
+        var args = new object?[] { System.Globalization.CultureInfo.InvariantCulture,
+            SafeFieldName(metaField), SafeTableName(metaField), shouldBe, current, string.Empty, null };
+        return (Exception)m.Invoke(null, args)!;
+    }
+
+    private static bool TryGetFieldValueIsZeroOrEmpty(object navRecord, object metaField, out bool result)
+    {
+        result = true;
+        try
+        {
+            // Look up by the NCLMetaField base parameter type (the runtime metaField may be
+            // a derived subclass that the public method-resolution can't match directly).
+            if (_mGetFieldValue == null)
+            {
+                var nclMetaFieldT = metaField.GetType();
+                while (nclMetaFieldT != null && nclMetaFieldT.Name != "NCLMetaField")
+                    nclMetaFieldT = nclMetaFieldT.BaseType;
+                _mGetFieldValue = navRecord.GetType().GetMethod("GetFieldValue",
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance,
+                    null, new[] { nclMetaFieldT ?? metaField.GetType() }, null);
+            }
+            var v = _mGetFieldValue?.Invoke(navRecord, new object[] { metaField });
+            if (v == null) { result = true; return true; }
+            // NavValue.IsZeroOrEmpty is virtual; cache the PropertyInfo per concrete subtype
+            // because the NCLMetaField argument can be different NavValue subclasses across
+            // calls (NavInteger / NavText / NavCode / …).
+            var p = _pIsZeroOrEmptyByType.GetOrAdd(v.GetType(),
+                t => t.GetProperty("IsZeroOrEmpty", BindingFlags.Public | BindingFlags.Instance));
+            var b = p?.GetValue(v) as bool?;
+            result = b ?? true;
+            return true;
+        }
+        catch { return false; }
+    }
+
+    /// <summary>
+    /// Replacement for NavRecord.TestFieldNotBlank(NCLMetaField, NavALErrorInfo).
+    /// Real method computes the error message via Session.WindowsCulture, async ALFieldCaption,
+    /// PrimaryKeyString, and TryAddTestFieldAction — all of which dereference skeleton state
+    /// that's null. Compute the not-blank predicate via the real `GetFieldValue/IsZeroOrEmpty`
+    /// (those work on a populated record) and on the throw path raise a NavTestFieldException
+    /// directly with InvariantCulture and minimal args, so error code is "TestField" and the
+    /// message contains the field caption — what Assert.ExpectedTestFieldError expects.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void NavRecord_TestFieldNotBlank(object self, object metaField, object? errorInfo)
+    {
+        if (metaField == null) throw new ArgumentNullException(nameof(metaField));
+        if (TryGetFieldValueIsZeroOrEmpty(self, metaField, out var isBlank) && !isBlank)
+            return; // value is set — nothing to assert.
+        throw (Exception)CreateNavTestFieldException_Nonblank(metaField);
+    }
+
+    /// <summary>
+    /// Replacement for NavRecord.TestFieldError(NCLMetaField, string, NavALErrorInfo).
+    /// Same rationale as TestFieldNotBlank — computes the error message safely.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void NavRecord_TestFieldError(object self, object metaField, string shouldBeValue, object? errorInfo)
+    {
+        if (metaField == null) throw new ArgumentNullException(nameof(metaField));
+        string current = "<N/A>";
+        try
+        {
+            if (_mGetFieldValue == null)
+                _mGetFieldValue = self.GetType().GetMethod("GetFieldValue",
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance,
+                    null, new[] { metaField.GetType() }, null);
+            var v = _mGetFieldValue?.Invoke(self, new object[] { metaField });
+            current = v?.ToString() ?? "<N/A>";
+        }
+        catch { /* leave default */ }
+        throw (Exception)CreateNavTestFieldException_MustBeEqualTo(metaField, shouldBeValue ?? string.Empty, current);
+    }
+
+    // NCLMetaField.get_FieldCaption — original computes via captionStrings →
+    // NavCurrentThread.ResolveAppGroup(Session) → MetaField.GetMergedCaptionMultiLanguage,
+    // which dereferences LanguageProvider.Provider / NavCurrentThread.Session state that
+    // the skeleton runtime hasn't populated. Per HANDOFF §5.2 this is the sync underbelly
+    // the async ALFieldCaptionAsync wrapper falls through to — populating a stable value
+    // here lights up Rec.TestField error formatting (~40+ tests) without touching the
+    // async surface. AL doesn't ship per-language captions to v2 anyway, so FieldName
+    // is the same string the real getter produces under FieldIsNotFromMetadata.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static string NCLMetaField_get_FieldCaption(object self)
+    {
+        if (self == null) return string.Empty;
+        var fieldNameProp = self.GetType().GetProperty("FieldName",
+            BindingFlags.Public | BindingFlags.Instance);
+        return (string?)fieldNameProp?.GetValue(self) ?? string.Empty;
+    }
 }
