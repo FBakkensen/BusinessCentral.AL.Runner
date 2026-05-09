@@ -215,6 +215,11 @@ public static partial class BcRuntime
         var startM = alFnTimingT?.GetMethod("Start", BindingFlags.Public | BindingFlags.Static);
         if (startM != null)
             Hook(startM, nameof(NoOp_OneArg), "ALFunctionTimingExecutionListener.Start");
+        // Same reasoning for the symmetric Exit(NavMethodScope) — telemetry-only counter
+        // updates + long-running tracing diagnostics, no AL semantic effect.
+        var exitM = alFnTimingT?.GetMethod("Exit", BindingFlags.Public | BindingFlags.Static);
+        if (exitM != null)
+            Hook(exitM, nameof(NoOp_OneArg), "ALFunctionTimingExecutionListener.Exit");
 
         // Try the real factory first: NavEnvironment.InstantiateStandaloneNavEnvironment(true, false).
         // The cctor replacement above already wired the static `lockObject`/`instanceId`/
