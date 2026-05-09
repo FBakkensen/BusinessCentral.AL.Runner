@@ -34,7 +34,17 @@ public static partial class RecordPatches
 
     private static NCLMetaTable? BuildNCLMetaTable(int tableId)
     {
-        if (!_parsedTables.TryGetValue(tableId, out var parsed)) return null;
+        if (!_parsedTables.TryGetValue(tableId, out var parsed))
+        {
+            // Fallback: try to parse the table source from a registered BC dependency
+            // .app. Tests under tests/spike-a-baseapp invoke Record types defined in
+            // Base App / System App whose AL source isn't part of the test suite's
+            // own src/ tree. The .app NAVX zip ships the AL source, which the
+            // existing TryParseTableFile can consume verbatim.
+            if (!TryPopulateParsedTableFromBcApps(tableId)
+                || !_parsedTables.TryGetValue(tableId, out parsed))
+                return null;
+        }
         if (_tMetaTable == null || _mCreateFromMetaTable == null) return null;
 
         try
