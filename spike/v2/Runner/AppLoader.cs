@@ -127,18 +127,40 @@ public static class AppLoader
     /// <summary>
     /// Returns the IL DLL bytes from a Microsoft R2R `.app` package, or null
     /// if no `publishedartifacts/*.dll` is present (i.e. the package is not R2R).
+    /// Returns only the first DLL — kept for backwards-compat callers that
+    /// happen to want a single-DLL result. Use <see cref="ExtractAllDlls"/>
+    /// for multi-DLL R2R packages (e.g. Base Application is 5 DLL chunks).
     /// </summary>
     public static byte[]? ExtractDll(string appPath)
     {
+        var all = ExtractAllDlls(appPath);
+        return all.Count == 0 ? null : all[0];
+    }
+
+    /// <summary>
+    /// Returns ALL `publishedartifacts/*.dll` byte blobs from a Microsoft R2R
+    /// `.app` package. Microsoft ships large apps (notably Base Application)
+    /// as multiple DLL chunks under `publishedartifacts/...`; loading only
+    /// the first leaves the majority of types unresolved at runtime.
+    /// Returns an empty list if the package is not R2R.
+    /// </summary>
+    public static IReadOnlyList<byte[]> ExtractAllDlls(string appPath)
+    {
         using var zip = OpenAppZip(appPath);
-        var dllEntry = zip.Entries.FirstOrDefault(e =>
-            e.FullName.StartsWith("publishedartifacts/", StringComparison.OrdinalIgnoreCase)
-            && e.FullName.EndsWith(".dll", StringComparison.OrdinalIgnoreCase));
-        if (dllEntry == null) return null;
-        using var s = dllEntry.Open();
-        using var ms = new MemoryStream();
-        s.CopyTo(ms);
-        return ms.ToArray();
+        var dllEntries = zip.Entries
+            .Where(e => e.FullName.StartsWith("publishedartifacts/", StringComparison.OrdinalIgnoreCase)
+                     && e.FullName.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(e => e.FullName, StringComparer.Ordinal)
+            .ToList();
+        var result = new List<byte[]>(dllEntries.Count);
+        foreach (var entry in dllEntries)
+        {
+            using var s = entry.Open();
+            using var ms = new MemoryStream();
+            s.CopyTo(ms);
+            result.Add(ms.ToArray());
+        }
+        return result;
     }
 
     /// <summary>

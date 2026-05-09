@@ -76,18 +76,39 @@ public sealed class DependencyLoader
             }
         }
 
-        // Tier 2: R2R extract.
+        // Tier 2: R2R extract. Microsoft ships large apps (notably Base
+        // Application — 5 DLL chunks) as multiple `publishedartifacts/*.dll`
+        // entries. Load every DLL; the chunk that defines the user-visible
+        // app type (e.g. `Codeunit9015` for "Application System Constants")
+        // is not necessarily the first one. We return the chunk whose
+        // assembly name matches the manifest's app name when present, else
+        // the first chunk; all chunks are registered in the by-name cache so
+        // the Resolving handler can serve cross-chunk references.
         if (AppLoader.IsR2R(appPath))
         {
-            var dll = AppLoader.ExtractDll(appPath);
-            if (dll != null)
+            var dlls = AppLoader.ExtractAllDlls(appPath);
+            if (dlls.Count > 0)
             {
-                try { return Assembly.Load(dll); }
-                catch (Exception ex)
+                Assembly? primary = null;
+                int loaded = 0;
+                foreach (var dll in dlls)
                 {
-                    Console.Error.WriteLine($"[deps] tier-2 R2R load failed for {m.Name}: {ex.Message}");
-                    return null;
+                    try
+                    {
+                        var asm = Assembly.Load(dll);
+                        var n = asm.GetName().Name ?? "";
+                        _byName[n] = asm;
+                        primary ??= asm;
+                        loaded++;
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.Error.WriteLine($"[deps] tier-2 R2R chunk load failed for {m.Name}: {ex.Message}");
+                    }
                 }
+                if (loaded > 1)
+                    Console.Error.WriteLine($"[deps] tier-2 R2R: {m.Name} loaded {loaded} DLL chunk(s)");
+                return primary;
             }
         }
 
