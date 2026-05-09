@@ -101,6 +101,12 @@ foreach (var bundle in bundles)
                 BcCompiler.SetResolvedDeps(ordered, packageCacheDirs);
                 var loaded = depLoader.LoadAll(ordered, bucketRoot);
                 Console.WriteLine($"  [{rel}] loaded {loaded.Count} dep assembl(ies)");
+                // Register dep .app paths with RecordPatches so the NCLMetaTable
+                // populator can fall back to the AL source shipped inside the .app
+                // (NAVX zip) for tables defined in compiled BC dependencies — the
+                // case spike-a-baseapp's Currency-init scenario depends on.
+                foreach (var (_, appPath) in ordered)
+                    AlRunnerV2.Patches.RecordPatches.AddBcAppPath(appPath);
             }
             catch (Exception ex)
             {
@@ -147,14 +153,22 @@ foreach (var bundle in bundles)
         var moduleName = $"V2_{Path.GetFileName(bundleAbs)}";
 
         // ── AL-output cache check (Spike B keystone) ───────────────────────
+        // Sidecar `<key>.enum-registry.json` carries the AlEnumMetadataRegistry
+        // entries that emit would have populated as a side effect — see
+        // BcCompiler.CaptureOutputter.AddApplicationObject. On HIT we must
+        // replay them BEFORE Assembly.Load so any test executing
+        // `Enum::"X".Names()` / `.Ordinals()` finds the registry populated.
+        // Cache HIT requires BOTH files to exist; missing sidecar → MISS.
         byte[]? cachedBytes = null;
         string? cacheKey = null;
         string? cachePath = null;
+        string? sidecarPath = null;
         if (alCacheDir != null)
         {
             cacheKey = ComputeAlCacheKey(allPaths, moduleName, ordered: GetOrderedDepIds(bucketRoot, packageCacheDirs));
             cachePath = Path.Combine(alCacheDir, cacheKey + ".dll");
-            if (File.Exists(cachePath))
+            sidecarPath = Path.Combine(alCacheDir, cacheKey + ".enum-registry.json");
+            if (File.Exists(cachePath) && File.Exists(sidecarPath))
             {
                 try { cachedBytes = File.ReadAllBytes(cachePath); }
                 catch (Exception ex)
@@ -163,15 +177,35 @@ foreach (var bundle in bundles)
                     cachedBytes = null;
                 }
             }
+            else if (File.Exists(cachePath))
+            {
+                Console.Error.WriteLine($"  [cache] DLL present but sidecar missing — treating as MISS ({sidecarPath})");
+            }
         }
 
         byte[]? assemblyBytes = null;
         if (cachedBytes != null)
         {
-            Console.Error.WriteLine($"  [cache] HIT  key={cacheKey} path={cachePath} ({cachedBytes.Length} bytes) — skipping Emit+Compile");
-            assemblyBytes = cachedBytes;
+            // Replay the enum-registry sidecar BEFORE Assembly.Load. Test
+            // execution is what reads the registry (via the
+            // NCLEnumMetadata_CreateByIdAlAware hook), so as long as replay
+            // completes before executor.Run that's sufficient — but doing it
+            // pre-Load is cheap insurance against any module-cctor that
+            // touches enum metadata.
+            int replayed = 0;
+            try { replayed = LoadEnumRegistrySidecar(sidecarPath!); }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"  [cache] sidecar replay failed for {sidecarPath}: {ex.Message} — falling through to MISS");
+                cachedBytes = null;
+            }
+            if (cachedBytes != null)
+            {
+                Console.Error.WriteLine($"  [cache] HIT  key={cacheKey} path={cachePath} ({cachedBytes.Length} bytes, {replayed} enum entries replayed) — skipping Emit+Compile");
+                assemblyBytes = cachedBytes;
+            }
         }
-        else
+        if (assemblyBytes == null)
         {
             if (alCacheDir != null) Console.Error.WriteLine($"  [cache] MISS key={cacheKey} — running Emit+Compile");
             var et = System.Diagnostics.Stopwatch.StartNew();
@@ -202,7 +236,11 @@ foreach (var bundle in bundles)
                         try
                         {
                             File.WriteAllBytes(cachePath, assemblyBytes);
-                            Console.Error.WriteLine($"  [cache] WROTE key={cacheKey} path={cachePath} ({assemblyBytes.Length} bytes)");
+                            // Sidecar: persist the AlEnumMetadataRegistry side-effect that
+                            // emit just populated. Without this, cache HIT replays the DLL
+                            // but leaves the registry empty → enum tests fail.
+                            int written = SaveEnumRegistrySidecar(sidecarPath!);
+                            Console.Error.WriteLine($"  [cache] WROTE key={cacheKey} path={cachePath} ({assemblyBytes.Length} bytes, {written} enum entries → sidecar)");
                         }
                         catch (Exception ex)
                         {
@@ -487,6 +525,14 @@ static string ComputeAlCacheKey(
         ms.Write(bytes, 0, bytes.Length);
     }
 
+    // 0. Cache schema version — bumped whenever the on-disk cache layout
+    //    (sidecar set, sidecar shape, or hash framing) changes. Old DLLs
+    //    written before the bump simply hash to a different key and become
+    //    unreachable garbage in <cacheDir>; the new key MISSes and rebuilds.
+    //    v2: added <key>.enum-registry.json sidecar so cache HIT replays the
+    //    AlEnumMetadataRegistry side-effects that emit would have set up.
+    WriteLine("schema:v2");
+
     // 1. Runner assembly fingerprint — any rewriter / polyfill / patch change
     //    in the runner forces a cache miss.
     var runnerLoc = typeof(AlRunnerV2.BcAssembler).Assembly.Location;
@@ -517,6 +563,58 @@ static string ComputeAlCacheKey(
     ms.Position = 0;
     var keyBytes = sha.ComputeHash(ms);
     return Convert.ToHexString(keyBytes).ToLowerInvariant();
+}
+
+// Sidecar: serialize AlEnumMetadataRegistry to <key>.enum-registry.json so
+// cache HIT can replay the side-effect that emit would have populated.
+// Schema (v2): { "enums": [ { "id": int, "name": string, "options": [string], "indexes": [int] }, ... ] }
+static int SaveEnumRegistrySidecar(string path)
+{
+    var entries = AlEnumMetadataRegistry.Snapshot();
+    var dto = new
+    {
+        enums = entries.Select(e => new
+        {
+            id = e.Id,
+            name = e.Name,
+            options = e.Options,
+            indexes = e.Indexes,
+        }).ToArray()
+    };
+    var json = System.Text.Json.JsonSerializer.Serialize(dto, new System.Text.Json.JsonSerializerOptions
+    {
+        WriteIndented = false,
+    });
+    File.WriteAllText(path, json);
+    return entries.Count;
+}
+
+// Replay AlEnumMetadataRegistry from <key>.enum-registry.json. Throws on
+// corrupt JSON; the caller treats any exception as cache MISS and rebuilds.
+static int LoadEnumRegistrySidecar(string path)
+{
+    var json = File.ReadAllText(path);
+    using var doc = System.Text.Json.JsonDocument.Parse(json);
+    if (!doc.RootElement.TryGetProperty("enums", out var arr)
+        || arr.ValueKind != System.Text.Json.JsonValueKind.Array)
+        throw new InvalidDataException("enum-registry.json: missing 'enums' array");
+    int count = 0;
+    foreach (var e in arr.EnumerateArray())
+    {
+        int id = e.GetProperty("id").GetInt32();
+        string name = e.GetProperty("name").GetString() ?? string.Empty;
+        var optsEl = e.GetProperty("options");
+        var idxEl = e.GetProperty("indexes");
+        var opts = new string[optsEl.GetArrayLength()];
+        int oi = 0;
+        foreach (var o in optsEl.EnumerateArray()) opts[oi++] = o.GetString() ?? string.Empty;
+        var idxs = new int[idxEl.GetArrayLength()];
+        int ii = 0;
+        foreach (var x in idxEl.EnumerateArray()) idxs[ii++] = x.GetInt32();
+        AlEnumMetadataRegistry.Register(id, name, opts, idxs);
+        count++;
+    }
+    return count;
 }
 
 // Read app.json deps and feed them through DependencyResolver so the cache key

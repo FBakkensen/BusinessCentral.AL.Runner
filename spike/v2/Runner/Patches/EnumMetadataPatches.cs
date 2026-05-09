@@ -58,6 +58,14 @@ public static class AlEnumMetadataRegistry
     public static void Clear() => _byId.Clear();
 
     public static int Count => _byId.Count;
+
+    /// <summary>Snapshot of all currently registered entries. Used by the
+    /// AL-output cache sidecar writer (Program.cs). Order is stable
+    /// (sorted by Id) so the sidecar is byte-deterministic across runs.</summary>
+    public static IReadOnlyList<Entry> Snapshot()
+    {
+        return _byId.Values.OrderBy(e => e.Id).ToList();
+    }
 }
 
 /// <summary>
