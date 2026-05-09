@@ -266,6 +266,82 @@ public static partial class RecordPatches
         // The factory's GlobalTriggers.session is our skeleton which is not "IsCompanyOpen",
         // so GetTriggersOnTable() returns Triggers.None immediately.
         InjectSkeletonSystemCodeunitFactory(skeletonSession);
+
+        // Populate the auto-property backing field for NavSession.ErrorCollection.
+        // The real auto-property `internal ErrorCollection ErrorCollection { get; } = new ErrorCollection();`
+        // is initialised in NavSession's instance ctor — which doesn't run for our
+        // RuntimeHelpers.GetUninitializedObject skeleton. Without this, NavMethodScope.RunBehaviorAsync
+        // NREs the moment any AL method tagged [ErrorBehavior(Collect)] runs (via
+        // session.ErrorCollection.StartCollecting()). Construct the real ErrorCollection so
+        // StartCollecting / StopCollecting / Collect all execute unmodified BC code (Option C —
+        // reuse service-tier code per HANDOFF §2 invariant 4).
+        InjectSkeletonErrorCollection(skeletonSession);
+    }
+
+    private static void InjectSkeletonErrorCollection(object skeletonSession)
+    {
+        var nclAsm = AppDomain.CurrentDomain.GetAssemblies()
+            .FirstOrDefault(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Ncl");
+        if (nclAsm == null) return;
+        var tErrorCollection = nclAsm.GetType("Microsoft.Dynamics.Nav.Runtime.ErrorCollection");
+        if (tErrorCollection == null) return;
+
+        var fErrorCollection = skeletonSession.GetType().GetField("<ErrorCollection>k__BackingField",
+            BindingFlags.NonPublic | BindingFlags.Instance);
+        if (fErrorCollection == null)
+        {
+            Console.Error.WriteLine("[RecordPatches] ErrorCollection backing field not found");
+            return;
+        }
+        // Already populated? leave alone.
+        if (fErrorCollection.GetValue(skeletonSession) != null)
+        {
+            WireNavCurrentThreadSession(skeletonSession);
+            return;
+        }
+
+        // ErrorCollection has only field initialisers (collectedErrors=null, currentCollectionScopeStart=-1)
+        // and a default ctor; Activator.CreateInstance runs the field-initialiser block.
+        var ec = Activator.CreateInstance(tErrorCollection, nonPublic: true);
+        fErrorCollection.SetValue(skeletonSession, ec);
+        Console.Error.WriteLine("[RecordPatches] Skeleton ErrorCollection injected");
+
+        WireNavCurrentThreadSession(skeletonSession);
+    }
+
+    /// <summary>
+    /// Wire NavCurrentThread.Session to return _skeletonSession. NavCurrentThread.Session reads
+    /// NavThreadLocalStorage.Current.Session?.Target — an AsyncLocal&lt;IReference&lt;NavSession&gt;&gt;.
+    /// Setting it on the bootstrap thread propagates via ExecutionContext into the test threads.
+    /// Without this, ALIsCollectingErrors / ALHasCollectedErrors / ALClearCollectedErrors /
+    /// ALGetCollectedErrors all dereference NavCurrentThread.Session (null) → NRE; the AL tests
+    /// that rely on the [ErrorBehavior(Collect)] surface (CollectThenClear, ClearCollectedErrorsWorks,
+    /// CollectMultipleErrors, etc.) all chain through these getters after the collect call returns.
+    /// </summary>
+    private static void WireNavCurrentThreadSession(object skeletonSession)
+    {
+        var nclAsm = AppDomain.CurrentDomain.GetAssemblies()
+            .FirstOrDefault(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Ncl");
+        if (nclAsm == null) return;
+        var tTLS = nclAsm.GetType("Microsoft.Dynamics.Nav.Runtime.NavThreadLocalStorage");
+        var tRef = nclAsm.GetType("Microsoft.Dynamics.Nav.Runtime.Reference`1");
+        var tNavSession = skeletonSession.GetType();
+        if (tTLS == null || tRef == null) return;
+
+        var pCurrent = tTLS.GetProperty("Current", BindingFlags.Public | BindingFlags.Static);
+        var current = pCurrent?.GetValue(null);
+        if (current == null) return;
+        var pSession = tTLS.GetProperty("Session", BindingFlags.Public | BindingFlags.Instance);
+        if (pSession == null) return;
+
+        // Already set?
+        if (pSession.GetValue(current) != null) return;
+
+        // Build Reference<NavSession>(_skeletonSession). The single-arg ctor is public.
+        var refClosed = tRef.MakeGenericType(tNavSession);
+        var refInstance = Activator.CreateInstance(refClosed, new[] { skeletonSession });
+        pSession.SetValue(current, refInstance);
+        Console.Error.WriteLine("[RecordPatches] NavCurrentThread.Session wired to skeleton");
     }
 
     private static void InjectSkeletonSystemCodeunitFactory(object skeletonSession)

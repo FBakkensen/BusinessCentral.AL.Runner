@@ -72,6 +72,15 @@ public static partial class BcRuntime
                 catch { }
             }
         }
+
+        // If we're inside a [ErrorBehavior(Collect)] scope, route the error into
+        // session.ErrorCollection rather than throwing. This matches the real NavDialog.ALError
+        // semantics (line 34565 of decompile) where Collect returns true and ALError returns silently.
+        // Without this, AL tests using [ErrorBehavior(Collect)] see Errors.Count = 0 because the
+        // throw bypasses the collect-list. See HANDOFF §6 row #4.
+        if (errorInfo != null && TryRouteToErrorCollection(errorInfo))
+            return;
+
         if (_navNCLDialogExceptionType != null)
         {
             var exc = Activator.CreateInstance(_navNCLDialogExceptionType, msg) as Exception
@@ -79,5 +88,29 @@ public static partial class BcRuntime
             System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(exc);
         }
         throw new Exception(msg.Length > 0 ? msg : "AL error");
+    }
+
+    private static System.Reflection.MethodInfo? _mErrorCollectionCollect;
+    private static System.Reflection.FieldInfo? _fSessionErrorCollection;
+    /// <summary>
+    /// Try `_skeletonSession.ErrorCollection.Collect(errorInfo, out _)`. Returns true on a
+    /// successful collect (i.e. error.ALCollectible &amp;&amp; collectedErrors != null — meaning a
+    /// StartCollecting() scope is active). Returning true tells the caller to suppress the throw.
+    /// </summary>
+    private static bool TryRouteToErrorCollection(object errorInfo)
+    {
+        if (_skeletonSession == null) return false;
+        if (_fSessionErrorCollection == null)
+            _fSessionErrorCollection = _skeletonSession.GetType().GetField("<ErrorCollection>k__BackingField",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+        var ec = _fSessionErrorCollection?.GetValue(_skeletonSession);
+        if (ec == null) return false;
+        if (_mErrorCollectionCollect == null)
+            _mErrorCollectionCollect = ec.GetType().GetMethod("Collect",
+                BindingFlags.Public | BindingFlags.Instance);
+        if (_mErrorCollectionCollect == null) return false;
+        var args = new object?[] { errorInfo, null };
+        try { return (bool)_mErrorCollectionCollect.Invoke(ec, args)!; }
+        catch { return false; }
     }
 }
