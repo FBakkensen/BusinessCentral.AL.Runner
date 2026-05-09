@@ -55,6 +55,12 @@ public static partial class BcRuntime
         if (_currentTestAssembly == asm) return;
         _currentTestAssembly = asm;
         _codeunitTypeCache.Clear();
+        // (B) Spike: enumerate closed NavObjectDictionary`2 instantiations now that
+        //     the test assembly is loaded and its closed generic types are in the AppDomain.
+        var navNcl = AppDomain.CurrentDomain.GetAssemblies()
+            .FirstOrDefault(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Ncl");
+        if (navNcl != null)
+            ApplyNavObjectDictionaryGetTargetHooks(navNcl);
     }
 
     public static void EnsureApplied()
@@ -682,6 +688,9 @@ public static partial class BcRuntime
                 Hook(getActiveCompany, nameof(RecordImplementation_GetActiveCompany),
                     "RecordImplementation.GetActiveCompany");
         }
+
+        // ── (A) Spike: async entry-point hook DISABLED
+        //ApplyALFieldCaptionAsyncHook(navNcl);
 
         // ── Record / data-access plumbing (~300 lines) lives in RecordWritePatches.cs ──
         ApplyRecordPatches(navNcl);
