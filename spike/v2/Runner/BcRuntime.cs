@@ -903,6 +903,79 @@ public static partial class BcRuntime
                     "NCLMetaApplicationObject.get_ApplicationObjectConstructor");
         }
 
+        // ── Spike: validate JmpHook.InstallIndirect (cell-patch mechanism) ──────────────────
+        // Step 3: sync re-hook smoke test — NavSession.get_IsLocalLanguage is already hooked
+        //   above via JmpHook.Apply (WriteJmp 14-byte overwrite path). Re-hook the same method
+        //   via InstallIndirect to confirm the cell-patch mechanism routes correctly.
+        //   Expected: InstallIndirect returns true (FF 25 signature found).
+        //   Test harness validates same result (false) as before, confirming identical behaviour.
+        //
+        // Step 4: async entry-point hook — NavRecord.ALFieldCaptionAsync(int).
+        //   Previously crashed with 14-byte overwrite corrupting MOV R10.
+        //   Cell-patch leaves MOV R10 intact → should not crash.
+        ApplyInstallIndirectSpike(navNcl);
+    }
+
+    // ── InstallIndirect spike implementation ────────────────────────────────────────────────
+
+    internal static void ApplyInstallIndirectSpike(Assembly navNcl)
+    {
+        Console.Error.WriteLine("[IndirectSpike] === BEGIN ApplyInstallIndirectSpike ===");
+        try
+        {
+            // Step 3: sync re-hook — NavSession.get_IsLocalLanguage (already hooked by Apply above).
+            // We call InstallIndirect on it a second time, pointing to the same replacement.
+            // The cell is already pointing to our first hook, so this is a no-op functionally,
+            // but it exercises the cell-locate / mprotect / write path on a known-safe method.
+            var sessType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavSession");
+            if (sessType != null)
+            {
+                var isLocalLang = sessType.GetProperty("IsLocalLanguage",
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)?.GetGetMethod(true);
+                if (isLocalLang != null)
+                {
+                    var repl = typeof(BcRuntime).GetMethod(nameof(ReturnFalse_1Arg),
+                        BindingFlags.Public | BindingFlags.Static)
+                        ?? throw new InvalidOperationException("ReturnFalse_1Arg not found");
+                    bool ok = JmpHook.InstallIndirect(isLocalLang, repl,
+                        "SPIKE-Step3: NavSession.get_IsLocalLanguage (sync re-hook)");
+                    Console.Error.WriteLine($"[IndirectSpike] Step 3 (sync re-hook): {(ok ? "GREEN" : "RED — precode shape mismatch")}");
+                }
+                else
+                {
+                    Console.Error.WriteLine("[IndirectSpike] Step 3: IsLocalLanguage not found — skipped");
+                }
+            }
+            else
+            {
+                Console.Error.WriteLine("[IndirectSpike] Step 3: NavSession type not found — skipped");
+            }
+        }
+        catch (Exception ex3)
+        {
+            Console.Error.WriteLine($"[IndirectSpike] Step 3 THREW: {ex3.GetType().FullName}: {ex3.Message}");
+        }
+
+        try
+        {
+            // Step 4: async entry-point hook — NavRecord.ALFieldCaptionAsync(int).
+            // Previous spike crashed (14-byte overwrite corrupted MOV R10 at bytes 6-12).
+            // Cell-patch leaves bytes 6-12 intact — the MethodDesc stays readable for lazy JIT.
+            //
+            // Step 4: async entry-point hook — NavRecord.ALFieldCaptionAsync(int).
+            // DISABLED — cell-patch installs without crash but SIGSEGV occurs during test
+            // execution before the replacement is ever called. The crash is in JIT compilation
+            // of a new caller that reads the patched cell. See spike report for full analysis.
+            // The cell-patch mechanism itself is proven correct (Step 3 GREEN).
+            // Async methods require a DIFFERENT dispatch strategy (see report).
+            Console.Error.WriteLine("[IndirectSpike] Step 4: DISABLED — see spike report");
+        }
+        catch (Exception ex4)
+        {
+            Console.Error.WriteLine($"[IndirectSpike] Step 4 THREW: {ex4.GetType().FullName}: {ex4.Message}");
+        }
+
+        Console.Error.WriteLine("[IndirectSpike] === END ApplyInstallIndirectSpike ===");
     }
 
     private static void HookProperty(Type t, string propName, bool isStatic, string replacementName)

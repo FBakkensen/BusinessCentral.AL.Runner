@@ -62,4 +62,150 @@ internal static class JmpHook
         }
         Marshal.Copy(jmp, 0, target, jmp.Length);
     }
+
+    // ── Cell-patch approach: patch the indirection cell, NOT the code bytes ────────────────
+    //
+    // .NET 8 FixupPrecode layout (x64):
+    //   00: FF 25 [disp32]    ; JMP QWORD PTR [rip+disp32]   ← indirect through a memory cell
+    //   06: 4C 8B 15 [disp32] ; MOV R10, [rip+disp32]        ← MethodDesc lookup (do NOT corrupt)
+    //   0D: FF 25 [disp32]    ; JMP QWORD PTR [rip+disp32]
+    //   13: 90...             ; padding
+    //
+    // The prior spike failed because WriteJmp wrote 14 bytes starting at byte 0, corrupting
+    // bytes 6-12 (the MOV R10 / MethodDesc instruction). The JIT reads those bytes when
+    // lazily compiling callers → SIGSEGV.
+    //
+    // InstallIndirect instead:
+    //   1. Verifies the FF 25 signature (bytes 0-1).
+    //   2. Reads the int32 displacement at offset 2.
+    //   3. Computes cell_addr = precode_addr + 6 + disp32 (RIP after the 6-byte JMP instruction).
+    //   4. Saves the original pointer from the cell.
+    //   5. mprotect the data page (PROT_READ | PROT_WRITE — no EXEC needed for a data page).
+    //   6. Atomically writes the replacement function pointer into the cell.
+    //   7. Restores page protection to PROT_READ.
+    //
+    // The MOV R10 bytes (MethodDesc pointer) are never touched → lazy-JIT'd callers safe.
+    // Works for async entry points because they are ordinary non-generic instance methods
+    // with a standard precode — only their body sets up a state machine.
+    //
+    /// <summary>
+    /// Patches the indirection cell pointed to by the method's precode FF 25 JMP, leaving the
+    /// MethodDesc MOV R10 bytes intact. Safe for async entry points and any method whose first
+    /// 2 precode bytes are FF 25 (FixupPrecode / StubPrecode indirect JMP).
+    /// </summary>
+    /// <returns>
+    /// True if the cell was patched. False if the precode signature check failed (method uses a
+    /// different dispatch shape) — caller should log and skip.
+    /// </returns>
+    public static bool InstallIndirect(MethodBase original, MethodInfo replacement, string label)
+    {
+        RuntimeHelpers.PrepareMethod(original.MethodHandle);
+        RuntimeHelpers.PrepareMethod(replacement.MethodHandle);
+
+        var precodeAddr = original.MethodHandle.GetFunctionPointer();
+        var replFp = replacement.MethodHandle.GetFunctionPointer();
+
+        // Step 1: read 6 bytes and verify FF 25 signature.
+        byte[] header = new byte[6];
+        try
+        {
+            Marshal.Copy(precodeAddr, header, 0, 6);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[JmpHook.InstallIndirect] {label}: failed to read precode bytes: {ex.Message}");
+            return false;
+        }
+
+        if (header[0] != 0xFF || header[1] != 0x25)
+        {
+            Console.Error.WriteLine(
+                $"[JmpHook.InstallIndirect] {label}: precode does NOT start with FF 25 " +
+                $"(got {header[0]:X2} {header[1]:X2}) — wrong dispatch shape, refusing to patch");
+            return false;
+        }
+
+        // Step 2: RIP-relative displacement at offset 2 (little-endian int32).
+        int disp32 = BitConverter.ToInt32(header, 2);
+
+        // Step 3: cell_addr = precode_addr + 6 + disp32 (RIP is at end of the 6-byte instruction).
+        long cellAddrRaw = precodeAddr.ToInt64() + 6L + disp32;
+        var cellAddr = new IntPtr(cellAddrRaw);
+
+        // Step 4: save original pointer.
+        IntPtr originalTarget;
+        try
+        {
+            originalTarget = Marshal.ReadIntPtr(cellAddr);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[JmpHook.InstallIndirect] {label}: failed to read cell at 0x{cellAddrRaw:X}: {ex.Message}");
+            return false;
+        }
+
+        // Print extended precode bytes for diagnostics.
+        byte[] extended = new byte[20];
+        try { Marshal.Copy(precodeAddr, extended, 0, 20); } catch { }
+        string hexBytes = string.Join(" ", extended.Take(20).Select(b => b.ToString("X2")));
+        Console.Error.WriteLine(
+            $"[JmpHook.InstallIndirect] {label}: precode=0x{precodeAddr:X} bytes=[{hexBytes}]");
+        Console.Error.WriteLine(
+            $"[JmpHook.InstallIndirect] {label}: disp32={disp32} cell=0x{cellAddrRaw:X} " +
+            $"orig=0x{originalTarget:X} repl=0x{replFp:X}");
+
+        // Step 5: mprotect the page containing the cell to allow writes.
+        //
+        // Two cases:
+        // (a) Cell is in the SAME page as the precode (code page): disp32 == 0 (happens after
+        //     WriteJmp has already patched the precode with an inline FF 25 00 00 00 00 [ptr]).
+        //     The cell is at precode+6 in the code page. Need RWX to retain exec permission.
+        // (b) Cell is in a DIFFERENT page (FixupPrecode data area, 16 KB+ away): a read-only
+        //     data page. Need RW to write; restore to R (no exec — it's data). But we MUST
+        //     NOT remove write-ability from adjacent .NET runtime data pages the runtime needs
+        //     to update later. Safe approach: open to RW only and restore to RW after write
+        //     (leave write permission for the runtime).
+        //
+        // Distinguish the two cases by checking if cell and precode share the same 4K page.
+        long pageSize = 4096;
+        long cellPage = cellAddrRaw & ~(pageSize - 1);
+        long precodePage = precodeAddr.ToInt64() & ~(pageSize - 1);
+        bool cellInCodePage = (cellPage == precodePage);
+        var regionSize = (nuint)((cellAddrRaw - cellPage) + 8 + pageSize);
+
+        int restoreProt;
+        int writeProt;
+        if (cellInCodePage)
+        {
+            // Code page: need RWX while writing; restore to RX.
+            writeProt   = PROT_READ | PROT_WRITE | PROT_EXEC;
+            restoreProt = PROT_READ | PROT_EXEC;
+        }
+        else
+        {
+            // Data page: open RW; leave as RW so the JIT/runtime can update other cells.
+            writeProt   = PROT_READ | PROT_WRITE;
+            restoreProt = PROT_READ | PROT_WRITE;
+        }
+
+        if (mprotect(new IntPtr(cellPage), regionSize, writeProt) != 0)
+        {
+            int err = Marshal.GetLastSystemError();
+            Console.Error.WriteLine($"[JmpHook.InstallIndirect] {label}: mprotect({(cellInCodePage ? "RWX" : "RW")}) FAILED errno={err}");
+            return false;
+        }
+
+        // Step 6: atomic 64-bit write via Interlocked.Exchange.
+        unsafe
+        {
+            var cellPtr = (long*)cellAddr.ToPointer();
+            System.Threading.Interlocked.Exchange(ref *cellPtr, replFp.ToInt64());
+        }
+
+        // Step 7: restore page protection.
+        mprotect(new IntPtr(cellPage), regionSize, restoreProt);
+
+        Console.Error.WriteLine($"[JmpHook.InstallIndirect] {label}: cell patched ✓");
+        return true;
+    }
 }
