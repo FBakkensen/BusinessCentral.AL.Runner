@@ -81,12 +81,6 @@ public static partial class BcRuntime
             return;
         }
 
-        if (entryPoint.ReturnType != typeof(ValueTask<string>))
-        {
-            Console.Error.WriteLine($"[AsyncSM] Return type mismatch: expected ValueTask<string>, got {entryPoint.ReturnType.FullName}");
-            return;
-        }
-
         Console.Error.WriteLine($"[AsyncSM] Hooking entry point: {entryPoint}");
         var repl = typeof(BcRuntime).GetMethod(nameof(NavRecord_ALFieldCaptionAsync),
             BindingFlags.Public | BindingFlags.Static)!;

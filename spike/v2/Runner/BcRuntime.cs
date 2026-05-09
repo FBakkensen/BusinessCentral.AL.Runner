@@ -4,6 +4,7 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using AlRunnerV2.Infrastructure;
 
 namespace AlRunnerV2;
@@ -63,14 +64,66 @@ public static partial class BcRuntime
             ApplyNavObjectDictionaryGetTargetHooks(navNcl);
     }
 
+    // ── Spike 4: EventPipe JIT listener ──────────────────────────────────────────────────────
+    public static EventPipeJitListener? JitListener { get; private set; }
+
+    /// <summary>
+    /// Starts the EventPipe JIT listener with registered targets.
+    /// Must be called BEFORE ForceLoadBcDlls() so we catch methods JIT'd during BC load.
+    /// Also called early from Program.cs if needed.
+    /// </summary>
+    public static void StartJitListener()
+    {
+        if (JitListener != null) return;
+        JitListener = new EventPipeJitListener();
+
+        // Register targets.
+        // (A) NavRecord.ALFieldCaptionAsync — the primary async-method target.
+        var repl = typeof(BcRuntime).GetMethod(nameof(NavRecord_ALFieldCaptionAsync),
+            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+        if (repl != null)
+            JitListener.AddTarget(
+                "Microsoft.Dynamics.Nav.Runtime.NavRecord",
+                "ALFieldCaptionAsync",
+                repl);
+        else
+            Console.Error.WriteLine("[Spike4] Warning: NavRecord_ALFieldCaptionAsync replacement method not found");
+
+        JitListener.Enable();
+        Console.Error.WriteLine("[Spike4] JIT listener started (targets registered, subscribed)");
+    }
+
     public static void EnsureApplied()
     {
         if (_applied) return;
         _applied = true;
         Win32Stubs.Register();
+
+        // DISABLED for now: StartJitListener();
+
         ForceLoadBcDlls();
         var navNcl = AppDomain.CurrentDomain.GetAssemblies()
             .First(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Ncl");
+
+        // Now that NavNcl is loaded, register the `original` MethodBase for each target
+        // so InstallIndirect can use it.
+        if (JitListener != null)
+        {
+            var navRecordType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavRecord");
+            var ep = navRecordType?.GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                .FirstOrDefault(m => m.Name == "ALFieldCaptionAsync");
+            if (ep != null)
+            {
+                var repl = typeof(BcRuntime).GetMethod(nameof(NavRecord_ALFieldCaptionAsync),
+                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                if (repl != null)
+                    JitListener.AddTarget("Microsoft.Dynamics.Nav.Runtime.NavRecord", "ALFieldCaptionAsync", repl, ep);
+                Console.Error.WriteLine($"[Spike4] Registered original MethodBase for ALFieldCaptionAsync");
+            }
+            else
+                Console.Error.WriteLine("[Spike4] Warning: ALFieldCaptionAsync not found in NavRecord after load");
+        }
+
         RootTreeStub = new RootTreeObject();
         SuppressEventLogWriter();
         ApplyAllPatches(navNcl);
