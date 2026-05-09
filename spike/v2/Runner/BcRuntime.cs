@@ -424,6 +424,26 @@ public static partial class BcRuntime
                 if (depthField != null) FieldPoke.SetInstance(depthField, skel, 1);
                 _skeletonRootScope = (Microsoft.Dynamics.Nav.Runtime.NavMethodScope)skel;
             }
+
+            // Skeleton NavSession was built with GetUninitializedObject → its inherited
+            // TreeObject.tree field is null. Several BC code paths construct TreeHandlers with
+            // NavCurrentThread.Session as parent, e.g.:
+            //   • NavSession.get_TestExecution → new NavTestExecution(this)
+            //   • NavCodeunit.RunCodeunit / ContainsMethodWithAttribute → new NavCodeunitHandle(NavCurrentThread.Session, id)
+            //   • ALCompiler.NavIndirectValueToNavValue → new NavScope/NavValue subclasses parented to the session
+            // Each of these reaches `TreeHandler..ctor(parent, host)` which throws
+            // InvalidOperationException("Parent.Tree cannot be null") when parent.Tree is null.
+            // Plant a TreeRoot on the skeleton session so it has a valid Tree the same way the
+            // RootMethodScope above does. CreateTreeRoot calls hostObject.Tree (must be null —
+            // it is) and hostObject.SingleThreaded (DIM default = false on ITreeObject).
+            if (_skeletonSession != null && _fTreeObjTree != null)
+            {
+                if (_fTreeObjTree.GetValue(_skeletonSession) == null)
+                {
+                    var sessRootTree = createRoot.Invoke(null, new object[] { _skeletonSession });
+                    FieldPoke.SetInstance(_fTreeObjTree, _skeletonSession, sessRootTree);
+                }
+            }
         }
 
         // After the real NavEnvironment ctor + skeleton root scope are both ready,
