@@ -350,6 +350,20 @@ public static partial class BcRuntime
             }
             HookProperty(sessType, "Company", false, nameof(GetSkeletonCompanyReplacement));
 
+            // EventBindings — initialized via field initializer
+            // (`new List<NavCodeunit>(128)`) on the real ctor, but skeleton session was
+            // built via GetUninitializedObject so the backing field is null. Without this
+            // init, NavCodeunit.BindSubscription NREs on `Session.EventBindings.Add(this)`.
+            var navCuType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavCodeunit");
+            var ebBackingField = sessType.GetField("<EventBindings>k__BackingField",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            if (ebBackingField != null && navCuType != null)
+            {
+                var listType = typeof(List<>).MakeGenericType(navCuType);
+                var listInstance = Activator.CreateInstance(listType, 128);
+                FieldPoke.SetInstance(ebBackingField, _skeletonSession!, listInstance);
+            }
+
             // OverriddenAppGroup = NavAppGroup.BaseGroup so NavCurrentThread.TryResolveAppGroup
             // returns BaseGroup instead of dereferencing the uninitialized tenant.NavAppGroup.
             var navAppGroupType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.Apps.NavAppGroup");
@@ -562,6 +576,39 @@ public static partial class BcRuntime
                 BindingFlags.NonPublic | BindingFlags.Instance);
             if (createTarget != null)
                 Hook(createTarget, nameof(NavCodeunitHandle_CreateTarget), "NavCodeunitHandle.CreateTarget");
+        }
+
+        // NavCodeunit.get_MetaCodeunit — real getter chains through Session.NCLMetadata
+        // .GetMetaCodeunitById(...) which NREs on the skeleton. The only sync caller in
+        // the failing tests is BindSubscription → MetaCodeunit.IsEventManualBinding,
+        // which only needs ApplicationObjectClrType (read off attributes on the
+        // AL-emitted Codeunit{N} class). Replace the getter with a lazy-build that
+        // pre-populates a skeleton NCLMetaCodeunit with the receiver's CLR type and
+        // caches on the instance.metaCodeunit field (HANDOFF §5.2 Option C).
+        var navCodeunitTypeForMeta = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavCodeunit");
+        if (navCodeunitTypeForMeta != null)
+        {
+            var metaCuGetter = navCodeunitTypeForMeta.GetProperty("MetaCodeunit",
+                BindingFlags.Public | BindingFlags.Instance)?.GetGetMethod(true);
+            if (metaCuGetter != null)
+                Hook(metaCuGetter, nameof(NavCodeunit_get_MetaCodeunit), "NavCodeunit.get_MetaCodeunit");
+        }
+
+        // NCLMetaCodeunit.get_IsEventManualBinding — bypass LoadOptionsFromAttributeOrInstance,
+        // which dereferences base.ApplicationObjectClrType. That getter has a hooked
+        // replacement (NCLMetaApplicationObject_get_ApplicationObjectClrType), but the call
+        // site inside NCL.dll's own LoadOptionsFromAttributeOrInstance is R2R-precompiled
+        // and bypasses the JmpHook. Hook IsEventManualBinding directly to read the
+        // NavCodeunitOptionsAttribute from the stashed CLR type (companion to
+        // NavCodeunit_get_MetaCodeunit above).
+        var nclMetaCuType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NCLMetaCodeunit");
+        if (nclMetaCuType != null)
+        {
+            var isManualGetter = nclMetaCuType.GetProperty("IsEventManualBinding",
+                BindingFlags.Public | BindingFlags.Instance)?.GetGetMethod(true);
+            if (isManualGetter != null)
+                Hook(isManualGetter, nameof(NCLMetaCodeunit_get_IsEventManualBinding),
+                    "NCLMetaCodeunit.get_IsEventManualBinding");
         }
 
         // NavDataTransfer.SetTables — uses NCLMetadata.GetMetaTableById to validate source/dest
