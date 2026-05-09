@@ -38,14 +38,23 @@ var packageCacheArgs = new List<string>();
 // path; kept for one cycle for diagnostic comparisons. `--bundled` accepted as
 // a no-op alias for backwards compatibility — will be removed.
 bool bundledMode = true;
+// Spike B keystone: AL-output cache. When set, the bundled-mode pipeline writes
+// its emitted DLL to <cacheDir>/<key>.dll and on a subsequent invocation
+// short-circuits Emit+Compile by loading that DLL directly. The key is a hash
+// of (all .al source files contributing to the bundle, the resolved-deps list,
+// the runner assembly mtime). See `precompiled-dll-respect.md` —
+// "Our AL output is meant to be cacheable".
+string? alCacheDir = null;
 for (int i = 0; i < args.Length; i++)
 {
     if (args[i] == "--out" && i + 1 < args.Length) { outPath = args[++i]; continue; }
     if (args[i] == "--package-cache" && i + 1 < args.Length) { packageCacheArgs.Add(args[++i]); continue; }
     if (args[i] == "--per-suite") { bundledMode = false; continue; }
     if (args[i] == "--bundled") { bundledMode = true; continue; }
+    if (args[i] == "--cache" && i + 1 < args.Length) { alCacheDir = args[++i]; continue; }
     bundles.Add(args[i]);
 }
+if (alCacheDir != null) Directory.CreateDirectory(alCacheDir);
 Console.WriteLine($"AlRunner v2 — running {bundles.Count} bundle(s)");
 
 var packageCacheDirs = packageCacheArgs.Count > 0
@@ -135,48 +144,96 @@ foreach (var bundle in bundles)
             allPaths.AddRange(CollectSuitePaths(suite, bucketRoot));
         allPaths = allPaths.Distinct().ToList();
 
-        var et = System.Diagnostics.Stopwatch.StartNew();
-        IReadOnlyList<EmittedSource> sources;
-        try { sources = emitter.Emit(allPaths, $"V2_{Path.GetFileName(bundleAbs)}"); }
-        catch (Exception ex)
-        {
-            et.Stop(); bundleEmit += et.Elapsed;
-            bundleErrors.Add($"<bundled>: EMIT-FAIL: {ex.Message.Split('\n')[0]}");
-            sources = Array.Empty<EmittedSource>();
-        }
-        et.Stop(); bundleEmit += et.Elapsed;
+        var moduleName = $"V2_{Path.GetFileName(bundleAbs)}";
 
-        if (sources.Count > 0)
+        // ── AL-output cache check (Spike B keystone) ───────────────────────
+        byte[]? cachedBytes = null;
+        string? cacheKey = null;
+        string? cachePath = null;
+        if (alCacheDir != null)
         {
-            var ct = System.Diagnostics.Stopwatch.StartNew();
-            var compile = assembler.Compile($"V2_{Path.GetFileName(bundleAbs)}", sources);
-            ct.Stop(); bundleComp += ct.Elapsed;
-            if (!compile.Success)
+            cacheKey = ComputeAlCacheKey(allPaths, moduleName, ordered: GetOrderedDepIds(bucketRoot, packageCacheDirs));
+            cachePath = Path.Combine(alCacheDir, cacheKey + ".dll");
+            if (File.Exists(cachePath))
             {
-                bundleErrors.Add($"<bundled>: COMPILE-FAIL ({compile.Errors.Count}): {compile.Errors.FirstOrDefault()?.Split('\n')[0]}");
-            }
-            else
-            {
-                var rt = System.Diagnostics.Stopwatch.StartNew();
-                IReadOnlyList<TestResult> tests;
-                try
-                {
-                    var asm = Assembly.Load(compile.AssemblyBytes!);
-                    BcRuntime.SetTestAssembly(asm);
-                    tests = executor.Run(asm);
-                }
+                try { cachedBytes = File.ReadAllBytes(cachePath); }
                 catch (Exception ex)
                 {
-                    rt.Stop(); bundleRun += rt.Elapsed;
-                    bundleErrors.Add($"<bundled>: EXEC-FAIL: {ex.Message.Split('\n')[0]}");
-                    tests = Array.Empty<TestResult>();
+                    Console.Error.WriteLine($"  [cache] read failed for {cachePath}: {ex.Message}");
+                    cachedBytes = null;
                 }
-                rt.Stop(); bundleRun += rt.Elapsed;
-                bundleTests.AddRange(tests);
-                sP += tests.Count(t => t.Outcome == TestOutcome.Pass);
-                sF += tests.Count(t => t.Outcome == TestOutcome.Fail);
-                sE += tests.Count(t => t.Outcome == TestOutcome.Error);
             }
+        }
+
+        byte[]? assemblyBytes = null;
+        if (cachedBytes != null)
+        {
+            Console.Error.WriteLine($"  [cache] HIT  key={cacheKey} path={cachePath} ({cachedBytes.Length} bytes) — skipping Emit+Compile");
+            assemblyBytes = cachedBytes;
+        }
+        else
+        {
+            if (alCacheDir != null) Console.Error.WriteLine($"  [cache] MISS key={cacheKey} — running Emit+Compile");
+            var et = System.Diagnostics.Stopwatch.StartNew();
+            IReadOnlyList<EmittedSource> sources;
+            try { sources = emitter.Emit(allPaths, moduleName); }
+            catch (Exception ex)
+            {
+                et.Stop(); bundleEmit += et.Elapsed;
+                bundleErrors.Add($"<bundled>: EMIT-FAIL: {ex.Message.Split('\n')[0]}");
+                sources = Array.Empty<EmittedSource>();
+            }
+            et.Stop(); bundleEmit += et.Elapsed;
+
+            if (sources.Count > 0)
+            {
+                var ct = System.Diagnostics.Stopwatch.StartNew();
+                var compile = assembler.Compile(moduleName, sources);
+                ct.Stop(); bundleComp += ct.Elapsed;
+                if (!compile.Success)
+                {
+                    bundleErrors.Add($"<bundled>: COMPILE-FAIL ({compile.Errors.Count}): {compile.Errors.FirstOrDefault()?.Split('\n')[0]}");
+                }
+                else
+                {
+                    assemblyBytes = compile.AssemblyBytes;
+                    if (cachePath != null && assemblyBytes != null)
+                    {
+                        try
+                        {
+                            File.WriteAllBytes(cachePath, assemblyBytes);
+                            Console.Error.WriteLine($"  [cache] WROTE key={cacheKey} path={cachePath} ({assemblyBytes.Length} bytes)");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.Error.WriteLine($"  [cache] write failed for {cachePath}: {ex.Message}");
+                        }
+                    }
+                }
+            }
+        }
+
+        if (assemblyBytes != null)
+        {
+            var rt = System.Diagnostics.Stopwatch.StartNew();
+            IReadOnlyList<TestResult> tests;
+            try
+            {
+                var asm = Assembly.Load(assemblyBytes);
+                BcRuntime.SetTestAssembly(asm);
+                tests = executor.Run(asm);
+            }
+            catch (Exception ex)
+            {
+                rt.Stop(); bundleRun += rt.Elapsed;
+                bundleErrors.Add($"<bundled>: EXEC-FAIL: {ex.Message.Split('\n')[0]}");
+                tests = Array.Empty<TestResult>();
+            }
+            rt.Stop(); bundleRun += rt.Elapsed;
+            bundleTests.AddRange(tests);
+            sP += tests.Count(t => t.Outcome == TestOutcome.Pass);
+            sF += tests.Count(t => t.Outcome == TestOutcome.Fail);
+            sE += tests.Count(t => t.Outcome == TestOutcome.Error);
         }
     }
     else
@@ -408,6 +465,82 @@ static List<string> CollectSuitePaths(string suite, string? bucketRoot = null)
         if (Directory.Exists(shared)) all.Add(shared);
     }
     return all;
+}
+
+// Deterministic cache key for the bundled-mode emit:
+//   sha256( runner-asm-mtime-ticks
+//         | moduleName
+//         | each (ordered dep id+version)
+//         | each (.al file relpath + sha256-of-contents) sorted )
+// Hashed in a single pass with line-separated framing so two different file
+// layouts can't collide. The key is hex-encoded sha256 (64 chars).
+static string ComputeAlCacheKey(
+    IReadOnlyList<string> alFolders,
+    string moduleName,
+    IReadOnlyList<string> ordered)
+{
+    using var sha = System.Security.Cryptography.SHA256.Create();
+    using var ms = new MemoryStream();
+    void WriteLine(string s)
+    {
+        var bytes = System.Text.Encoding.UTF8.GetBytes(s + "\n");
+        ms.Write(bytes, 0, bytes.Length);
+    }
+
+    // 1. Runner assembly fingerprint — any rewriter / polyfill / patch change
+    //    in the runner forces a cache miss.
+    var runnerLoc = typeof(AlRunnerV2.BcAssembler).Assembly.Location;
+    if (!string.IsNullOrEmpty(runnerLoc) && File.Exists(runnerLoc))
+        WriteLine($"runner:{File.GetLastWriteTimeUtc(runnerLoc).Ticks}:{new FileInfo(runnerLoc).Length}");
+    else
+        WriteLine("runner:unknown");
+
+    WriteLine($"module:{moduleName}");
+
+    foreach (var d in ordered) WriteLine($"dep:{d}");
+
+    // Enumerate every .al file in stable order, hash each.
+    var alFiles = alFolders
+        .Where(Directory.Exists)
+        .SelectMany(d => Directory.EnumerateFiles(d, "*.al", SearchOption.AllDirectories))
+        .Distinct()
+        .OrderBy(p => p, StringComparer.Ordinal)
+        .ToList();
+    foreach (var f in alFiles)
+    {
+        byte[] hash;
+        using (var fs = File.OpenRead(f))
+            hash = sha.ComputeHash(fs);
+        WriteLine($"al:{f}:{Convert.ToHexString(hash)}");
+    }
+
+    ms.Position = 0;
+    var keyBytes = sha.ComputeHash(ms);
+    return Convert.ToHexString(keyBytes).ToLowerInvariant();
+}
+
+// Read app.json deps and feed them through DependencyResolver so the cache key
+// reflects the exact resolved set (id+version), not just declared roots. This
+// matches what BcCompiler.SetResolvedDeps fed into the compile.
+static IReadOnlyList<string> GetOrderedDepIds(string? bucketRoot, IReadOnlyList<string> packageCacheDirs)
+{
+    if (bucketRoot == null) return Array.Empty<string>();
+    var appJsonPath = Path.Combine(bucketRoot, "app.json");
+    if (!File.Exists(appJsonPath)) return Array.Empty<string>();
+    try
+    {
+        var roots = ReadDependencies(appJsonPath).ToList();
+        var resolver = new AlRunnerV2.DependencyResolver(packageCacheDirs);
+        var ordered = resolver.Resolve(roots);
+        return ordered
+            .Select(d => $"{d.Manifest.AppId:N}:{d.Manifest.Version}")
+            .OrderBy(s => s, StringComparer.Ordinal)
+            .ToList();
+    }
+    catch
+    {
+        return Array.Empty<string>();
+    }
 }
 
 static IEnumerable<string> EnumerateSuites(string root)
