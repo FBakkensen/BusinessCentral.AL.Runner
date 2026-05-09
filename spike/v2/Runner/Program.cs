@@ -19,9 +19,8 @@ using AlRunnerV2;
 if (args.Length == 0)
 {
     Console.Error.WriteLine(
-        "Usage: Runner [--out PATH] [--package-cache PATH ...] [--bundled] <bundle-dir>...\n" +
-        "       Runner --precompile <input.app> --out <output.dll>\n" +
-        "       Runner --bundled-experiment <bundle-dir>...   (diagnostic only)");
+        "Usage: Runner [--out PATH] [--package-cache PATH ...] [--per-suite] <bundle-dir>...\n" +
+        "       Runner --precompile <input.app> --out <output.dll>");
     return 2;
 }
 
@@ -31,49 +30,19 @@ if (args[0] == "--precompile")
     return RunPrecompile(args.Skip(1).ToArray());
 }
 
-// ── --bundled-experiment <suite-dir>... — experimental, doesn't run tests ──
-// Diagnose whether bundled emit (one Compilation per bucket) is viable.
-// Collects every suite's src/test/app* dir + bucket _shared/ into ONE Emit call.
-if (args[0] == "--bundled-experiment")
-{
-    var inputs = args.Skip(1).ToArray();
-    var allSuites = new List<string>();
-    foreach (var input in inputs)
-        allSuites.AddRange(EnumerateSuites(Path.GetFullPath(input)));
-    Console.WriteLine($"[bundled-exp] suites: {allSuites.Count}");
-    string? bucketRoot = allSuites.Count > 0 ? FindBucketRoot(allSuites[0]) : null;
-    var allPaths = new List<string>();
-    foreach (var s in allSuites)
-        allPaths.AddRange(CollectSuitePaths(s, bucketRoot));
-    allPaths = allPaths.Distinct().ToList();
-    Console.WriteLine($"[bundled-exp] paths: {allPaths.Count}");
-    DependencyLoader.EnsureResolverInstalled_Public();
-    BcRuntime.EnsureApplied();
-    var compiler = new BcCompiler();
-    var sw = System.Diagnostics.Stopwatch.StartNew();
-    Environment.SetEnvironmentVariable("BCCOMPILER_DIAG", "1");
-    try
-    {
-        var sources = compiler.Emit(allPaths, "V2_BundledExperiment");
-        sw.Stop();
-        Console.WriteLine($"[bundled-exp] emit: captured={sources.Count}  in {sw.Elapsed.TotalSeconds:F1}s");
-    }
-    catch (Exception ex)
-    {
-        sw.Stop();
-        Console.WriteLine($"[bundled-exp] emit FAILED: {ex.GetType().Name}: {ex.Message.Split('\n', 2)[0]}  in {sw.Elapsed.TotalSeconds:F1}s");
-    }
-    return 0;
-}
-
 string outPath = "v2-classification.json";
 var bundles = new List<string>();
 var packageCacheArgs = new List<string>();
-bool bundledMode = false;
+// Bundled mode is the canonical fast path (5-7× faster, parity-verified across
+// all 4 sub-buckets). `--per-suite` falls back to the legacy per-Compilation
+// path; kept for one cycle for diagnostic comparisons. `--bundled` accepted as
+// a no-op alias for backwards compatibility — will be removed.
+bool bundledMode = true;
 for (int i = 0; i < args.Length; i++)
 {
     if (args[i] == "--out" && i + 1 < args.Length) { outPath = args[++i]; continue; }
     if (args[i] == "--package-cache" && i + 1 < args.Length) { packageCacheArgs.Add(args[++i]); continue; }
+    if (args[i] == "--per-suite") { bundledMode = false; continue; }
     if (args[i] == "--bundled") { bundledMode = true; continue; }
     bundles.Add(args[i]);
 }
@@ -156,11 +125,11 @@ foreach (var bundle in bundles)
 
     if (bundledMode)
     {
-        // ── Bundled mode: ONE Emit + ONE Compile + ONE Run across all suites ──
-        // ~5×+ speedup vs per-suite (eliminates per-suite emit cold-start
-        // amortised against the symbol-loader, which is the dominant cost).
-        // Requires sentinel suites that trigger BC 27.5 emit bugs to be
-        // quarantined (see HANDOFF §Q/§R).
+        // ── Bundled mode (default): ONE Emit + ONE Compile + ONE Run across
+        // all suites. 5-7× faster than per-suite, parity-verified on all 4
+        // sub-buckets. Suites whose AL hits BC emit bugs or bundled-only
+        // strictness checks are quarantined under tests/excluded/ with a
+        // RUNNER-GAP-*.md note explaining the gap.
         var allPaths = new List<string>();
         foreach (var suite in suites)
             allPaths.AddRange(CollectSuitePaths(suite, bucketRoot));
