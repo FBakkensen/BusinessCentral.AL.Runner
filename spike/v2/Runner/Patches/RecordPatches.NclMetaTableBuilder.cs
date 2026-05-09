@@ -257,29 +257,43 @@ public static partial class RecordPatches
 
     private static object MapNavType(string typeName)
     {
-        // Map AL type name → NavType enum
+        // Map AL type name → NavType enum. Use `ignoreCase: true` because the
+        // BC NavType enum uses inconsistent casing (`BLOB`, `GUID`, but
+        // `Code`/`Text`/`Decimal`...) and AL field-type strings may come from
+        // either AL source (`Blob`) or BC metadata (`BLOB`). Parsing
+        // case-sensitively against the wrong casing throws ArgumentException
+        // and quarantines the whole table.
         if (_tNavType == null) return 0;
         var n = typeName.Trim().ToUpperInvariant();
-        // Code[N] → Code (NavType.Code = 8)
-        if (n.StartsWith("CODE")) return Enum.Parse(_tNavType, "Code");
-        if (n.StartsWith("TEXT")) return Enum.Parse(_tNavType, "Text");
-        if (n == "INTEGER") return Enum.Parse(_tNavType, "Integer");
-        if (n == "DECIMAL") return Enum.Parse(_tNavType, "Decimal");
-        if (n == "BOOLEAN") return Enum.Parse(_tNavType, "Boolean");
-        if (n == "DATE") return Enum.Parse(_tNavType, "Date");
-        if (n == "TIME") return Enum.Parse(_tNavType, "Time");
-        if (n == "DATETIME") return Enum.Parse(_tNavType, "DateTime");
-        if (n.StartsWith("BIGINTEGER") || n == "BIGINT") return Enum.Parse(_tNavType, "BigInteger");
-        if (n == "GUID") return Enum.Parse(_tNavType, "GUID");
-        if (n == "BLOB") return Enum.Parse(_tNavType, "Blob");
-        if (n.StartsWith("OPTION")) return Enum.Parse(_tNavType, "Option");
+        // Code[N] / Text[N] — strip the length suffix
+        if (n.StartsWith("CODE")) return Enum.Parse(_tNavType, "Code", ignoreCase: true);
+        if (n.StartsWith("TEXT")) return Enum.Parse(_tNavType, "Text", ignoreCase: true);
+        if (n == "INTEGER") return Enum.Parse(_tNavType, "Integer", ignoreCase: true);
+        if (n == "DECIMAL") return Enum.Parse(_tNavType, "Decimal", ignoreCase: true);
+        if (n == "BOOLEAN") return Enum.Parse(_tNavType, "Boolean", ignoreCase: true);
+        if (n == "BYTE") return Enum.Parse(_tNavType, "Byte", ignoreCase: true);
+        if (n == "DATE") return Enum.Parse(_tNavType, "Date", ignoreCase: true);
+        if (n == "TIME") return Enum.Parse(_tNavType, "Time", ignoreCase: true);
+        if (n == "DATETIME") return Enum.Parse(_tNavType, "DateTime", ignoreCase: true);
+        if (n == "DATEFORMULA") return Enum.Parse(_tNavType, "DateFormula", ignoreCase: true);
+        if (n == "DURATION") return Enum.Parse(_tNavType, "Duration", ignoreCase: true);
+        if (n.StartsWith("BIGINTEGER") || n == "BIGINT") return Enum.Parse(_tNavType, "BigInteger", ignoreCase: true);
+        if (n == "BIGTEXT") return Enum.Parse(_tNavType, "BigText", ignoreCase: true);
+        if (n == "SECRETTEXT") return Enum.Parse(_tNavType, "SecretText", ignoreCase: true);
+        if (n == "GUID") return Enum.Parse(_tNavType, "GUID", ignoreCase: true);
+        if (n == "BLOB") return Enum.Parse(_tNavType, "BLOB", ignoreCase: true);
+        if (n == "MEDIA") return Enum.Parse(_tNavType, "Media", ignoreCase: true);
+        if (n == "MEDIASET") return Enum.Parse(_tNavType, "MediaSet", ignoreCase: true);
+        if (n == "RECORDID") return Enum.Parse(_tNavType, "RecordID", ignoreCase: true);
+        if (n == "TABLEFILTER") return Enum.Parse(_tNavType, "TableFilter", ignoreCase: true);
+        if (n.StartsWith("OPTION")) return Enum.Parse(_tNavType, "Option", ignoreCase: true);
         // AL `Enum "<name>"` is stored at runtime as NavType.Option — the
         // generated code calls ValidateExpectedType(fieldNo, NavType.Option)
         // when reading enum-typed record fields, so the metadata side must
         // match. Without this, the cluster of TestField/Read*EnumField tests
         // throws NavObjectDefinitionChangedException
         // ("old type: Option, new type: Text") via NavRecord.ValidateExpectedType.
-        if (n.StartsWith("ENUM")) return Enum.Parse(_tNavType, "Option");
-        return Enum.Parse(_tNavType, "Text"); // fallback
+        if (n.StartsWith("ENUM")) return Enum.Parse(_tNavType, "Option", ignoreCase: true);
+        return Enum.Parse(_tNavType, "Text", ignoreCase: true); // fallback
     }
 }
