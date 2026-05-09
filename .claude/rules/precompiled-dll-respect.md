@@ -20,7 +20,7 @@ the skeleton state they read from — is ours to modify however we need.
 |---|---|---|
 | **Runtime engine / framework** | `Microsoft.Dynamics.Nav.Ncl.dll`, `Microsoft.Dynamics.Nav.Types.dll` | ✓ JmpHook, Cecil-rewrite, subclass, field-poke, EventPipe — anything |
 | **Skeleton state** their methods read | `NavSession`, `NavMethodScope`, threadlocals, etc. | ✓ Populate any fields we need |
-| **Our per-run AL test output** | DLLs emitted by our `Compilation.Emit` pipeline, in-process | ✓ Cecil-rewrite freely, we own it |
+| **Our AL test output, freshly emitted** | DLLs emitted by our `Compilation.Emit` pipeline, in-process, not yet written to a cache | ✓ Modify only as part of the **compile pipeline** (Roslyn rewriters, Cecil passes that run before the DLL is finalised). Once finalised the same precompiled-DLL contract applies — see below. |
 | **New types we add** | subclasses of MS types, runner shims | ✓ Add as long as nothing renames an existing type |
 
 ## What's forbidden
@@ -31,6 +31,22 @@ the skeleton state they read from — is ours to modify however we need.
 | **Renaming or removing types/members in any precompiled DLL** | Breaks linking for every other precompiled DLL in the load chain (R2R native code holds offsets, not just names) |
 | **Changing method signatures of methods called from precompiled DLLs** | Same |
 | **Reordering instance fields in a layout-sensitive way** | R2R-precompiled callers hold pointer offsets |
+
+## Our AL output is meant to be cacheable
+
+A first-class capability requirement: **AL code we compile must produce DLLs
+that can be cached on disk and reused on subsequent runs the same way MS's
+precompiled DLLs are reused.** That means once our compile pipeline finalises
+a DLL, that DLL becomes part of the precompiled load chain like any MS or ISV
+DLL — and the rules above apply to it too. Cecil/Roslyn rewrites must happen
+**inside the compile pipeline** (before the DLL is written), never as a
+load-time pass against an already-cached artifact, otherwise the cache and
+the runtime behaviour diverge.
+
+Practical consequence: if a test failure points at our own AL output, the
+fix is either (a) in the runtime engine the output calls into, or (b) in
+the compile pipeline that produced the output — never in the cached DLL
+itself.
 
 ## Mental model
 
