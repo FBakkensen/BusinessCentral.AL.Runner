@@ -263,6 +263,13 @@ public static partial class RecordPatches
         if (n == "GUID") return Enum.Parse(_tNavType, "GUID");
         if (n == "BLOB") return Enum.Parse(_tNavType, "Blob");
         if (n.StartsWith("OPTION")) return Enum.Parse(_tNavType, "Option");
+        // AL `Enum "<name>"` is stored at runtime as NavType.Option — the
+        // generated code calls ValidateExpectedType(fieldNo, NavType.Option)
+        // when reading enum-typed record fields, so the metadata side must
+        // match. Without this, the cluster of TestField/Read*EnumField tests
+        // throws NavObjectDefinitionChangedException
+        // ("old type: Option, new type: Text") via NavRecord.ValidateExpectedType.
+        if (n.StartsWith("ENUM")) return Enum.Parse(_tNavType, "Option");
         return Enum.Parse(_tNavType, "Text"); // fallback
     }
 }
