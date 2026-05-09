@@ -94,9 +94,10 @@ public static partial class BcRuntime
 
     /// <summary>
     /// Enumerates all closed instantiations of NavObjectDictionary`2 that are
-    /// currently loaded and hooks each one's get_Target to return null. Must be
-    /// called after the test assembly is loaded so the closed types the test DLL
-    /// uses are present in the AppDomain.
+    /// currently loaded and hooks each one's get_Target to the Option-C
+    /// replacement (see NavObjectDictionary_get_Target below). Must be called
+    /// after the test assembly is loaded so the closed types the test DLL uses
+    /// are present in the AppDomain.
     /// </summary>
     internal static void ApplyNavObjectDictionaryGetTargetHooks(Assembly navNcl)
     {
@@ -116,21 +117,44 @@ public static partial class BcRuntime
         int skipCount = 0;
         int errCount  = 0;
 
+        // Closed generic types are not surfaced via Assembly.GetTypes() — they only
+        // exist when the JIT instantiates them. Discover them by scanning fields and
+        // properties on all loaded types (including the test assembly emitted from AL)
+        // for declared types that are closed NavObjectDictionary`2<K,V>.
+        var closedTypes = new HashSet<Type>();
         foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
         {
             Type[] types;
             try { types = asm.GetTypes(); }
             catch { continue; }
-
             foreach (var t in types)
             {
-                if (!t.IsGenericType || t.IsGenericTypeDefinition) continue;
+                if (t.IsGenericTypeDefinition) continue;
+                const BindingFlags bf = BindingFlags.Public | BindingFlags.NonPublic
+                    | BindingFlags.Static | BindingFlags.Instance | BindingFlags.DeclaredOnly;
+                try
+                {
+                    foreach (var f in t.GetFields(bf))
+                    {
+                        var ft = f.FieldType;
+                        if (ft.IsGenericType && !ft.IsGenericTypeDefinition
+                            && ft.GetGenericTypeDefinition().FullName == openGenericFqn)
+                            closedTypes.Add(ft);
+                    }
+                    foreach (var p in t.GetProperties(bf))
+                    {
+                        var pt = p.PropertyType;
+                        if (pt.IsGenericType && !pt.IsGenericTypeDefinition
+                            && pt.GetGenericTypeDefinition().FullName == openGenericFqn)
+                            closedTypes.Add(pt);
+                    }
+                }
+                catch { /* ignore type-load on unrelated types */ }
+            }
+        }
 
-                string? defName = null;
-                try { defName = t.GetGenericTypeDefinition().FullName; }
-                catch { continue; }
-                if (defName != openGenericFqn) continue;
-
+        foreach (var t in closedTypes)
+        {
                 // Closed NavObjectDictionary`2<K,V>
                 var getTarget = t.GetProperty("Target",
                     BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
@@ -139,10 +163,12 @@ public static partial class BcRuntime
                 if (getTarget == null) { skipCount++; continue; }
                 if (getTarget.ContainsGenericParameters) { skipCount++; continue; }
 
-                // Replacement: a static method that returns null.
-                // The calling convention is: first arg = receiver (the NavObjectDictionary<K,V>
-                // instance as an object reference). Return type must be compatible with
-                // SharedNavObjectDictionary`2<K,V> (which is a reference type) — we return null.
+                // Replacement: a single static method shared across all closed
+                // instantiations. The calling convention is: first arg = receiver
+                // (the NavObjectDictionary<K,V> instance as an object reference).
+                // Return type is compatible with SharedNavObjectDictionary<K,V>
+                // (reference type) — we return a real shared dict via reflection
+                // using the per-closed-type cached ctor.
                 try
                 {
                     var repl = typeof(BcRuntime).GetMethod(nameof(NavObjectDictionary_get_Target),
@@ -157,7 +183,6 @@ public static partial class BcRuntime
                     Console.Error.WriteLine($"[ObjDict] Hook failed for {t.Name}: {ex.Message}");
                     errCount++;
                 }
-            }
         }
 
         Console.Error.WriteLine(
@@ -166,11 +191,83 @@ public static partial class BcRuntime
 
     /// <summary>
     /// Replacement for NavObjectDictionary`2&lt;K,V&gt;.get_Target.
-    /// Returns null — callers that null-check will handle gracefully;
-    /// callers that don't will throw NullReferenceException (same class as before,
-    /// but now with a different stack rather than an InvalidOperationException
-    /// deep in NCLMetadata).
+    ///
+    /// Mirrors the original getter semantics (decompile site:
+    /// Microsoft.Dynamics.Nav.Ncl.decompiled.cs:49687-49703) but substitutes
+    /// the unreachable `base.Tree.Session.Company.SharedObjects` with the
+    /// process-wide skeleton TreeSharedObjectContainer (same one used by
+    /// NavRecordRef.get_Target in NavRecordRefPatches.cs).
+    ///
+    /// 1. If Tree.GetReferenceTarget() already has a SharedNavObjectDictionary
+    ///    cached, return it (matches original cache hit path).
+    /// 2. Otherwise construct `new SharedNavObjectDictionary&lt;TKey,TValue&gt;(container)`
+    ///    via the per-closed-type cached ctor, store it via Tree.SetReferenceTarget,
+    ///    and return it. The SharedNavObjectDictionary's field initializer
+    ///    populates `Value = new Dictionary&lt;TKey,TValue&gt;()` so callers see a
+    ///    fully-functional empty dict whose downstream Add/Get/Remove/ContainsKey
+    ///    paths are real BC code.
+    ///
+    /// This is the Option-C polyfill per HANDOFF §5.2: hook only the cell that
+    /// can't reach the real container, leave all dictionary semantics intact.
     /// </summary>
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, ConstructorInfo>
+        _sharedNavObjectDictCtorByClosed = new();
+    private static Type? _tSharedNavObjectDictionaryOpen;
+    private static Type? _tITreeSharedObjectContainer;
+
     [MethodImpl(MethodImplOptions.NoInlining)]
-    public static object? NavObjectDictionary_get_Target(object self) => null;
+    public static object NavObjectDictionary_get_Target(object self)
+    {
+        // Look up Tree property on self type (NavComplexValue.Tree).
+        var selfType = self.GetType();
+        var treeProp = selfType.GetProperty("Tree",
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy);
+        var tree = treeProp!.GetValue(self)!;
+
+        var treeType = tree.GetType();
+        var mGet = treeType.GetMethod("GetReferenceTarget",
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance,
+            null, Type.EmptyTypes, null)!;
+        var existing = mGet.Invoke(tree, null);
+        if (existing != null) return existing;
+
+        // Cache the open SharedNavObjectDictionary<,> type and ITreeSharedObjectContainer.
+        if (_tSharedNavObjectDictionaryOpen == null)
+        {
+            var navNcl = AppDomain.CurrentDomain.GetAssemblies()
+                .First(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Ncl");
+            _tSharedNavObjectDictionaryOpen =
+                navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.SharedNavObjectDictionary`2")!;
+            _tITreeSharedObjectContainer =
+                navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.ITreeSharedObjectContainer")!;
+        }
+
+        // Resolve <TKey, TValue> from the closed NavObjectDictionary<,> receiver.
+        var typeArgs = selfType.GetGenericArguments();
+        var ctor = _sharedNavObjectDictCtorByClosed.GetOrAdd(selfType, _ =>
+        {
+            var closedShared = _tSharedNavObjectDictionaryOpen!.MakeGenericType(typeArgs);
+            return closedShared.GetConstructor(
+                BindingFlags.Public | BindingFlags.Instance,
+                null, new[] { _tITreeSharedObjectContainer! }, null)!;
+        });
+
+        // Lazily build the skeleton container if NavRecordRef.get_Target hasn't yet.
+        if (_skeletonSharedObjectContainer == null)
+        {
+            var navNcl = AppDomain.CurrentDomain.GetAssemblies()
+                .First(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Ncl");
+            var tContainer = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.TreeSharedObjectContainer")!;
+            var tITree = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.ITreeObject")!;
+            _skeletonSharedObjectContainer = tContainer.GetConstructor(new[] { tITree })!
+                .Invoke(new object?[] { RootTreeStub });
+        }
+
+        var sharedDict = ctor.Invoke(new object?[] { _skeletonSharedObjectContainer });
+
+        var mSet = treeType.GetMethod("SetReferenceTarget",
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)!;
+        mSet.Invoke(tree, new object?[] { sharedDict });
+        return sharedDict;
+    }
 }
