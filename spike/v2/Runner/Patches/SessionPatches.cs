@@ -69,13 +69,41 @@ public static partial class BcRuntime
         int companyNameToken, int tableId, object securityFilterType,
         object? callingObject, object? securableObject) => null;
 
+    private static Microsoft.Dynamics.Nav.Runtime.FormatSettings? _cachedInvariantFmt;
+
     /// <summary>
     /// Replacement for NavSession.SyncFormatSettings().
-    /// Accesses cultureSettings (null in skeleton) → NRE.  Return a default FormatSettings.
+    /// The real method reads <c>cultureSettings</c> (null in skeleton) → NRE.
+    /// Returning <c>new FormatSettings()</c> here is unsafe — its default ctor
+    /// allocates the <c>DateStdFormatStrings</c> / <c>TimeStdFormatStrings</c> /
+    /// <c>DatetimeStdFormatStrings</c> arrays as <c>new string[10]</c> with all
+    /// entries left null. <c>NavFormatEvaluateHelper.FormatWithFormatNumber</c>
+    /// then calls <c>GetStandardFormat</c> which indexes <c>DatetimeStdFormatStrings[9]</c>,
+    /// gets null, and passes it on to <c>FormatWithParsedFormatString</c> where
+    /// <c>format.Length</c> NREs (decompile @ Microsoft.Dynamics.Nav.Ncl 196026-196140;
+    /// NavDateTimeFormatter.GetStandardFormat @ 296313-296320).
+    /// Fix per HANDOFF §2.4: return <c>NavSession.InvariantFormatSettings</c>, the
+    /// same fully-populated singleton BC itself falls back to in
+    /// <c>session?.FormatSettings ?? NavSession.InvariantFormatSettings</c>
+    /// (see decompile line 195599). The static getter @ 206944-206957 builds it
+    /// via <c>FormatSettings.Create(InvariantCulture.LCID, default(ClientSettings).Refresh(...))</c>
+    /// which runs the full <c>DateUpdateFmt</c>/<c>TimeUpdateFmt</c>/<c>DatetimeUpdateFmt</c> path.
     /// </summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static Microsoft.Dynamics.Nav.Runtime.FormatSettings NavSession_SyncFormatSettings(object? self)
-        => new Microsoft.Dynamics.Nav.Runtime.FormatSettings();
+    {
+        if (_cachedInvariantFmt != null) return _cachedInvariantFmt;
+        var nclAsm = AppDomain.CurrentDomain.GetAssemblies()
+            .FirstOrDefault(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Ncl");
+        var navSessionType = nclAsm?.GetType("Microsoft.Dynamics.Nav.Runtime.NavSession");
+        var prop = navSessionType?.GetProperty("InvariantFormatSettings",
+            BindingFlags.NonPublic | BindingFlags.Static);
+        var v = prop?.GetValue(null) as Microsoft.Dynamics.Nav.Runtime.FormatSettings;
+        if (v != null) { _cachedInvariantFmt = v; return v; }
+        // Fallback: empty FormatSettings (still NRE-prone for date/datetime/time
+        // standard-format paths, but harmless for anything that doesn't index those arrays).
+        return new Microsoft.Dynamics.Nav.Runtime.FormatSettings();
+    }
 
     /// <summary>
     /// Replacement for NavIntegerFormatter.FormatWithFormatNumber.
