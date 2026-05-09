@@ -60,6 +60,15 @@ public static partial class RecordPatches
     // Cache: tableId → NCLMetaTable built from AL source.
     private static readonly ConcurrentDictionary<int, object?> _metaTableCache = new();
 
+    // Cache: (DataAccessSource, tableId) → DataAccess (with TempTableDataProvider).
+    // BC's real GetDataAccessForTable returns one shared TenantDataAccess for all Normal
+    // tables; that DataAccess is constructed once in the DataAccessSource ctor. Our skeleton
+    // routes everything to TempTableDataProvider, which is a per-table thing — but it must
+    // still be **the same** TempTableDataProvider for every call on a given table, so that
+    // Insert in one Record variable becomes visible to FindFirst in another. Without this
+    // cache every Record-instance creates a fresh empty in-memory store.
+    private static readonly ConditionalWeakTable<object, ConcurrentDictionary<int, object>> _dataAccessByTable = new();
+
     // Source directories scanned for AL table definitions.
     private static readonly List<string> _sourceDirs = new();
 
@@ -510,12 +519,38 @@ public static partial class RecordPatches
     /// Ignores the isTemporary flag — always routes to TempTableDataProvider (in-memory).
     /// </summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
+    /// <summary>
+    /// Clear the per-(DataAccessSource,table) DataAccess cache. Called between test
+    /// invocations so each test starts with empty tables, mirroring BC's per-test
+    /// isolation transaction. Without this the in-memory store accumulates state
+    /// across tests and Insert calls hit duplicate-key errors on common identifiers.
+    /// </summary>
+    public static void ResetPerTestState()
+    {
+        // ConditionalWeakTable doesn't support Clear directly; the simplest correct
+        // approach is to drain the per-DataAccessSource dictionaries in place.
+        // The DataAccessSource itself is cached on _skeletonSession's DataAccessSource
+        // backing field (a single instance), so iterating known sources is sufficient.
+        foreach (var (_, perTable) in _dataAccessByTable)
+            perTable.Clear();
+    }
+
     public static object NavDataAccessSource_GetDataAccessForTable(object self, NCLMetaTable table, bool isTemporary)
     {
         try
         {
+            // Per-(DataAccessSource, tableId) cache so Insert+Find on the same logical table
+            // share storage. BC normally has ONE TenantDataAccess per source for all Normal
+            // tables; we use one DataAccess per table since each gets its own
+            // TempTableDataProvider, but the SAME one across Record-variable instances.
+            var perTable = _dataAccessByTable.GetValue(self,
+                static _ => new ConcurrentDictionary<int, object>());
+            var tableId = table.TableId;
+            if (perTable.TryGetValue(tableId, out var cached))
+                return cached;
             var result = _mCreateTempDataAccess!.Invoke(self, new object[] { table })!;
-            return result;
+            // Race: keep first winner.
+            return perTable.GetOrAdd(tableId, result);
         }
         catch (Exception ex)
         {

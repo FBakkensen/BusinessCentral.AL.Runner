@@ -66,6 +66,10 @@ public sealed class TestExecutor
     private static TestResult RunOne(string codeunit, MethodInfo m, object instance)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
+        // Mirror BC's per-test isolation transaction: drain in-memory table state so
+        // each test starts empty. Without this, Insert calls in later tests collide
+        // with leftover rows from earlier tests on the same table.
+        AlRunnerV2.Patches.RecordPatches.ResetPerTestState();
         try
         {
             var args = m.GetParameters().Length == 0 ? Array.Empty<object>() : null;
