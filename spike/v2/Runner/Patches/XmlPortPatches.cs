@@ -123,6 +123,19 @@ public static partial class BcRuntime
     // Return the "success / no-op" value for each.
     // ──────────────────────────────────────────────────────────────────
 
+    // ──────────────────────────────────────────────────────────────────
+    // NavXmlPort static Export/Import — XMLPORT.EXPORT(id, stream) and
+    // XMLPORT.IMPORT(id, stream) in AL compile to these static overloads.
+    // They call NCLMetadata.GetMetaXmlPortById which throws on our skeleton.
+    // Stub as no-op (return true = success) to match the instance stubs.
+    // ──────────────────────────────────────────────────────────────────
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static bool NavXmlPort_StaticExport(int errorLevel, int xmlPortId, object outStream, object record) => true;
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static bool NavXmlPort_StaticImport(int errorLevel, int xmlPortId, object inStream, object record) => true;
+
     /// <summary>Export(DataError) → return true (no-op).</summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static bool NavXmlPort_Export(object self, int errorLevel) => true;

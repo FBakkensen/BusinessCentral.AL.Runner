@@ -849,6 +849,27 @@ public static partial class BcRuntime
                     BindingFlags.Public | BindingFlags.Instance, null, new[] { tDataError }, null);
                 if (importMethod != null)
                     Hook(importMethod, nameof(NavXmlPort_Import), "NavXmlPort.Import(DataError)");
+
+                // Static XMLPORT.EXPORT(id, stream) / XMLPORT.IMPORT(id, stream) overloads.
+                var tNavOutStream = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavOutStream");
+                var tNavInStream  = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavInStream");
+                var tNavRecord    = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavRecord");
+                if (tNavOutStream != null && tNavRecord != null)
+                {
+                    var staticExport = navXmlPortType.GetMethod("Export",
+                        BindingFlags.Public | BindingFlags.Static, null,
+                        new[] { tDataError, typeof(int), tNavOutStream, tNavRecord }, null);
+                    if (staticExport != null)
+                        Hook(staticExport, nameof(NavXmlPort_StaticExport), "NavXmlPort.Export(DataError,int,NavOutStream,NavRecord)");
+                }
+                if (tNavInStream != null && tNavRecord != null)
+                {
+                    var staticImport = navXmlPortType.GetMethod("Import",
+                        BindingFlags.Public | BindingFlags.Static, null,
+                        new[] { tDataError, typeof(int), tNavInStream, tNavRecord }, null);
+                    if (staticImport != null)
+                        Hook(staticImport, nameof(NavXmlPort_StaticImport), "NavXmlPort.Import(DataError,int,NavInStream,NavRecord)");
+                }
             }
 
             var runMethod = navXmlPortType.GetMethod("Run",
