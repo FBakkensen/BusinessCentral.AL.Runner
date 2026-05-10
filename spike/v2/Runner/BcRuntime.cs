@@ -915,6 +915,18 @@ public static partial class BcRuntime
                     "NavHttpRequestMessage.get_Target");
         }
 
+        // NavStream.get_Target — same shape as NavRecordRef. Construct SharedNavStream
+        // parented to skeleton container. Fixes NRE in NavStream ctor and all call sites
+        // that access Position, SharedStream, etc. on a freshly-created InStream/OutStream.
+        var navStreamType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavStream");
+        if (navStreamType != null)
+        {
+            var targetGetter = navStreamType.GetProperty("Target",
+                BindingFlags.NonPublic | BindingFlags.Instance)?.GetGetMethod(true);
+            if (targetGetter != null)
+                Hook(targetGetter, nameof(NavStream_get_Target), "NavStream.get_Target");
+        }
+
         // ALSystemNumeric.ALRandomize/ALRandom — real impls reach NavCurrentThread.Session.Random
         // (null on skeleton). Back with a process-static Random.
         var alSysNumType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.ALSystemNumeric");

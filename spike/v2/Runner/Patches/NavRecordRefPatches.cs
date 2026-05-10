@@ -77,6 +77,47 @@ public static partial class BcRuntime
         return string.Compare(sv, ov, StringComparison.Ordinal);
     }
 
+    // NavStream.get_Target — same shape as NavRecordRef. Construct SharedNavStream parented
+    // to the skeleton container. NavStream wraps AL InStream / OutStream variables; fixing
+    // get_Target lets the NavStream ctor succeed and subsequent SharedStream assignment work.
+    private static ConstructorInfo? _ctorSharedNavStream;
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static object NavStream_get_Target(object self)
+    {
+        var treeProp = self.GetType().GetProperty("Tree",
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy);
+        var tree = treeProp!.GetValue(self)!;
+        if (_mTreeGetReferenceTarget == null)
+            _mTreeGetReferenceTarget = tree.GetType().GetMethod("GetReferenceTarget",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance,
+                null, Type.EmptyTypes, null);
+        if (_mTreeSetReferenceTarget == null)
+            _mTreeSetReferenceTarget = tree.GetType().GetMethod("SetReferenceTarget",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        var existing = _mTreeGetReferenceTarget?.Invoke(tree, null);
+        if (existing != null) return existing;
+
+        var navNcl = AppDomain.CurrentDomain.GetAssemblies()
+            .First(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Ncl");
+        if (_skeletonSharedObjectContainer == null)
+        {
+            var tContainer = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.TreeSharedObjectContainer")!;
+            var tITree = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.ITreeObject")!;
+            _skeletonSharedObjectContainer = tContainer.GetConstructor(new[] { tITree })!
+                .Invoke(new object?[] { RootTreeStub });
+        }
+        if (_ctorSharedNavStream == null)
+        {
+            var tShared = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.SharedNavStream")!;
+            var tIContainer = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.ITreeSharedObjectContainer")!;
+            _ctorSharedNavStream = tShared.GetConstructor(
+                BindingFlags.NonPublic | BindingFlags.Instance, null, new[] { tIContainer }, null)!;
+        }
+        var shared = _ctorSharedNavStream.Invoke(new object?[] { _skeletonSharedObjectContainer });
+        _mTreeSetReferenceTarget?.Invoke(tree, new object?[] { shared });
+        return shared;
+    }
+
     // NavHttpRequestMessage.get_Target — same shape as NavRecordRef.Target. Construct
     // SharedNavHttpRequestMessage parented to the skeleton container.
     private static ConstructorInfo? _ctorSharedHttpReq;
