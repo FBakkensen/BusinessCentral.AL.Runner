@@ -927,6 +927,17 @@ public static partial class BcRuntime
                     "NavHttpResponseMessageBase.get_Target");
         }
 
+        // NavHttpClient.get_Target — same Option-C shape. SharedNavHttpClient(ITreeSharedObjectContainer)
+        // is safe (no CreateClient/HTTP infrastructure in that ctor).
+        var navHttpClientType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavHttpClient");
+        if (navHttpClientType != null)
+        {
+            var targetGetter = navHttpClientType.GetProperty("Target",
+                BindingFlags.NonPublic | BindingFlags.Instance)?.GetGetMethod(true);
+            if (targetGetter != null)
+                Hook(targetGetter, nameof(NavHttpClient_get_Target), "NavHttpClient.get_Target");
+        }
+
         // NavStream.get_Target — same shape as NavRecordRef. Construct SharedNavStream
         // parented to skeleton container. Fixes NRE in NavStream ctor and all call sites
         // that access Position, SharedStream, etc. on a freshly-created InStream/OutStream.
