@@ -927,6 +927,38 @@ public static partial class BcRuntime
                 Hook(targetGetter, nameof(NavStream_get_Target), "NavStream.get_Target");
         }
 
+        // NavSession.GetPermissionSet — skeleton has no Permissions object; NRE inside.
+        // Return the NCL-internal VirtualDataProvider.PermissionSet singleton (HasPermissions=true,
+        // VerifyPermissions=no-op). Hook both 3-arg overloads (single + IEnumerable).
+        {
+            var sessType2 = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavSession");
+            var typesAsm2 = AppDomain.CurrentDomain.GetAssemblies()
+                .FirstOrDefault(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Types");
+            var appObjIdType = typesAsm2?.GetType("Microsoft.Dynamics.Nav.Types.ApplicationObjectId");
+            var navAppObjBaseT = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavApplicationObjectBase");
+            if (sessType2 != null && appObjIdType != null && navAppObjBaseT != null)
+            {
+                var iEnumType = typeof(IEnumerable<>).MakeGenericType(appObjIdType);
+                var mSingle = sessType2.GetMethod("GetPermissionSet",
+                    BindingFlags.Public | BindingFlags.Instance, null,
+                    new[] { navAppObjBaseT, typeof(int), appObjIdType }, null);
+                if (mSingle != null)
+                    Hook(mSingle,
+                        typeof(BcRuntime).GetMethod(nameof(NavSession_GetPermissionSet_ByObjectId),
+                            BindingFlags.Public | BindingFlags.Static)!,
+                        "NavSession.GetPermissionSet(…,ApplicationObjectId)");
+
+                var mMulti = sessType2.GetMethod("GetPermissionSet",
+                    BindingFlags.Public | BindingFlags.Instance, null,
+                    new[] { navAppObjBaseT, typeof(int), iEnumType }, null);
+                if (mMulti != null)
+                    Hook(mMulti,
+                        typeof(BcRuntime).GetMethod(nameof(NavSession_GetPermissionSet_ByObjectIds),
+                            BindingFlags.Public | BindingFlags.Static)!,
+                        "NavSession.GetPermissionSet(…,IEnumerable<ApplicationObjectId>)");
+            }
+        }
+
         // ALSystemNumeric.ALRandomize/ALRandom — real impls reach NavCurrentThread.Session.Random
         // (null on skeleton). Back with a process-static Random.
         var alSysNumType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.ALSystemNumeric");

@@ -208,4 +208,36 @@ public static partial class BcRuntime
     // that compares company names will see "" == "" which is fine for most tests.
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static string RecordImplementation_GetActiveCompany(object self) => "";
+
+    // NavSession.GetPermissionSet — skeleton has no Permissions object, causing NREs on
+    // permission checks during CalcFields, HasReadPermission, HasWritePermission, etc.
+    // NCL already ships VirtualDataProvider.PermissionSet (a private singleton of
+    // VirtualTablePermissionSet) whose HasPermissions returns true and VerifyPermissions
+    // is a no-op. We return it for all GetPermissionSet calls on the skeleton.
+    private static object? _allGrantedPermSet;
+
+    private static object GetAllGrantedPermSet()
+    {
+        if (_allGrantedPermSet != null) return _allGrantedPermSet;
+        var navNcl = AppDomain.CurrentDomain.GetAssemblies()
+            .First(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Ncl");
+        var tVdp = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.VirtualDataProvider")!;
+        var fPermSet = tVdp.GetField("PermissionSet",
+            BindingFlags.NonPublic | BindingFlags.Static)!;
+        _allGrantedPermSet = fPermSet.GetValue(null)!;
+        return _allGrantedPermSet;
+    }
+
+    // Overload: GetPermissionSet(NavApplicationObjectBase, int, ApplicationObjectId)
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static object NavSession_GetPermissionSet_ByObjectId(
+        object self, object callingObject, int companyNameToken,
+        Microsoft.Dynamics.Nav.Types.ApplicationObjectId applicationObjectId)
+        => GetAllGrantedPermSet();
+
+    // Overload: GetPermissionSet(NavApplicationObjectBase, int, IEnumerable<ApplicationObjectId>)
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static object NavSession_GetPermissionSet_ByObjectIds(
+        object self, object callingObject, int companyNameToken, object applicationObjects)
+        => GetAllGrantedPermSet();
 }
