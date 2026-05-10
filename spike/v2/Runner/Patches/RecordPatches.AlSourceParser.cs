@@ -22,6 +22,24 @@ public static partial class RecordPatches
         @"\bkey\s*\(\s*[^;]+;\s*([^)]+)\)",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+    private static readonly Regex RxFieldClass = new(
+        @"\bFieldClass\s*=\s*FlowField\b",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static readonly Regex RxCalcFormula = new(
+        @"\bCalcFormula\s*=\s*([^;]+)\s*;",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    // Captures: (type) table ["."field] [where(filters)]
+    private static readonly Regex RxCalcFormulaParts = new(
+        @"^\s*(count|sum|lookup|exist|average|min|max)\s*\(\s*""([^""]+)""(?:\.""([^""]+)"")?\s*(?:where\s*\((.+)\))?\s*\)\s*$",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.Singleline);
+
+    // Captures field-reference filter: "SourceField" = field("ParentField")
+    private static readonly Regex RxCalcFilter = new(
+        @"""([^""]+)""\s*=\s*field\s*\(\s*""([^""]+)""\s*\)",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
     private static void ParseAllSources()
     {
         foreach (var dir in _sourceDirs)
@@ -59,7 +77,15 @@ public static partial class RecordPatches
                 int length = 0;
                 var lm = Regex.Match(ftype, @"\[(\d+)\]");
                 if (lm.Success) int.TryParse(lm.Groups[1].Value, out length);
-                fields.Add(new ParsedField(fid, fname, ftype, length));
+
+                // Extract the field body block (e.g. { FieldClass = FlowField; CalcFormula = ...; })
+                var fieldBody = ExtractFieldBody(slice, fm.Index + fm.Length);
+                bool isFlowField = fieldBody != null && RxFieldClass.IsMatch(fieldBody);
+                ParsedCalcFormula? calcFormula = null;
+                if (isFlowField && fieldBody != null)
+                    calcFormula = TryParseCalcFormula(fieldBody);
+
+                fields.Add(new ParsedField(fid, fname, ftype, length, isFlowField, calcFormula));
             }
 
             // Parse first key as PK
@@ -85,10 +111,47 @@ public static partial class RecordPatches
             _parsedTables[tableId] = new ParsedTable(tableId, tableName, fields, pkFieldIds);
         }
     }
+
+    /// <summary>Extracts the brace-balanced body of a field block starting near <paramref name="pos"/> in <paramref name="slice"/>.</summary>
+    private static string? ExtractFieldBody(string slice, int pos)
+    {
+        while (pos < slice.Length && char.IsWhiteSpace(slice[pos])) pos++;
+        if (pos >= slice.Length || slice[pos] != '{') return null;
+        int depth = 0, start = pos;
+        while (pos < slice.Length)
+        {
+            if (slice[pos] == '{') depth++;
+            else if (slice[pos] == '}') { depth--; if (depth == 0) return slice.Substring(start + 1, pos - start - 1); }
+            pos++;
+        }
+        return null;
+    }
+
+    private static ParsedCalcFormula? TryParseCalcFormula(string fieldBody)
+    {
+        var m = RxCalcFormula.Match(fieldBody);
+        if (!m.Success) return null;
+        var formulaText = m.Groups[1].Value.Trim();
+        var pm = RxCalcFormulaParts.Match(formulaText);
+        if (!pm.Success) return null;
+
+        var formulaType = pm.Groups[1].Value;
+        var sourceTableName = pm.Groups[2].Value;
+        var sourceFieldName = pm.Groups[3].Success && pm.Groups[3].Length > 0 ? pm.Groups[3].Value : null;
+        var whereText = pm.Groups[4].Success ? pm.Groups[4].Value : "";
+
+        var filters = new List<ParsedCalcFilter>();
+        foreach (Match fm in RxCalcFilter.Matches(whereText))
+            filters.Add(new ParsedCalcFilter(fm.Groups[1].Value, fm.Groups[2].Value));
+
+        return new ParsedCalcFormula(formulaType, sourceTableName, sourceFieldName, filters);
+    }
 }
 
 // ─── Data holders ────────────────────────────────────────────────────────────
 
-internal record ParsedField(int FieldId, string FieldName, string TypeName, int Length);
+internal record ParsedCalcFilter(string SourceFieldName, string ParentFieldName);
+internal record ParsedCalcFormula(string FormulaType, string SourceTableName, string? SourceFieldName, List<ParsedCalcFilter> Filters);
+internal record ParsedField(int FieldId, string FieldName, string TypeName, int Length, bool IsFlowField = false, ParsedCalcFormula? CalcFormula = null);
 internal record ParsedTable(int TableId, string TableName,
     List<ParsedField> Fields, List<int> PkFieldIds);

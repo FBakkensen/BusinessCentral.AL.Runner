@@ -57,7 +57,7 @@ public static partial class RecordPatches
             var allParsed = new[] { timestampParsed }.Concat(parsed.Fields)
                 .Concat(new[] { systemIdParsed }).ToArray();
             var fields = allParsed.Select((f, idx) =>
-                BuildMetaField(f, idx, parsed.PkFieldIds.Contains(f.FieldId))).ToArray();
+                BuildMetaField(f, idx, parsed.PkFieldIds.Contains(f.FieldId), parsed)).ToArray();
 
             // Build primary key MetaKey via FieldMetadataRelation[]
             var pkRelations = parsed.PkFieldIds
@@ -175,13 +175,19 @@ public static partial class RecordPatches
         return ctor.Invoke(args);
     }
 
-    private static object BuildMetaField(ParsedField f, int index, bool isPk)
+    private static object BuildMetaField(ParsedField f, int index, bool isPk, ParsedTable? parentTable = null)
     {
         var ctor = _tMetaField!.GetConstructors()
             .OrderByDescending(c => c.GetParameters().Length)
             .First();
         var ps = ctor.GetParameters();
         var args = new object?[ps.Length];
+
+        // Build calcFormula object up-front if needed (FlowField).
+        object? calcFormulaObj = (f.IsFlowField && f.CalcFormula != null && parentTable != null)
+            ? BuildMetaCalcFormula(f.CalcFormula, parentTable)
+            : null;
+
         for (int i = 0; i < ps.Length; i++)
         {
             var p = ps[i];
@@ -190,6 +196,115 @@ public static partial class RecordPatches
             if (p.Name == "type") { args[i] = MapNavType(f.TypeName); continue; }
             if (p.Name == "length") { args[i] = f.Length; continue; }
             if (p.Name == "enabled") { args[i] = (bool?)true; continue; }
+            if (p.Name == "fieldClass" && f.IsFlowField && _tFieldClass != null)
+            {
+                args[i] = Enum.Parse(_tFieldClass, "FlowField");
+                continue;
+            }
+            if (p.Name == "calcFormula" && calcFormulaObj != null)
+            {
+                args[i] = calcFormulaObj;
+                continue;
+            }
+            if (p.HasDefaultValue) { args[i] = p.DefaultValue; continue; }
+            args[i] = p.ParameterType.IsValueType ? Activator.CreateInstance(p.ParameterType) : null;
+        }
+        return ctor.Invoke(args)!;
+    }
+
+    private static object? BuildMetaCalcFormula(ParsedCalcFormula cf, ParsedTable parentTable)
+    {
+        if (_tMetaCalcFormula == null || _tMetaFilter == null || _tFilterType == null) return null;
+
+        // Resolve source table by name
+        var srcTable = _parsedTables.Values.FirstOrDefault(t =>
+            string.Equals(t.TableName, cf.SourceTableName, StringComparison.OrdinalIgnoreCase));
+        if (srcTable == null)
+        {
+            Console.Error.WriteLine($"[RecordPatches] BuildMetaCalcFormula: source table '{cf.SourceTableName}' not found in parsed tables");
+            return null;
+        }
+
+        // Resolve source field (for Sum/Lookup/Average/Min/Max)
+        int srcFieldId = 0;
+        if (cf.SourceFieldName != null)
+        {
+            var srcField = srcTable.Fields.FirstOrDefault(f =>
+                string.Equals(f.FieldName, cf.SourceFieldName, StringComparison.OrdinalIgnoreCase));
+            if (srcField == null)
+            {
+                Console.Error.WriteLine($"[RecordPatches] BuildMetaCalcFormula: source field '{cf.SourceFieldName}' not found in table '{cf.SourceTableName}'");
+                return null;
+            }
+            srcFieldId = srcField.FieldId;
+        }
+
+        // Build MetaFilter[] for each FIELD-type filter
+        var filterObjects = new List<object>();
+        foreach (var filter in cf.Filters)
+        {
+            var srcFilterField = srcTable.Fields.FirstOrDefault(f =>
+                string.Equals(f.FieldName, filter.SourceFieldName, StringComparison.OrdinalIgnoreCase));
+            var parentFilterField = parentTable.Fields.FirstOrDefault(f =>
+                string.Equals(f.FieldName, filter.ParentFieldName, StringComparison.OrdinalIgnoreCase));
+            if (srcFilterField == null)
+            {
+                Console.Error.WriteLine($"[RecordPatches] BuildMetaCalcFormula: filter source field '{filter.SourceFieldName}' not found in '{cf.SourceTableName}'");
+                continue;
+            }
+            if (parentFilterField == null)
+            {
+                Console.Error.WriteLine($"[RecordPatches] BuildMetaCalcFormula: filter parent field '{filter.ParentFieldName}' not found in '{parentTable.TableName}'");
+                continue;
+            }
+            filterObjects.Add(BuildMetaFilter(srcFilterField.FieldId, parentFilterField.FieldId));
+        }
+
+        // Construct MetaCalcFormula(int tableId, int fieldId, string flowFieldType, bool reverseSign, ImmutableArray<MetaFilter> filters)
+        var ctor = _tMetaCalcFormula.GetConstructors()
+            .OrderByDescending(c => c.GetParameters().Length).First();
+        var ps = ctor.GetParameters();
+        var args = new object?[ps.Length];
+        for (int i = 0; i < ps.Length; i++)
+        {
+            var p = ps[i];
+            if (p.Name == "tableId") { args[i] = srcTable.TableId; continue; }
+            if (p.Name == "fieldId") { args[i] = srcFieldId; continue; }
+            if (p.Name == "flowFieldType") { args[i] = cf.FormulaType.ToUpperInvariant(); continue; }
+            if (p.Name == "reverseSign") { args[i] = false; continue; }
+            if (p.Name == "filters")
+            {
+                args[i] = MakeImmutableArray(_tMetaFilter!, filterObjects.ToArray());
+                continue;
+            }
+            if (p.HasDefaultValue) { args[i] = p.DefaultValue; continue; }
+            args[i] = p.ParameterType.IsValueType ? Activator.CreateInstance(p.ParameterType) : null;
+        }
+        try
+        {
+            return ctor.Invoke(args);
+        }
+        catch (Exception ex)
+        {
+            var inner = ex is System.Reflection.TargetInvocationException tie ? tie.InnerException ?? ex : ex;
+            Console.Error.WriteLine($"[RecordPatches] BuildMetaCalcFormula ctor failed: {inner.GetType().Name}: {inner.Message}");
+            return null;
+        }
+    }
+
+    private static object BuildMetaFilter(int sourceFieldId, int parentFieldId)
+    {
+        // MetaFilter(int fieldId, FilterType filterType, string filterValue, ...)
+        var ctor = _tMetaFilter!.GetConstructors()
+            .OrderByDescending(c => c.GetParameters().Length).First();
+        var ps = ctor.GetParameters();
+        var args = new object?[ps.Length];
+        for (int i = 0; i < ps.Length; i++)
+        {
+            var p = ps[i];
+            if (p.Name == "fieldId") { args[i] = sourceFieldId; continue; }
+            if (p.Name == "filterType") { args[i] = Enum.Parse(_tFilterType!, "FIELD"); continue; }
+            if (p.Name == "filterValue") { args[i] = parentFieldId.ToString(); continue; }
             if (p.HasDefaultValue) { args[i] = p.DefaultValue; continue; }
             args[i] = p.ParameterType.IsValueType ? Activator.CreateInstance(p.ParameterType) : null;
         }

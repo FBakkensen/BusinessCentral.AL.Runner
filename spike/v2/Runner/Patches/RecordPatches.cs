@@ -29,6 +29,9 @@ public static partial class RecordPatches
     private static Type? _tFieldMetadataRelation;
     private static Type? _tNavType;
     private static Type? _tFieldClass;
+    private static Type? _tMetaCalcFormula;
+    private static Type? _tMetaFilter;
+    private static Type? _tFilterType;
     private static Type? _tNCLMetaTable;
     private static MethodInfo? _mCreateFromMetaTable;
     private static MethodInfo? _mCreateForTempTable;
@@ -56,6 +59,10 @@ public static partial class RecordPatches
     private static FieldInfo? _fTtdpPrimaryKeySortingFields;
     private static PropertyInfo? _pNclMetaKeySortingFieldsWithPK;  // NCLMetaKey.SortingFieldsWithPrimaryKeyFields (internal)
     private static object? _collationComparer;   // pre-built CollationAwareStringComparer
+
+    // CalcNumeric hook — iterates in-memory rows via Filter() + accumulates count/sum/avg.
+    private static MethodInfo? _mTtdpFilter;               // TempTableDataProvider.Filter(int,FiltersAndMarks,MutableRecordBuffer,SortingFieldList,bool)
+    private static ConstructorInfo? _ctorFieldDictionaryNavValue; // FieldDictionary<NavValue>(Tuple<INavFieldMetadata,NavValue>[])
 
     // Cache: tableId → NCLMetaTable built from AL source.
     private static readonly ConcurrentDictionary<int, object?> _metaTableCache = new();
@@ -118,6 +125,9 @@ public static partial class RecordPatches
         _tFieldMetadataRelation = typesAsm.GetType("Microsoft.Dynamics.Nav.Types.Metadata.FieldMetadataRelation")!;
         _tNavType   = typesAsm.GetType("Microsoft.Dynamics.Nav.Types.NavType")!;
         _tFieldClass = typesAsm.GetType("Microsoft.Dynamics.Nav.Types.Metadata.FieldClass")!;
+        _tMetaCalcFormula = typesAsm.GetType("Microsoft.Dynamics.Nav.Types.Metadata.MetaCalcFormula")!;
+        _tMetaFilter  = typesAsm.GetType("Microsoft.Dynamics.Nav.Types.Metadata.MetaFilter")!;
+        _tFilterType  = typesAsm.GetType("Microsoft.Dynamics.Nav.Types.Metadata.FilterType")!;
 
         // NCLMetaTable and factory (Microsoft.Dynamics.Nav.Runtime / Ncl)
         _tNCLMetaTable = nclAsm.GetType("Microsoft.Dynamics.Nav.Runtime.NCLMetaTable")!;
@@ -187,6 +197,20 @@ public static partial class RecordPatches
         _fTtdpComparer = tTtdp.GetField("comparer", BindingFlags.NonPublic | BindingFlags.Instance);
         _fTtdpPrimaryKeySortingFields = tTtdp.GetField("primaryKeySortingFields",
             BindingFlags.NonPublic | BindingFlags.Instance);
+        _mTtdpFilter = tTtdp.GetMethods(BindingFlags.NonPublic | BindingFlags.Instance)
+            .FirstOrDefault(m => m.Name == "Filter" && m.GetParameters().Length == 5);
+        if (_mTtdpFilter == null)
+            Console.Error.WriteLine("[RecordPatches] WARN: TempTableDataProvider.Filter(5 params) not found");
+        var tFieldDictGeneric = nclAsm.GetType("Microsoft.Dynamics.Nav.Runtime.FieldDictionary`1");
+        if (tFieldDictGeneric != null)
+        {
+            var tFieldDictNavValue = tFieldDictGeneric.MakeGenericType(typeof(NavValue));
+            _ctorFieldDictionaryNavValue = tFieldDictNavValue.GetConstructors(
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                .FirstOrDefault(c => c.GetParameters() is [{ ParameterType: { IsArray: true } }]);
+            if (_ctorFieldDictionaryNavValue == null)
+                Console.Error.WriteLine("[RecordPatches] WARN: FieldDictionary<NavValue>(Tuple[]) ctor not found");
+        }
 
         // NCLMetaKey.SortingFieldsWithPrimaryKeyFields is internal — access via reflection
         var tNclMetaKey = nclAsm.GetType("Microsoft.Dynamics.Nav.Runtime.NCLMetaKey")!;
@@ -240,6 +264,65 @@ public static partial class RecordPatches
         var pkSortingFields = _pNclMetaKeySortingFieldsWithPK?.GetValue(table.PrimaryKey);
         _fTtdpPrimaryKeySortingFields?.SetValue(self, pkSortingFields);
         _fTtdpComparer?.SetValue(self, _collationComparer);
+    }
+
+    /// <summary>
+    /// Replacement for TempTableDataProvider.CalcNumeric(CalcNumericProviderRequest).
+    /// The real override throws NotSupportedException; this replacement iterates in-memory rows
+    /// via the private Filter() helper and accumulates count/sum/average (the only three
+    /// calculation methods routed through CalcNumeric — Exists and Lookup use separate paths).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static object TempTableDataProvider_CalcNumeric(object self, object request)
+    {
+        var rt = request.GetType();
+        var companyToken   = (int)rt.GetProperty("CompanyToken")!.GetValue(request)!;
+        var filtersAndMarks = rt.GetProperty("FiltersAndMarks")!.GetValue(request);
+        var sourceTable    = (NCLMetaTable)rt.GetProperty("MetaApplicationObject")!.GetValue(request)!;
+        var fieldsToCalc   = (FieldList)rt.GetProperty("FieldsToCalculate")!.GetValue(request)!;
+        int fieldCount     = fieldsToCalc.Count;
+
+        var primaryKeySortingFields = _fTtdpPrimaryKeySortingFields!.GetValue(self);
+        var sums = new Decimal18[fieldCount];
+        int recordCount = 0;
+
+        var rows = (System.Collections.IEnumerable)_mTtdpFilter!.Invoke(
+            self, new object?[] { companyToken, filtersAndMarks, null, primaryKeySortingFields, false })!;
+
+        foreach (TempTableRecordBuffer row in rows)
+        {
+            checked { recordCount++; }
+            for (int i = 0; i < fieldCount; i++)
+            {
+                var field = (NCLMetaField)fieldsToCalc[i];
+                var cm = field.CalculationFormula.CalculationMethod;
+                if (cm is NCLMetaCalculationMethod.Sum or NCLMetaCalculationMethod.Average)
+                {
+                    var srcField = sourceTable.GetFieldByNo(field.CalculationFormula.FieldId, trapError: true);
+                    if (srcField != null)
+                    {
+                        var v = row[srcField.ColumnIndex];
+                        if (v != null) sums[i] = checked(sums[i] + v.ToDecimal());
+                    }
+                }
+            }
+        }
+
+        var tuples = new Tuple<INavFieldMetadata, NavValue>[fieldCount];
+        for (int j = 0; j < fieldCount; j++)
+        {
+            var field = (NCLMetaField)fieldsToCalc[j];
+            NavValue navValue = field.CalculationFormula.CalculationMethod switch
+            {
+                NCLMetaCalculationMethod.Count   => NavValue.CreateNavValueFromObject(field, recordCount),
+                NCLMetaCalculationMethod.Average when recordCount > 0
+                                                 => NavValue.CreateNavValueFromObject(field, sums[j] / recordCount),
+                _                                => NavValue.CreateNavValueFromObject(field, sums[j]),
+            };
+            tuples[j] = new Tuple<INavFieldMetadata, NavValue>(field, navValue);
+        }
+
+        return _ctorFieldDictionaryNavValue!.Invoke(new object[] { tuples })!;
     }
 
     /// Pre-populate the skeleton session's dataAccessSource field directly.

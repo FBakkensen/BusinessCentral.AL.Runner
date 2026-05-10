@@ -108,6 +108,16 @@ public static partial class BcRuntime
                     typeof(AlRunnerV2.Patches.RecordPatches).GetMethod("TempTableDataProviderCtorReplacement",
                         BindingFlags.Public | BindingFlags.Static)!,
                     "TempTableDataProvider.ctor");
+
+            // CalcNumeric — the real override throws NotSupportedException; our replacement
+            // iterates in-memory rows via the private Filter() method to compute count/sum/avg.
+            var ttdpCalcNumeric = ttdpType.GetMethod("CalcNumeric",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            if (ttdpCalcNumeric != null)
+                Hook(ttdpCalcNumeric,
+                    typeof(AlRunnerV2.Patches.RecordPatches).GetMethod("TempTableDataProvider_CalcNumeric",
+                        BindingFlags.Public | BindingFlags.Static)!,
+                    "TempTableDataProvider.CalcNumeric");
         }
 
         // NavDatabase.CollationAwareStringComparer getter — return OrdinalIgnoreCase comparer.

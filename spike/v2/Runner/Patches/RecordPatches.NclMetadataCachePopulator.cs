@@ -92,7 +92,12 @@ public static partial class RecordPatches
             if (dict.Contains(id)) continue;
             object? meta;
             try { meta = buildMeta(id); }
-            catch { meta = null; }
+            catch (Exception ex)
+            {
+                var inner = ex is System.Reflection.TargetInvocationException tie ? tie.InnerException ?? ex : ex;
+                Console.Error.WriteLine($"[NclMetadataCachePopulator] buildMeta({id}) threw {inner.GetType().Name}: {inner.Message}");
+                meta = null;
+            }
             if (meta == null) { failed++; continue; }
 
             // Mark metadataLoaded=true on the meta itself so the shared
