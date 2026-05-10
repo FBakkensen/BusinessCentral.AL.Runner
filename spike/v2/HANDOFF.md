@@ -302,12 +302,13 @@ the freshly-regenerated `v2-classification.json`. Priority order:
 | # | Bucket / Cluster | Tests | Approach |
 |---|---|---:|---|
 | A | `NavDialog.ALError` catch-all in record-table | ~81 | Multi-root catch-all. Pick a representative subset, classify the underlying NREs. Likely ~2-3 distinct root causes hiding here. |
-| B | `NavRecord.ModifyAsync` (record-table) | 19 | Sync-underbelly likely in `RecordImplementation.ModifyRecordAsync`. Same shape as `de0bad05` (find/issue cluster). |
-| C | `NavSession.GetPermissionSet` | 16 | Sync method on session — typical skeleton-state gap. |
+| B | `NavRecord.ModifyAsync` (record-table) | 19 | Sync-underbelly likely in `RecordImplementation.ModifyRecordAsync`. Same shape as `de0bad05` (find/issue cluster). Partially drained 2026-05-10 (commit `4f84e5e3`); residuals are a different sub-shape. |
+| C | `NavSession.GetPermissionSet` | 16 | ✅ **DONE** 2026-05-10 (commit `776eb87e`, +36 P). Hook returns `VirtualDataProvider.PermissionSet` (all-granted). |
 | D | `NCLMetaTable.GetFieldByNo` | 15 | Sync getter on built MetaTable — likely a populator gap for some field types. |
 | E | `NavApplicationObjectBaseHandle\`1.get_Target` | 14 | R2R-internal-call boundary candidate — the `bbbc98ff` caveat may apply. Audit hooks already on this surface. |
-| F | `RecordImplementation.CalcFieldsAsync` | 14 | FlowField evaluation. Larger architectural piece — may need either Option-C or §5.3. |
+| F | `RecordImplementation.CalcFieldsAsync` | 14 | FlowField evaluation. NRE message: "Has Child field must be a FlowField" — `NCLMetaField` populator gap. Likely deterministic Option-C fix in `Patches/RecordPatches.NclMetadataCachePopulator.cs`. |
 | G | `NavRecord..ctor` (record-table) | 11 | Ctor on a specific Record subclass; check what's null. |
+| H | `NavQuery` cluster | ~7 | ⏳ **DEFERRED** to a planned 2–3 day workstream. Not solvable single-session. See `spike/v2/QUERY-INVESTIGATION.md` for the full architectural map (why XmlPort-mirror approach is a category error; three layered obstacles; recommended Option A `MetaQuery` XML builder + `CreateDynamicQuery`). Two prior Sonnet attempts (~6.5h) failed because the populator's outer catch silently swallowed an `AmbiguousMatchException` from `Type.GetMethod("CreateEmptyNCLMetaQuery", flags)` (Query has two overloads vs Form/Report's one). |
 
 Each row is a candidate single-fix-unlocks-many lever; the
 `RecordImplementation.IssueFindRequestAsync` + `InternalFindRecordWithoutCheckingValuesAsync` collapse (commit `de0bad05`, +150 P in record-table)
