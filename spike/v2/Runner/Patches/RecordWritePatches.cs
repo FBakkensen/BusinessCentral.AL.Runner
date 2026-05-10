@@ -162,11 +162,31 @@ public static partial class BcRuntime
                 _mRecordImplementationDeleteRecordAsync = recImplTypeForWrites.GetMethod(
                     "DeleteRecordAsync",
                     BindingFlags.NonPublic | BindingFlags.Instance);
+                _mRecordImplementationRenameRecordAsync = recImplTypeForWrites.GetMethod(
+                    "RenameRecordAsync",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
             }
+            _mNavRecordCloneRecord = navRecordType.GetMethod("CloneRecord",
+                BindingFlags.Public | BindingFlags.Instance);
             var insertAsync4 = navRecordType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
                 .FirstOrDefault(m => m.Name == "InsertAsync" && m.GetParameters().Length == 4);
             if (insertAsync4 != null && _mRecordImplementationInsertRecordAsync != null)
                 Hook(insertAsync4, nameof(NavRecord_InsertAsync), "NavRecord.InsertAsync(DataError,bool,bool,bool)");
+
+            var modifyAsync4 = navRecordType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                .FirstOrDefault(m => m.Name == "ModifyAsync" && m.GetParameters().Length == 4);
+            if (modifyAsync4 != null && _mRecordImplementationModifyRecordAsync != null)
+                Hook(modifyAsync4, nameof(NavRecord_ModifyAsync), "NavRecord.ModifyAsync(DataError,bool,bool,bool)");
+
+            var deleteAsync4 = navRecordType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                .FirstOrDefault(m => m.Name == "DeleteAsync" && m.GetParameters().Length == 4);
+            if (deleteAsync4 != null && _mRecordImplementationDeleteRecordAsync != null)
+                Hook(deleteAsync4, nameof(NavRecord_DeleteAsync), "NavRecord.DeleteAsync(DataError,bool,bool,bool)");
+
+            var renameAsync4 = navRecordType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                .FirstOrDefault(m => m.Name == "RenameAsync" && m.GetParameters().Length == 4);
+            if (renameAsync4 != null && _mRecordImplementationRenameRecordAsync != null && _mNavRecordCloneRecord != null)
+                Hook(renameAsync4, nameof(NavRecord_RenameAsync), "NavRecord.RenameAsync(DataError,bool,bool,NavValue[])");
         }
         // NCLMetaApplicationObject.CheckApplicationObjectIsValid — validates app-group ID matches.
         // Fails on skeleton session because tenant is null. No-op is safe: headless mode doesn't
@@ -409,6 +429,107 @@ public static partial class BcRuntime
         {
             System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(tie.InnerException);
             return default; // unreachable
+        }
+    }
+
+    /// <summary>
+    /// Replacement for NavRecord.ModifyAsync(DataError, bool, bool, bool).
+    /// Same bypass pattern as InsertAsync — skips trigger/event dispatch that NREs on skeleton
+    /// session and delegates to RecordImplementation.ModifyRecordAsync directly.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static System.Threading.Tasks.ValueTask<bool> NavRecord_ModifyAsync(
+        Microsoft.Dynamics.Nav.Runtime.NavRecord self,
+        Microsoft.Dynamics.Nav.Types.DataError errorLevel,
+        bool runApplicationTrigger,
+        bool runGlobalTrigger,
+        bool isBulkModify)
+    {
+        try
+        {
+            var recImpl = _fNavRecordRecordImplementation?.GetValue(self);
+            if (recImpl == null || _mRecordImplementationModifyRecordAsync == null)
+                return new System.Threading.Tasks.ValueTask<bool>(false);
+            var result = _mRecordImplementationModifyRecordAsync.Invoke(recImpl, new object?[] { errorLevel });
+            if (result is System.Threading.Tasks.ValueTask<bool> vt) return vt;
+            return new System.Threading.Tasks.ValueTask<bool>(true);
+        }
+        catch (TargetInvocationException tie) when (tie.InnerException != null)
+        {
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(tie.InnerException);
+            return default;
+        }
+    }
+
+    /// <summary>
+    /// Replacement for NavRecord.DeleteAsync(DataError, bool, bool, bool).
+    /// Same bypass pattern as InsertAsync — skips trigger/event dispatch that NREs on skeleton
+    /// session and delegates to RecordImplementation.DeleteRecordAsync directly.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static System.Threading.Tasks.ValueTask<bool> NavRecord_DeleteAsync(
+        Microsoft.Dynamics.Nav.Runtime.NavRecord self,
+        Microsoft.Dynamics.Nav.Types.DataError errorLevel,
+        bool runApplicationTrigger,
+        bool isCalledFromUI,
+        bool isBulkDelete)
+    {
+        try
+        {
+            var recImpl = _fNavRecordRecordImplementation?.GetValue(self);
+            if (recImpl == null || _mRecordImplementationDeleteRecordAsync == null)
+                return new System.Threading.Tasks.ValueTask<bool>(false);
+            var result = _mRecordImplementationDeleteRecordAsync.Invoke(recImpl, new object?[] { errorLevel });
+            if (result is System.Threading.Tasks.ValueTask<bool> vt) return vt;
+            return new System.Threading.Tasks.ValueTask<bool>(true);
+        }
+        catch (TargetInvocationException tie) when (tie.InnerException != null)
+        {
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(tie.InnerException);
+            return default;
+        }
+    }
+
+    /// <summary>
+    /// Replacement for NavRecord.RenameAsync(DataError, bool, bool, NavValue[]).
+    /// Bypasses trigger/event dispatch. Clones self, sets new PK field values on the clone
+    /// using NCLMetaField directly (avoids GetFieldByNo), then calls
+    /// RecordImplementation.RenameRecordAsync(errorLevel, renamedRecord).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static System.Threading.Tasks.ValueTask<bool> NavRecord_RenameAsync(
+        Microsoft.Dynamics.Nav.Runtime.NavRecord self,
+        Microsoft.Dynamics.Nav.Types.DataError errorLevel,
+        bool runApplicationTrigger,
+        bool runGlobalTrigger,
+        Microsoft.Dynamics.Nav.Runtime.NavValue[] values)
+    {
+        try
+        {
+            var recImpl = _fNavRecordRecordImplementation?.GetValue(self);
+            if (recImpl == null || _mRecordImplementationRenameRecordAsync == null || _mNavRecordCloneRecord == null)
+                return new System.Threading.Tasks.ValueTask<bool>(false);
+
+            values ??= Array.Empty<Microsoft.Dynamics.Nav.Runtime.NavValue>();
+            var key = self.MetaTable.GetKeyByIndex(0);
+            if (values.Length < key.KeyFieldCount)
+                return new System.Threading.Tasks.ValueTask<bool>(false);
+
+            var newRecord = (Microsoft.Dynamics.Nav.Runtime.NavRecord)_mNavRecordCloneRecord.Invoke(
+                self, new object[] { self, false, true })!;
+            for (int i = 0; i < key.KeyFieldCount; i++)
+            {
+                var field = key.GetKeyFieldByIndex(i);
+                newRecord.SetFieldValue(field, values[i]);
+            }
+            var result = _mRecordImplementationRenameRecordAsync.Invoke(recImpl, new object[] { errorLevel, newRecord });
+            if (result is System.Threading.Tasks.ValueTask<bool> vt) return vt;
+            return new System.Threading.Tasks.ValueTask<bool>(true);
+        }
+        catch (TargetInvocationException tie) when (tie.InnerException != null)
+        {
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(tie.InnerException);
+            return default;
         }
     }
 }

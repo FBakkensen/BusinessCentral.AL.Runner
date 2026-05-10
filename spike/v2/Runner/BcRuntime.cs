@@ -43,6 +43,8 @@ public static partial class BcRuntime
     private static MethodInfo? _mRecordImplementationInsertRecordAsync;  // RecordImplementation.InsertRecordAsync
     private static MethodInfo? _mRecordImplementationModifyRecordAsync;  // RecordImplementation.ModifyRecordAsync
     private static MethodInfo? _mRecordImplementationDeleteRecordAsync;  // RecordImplementation.DeleteRecordAsync
+    private static MethodInfo? _mRecordImplementationRenameRecordAsync;  // RecordImplementation.RenameRecordAsync
+    private static MethodInfo? _mNavRecordCloneRecord;                   // NavRecord.CloneRecord(ITreeObject,bool,bool)
     private static FieldInfo? _fRecordImplementationDataAccess;          // RecordImplementation.dataAccess
     private static FieldInfo? _fRecordImplementationMutableRecordBuffer; // RecordImplementation.mutableRecordBuffer
     private static MethodInfo? _mDataAccessTryGetByPrimaryKeyAsync;
