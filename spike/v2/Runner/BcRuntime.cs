@@ -64,6 +64,34 @@ public static partial class BcRuntime
             .FirstOrDefault(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Ncl");
         if (navNcl != null)
             ApplyNavObjectDictionaryGetTargetHooks(navNcl);
+        // Hook XmlPort{ID}.InitializeComponent() overrides in the test assembly.
+        // The BC-generated InitializeComponent calls EndInitialization() which may be
+        // inlined by the JIT into the caller — hooking EndInitialization() in NCL is
+        // unreliable. Hooking the override directly (on the concrete XmlPort type in
+        // the test assembly) is deterministic since the JIT hasn't seen this method yet.
+        HookXmlPortInitializeComponents(asm);
+    }
+
+    private static void HookXmlPortInitializeComponents(Assembly asm)
+    {
+        var repl = typeof(BcRuntime).GetMethod(nameof(NavXmlPort_InitializeComponent),
+            BindingFlags.Public | BindingFlags.Static)!;
+        try
+        {
+            foreach (var t in asm.GetTypes())
+            {
+                if (!t.Name.StartsWith("XmlPort")) continue;
+                var m = t.GetMethod("InitializeComponent",
+                    BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly,
+                    null, Type.EmptyTypes, null);
+                if (m == null) continue;
+                JmpHook.Apply(m, repl, $"{t.Name}.InitializeComponent");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[BcRuntime] HookXmlPortInitializeComponents failed: {ex.Message}");
+        }
     }
 
     // ── Spike 4: EventPipe JIT listener ──────────────────────────────────────────────────────
@@ -783,6 +811,126 @@ public static partial class BcRuntime
                 BindingFlags.NonPublic | BindingFlags.Instance);
             if (createTarget != null)
                 Hook(createTarget, nameof(NavReportHandle_CreateTarget), "NavReportHandle.CreateTarget");
+        }
+
+        // NavXmlPortHandle.CreateTarget — same pattern as NavFormHandle/NavReportHandle.
+        // GetMetaXmlPortById throws ThrowMetaApplicationObjectNotFound for any XmlPort not
+        // compiled by NCLCodeLoader; our cache has skeleton entries but CreateObjectInstance
+        // NREs on the null delegate. Hook to construct XmlPort{ID} directly from the assembly.
+        var xmlPortHandleType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavXmlPortHandle");
+        if (xmlPortHandleType != null)
+        {
+            var createTarget = xmlPortHandleType.GetMethod("CreateTarget",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            if (createTarget != null)
+                Hook(createTarget, nameof(NavXmlPortHandle_CreateTarget), "NavXmlPortHandle.CreateTarget");
+        }
+
+        // NavXmlPort instance methods — Export/Import/Run all call Session.BeginTransaction
+        // or ApplicationObjectRootScope which NRE on the skeleton; SetTableView iterates
+        // empty nodes then throws NavNCLXmlPortNodeNotFoundException. Return no-op stubs.
+        var navXmlPortType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavXmlPort");
+        if (navXmlPortType != null)
+        {
+            var tDataError = navNcl.GetType("Microsoft.Dynamics.Nav.Types.DataError")
+                ?? AppDomain.CurrentDomain.GetAssemblies()
+                    .SelectMany(a => { try { return a.GetTypes(); } catch { return Array.Empty<Type>(); } })
+                    .FirstOrDefault(t => t.Name == "DataError");
+            var xmlPortNavRecordType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavRecord");
+
+            if (tDataError != null)
+            {
+                var exportMethod = navXmlPortType.GetMethod("Export",
+                    BindingFlags.Public | BindingFlags.Instance, null, new[] { tDataError }, null);
+                if (exportMethod != null)
+                    Hook(exportMethod, nameof(NavXmlPort_Export), "NavXmlPort.Export(DataError)");
+
+                var importMethod = navXmlPortType.GetMethod("Import",
+                    BindingFlags.Public | BindingFlags.Instance, null, new[] { tDataError }, null);
+                if (importMethod != null)
+                    Hook(importMethod, nameof(NavXmlPort_Import), "NavXmlPort.Import(DataError)");
+            }
+
+            var runMethod = navXmlPortType.GetMethod("Run",
+                BindingFlags.Public | BindingFlags.Instance, null, Type.EmptyTypes, null);
+            if (runMethod != null)
+                Hook(runMethod, nameof(NavXmlPort_Run), "NavXmlPort.Run()");
+
+            // RunXmlPort() (private) is the actual execution body. The BC-generated code for
+            // `XP.Run()` on a local XmlPort variable goes through ApplicationObjectRootScope
+            // which calls RunXmlPort() directly, bypassing the public Run() hook above.
+            var runXmlPortMethod = navXmlPortType.GetMethod("RunXmlPort",
+                BindingFlags.NonPublic | BindingFlags.Instance, null, Type.EmptyTypes, null);
+            if (runXmlPortMethod != null)
+                Hook(runXmlPortMethod, nameof(NavXmlPort_RunXmlPort), "NavXmlPort.RunXmlPort()");
+
+            if (xmlPortNavRecordType != null)
+            {
+                var setTableViewMethod = navXmlPortType.GetMethod("SetTableView",
+                    BindingFlags.Public | BindingFlags.Instance, null, new[] { xmlPortNavRecordType }, null);
+                if (setTableViewMethod != null)
+                    Hook(setTableViewMethod, nameof(NavXmlPort_SetTableView), "NavXmlPort.SetTableView(NavRecord)");
+            }
+
+            // BeginInitialization/EndInitialization — called from the BC-generated XmlPort{ID}
+            // constructor. BeginInitialization dereferences Session.MetadataProvider (null on
+            // skeleton) → NRE. EndInitialization uses metadata/requestOptionsPage (null when
+            // BeginInit is a no-op). Both must be stubbed to let the constructor complete safely.
+            var beginInitMethod = navXmlPortType.GetMethod("BeginInitialization",
+                BindingFlags.NonPublic | BindingFlags.Instance, null, Type.EmptyTypes, null);
+            if (beginInitMethod != null)
+                Hook(beginInitMethod, nameof(NavXmlPort_BeginInitialization), "NavXmlPort.BeginInitialization()");
+
+            var endInitMethod = navXmlPortType.GetMethod("EndInitialization",
+                BindingFlags.NonPublic | BindingFlags.Instance, null, Type.EmptyTypes, null);
+            if (endInitMethod != null)
+                Hook(endInitMethod, nameof(NavXmlPort_EndInitialization), "NavXmlPort.EndInitialization()");
+
+            // Add(NavXmlPortTableNode/FieldNode/TextNode) — all three overloads access
+            // metadata.Nodes[nodes.Count] which is null after BeginInitialization is no-op'd.
+            // Hook to no-op; the node list is not needed for our Export/Import/Run stubs.
+            var nclAssembly = navXmlPortType.Assembly;
+            var tableNodeType = nclAssembly.GetType("Microsoft.Dynamics.Nav.Runtime.NavXmlPortTableNode");
+            var fieldNodeType = nclAssembly.GetType("Microsoft.Dynamics.Nav.Runtime.NavXmlPortFieldNode");
+            var textNodeType  = nclAssembly.GetType("Microsoft.Dynamics.Nav.Runtime.NavXmlPortTextNode");
+            if (tableNodeType != null)
+            {
+                var addTable = navXmlPortType.GetMethod("Add",
+                    BindingFlags.NonPublic | BindingFlags.Instance, null, new[] { tableNodeType }, null);
+                if (addTable != null)
+                    Hook(addTable, nameof(NavXmlPort_AddTableNode), "NavXmlPort.Add(NavXmlPortTableNode)");
+            }
+            if (fieldNodeType != null)
+            {
+                var addField = navXmlPortType.GetMethod("Add",
+                    BindingFlags.NonPublic | BindingFlags.Instance, null, new[] { fieldNodeType }, null);
+                if (addField != null)
+                    Hook(addField, nameof(NavXmlPort_AddFieldNode), "NavXmlPort.Add(NavXmlPortFieldNode)");
+            }
+            if (textNodeType != null)
+            {
+                var addText = navXmlPortType.GetMethod("Add",
+                    BindingFlags.NonPublic | BindingFlags.Instance, null, new[] { textNodeType }, null);
+                if (addText != null)
+                    Hook(addText, nameof(NavXmlPort_AddTextNode), "NavXmlPort.Add(NavXmlPortTextNode)");
+            }
+
+            // NavXmlPortTableNode(NavRecordHandle) constructor — called from the generated
+            // XmlPort{ID}.InitializeComponent() for each tableelement. Calls record.Target which
+            // triggers NavRecordHandle.CreateTarget → NCLMetaTable.CreateObjectInstance → the
+            // generated Table{ID} ctor → record initialization that NREs before reaching Add().
+            // Since Add is already a no-op and we never use the node list, stub ctor as no-op.
+            if (tableNodeType != null)
+            {
+                var xmlPortHandleNavRecordType = nclAssembly.GetType("Microsoft.Dynamics.Nav.Runtime.NavRecordHandle");
+                if (xmlPortHandleNavRecordType != null)
+                {
+                    var tableNodeCtor = tableNodeType.GetConstructor(
+                        BindingFlags.Public | BindingFlags.Instance, null, new[] { xmlPortHandleNavRecordType }, null);
+                    if (tableNodeCtor != null)
+                        Hook(tableNodeCtor, nameof(NavXmlPortTableNode_Ctor), "NavXmlPortTableNode.ctor(NavRecordHandle)");
+                }
+            }
         }
 
         // NCLMetaField.get_FieldCaption — sync underbelly of NavRecord.ALFieldCaptionAsync.
