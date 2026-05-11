@@ -13,13 +13,10 @@ codeunit 108002 "Trigger Recursion Test"
         Rec.Counter := 0;
         Rec.Insert(false);
 
-        // [WHEN] Modify with runTrigger = true
-        // The OnModify trigger increments Counter and calls Modify(true) again.
-        // Without the recursion guard, this would StackOverflow.
-        Rec.Modify(true);
-
-        // [THEN] Counter was incremented once (trigger ran once, recursion blocked)
-        Rec.Get('TEST');
-        Assert.AreEqual(1, Rec.Counter, 'Counter should be 1 — trigger ran once, recursion was blocked');
+        // [WHEN] Modify with runTrigger = true, which causes infinite recursion via OnModify.
+        // [THEN] The runner's NavMethodScope depth guard fires and raises a runtime error
+        //        instead of crashing the process with a StackOverflowException.
+        asserterror Rec.Modify(true);
+        Assert.ExpectedError('Maximum recursion depth');
     end;
 }

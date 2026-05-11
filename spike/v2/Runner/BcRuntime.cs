@@ -608,6 +608,15 @@ public static partial class BcRuntime
                 null, new[] { typeof(Action) }, null);
             if (assertError != null)
                 Hook(assertError, nameof(NavMethodScope_AssertError), "NavMethodScope.AssertError");
+
+            // NavMethodScope.Dispose(bool disposing) — decrements the ThreadStatic recursion depth
+            // counter and restores session.CurrentMethodScope to parentScope (captured at ctor entry).
+            // Hooked on the virtual override so all calls via IDisposable.Dispose() land here.
+            var disposeM = msType.GetMethod("Dispose",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance,
+                null, new[] { typeof(bool) }, null);
+            if (disposeM != null)
+                Hook(disposeM, nameof(NavMethodScope_Dispose), "NavMethodScope.Dispose(bool)");
         }
 
         // TreeHandler.get_Session — the tree's session field is null (root has no session propagated).
