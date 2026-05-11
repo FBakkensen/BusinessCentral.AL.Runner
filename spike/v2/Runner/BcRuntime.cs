@@ -1442,6 +1442,8 @@ public static partial class BcRuntime
         // Step 4: async entry-point hook — NavRecord.ALFieldCaptionAsync(int).
         //   Previously crashed with 14-byte overwrite corrupting MOV R10.
         //   Cell-patch leaves MOV R10 intact → should not crash.
+        RegisterALDatabasePatches(navNcl);
+
         ApplyInstallIndirectSpike(navNcl);
     }
 
