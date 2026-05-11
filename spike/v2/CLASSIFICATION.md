@@ -254,15 +254,29 @@ spike/v2/Runner/
 
 **Total: ~775 lines.** Replaces (eventually) `AlRunner/RoslynRewriter.cs` (~3500 lines) and `AlRunner/Runtime/AlScope.cs` (~3500 lines) plus the rewriter-related portions of `Pipeline.cs` and `Program.cs`. Net reduction in production AL Runner: estimated **~6000 lines** once W-1/W-2 land and the migration completes.
 
-## W-8 (deferred): permanent-table semantics on top of TempTableDataProvider
+## W-8 (DONE 2026-05-11): trigger dispatch + event-subscriber dispatch
 
-The record-gate verdict (`spike/v2/RECORD-GATE.md`) chose `TempTableDataProvider` as the storage substrate for *all* records, including permanent tables. AL test authors expect permanent-table semantics — three patches close the gaps:
+Landed across five commits:
 
-- **`IsTemporary` lies as `false`** for AL-declared permanent records. Triggers fire as on a real table; storage stays temp-backed. ~5 lines.
-- **Trigger dispatch**: confirm `runTrigger=true` on `Insert/Modify/Delete` actually invokes the AL trigger handlers when storage is temp-backed. If not, hook the dispatch path to fire our trigger registry. Verification + ~50 lines if needed.
-- **`Commit`**: no-op is safe for unit tests; document as a limitation. AL tests that depend on commit-semantics rollback are rare in unit-testing.
+- `ae15b158` — Insert drain (drop bypass + walk inherited `objectId` field + populate `NavCompany.trackChanges`).
+- `c2df0bcd` — Delete + Rename drain (+ `RecordLink.MoveLinksAsync` no-op + `NavRecord.UpdateReferencesOnRenameAsync` no-op).
+- `f8367536` — `NavMethodScope` 500-frame bounded-depth recursion guard (`NavNCLDialogException("Maximum recursion depth")` matching BC's runtime-error contract).
+- `29b5acc9` — Modify drain (predicated on recursion guard catching `Codeunit108002`).
+- `c4bce11a` — Event-subscriber dispatch via A-prime (populate BC's own `NavTableTriggerEventHandler.eventScopes[evt].registeredSubscriptions` with real `NavEventSubscription` instances; BC's own dispatcher fires them — no JmpHook on the dispatch path because of the R2R-inlining trap that killed A-base, see `feedback_r2r_inlining_traps.md`).
 
-Estimated: 1 week. Should land **with** W-7 (not after) — they share the rollback infrastructure described below.
+Outcomes:
+- Canary `tests/bucket-1/record-table/100-uninit-field-fix` 1P/2F → **3P/0F**.
+- Bucket-1/record-table 600P (day start) → **655P** (+55).
+- Corpus 2987P → **3044P / 4071 = 74.8%**.
+- Pre-W-8 corpus pass counts were misleading on every trigger/subscriber-dependent test; post-W-8 numbers are honest.
+
+The original W-8 design from this doc (`IsTemporary` lie + trigger dispatch confirmation + Commit no-op) understated the work — actual scope included building a v2-side subscriber-discovery + registry + injection layer because v2 had no event-subscriber dispatch at all (`AlCompat.FireEvent` was v1-only). Net effort ~1 day of brain + delegated implementation, ~600 LOC across `EventSubscriberPatches.cs` (NEW), `RecordWritePatches.cs`, `RecordPatches.NclMetaTableBuilder.cs`, `RecordPatches.NclMetadataCachePopulator.cs`, `MethodScopePatches.cs`, `BcRuntime.cs`, `TestExecutor.cs`.
+
+### What's still open after W-8
+
+- **ALDatabase NRE cluster** — two attempts segfaulted. See `feedback_aldatabase_hard.md`.
+- **Manual-binding subscribers** (`BindSubscription`) — auto-binding works; manual deferred as a follow-on.
+- **W-7 test isolation** — still pending (the other half of the "honest pass count" story; per-test write-log rollback + isolation-mode CLI flag).
 
 ## W-7 (deferred design): test isolation modes + init handlers + write-log rollback
 

@@ -28,7 +28,7 @@ Anchors below the table point at `docs/scope.md` rows for permanently-out-of-sco
 | `RecordPatches.NclMetaFormReportBuilder.cs` | infra (§2) | Same for forms/reports — minimal but real metadata. |
 | `RecordPatches.NclMetadataCachePopulator.cs` | infra | Populates skeleton `NCLMetadata` cache from parsed sources. |
 | `RecordPatches.BcAppFallback.cs` | infra | Falls back to parsing AL out of BC `.app` packages when test src doesn't define it. |
-| `RecordWritePatches.cs` | §2 with caveat | InsertAsync / ModifyAsync / DeleteAsync / RenameAsync replacements bypass trigger dispatch + DataModificationListener. **Caveat:** if a test relies on `OnInsert` / `OnModify` / `OnRename` triggers firing inside these calls, the replacement makes them silently no-op. Triggers fired through other entry points still work. Decision pending — see audit row below. Other hooks in file (`VerifyPermissions` → `NoOp3`, `VerifySecurityFiltersAsync` → `ReturnValueTask3`, `RecordImplementation.get_IsOpen` → `ReturnTrue`) match §2-with-caveat: permissions are §2 (all-granted, scope.md §3.8); IsOpen=true matches the in-memory-storage contract; security filters are §2 (scope.md §3.8 boundary). |
+| `RecordWritePatches.cs` | §2 (drained 2026-05-11) | Insert/Modify/Delete/Rename bypass replacements removed (`ae15b158`, `c2df0bcd`, `29b5acc9`); the real Ncl `*Async` bodies now run and dispatch AL triggers + BC subscribers natively. Side-effect no-ops kept: `RecordLink.MoveLinksAsync` and `NavRecord.UpdateReferencesOnRenameAsync` (skeleton has no link cascade / no FK references). Other hooks (`VerifyPermissions` → `NoOp3`, `VerifySecurityFiltersAsync` → `ReturnValueTask3`, `RecordImplementation.get_IsOpen` → `ReturnTrue`): faithful per scope.md §2/§3.8 — permissions all-granted, security filters not enforced, in-memory provider always open. |
 | `NavRecordRefPatches.cs` | §2 | NavRecordRef.get_Target builds real SharedRecordRef against the skeleton container. Faithful for RecordRef semantics. |
 | `ApplicationObjectBasePatches.cs` | §2 | Rebuilds skeleton ctor state — faithful for all object lifetime semantics. |
 | `CodeunitPatches.cs` | §2 | DoRunAsync calls the real AL-emitted OnRun via reflection. NavCodeunitHandle.CreateTarget finds `Codeunit{ID}` in the test assembly. Faithful. |
@@ -40,7 +40,7 @@ Anchors below the table point at `docs/scope.md` rows for permanently-out-of-sco
 | `EnvironmentPatches.cs` | §2 | Skeleton NavEnvironment for headless mode. Faithful. |
 | `MiscPatches.cs` | mostly §2 | `ALSession_GetALCurrentClientType`: returns a fixed `NavClientType` (faithful per scope.md §2, headless = "background" effectively). `ALSession.ALStopSessionAsync`: ValueTask<bool> noop — needs a look (is this an out-of-scope **§3.9 parallel-session** call, or faithful inline?). `ALSystemErrorHandling.*`: error-channel reads, faithful per BC contract. |
 | `TelemetryPatches.cs` | §2 | All hooks (NavServerEventSource, CallStackElement, NavDialog.ALError → NavALErrorInfo) are either telemetry no-ops (scope.md §2 — observable-equivalent because no in-scope test asserts on telemetry) or the actual ALError → throwable conversion that keeps `asserterror` working. **Faithful.** |
-| `XmlPortPatches.cs` | **§3 silent fake** | Export/Import/Run/SetTableView/BeginInit/EndInit/InitializeComponent/static Export/static Import all return `true` or no-op. XmlPort is a serialization mechanism that **should be in scope** as an in-memory data transform (it's all in-process — no external file required for memory-stream-based variants). **Decision needed:** either implement a real in-memory XmlPort serializer (§2 / §4), or throw `RunnerOutOfScope("NavXmlPort.<method>", "not-yet-implemented", "todo")` for now. Today's stubs make tests silently pass without doing any serialization — a green test is misleading. |
+| `XmlPortPatches.cs` | §4 TODO (converted from §3 on 2026-05-11) | Export/Import/Run/SetTableView/static Export/static Import now `ThrowNotYetImplemented` via `4a8ba526`. Ctor-time scaffolding (BeginInit/EndInit/InitializeComponent/AddXNode/TableNode ctor) remains faithful no-op with inline justification — required for XmlPort{ID} construction to succeed. In-memory XmlPort variants eventually in scope per user decision; deferred. |
 | `HelperShims.cs` | infra (helpers) | Generic NoOp / ReturnFalse / ReturnValueTask shims. Themselves not classified — each call site that uses them is what counts. See per-hook table. |
 | `AsyncStateMachineSpike.cs` | spike | Spike scaffolding for entry-point hook on async methods. Used for `ALFieldCaptionAsync` originally; that path is now faithful via Option-C. File can probably be retired or shrunk. |
 | `EventPipeJitListener.cs` | scaffolding (disabled) | Spike-4 mechanism. Not currently enabled. Becomes §2-mechanism once Tier 1C deployment lands. |
@@ -52,13 +52,11 @@ These are the hooks where the rule's bite is sharpest. Each row's "Action" colum
 
 | Hook | Replacement today | Bucket | Reasoning | Action |
 |---|---|---|---|---|
-| `NavXmlPort.Export(DataError)` and overloads | `return true` | §3 silent fake | XmlPort serialization happens entirely in-process; faithful in-memory impl is realistic. | Either land a real in-process XmlPort serializer or replace each with `ThrowNotYetImplemented("NavXmlPort.Export", "real in-memory XmlPort serializer — open issue")`. Tests that depend on actual XML output currently silent-pass. |
-| `NavXmlPort.Import(...)` (incl. static overload) | `return true` | §3 silent fake | Same as Export. | Same. |
-| `NavXmlPort.Run()` / `RunXmlPort()` | no-op | §3 silent fake | Same. | Same. |
-| `NavXmlPort.SetTableView(NavRecord)` | no-op | §3 silent fake | Reasonable as a setter no-op IF Run/Export/Import are real. If they stay no-op, this is also silent. | Tie decision to Run/Export/Import. |
-| `NavXmlPort.BeginInitialization` / `EndInitialization` / `InitializeComponent` | no-op | §2 (with caveat) | These are ctor-time scaffolding that BC's XmlPort body needs to NOT NRE on. With Export/Import faithful, these stay as faithful skeleton-init no-ops. With Export/Import as throws, these are unreachable. | Re-evaluate after Export/Import decision. |
-| `NavXmlPortTableNode.ctor` | sets empty child lists via field-poke | §2 (infra) | Faithful skeleton init for an internal BC ctor. Keep. | — |
-| `RecordWritePatches.NavRecord_InsertAsync` (and Modify/Delete/Rename Async) | calls real `RecordImplementation.<Op>RecordAsync` but bypasses trigger dispatch / DataModificationListener / event subscribers | §2 with caveat | Storage is faithful. **Trigger / subscriber dispatch is silently dropped.** Per `docs/scope.md §1 Event subscribers` and `docs/scope.md §1 Validation triggers`, both are listed as in-scope-real. Today's bypass contradicts the manifest. | Decide: (a) rewire the bypass to fire AlCompat.FireEvent for table-modification events the way the real BC service tier does, then mark this row §2-faithful; or (b) document an explicit carve-out in scope.md §2 (with the caveat as the boundary). Recommended (a) eventually; (b) interim if (a) blocks. |
+| `NavXmlPort.Export(DataError)` and overloads, `Import`, `Run`, `SetTableView`, static Export/Import | `ThrowNotYetImplemented(...)` | §4 TODO | Converted from silent no-op via `4a8ba526` per loud-failures rule. In-memory XmlPort serializer is in scope eventually. | Land an in-process XmlPort serializer when prioritized — until then the loud throw classifies the gap honestly. |
+| `NavXmlPort.BeginInitialization` / `EndInitialization` / `InitializeComponent` / `AddXNode` / `NavXmlPortTableNode.ctor` | no-op (with inline justification) | §2 (faithful) | Ctor-time scaffolding required so `XmlPort{ID}` construction itself succeeds; no observable AL-test behavior to fake. Inline comments added in `4a8ba526`. | Keep. |
+| `RecordWritePatches.NavRecord_InsertAsync` / Modify / Delete / Rename (the four bypass replacements) | **NOT installed** as of 2026-05-11 | §2 faithful | Drained via `ae15b158` (Insert), `c2df0bcd` (Delete + Rename), `29b5acc9` (Modify). Real Ncl bodies now run end-to-end, AL triggers fire, BC subscribers dispatched via `c4bce11a` A-prime registry injection. Recursion guard at 500 frames (`f8367536`) catches recursive triggers. | Done. Replacement method bodies left in place for reference / quick re-enable. |
+| Subscriber dispatch | `EventSubscriberPatches.cs` (NEW) — scans `[NavEventSubscriber]`, constructs real `NavEventSubscription`, injects into BC's `eventScopes[evt].registeredSubscriptions` | §2 faithful | BC's own `NavEventScope.CheckAndFireTriggerEventsAsync` then dispatches naturally. R2R-inlining bypassed entirely (see `feedback_r2r_inlining_traps.md`). | Done as of `c4bce11a`. Follow-on: manual-binding subscribers (`BindSubscription`). |
+| `NavMethodScope` ctor + Dispose | 500-frame ThreadStatic depth counter, throws `NavNCLDialogException("Maximum recursion depth")` past threshold | §2 faithful | Mirrors BC's runtime-error-after-N-frames contract per user clarification. Landed `f8367536`. | Follow-on: make threshold configurable, verify matches real BC's limit precisely. |
 | `NCLMetaApplicationObject.Populate` → NoOp | NoOp_OneArg | §2 | Metadata already built directly by our populator. Populate's role on real BC is to refresh from compiled .app; not applicable. | Add inline comment justifying observable equivalence. Keep. |
 | `NCLMetaApplicationObject.CompileAndLoadClrObject` → NoOp | NoOp_OneArg | §2 | The CLR type is already loaded. CompileAndLoad's real job is to JIT-compile metadata-driven runtime objects; we don't need that. | Same — keep with comment. |
 | `RecordImplementation.VerifyPermissions` → NoOp | NoOp3 | §2 | Permissions are §2 in scope.md (all-granted skeleton). Bypassing the verify is observably equivalent to "all permissions granted". | Inline comment. Keep. |
@@ -74,8 +72,8 @@ These are the hooks where the rule's bite is sharpest. Each row's "Action" colum
 | `NavOpenTelemetryLogger..ctor` | NoOpN | §2 | Telemetry-shape. | Keep. |
 | `TempTableStatistics.ReportIncrementChange` → NoOp | NoOp4 | §2 | Diagnostic statistics. Faithful. | Keep. |
 | `NavServerEventSource.get_Log` → skeleton ES | hook | §2 | EventSource skeleton, telemetry-shape. | Keep. |
-| `ALDatabase.AL*` cluster (reverted from session b01c0111) | — | §3 silent + §4 TODO | Yesterday's worker-3 attempt returned fixed values (S-1-0-0, "", 0). Per the new rule these would have been §3 silent fakes. The stash@{0} WIP has real diagnostic value (3 null roots on skeleton session identified) — keep for reference but re-approach as either skeleton-state population (§2) or per-method `ThrowOutOfScope("ALDatabase.X", "external-license/identity", "licensing")`. | Re-plan with new rule. Most ALDatabase methods are licensing/auth-shape → scope.md §3.8 throws. A few (`ALSid`?) might be §2-populatable if we wire a deterministic UserId. |
-| `NavApplicationObjectBaseHandle\`1.get_Target` on tableId=0 | throws InvalidOperationException ("AL source not parsed") | §4 (almost) | Today already throws — but with the wrong type and a misleading message ("not parsed" implies a populator gap, not the real "default-variant clone semantic mystery"). | Convert throw to `ThrowNotYetImplemented("NavRecord.CloneForVariant from default", "HANDOFF §6 row E — synthetic empty NavRecord for tableId=0")`. |
+| `ALDatabase.AL*` cluster (8 NRE-shape methods) | **Two attempts reverted** — silent stubs `b01c0111` and ThrowOutOfScope `5dce5c23` both segfaulted runner | §3.x but unable to land | Both attempts crashed during BC dep-resolution after "patches applied" succeeded; root cause not yet diagnosed (R2R native references suspected). See `feedback_aldatabase_hard.md`. | NOT a Sonnet task. Next attempt requires instrumented per-hook address logging + coredump capture, or EventPipe post-JIT body patch instead of precode JmpHook. |
+| `NavApplicationObjectBaseHandle\`1.get_Target` on tableId=0 | `ThrowNotYetImplemented("NavRecord.CloneForVariant (default-variant tableId=0)", ...)` | §4 TODO | Landed `8efcc462`. Worker discovered the 14-test cluster split: 5 are tableId=0 default-variant, 8 are genuine "AL source not parsed" for system table 2000000041 (different gap). | Synthetic empty NavRecord for the default-variant case eventually. System-table-2000000041 case needs a separate BcAppFallback entry. |
 
 ## Decisions taken 2026-05-11 (post-audit)
 
@@ -91,17 +89,25 @@ These are the hooks where the rule's bite is sharpest. Each row's "Action" colum
 
 - Event subscriber and validation trigger rows were inherited from v1's reality. v2 has neither today. Both rows updated to "PLANNED — not yet implemented" with a pointer back to this audit and CLASSIFICATION.md W-7/W-8.
 
-## Action queue (post-audit)
+## Action queue — refreshed 2026-05-11 EOD
 
-1. **Decide the trigger-bypass question** for `RecordWritePatches.NavRecord_InsertAsync` & siblings — §2 carve-out vs faithful trigger dispatch. This is the biggest fidelity question still open.
-2. **XmlPort family — decide §2 vs §4.** Either implement an in-memory serializer or convert each method to ThrowNotYetImplemented. Recommend ThrowNotYetImplemented as an interim — XmlPort matters less than core record operations and a real implementation is days of work.
-3. **ALDatabase cluster** — reuse stash@{0}'s null-root diagnosis. Most methods → throws against scope.md §3.8; ALSid/ALSessionID may be §2 if we expose a configurable session identity.
-4. **Inline-comment justification on every kept §2 hook** so future readers (and agents) don't mistake them for silent fakes. ~10-20 short comments.
-5. **Convert tableId=0 path in NavRecordHandle_CreateTarget** to ThrowNotYetImplemented.
-6. **Walk the remaining hooks** registered in BcRuntime.cs not covered by the per-file table (e.g. `NavCancellationToken.*`, `NavStringValue.op_Implicit`, `NavTextConstant.get_Value`, `SequentialUuidCreator.NewSequentialId`, etc.) for completeness. ~30-60 minutes.
+### Closed in this session
+- ✅ Trigger-bypass question — DRAINED. Insert/Modify/Delete/Rename real Ncl bodies run; AL triggers fire.
+- ✅ Subscriber dispatch — A-prime via BC's own registry, no JmpHook on dispatch path.
+- ✅ Recursion guard — 500-frame ThreadStatic depth counter.
+- ✅ XmlPort silent fakes → ThrowNotYetImplemented.
+- ✅ tableId=0 throw split + reclassified.
+
+### Still open
+
+1. **ALDatabase cluster — needs instrumented investigation, not retries.** Two Sonnet attempts crashed. See `feedback_aldatabase_hard.md`. Plan: instrumented per-hook addr logging + coredump capture, or EventPipe post-JIT body patch.
+2. **Inline-comment justification on kept §2 hooks** — RecordWritePatches `VerifyPermissions` / `VerifySecurityFiltersAsync` / `get_IsOpen` / `Rollback` / `ProcessException` / etc. ~10-20 short comments to mark "this is faithful per scope.md §X, not a silent fake."
+3. **Walk the remaining hooks in BcRuntime.cs** not covered by the per-file table (`NavCancellationToken.*`, `NavStringValue.op_Implicit`, `NavTextConstant.get_Value` — JIT-inlined TFO, Tier 1C dependency — `SequentialUuidCreator.NewSequentialId`, etc.) for completeness. ~30-60 minutes.
+4. **`NavRecord..ctor`** for RecordLink / Company built-in tables — BcAppFallback entries needed. 13-test cluster.
+5. **`NavMethodScope` recursion threshold** — currently hard-coded 500; make configurable and verify against real BC's limit precisely.
+6. **Subscriber manual-binding** (`BindSubscription`) — auto-binding works; manual deferred.
 
 ## Open questions
 
-- Some hooks (`NavTextConstant.get_Value` etc.) are the JIT-inlining TFO residual cases — Tier 1C territory. Their replacement strategy is tied to EventPipe. Document those as §4 with "Tier 1C dependency".
-- `HelperShims` themselves should probably have a `BcRuntime.NoOp_Verified` variant that also logs the first time it's called, so we get telemetry on which silent paths are ACTUALLY reached during the test corpus run. Cheap diagnostic, would help prioritize action queue.
-- The audit can be re-run by grep'ing the corpus output for `out-of-scope/<api>` once §3 fakes are converted — we'll see which APIs actually fire and how many tests they affect.
+- `HelperShims` could grow a `BcRuntime.NoOp_Verified` variant that logs first-call so we get telemetry on which silent paths are actually exercised. Cheap diagnostic.
+- The audit can be re-run by grep'ing corpus output for `out-of-scope/<api>` — see which APIs actually fire in tests and how many failures they bucket. Now possible because the classifier branch landed in `d33ad78e`.

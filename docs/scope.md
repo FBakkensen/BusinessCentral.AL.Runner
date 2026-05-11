@@ -37,7 +37,7 @@ The runner's job is to populate enough state around them that they don't NRE.
 | **ISV-shipped extension DLLs** | Any `.app` the runner is told about via `--package-cache` | Same load path as MS DLLs. |
 | **AL business logic compiled in the test run** | The user's `src/` AL that the runner compiles | Cached as `<key>.dll`, can be re-used like MS DLLs across runs. |
 | **Posting routines** | `Sales-Post`, `Purch-Post`, `Gen. Jnl.-Post`, `Item Jnl.-Post`, etc. | All real Base App posting logic; runs against in-memory tables (§2). |
-| **Validation triggers** | `OnInsert`, `OnModify`, `OnValidate(field)`, `OnDelete`, `OnRename` | **PLANNED — not yet implemented in v2.** Today the InsertAsync/ModifyAsync/DeleteAsync/RenameAsync patches bypass trigger dispatch entirely. Tests that assert `runTrigger=true` fires the AL trigger currently fail; tests that assert `runTrigger=false` skips the trigger pass *for the wrong reason*. Tracked as W-8 in `spike/v2/CLASSIFICATION.md`. |
+| **Validation triggers** | `OnInsert`, `OnModify`, `OnValidate(field)`, `OnDelete`, `OnRename` | **Working as of 2026-05-11.** The Insert/Modify/Delete/Rename trigger bypasses were drained (commits `ae15b158`, `c2df0bcd`, `29b5acc9`); the real Ncl `NavRecord.*Async` bodies dispatch AL `trigger On*()` overrides natively. Recursion guard at 500 frames (`f8367536`) catches recursive triggers per BC's runtime-error contract. |
 | **Event subscribers** | `[IntegrationEvent]` / `[BusinessEvent]` + subscribers | `RunEvent` is rewritten to `AlCompat.FireEvent`, real subscriber dispatch. |
 | **.NET interop the apps use in-process** | `System.IO.MemoryStream`, `System.Text.Encoding.*`, `System.Text.RegularExpressions.Regex`, in-process `System.Security.Cryptography` primitives | These execute natively, no replacement needed. |
 | **Number / string / date primitives** | `Format`, `Evaluate`, `CalcDate`, `Date2DMY`, etc. | All real BC implementations. |
@@ -57,7 +57,7 @@ real thing for any test that only observes documented BC behaviour.
 | **Permissions** | Permission sets evaluated against entitlements | All-granted `PermissionSet` returned by `NavSession.GetPermissionSet` | Faithful for any test that doesn't probe permission *denial* paths. Tests asserting "access denied" must be excluded or moved to real service tier. |
 | **Time / random / GUID** | Real .NET implementations | Same — no replacement | Faithful. |
 | **Field caption / table caption / lookup-page IDs** | From metadata + language pack | From parsed AL source (real values for AL-compiled tables; falls back to `"FieldNN"` for base-app tables not compiled in this run) | Faithful for in-scope tables; documented stub for non-compiled base-app tables. |
-| **Event publisher → subscriber dispatch** | Service-tier event dispatcher | **PLANNED — not yet implemented in v2.** Will scan loaded assemblies for `[NavEventSubscriber]` and dispatch into BC's publish path. v1 had `AlCompat.FireEvent`; v2 needs its own equivalent wired to the *real* BC dispatcher so AL `OnAfterInsertEvent`, `OnBeforeModifyEvent`, etc. fire registered subscribers. **Today: subscribers do not fire — see SCOPE-AUDIT.md.** | Will be faithful for documented event semantics (`var` params, `IncludeSender`) once landed. |
+| **Event publisher → subscriber dispatch** | Service-tier event dispatcher | **Working as of 2026-05-11 (`c4bce11a`, W-8b A-prime).** Discovers `[NavEventSubscriber]`-attributed methods at startup, constructs real `NavEventSubscription` instances, and injects them into each table's `NavTableTriggerEventHandler.eventScopes[evt].registeredSubscriptions`. BC's own `NavEventScope.CheckAndFireTriggerEventsAsync` then dispatches — no JmpHook on the dispatch path (it would have been R2R-inlined and silently bypassed; see `feedback_r2r_inlining_traps.md`). | Faithful for documented event semantics including `var` params and `IncludeSender`. Manual-binding subscribers (`BindSubscription`) still pending. |
 | **`Page.RunModal` / report `[RequestPageHandler]`** | Real UI dialog | Looks up registered `[ModalPageHandler]` / `[RequestPageHandler]` and calls it | Faithful for the handler dispatch contract that test code relies on; no actual UI is rendered. |
 
 ---
@@ -175,15 +175,17 @@ hitting them files a runner-gap issue rather than silently passing.
 
 | Surface | Plan | Tracking |
 |---|---|---|
-| `NavReport.RunReportAsync` faithful replacement | EventPipe + handler dispatch | HANDOFF §6 Tier 1C |
+| `NavReport.RunReportAsync` faithful replacement | EventPipe + handler dispatch (Spike 4 mechanism proven, deployment pending) | HANDOFF §6 Tier 1C |
 | `NavReport.SaveAsAsync` faithful replacement | Same | HANDOFF §6 Tier 1C |
 | `NavForm.GetAutoFormatStringAsync` | Investigate Option-C first | HANDOFF §6 Tier 1C |
-| `RecordImplementation.CalcFieldsAsync` residual FlowField shapes | Extend populator | partially drained |
-| `ALDatabase.AL*` cluster | Each method needs faithful semantics or explicit out-of-scope | audit pending |
-| `NavApplicationObjectBaseHandle\`1.get_Target` tableId=0 path | Synthetic empty record for default-variant case | HANDOFF §6 Tier 1B |
+| `RecordImplementation.CalcFieldsAsync` residual FlowField shapes | Extend populator (basic CalcFormula + unquoted-name path landed `d337c849`, `ff0d83e7`) | residual edge cases |
+| `ALDatabase.AL*` cluster | Now throws `out-of-scope/ALDatabase.*` per scope.md §3 (per-method clean classification needs investigation — two Sonnet attempts segfaulted, see `feedback_aldatabase_hard.md`) | classification investigation |
+| `NavApplicationObjectBaseHandle\`1.get_Target` tableId=0 path | Synthetic empty record for default-variant case. Today throws `out-of-scope/NavRecord.CloneForVariant (default-variant tableId=0)` via `8efcc462`. | HANDOFF §6 Tier 1B |
 | `NavRecord..ctor` for `RecordLink` / `Company` built-in tables | BcAppFallback metadata for system tables | HANDOFF §6 Tier 1B |
 | AL Runner Config codeunit `131100` | v2 equivalent of v1's `MockSession` routing | HANDOFF §6 Tier 2 |
 | `FilterGroup(n)` scoped filter groups | Track group state on Record | known gap |
+| Manual-binding event subscribers (`BindSubscription`) | Auto-binding subscribers work as of `c4bce11a`; manual-binding wiring deferred | follow-on to W-8b |
+| `NavMethodScope` recursion-depth threshold (currently hard-coded 500) | Make configurable / verify matches real BC's limit precisely | follow-on to `f8367536` |
 
 ---
 

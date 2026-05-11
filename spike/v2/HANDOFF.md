@@ -105,22 +105,22 @@ v1's CLI is `al-runner [opts] <src-dirs>...` — no mode flag, just point at AL.
 
 ---
 
-## §4. Current state (2026-05-09 — both keystones GREEN, +473 P this session)
+## §4. Current state (2026-05-11 EOD — W-8 trigger+subscriber dispatch complete)
 
 **Branch:** `spike/bc-abi-identity`. No push, no PR.
 
 | Sub-bucket | Pass | Total | % | Wall |
 |---|---:|---:|---:|---:|
-| bucket-1/codeunit-runtime | 722 | 991 | 72.9% | ~80s |
-| bucket-1/record-table | 532 | 896 | 59.4% | ~133s |
-| bucket-2/data-formats | 1288 | 1559 | 82.6% | ~60s |
-| bucket-2/page-report | 235 | 617 | 38.1% | ~57s |
-| spike-a-baseapp (keystone) | 8 | 8 | 100% | ~40s |
-| **Total** | **2785** | **4071** | **68.4%** | **~6 min** |
+| bucket-1/codeunit-runtime | 733 | 991 | 74.0% | ~102s |
+| bucket-1/record-table | 655 | 905 | 72.4% | ~199s |
+| bucket-2/data-formats | 1380 | 1559 | 88.5% | ~86s |
+| bucket-2/page-report | 268 | 617 | 43.4% | ~77s |
+| spike-a-baseapp (keystone) | 8 | 8 | 100% | ~56s |
+| **Total** | **3044** | **4071** | **74.8%** | **~9 min** |
 
-Session-start baseline (2026-05-09 morning) was 2312 / 4063 = 56.9%; this
-session added **+473 PASS** across the corpus and brought the v2 keystone
-from "untested claim" to "empirically validated."
+**Critical fidelity note:** as of 2026-05-11 the trigger and event-subscriber dispatch paths are real (W-8 series: `ae15b158`, `c2df0bcd`, `f8367536`, `29b5acc9`, `c4bce11a`). Insert/Modify/Delete/Rename trigger dispatch runs through unmodified Ncl bodies; `[NavEventSubscriber]`-attributed AL methods are discovered at startup and dispatched by BC's own `NavEventScope.CheckAndFireTriggerEventsAsync`. Pre-W-8 pass counts were misleading on every trigger/subscriber-dependent test; current numbers are honest.
+
+Runtime grew ~40% across all buckets from the pre-W-8 baseline of ~6.4 min — real BC body execution + W-8 reflection cost. Tracked in `feedback project_runtime_parity_backlog.md`.
 
 **Architectural viability: PROVEN END-TO-END.** Two derisking spikes ran
 this session:
@@ -292,7 +292,7 @@ This is HANDOFF §2 invariant 4: **try state-population before patching**.
 | 5 | `NavObjectDictionary\`2.get_Target` | ✅ DONE +15 P | `08987e80` (Option-C hook returning a populated SharedNavObjectDictionary against the skeleton container) |
 | 6 | `NavReport.SaveAsAsync` | ⛔ §5.3 STOP (assumed shape) | ~9 tests, untested but expected same row-2/3 shape |
 
-Three of six rows drained; three blocked behind §5.3 EventPipe deployment.
+Three of six rows drained; three blocked behind §5.3 EventPipe deployment (rows 2/3/6 — NavForm.GetAutoFormatStringAsync, NavReport.RunReportAsync, NavReport.SaveAsAsync).
 
 ### Tier 1B — New high-impact targets surfaced this session
 
@@ -302,13 +302,15 @@ the freshly-regenerated `v2-classification.json`. Priority order:
 | # | Bucket / Cluster | Tests | Approach |
 |---|---|---:|---|
 | A | `NavDialog.ALError` catch-all in record-table | ~81 | Multi-root catch-all. Pick a representative subset, classify the underlying NREs. Likely ~2-3 distinct root causes hiding here. |
-| B | `NavRecord.ModifyAsync` (record-table) | 19 | Sync-underbelly likely in `RecordImplementation.ModifyRecordAsync`. Same shape as `de0bad05` (find/issue cluster). Partially drained 2026-05-10 (commit `4f84e5e3`); residuals are a different sub-shape. |
+| B | `NavRecord.ModifyAsync` (record-table) | 19 | ✅ **DONE** 2026-05-11 — `29b5acc9` (Modify drain, predicated on `f8367536` recursion guard). Part of W-8a series. |
 | C | `NavSession.GetPermissionSet` | 16 | ✅ **DONE** 2026-05-10 (commit `776eb87e`, +36 P). Hook returns `VirtualDataProvider.PermissionSet` (all-granted). |
-| D | `NCLMetaTable.GetFieldByNo` | 15 | Sync getter on built MetaTable — likely a populator gap for some field types. |
-| E | `NavApplicationObjectBaseHandle\`1.get_Target` | 14 | R2R-internal-call boundary candidate — the `bbbc98ff` caveat may apply. Audit hooks already on this surface. |
-| F | `RecordImplementation.CalcFieldsAsync` | 14 | FlowField evaluation. NRE message: "Has Child field must be a FlowField" — `NCLMetaField` populator gap. Likely deterministic Option-C fix in `Patches/RecordPatches.NclMetadataCachePopulator.cs`. |
-| G | `NavRecord..ctor` (record-table) | 11 | Ctor on a specific Record subclass; check what's null. |
-| H | `NavQuery` cluster | ~7 | ⏳ **DEFERRED** to a planned 2–3 day workstream. Not solvable single-session. See `spike/v2/QUERY-INVESTIGATION.md` for the full architectural map (why XmlPort-mirror approach is a category error; three layered obstacles; recommended Option A `MetaQuery` XML builder + `CreateDynamicQuery`). Two prior Sonnet attempts (~6.5h) failed because the populator's outer catch silently swallowed an `AmbiguousMatchException` from `Type.GetMethod("CreateEmptyNCLMetaQuery", flags)` (Query has two overloads vs Form/Report's one). |
+| D | `NCLMetaTable.GetFieldByNo` | 15 | ✅ **DONE** 2026-05-11 — `70380611` (tableextension field merging) drained the bulk; residual is the `999`-not-found trap-error case. |
+| E | `NavApplicationObjectBaseHandle\`1.get_Target` | 14 | ✅ **CLASSIFIED** 2026-05-11 — `8efcc462` split into 5 default-variant (out-of-scope/NavRecord.CloneForVariant) + 8 system-table-2000000041 (genuine BcAppFallback gap). |
+| F | `RecordImplementation.CalcFieldsAsync` | 14 | ✅ **PARTIALLY DONE** — `d337c849` (FlowField populator basics, 2026-05-10) + `ff0d83e7` (unquoted-name parser, 2026-05-11). Residual edge cases remain in the bucket but the cluster is much smaller. |
+| G | `NavRecord..ctor` (record-table) | 11 | Ctor on `RecordLink` / `Company` / other system tables; needs BcAppFallback metadata entries. Unblocked but not yet attempted. |
+| H | `NavQuery` cluster | ~7 | ⏳ **DEFERRED** to a planned 2–3 day workstream. Not solvable single-session. See `spike/v2/QUERY-INVESTIGATION.md` for the full architectural map. |
+| I | `ALDatabase.AL*` NRE cluster | ~32 | ⚠️ **HARDER THAN A SONNET TASK** — 2 attempts segfaulted (`b01c0111` silent stubs, `5dce5c23` ThrowOutOfScope); both reverted. See `feedback_aldatabase_hard.md`. Needs instrumented investigation (per-hook addr logging + coredump) or EventPipe post-JIT body patch. |
+| J | Event-subscriber dispatch | — | ✅ **DONE** 2026-05-11 — `c4bce11a` A-prime (populate BC's own `NavEventScope.registeredSubscriptions`, no JmpHook on the dispatch path; R2R-inlining was the blocker for A-base). |
 
 Each row is a candidate single-fix-unlocks-many lever; the
 `RecordImplementation.IssueFindRequestAsync` + `InternalFindRecordWithoutCheckingValuesAsync` collapse (commit `de0bad05`, +150 P in record-table)
