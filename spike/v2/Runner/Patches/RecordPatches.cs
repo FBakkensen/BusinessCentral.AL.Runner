@@ -543,8 +543,14 @@ public static partial class RecordPatches
 
         var metaTable = (NCLMetaTable?)_metaTableCache.GetOrAdd(id, BuildNCLMetaTable);
         if (metaTable == null)
+        {
+            if (id == 0)
+                AlRunnerV2.Infrastructure.RunnerScope.ThrowNotYetImplemented(
+                    "NavRecord.CloneForVariant (default-variant tableId=0)",
+                    "HANDOFF.md §6 row E — synthetic empty NavRecord for default-variant clone case");
             throw new InvalidOperationException(
                 $"NavRecordHandle.CreateTarget: no NCLMetaTable for table {id} (AL source not parsed)");
+        }
 
         // Find Record{ID} : NavRecord in the loaded test assembly.
         var recordType = FindRecordType(id);
