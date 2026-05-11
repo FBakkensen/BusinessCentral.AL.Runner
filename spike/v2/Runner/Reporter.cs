@@ -136,6 +136,24 @@ public static class Reporter
 
     private static string ClassifyTest(string message, string full)
     {
+        // Out-of-scope failures (loud-failures.md / docs/scope.md) are classified
+        // by API name, not by stack frame — they're a contract decision, not an NRE.
+        // Format: "RunnerOutOfScopeException: <api> is out of scope. Reason: <reason>. ..."
+        if (message.Contains("RunnerOutOfScopeException", StringComparison.Ordinal)
+            || full.Contains("RunnerOutOfScopeException", StringComparison.Ordinal))
+        {
+            int oosIdx = message.IndexOf("RunnerOutOfScopeException", StringComparison.Ordinal);
+            string tail = oosIdx >= 0 ? message[oosIdx..] : message;
+            int colon = tail.IndexOf(": ", StringComparison.Ordinal);
+            int isOut = tail.IndexOf(" is out of scope", StringComparison.Ordinal);
+            if (colon > 0 && isOut > colon)
+            {
+                var api = tail[(colon + 2)..isOut].Trim();
+                return $"out-of-scope/{api}";
+            }
+            return "out-of-scope/unknown";
+        }
+
         // Classify by the FIRST (innermost) BC stack frame — that's where the actual NRE
         // originates. Looking anywhere in the stack mis-buckets every AL test as
         // NavMethodScope because every AL method body wraps in a NavMethodScope.
