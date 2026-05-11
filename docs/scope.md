@@ -37,7 +37,7 @@ The runner's job is to populate enough state around them that they don't NRE.
 | **ISV-shipped extension DLLs** | Any `.app` the runner is told about via `--package-cache` | Same load path as MS DLLs. |
 | **AL business logic compiled in the test run** | The user's `src/` AL that the runner compiles | Cached as `<key>.dll`, can be re-used like MS DLLs across runs. |
 | **Posting routines** | `Sales-Post`, `Purch-Post`, `Gen. Jnl.-Post`, `Item Jnl.-Post`, etc. | All real Base App posting logic; runs against in-memory tables (§2). |
-| **Validation triggers** | `OnInsert`, `OnModify`, `OnValidate(field)`, `OnDelete`, `OnRename` | Fire as real triggers; subscribers receive `Rec`. |
+| **Validation triggers** | `OnInsert`, `OnModify`, `OnValidate(field)`, `OnDelete`, `OnRename` | **PLANNED — not yet implemented in v2.** Today the InsertAsync/ModifyAsync/DeleteAsync/RenameAsync patches bypass trigger dispatch entirely. Tests that assert `runTrigger=true` fires the AL trigger currently fail; tests that assert `runTrigger=false` skips the trigger pass *for the wrong reason*. Tracked as W-8 in `spike/v2/CLASSIFICATION.md`. |
 | **Event subscribers** | `[IntegrationEvent]` / `[BusinessEvent]` + subscribers | `RunEvent` is rewritten to `AlCompat.FireEvent`, real subscriber dispatch. |
 | **.NET interop the apps use in-process** | `System.IO.MemoryStream`, `System.Text.Encoding.*`, `System.Text.RegularExpressions.Regex`, in-process `System.Security.Cryptography` primitives | These execute natively, no replacement needed. |
 | **Number / string / date primitives** | `Format`, `Evaluate`, `CalcDate`, `Date2DMY`, etc. | All real BC implementations. |
@@ -57,7 +57,7 @@ real thing for any test that only observes documented BC behaviour.
 | **Permissions** | Permission sets evaluated against entitlements | All-granted `PermissionSet` returned by `NavSession.GetPermissionSet` | Faithful for any test that doesn't probe permission *denial* paths. Tests asserting "access denied" must be excluded or moved to real service tier. |
 | **Time / random / GUID** | Real .NET implementations | Same — no replacement | Faithful. |
 | **Field caption / table caption / lookup-page IDs** | From metadata + language pack | From parsed AL source (real values for AL-compiled tables; falls back to `"FieldNN"` for base-app tables not compiled in this run) | Faithful for in-scope tables; documented stub for non-compiled base-app tables. |
-| **Event publisher → subscriber dispatch** | Service-tier event dispatcher | `AlCompat.FireEvent` scans loaded assemblies for `[NavEventSubscriber]` and calls them | Faithful for documented event semantics including `var` params and `IncludeSender`. |
+| **Event publisher → subscriber dispatch** | Service-tier event dispatcher | **PLANNED — not yet implemented in v2.** Will scan loaded assemblies for `[NavEventSubscriber]` and dispatch into BC's publish path. v1 had `AlCompat.FireEvent`; v2 needs its own equivalent wired to the *real* BC dispatcher so AL `OnAfterInsertEvent`, `OnBeforeModifyEvent`, etc. fire registered subscribers. **Today: subscribers do not fire — see SCOPE-AUDIT.md.** | Will be faithful for documented event semantics (`var` params, `IncludeSender`) once landed. |
 | **`Page.RunModal` / report `[RequestPageHandler]`** | Real UI dialog | Looks up registered `[ModalPageHandler]` / `[RequestPageHandler]` and calls it | Faithful for the handler dispatch contract that test code relies on; no actual UI is rendered. |
 
 ---

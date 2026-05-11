@@ -77,6 +77,20 @@ These are the hooks where the rule's bite is sharpest. Each row's "Action" colum
 | `ALDatabase.AL*` cluster (reverted from session b01c0111) | — | §3 silent + §4 TODO | Yesterday's worker-3 attempt returned fixed values (S-1-0-0, "", 0). Per the new rule these would have been §3 silent fakes. The stash@{0} WIP has real diagnostic value (3 null roots on skeleton session identified) — keep for reference but re-approach as either skeleton-state population (§2) or per-method `ThrowOutOfScope("ALDatabase.X", "external-license/identity", "licensing")`. | Re-plan with new rule. Most ALDatabase methods are licensing/auth-shape → scope.md §3.8 throws. A few (`ALSid`?) might be §2-populatable if we wire a deterministic UserId. |
 | `NavApplicationObjectBaseHandle\`1.get_Target` on tableId=0 | throws InvalidOperationException ("AL source not parsed") | §4 (almost) | Today already throws — but with the wrong type and a misleading message ("not parsed" implies a populator gap, not the real "default-variant clone semantic mystery"). | Convert throw to `ThrowNotYetImplemented("NavRecord.CloneForVariant from default", "HANDOFF §6 row E — synthetic empty NavRecord for tableId=0")`. |
 
+## Decisions taken 2026-05-11 (post-audit)
+
+- **Triggers MUST work.** Confirmed ground-truth on `100-uninit-field-fix` suite:
+  - `OnInsertTrigger_SetsFlag_AfterInsert` (positive) → FAILS today.
+  - `OnBeforeInsertEvent_SubscriberSetsFields` (positive) → FAILS today.
+  - `OnInsertTrigger_WithoutRunTrigger_DoesNotSetFlag` (negative) → passes for the wrong reason (bypass means `runTrigger` is *never* honored).
+  Tied to W-8 in CLASSIFICATION.md. Highest priority — without it the entire corpus's pass count is misleading on every trigger/subscriber test.
+- **XmlPort: not top priority, eventually want in-memory Run(InStream)/Run(OutStream) shapes only.** File-path / browser-roundtrip variants stay out of scope. Interim: convert current silent no-ops to `RunnerScope.ThrowNotYetImplemented` so they stop passing silently.
+- **ALDatabase: case by case.** Most methods are licensing/auth/connection-shape → `docs/scope.md §3.8` throws. A few (`ALSid` against a configurable user identity?) may be §2-populatable. Re-plan with stash@{0}'s null-root diagnosis as input.
+
+## Corrections to `docs/scope.md`
+
+- Event subscriber and validation trigger rows were inherited from v1's reality. v2 has neither today. Both rows updated to "PLANNED — not yet implemented" with a pointer back to this audit and CLASSIFICATION.md W-7/W-8.
+
 ## Action queue (post-audit)
 
 1. **Decide the trigger-bypass question** for `RecordWritePatches.NavRecord_InsertAsync` & siblings — §2 carve-out vs faithful trigger dispatch. This is the biggest fidelity question still open.
