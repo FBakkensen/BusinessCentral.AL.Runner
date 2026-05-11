@@ -35,13 +35,15 @@ public static partial class RecordPatches
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     // Captures: (type) table ["."field] [where(filters)]
+    // Groups: 1=type, 2=table(quoted), 3=field(quoted), 4=field(unquoted), 5=where
     private static readonly Regex RxCalcFormulaParts = new(
-        @"^\s*(count|sum|lookup|exist|average|min|max)\s*\(\s*""([^""]+)""(?:\.""([^""]+)"")?\s*(?:where\s*\((.+)\))?\s*\)\s*$",
+        @"^\s*(count|sum|lookup|exist|average|min|max)\s*\(\s*""([^""]+)""(?:\.(?:""([^""]+)""|([A-Za-z_]\w*)))?\s*(?:where\s*\((.+)\))?\s*\)\s*$",
         RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.Singleline);
 
-    // Captures field-reference filter: "SourceField" = field("ParentField")
+    // Captures field-reference filter: "SourceField"|Unquoted = field("ParentField"|Unquoted)
+    // Groups: 1=srcField(quoted), 2=srcField(unquoted), 3=parentField(quoted), 4=parentField(unquoted)
     private static readonly Regex RxCalcFilter = new(
-        @"""([^""]+)""\s*=\s*field\s*\(\s*""([^""]+)""\s*\)",
+        @"(?:""([^""]+)""|([A-Za-z_]\w*))\s*=\s*field\s*\(\s*(?:""([^""]+)""|([A-Za-z_]\w*))\s*\)",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     private static void ParseAllSources()
@@ -196,13 +198,17 @@ public static partial class RecordPatches
 
         var formulaType = pm.Groups[1].Value;
         var sourceTableName = pm.Groups[2].Value;
-        var sourceFieldName = pm.Groups[3].Success && pm.Groups[3].Length > 0 ? pm.Groups[3].Value : null;
-        var whereText = pm.Groups[4].Success ? pm.Groups[4].Value : "";
+        var sourceFieldName = pm.Groups[3].Success && pm.Groups[3].Length > 0 ? pm.Groups[3].Value
+                            : pm.Groups[4].Success && pm.Groups[4].Length > 0 ? pm.Groups[4].Value : null;
+        var whereText = pm.Groups[5].Success ? pm.Groups[5].Value : "";
 
         var filters = new List<ParsedCalcFilter>();
         foreach (Match fm in RxCalcFilter.Matches(whereText))
-            filters.Add(new ParsedCalcFilter(fm.Groups[1].Value, fm.Groups[2].Value));
+            filters.Add(new ParsedCalcFilter(
+                fm.Groups[1].Success && fm.Groups[1].Length > 0 ? fm.Groups[1].Value : fm.Groups[2].Value,
+                fm.Groups[3].Success && fm.Groups[3].Length > 0 ? fm.Groups[3].Value : fm.Groups[4].Value));
 
+        Console.Error.WriteLine($"[CalcFormula] parsed {sourceTableName}.{sourceFieldName ?? "*"} type={formulaType} filters={filters.Count}");
         return new ParsedCalcFormula(formulaType, sourceTableName, sourceFieldName, filters);
     }
 }
