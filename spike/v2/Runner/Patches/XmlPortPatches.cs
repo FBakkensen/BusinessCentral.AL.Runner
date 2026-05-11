@@ -13,6 +13,7 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using AlRunnerV2.Infrastructure;
 
 namespace AlRunnerV2;
 
@@ -126,49 +127,91 @@ public static partial class BcRuntime
     // ──────────────────────────────────────────────────────────────────
     // NavXmlPort static Export/Import — XMLPORT.EXPORT(id, stream) and
     // XMLPORT.IMPORT(id, stream) in AL compile to these static overloads.
-    // They call NCLMetadata.GetMetaXmlPortById which throws on our skeleton.
-    // Stub as no-op (return true = success) to match the instance stubs.
+    // In-memory XmlPort serialization is in scope eventually (scope.md §4
+    // TODO) but not yet implemented; throw loud failure so tests cannot
+    // silently pass without real serialization.
     // ──────────────────────────────────────────────────────────────────
 
     [MethodImpl(MethodImplOptions.NoInlining)]
-    public static bool NavXmlPort_StaticExport(int errorLevel, int xmlPortId, object outStream, object record) => true;
+    public static bool NavXmlPort_StaticExport(int errorLevel, int xmlPortId, object outStream, object record)
+    {
+        RunnerScope.ThrowNotYetImplemented(
+            "NavXmlPort.StaticExport",
+            "in-memory XmlPort serialization not yet implemented — see HANDOFF.md and SCOPE-AUDIT.md");
+        return default;
+    }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
-    public static bool NavXmlPort_StaticImport(int errorLevel, int xmlPortId, object inStream, object record) => true;
+    public static bool NavXmlPort_StaticImport(int errorLevel, int xmlPortId, object inStream, object record)
+    {
+        RunnerScope.ThrowNotYetImplemented(
+            "NavXmlPort.StaticImport",
+            "in-memory XmlPort serialization not yet implemented — see HANDOFF.md and SCOPE-AUDIT.md");
+        return default;
+    }
 
-    /// <summary>Export(DataError) → return true (no-op).</summary>
+    /// <summary>Export(DataError) — loud failure; in-memory XmlPort not yet implemented.</summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
-    public static bool NavXmlPort_Export(object self, int errorLevel) => true;
+    public static bool NavXmlPort_Export(object self, int errorLevel)
+    {
+        RunnerScope.ThrowNotYetImplemented(
+            "NavXmlPort.Export",
+            "in-memory XmlPort serialization not yet implemented — see HANDOFF.md and SCOPE-AUDIT.md");
+        return default;
+    }
 
-    /// <summary>Import(DataError) → return true (no-op).</summary>
+    /// <summary>Import(DataError) — loud failure; in-memory XmlPort not yet implemented.</summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
-    public static bool NavXmlPort_Import(object self, int errorLevel) => true;
+    public static bool NavXmlPort_Import(object self, int errorLevel)
+    {
+        RunnerScope.ThrowNotYetImplemented(
+            "NavXmlPort.Import",
+            "in-memory XmlPort serialization not yet implemented — see HANDOFF.md and SCOPE-AUDIT.md");
+        return default;
+    }
 
-    /// <summary>Run() → return (no-op).</summary>
+    /// <summary>Run() — loud failure; in-memory XmlPort not yet implemented.</summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
-    public static void NavXmlPort_Run(object self) { }
+    public static void NavXmlPort_Run(object self)
+    {
+        RunnerScope.ThrowNotYetImplemented(
+            "NavXmlPort.Run",
+            "in-memory XmlPort serialization not yet implemented — see HANDOFF.md and SCOPE-AUDIT.md");
+    }
 
-    /// <summary>RunXmlPort() (private) — the actual execution body that the BC-generated
-    /// scope code calls directly for local XmlPort variables. Stubs as no-op alongside Run().</summary>
+    /// <summary>RunXmlPort() (private) — loud failure; in-memory XmlPort not yet implemented.</summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
-    public static void NavXmlPort_RunXmlPort(object self) { }
+    public static void NavXmlPort_RunXmlPort(object self)
+    {
+        RunnerScope.ThrowNotYetImplemented(
+            "NavXmlPort.RunXmlPort",
+            "in-memory XmlPort serialization not yet implemented — see HANDOFF.md and SCOPE-AUDIT.md");
+    }
 
-    /// <summary>SetTableView(NavRecord) → return (no-op). Iterating the empty
-    /// nodes list would throw NavNCLXmlPortNodeNotFoundException on a fresh skeleton.</summary>
+    /// <summary>SetTableView(NavRecord) — loud failure; in-memory XmlPort not yet implemented.</summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
-    public static void NavXmlPort_SetTableView(object self, object record) { }
+    public static void NavXmlPort_SetTableView(object self, object record)
+    {
+        RunnerScope.ThrowNotYetImplemented(
+            "NavXmlPort.SetTableView",
+            "in-memory XmlPort serialization not yet implemented — see HANDOFF.md and SCOPE-AUDIT.md");
+    }
 
     /// <summary>BeginInitialization() — called from the BC-generated XmlPort{ID} ctor.
+    /// Skeleton ctor-time scaffolding — required so XmlPort{ID} construction succeeds;
+    /// no observable AL-test behavior to fake.
     /// Dereferences Session.MetadataProvider (null on skeleton) → NRE. Stub as no-op;
     /// fields it would populate (metadata, fieldDelimiter, …) are not needed for our
-    /// Export/Import/Run/SetTableView stubs to function.</summary>
+    /// Export/Import/Run/SetTableView loud-failure hooks.</summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static void NavXmlPort_BeginInitialization(object self)
     {
     }
 
     /// <summary>EndInitialization() — called from the BC-generated XmlPort{ID} ctor after
-    /// the node-building code. Accesses metadata.UseRequestForm and requestOptionsPage
+    /// the node-building code. Skeleton ctor-time scaffolding — required so XmlPort{ID}
+    /// construction succeeds; no observable AL-test behavior to fake.
+    /// Accesses metadata.UseRequestForm and requestOptionsPage
     /// (both null on skeleton after BeginInitialization is no-op'd) → NRE. Stub as no-op.</summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static void NavXmlPort_EndInitialization(object self)
@@ -177,26 +220,38 @@ public static partial class BcRuntime
 
     /// <summary>
     /// XmlPort{ID}.InitializeComponent() — the BC-generated override that calls
-    /// BeginInitialization, constructs nodes, and calls EndInitialization. EndInitialization
-    /// accesses metadata (null on skeleton) and may be JIT-inlined into the BC-generated
-    /// InitializeComponent body, making the EndInitialization hook unreliable. We instead
-    /// hook the concrete override directly (after the test assembly is loaded) so the JIT
-    /// has not yet compiled the method and the hook is guaranteed to land.
+    /// BeginInitialization, constructs nodes, and calls EndInitialization.
+    /// Skeleton ctor-time scaffolding — required so XmlPort{ID} construction succeeds;
+    /// no observable AL-test behavior to fake.
+    /// EndInitialization accesses metadata (null on skeleton) and may be JIT-inlined
+    /// into the BC-generated InitializeComponent body, making the EndInitialization hook
+    /// unreliable. We instead hook the concrete override directly (after the test assembly
+    /// is loaded) so the JIT has not yet compiled the method and the hook is guaranteed
+    /// to land.
     /// </summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static void NavXmlPort_InitializeComponent(object self)
     {
     }
 
+    // Skeleton ctor-time scaffolding — required so XmlPort{ID} construction succeeds;
+    // no observable AL-test behavior to fake.
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static void NavXmlPort_AddTableNode(object self, object node) { }
 
+    // Skeleton ctor-time scaffolding — required so XmlPort{ID} construction succeeds;
+    // no observable AL-test behavior to fake.
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static void NavXmlPort_AddFieldNode(object self, object node) { }
 
+    // Skeleton ctor-time scaffolding — required so XmlPort{ID} construction succeeds;
+    // no observable AL-test behavior to fake.
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static void NavXmlPort_AddTextNode(object self, object node) { }
 
+    // Skeleton ctor-time scaffolding — required so XmlPort{ID} construction succeeds;
+    // no observable AL-test behavior to fake. Initializes the attribute/element child
+    // lists so node-traversal code does not NRE on an uninitialized collection.
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static void NavXmlPortTableNode_Ctor(object self, object record)
     {
