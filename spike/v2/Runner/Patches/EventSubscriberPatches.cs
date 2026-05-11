@@ -1,0 +1,533 @@
+// EventSubscriberPatches — W-8b A-prime: event-subscriber dispatch via BC's own registry.
+//
+// The A-base attempt (session 82e7fffc) tried to hook NCLMetaApplicationObject.IsEventSubscribed
+// and the 8 OnXxxEventAsync entry points on NavTableTriggerEventHandler. Both targets are
+// R2R-inlined into NavRecord.InsertAsync (and its siblings) inside Ncl.dll, so JmpHooks on the
+// precode silently no-op. We pivot to populating skeleton state BC's own dispatcher reads:
+//
+//   1. Discovery — scan loaded assemblies for [NavEventSubscriberAttribute] methods, index by
+//      (publisher table id, NavTriggerEventType ordinal).
+//   2. NCLMetaTable.tableTriggerEventHandler is poked to a real NavTableTriggerEventHandler
+//      instance in RecordPatches.NclMetaTableBuilder.BuildNCLMetaTable (so the field-getter
+//      properties TableTriggerEventHandler / TriggerEventHandler return a non-null handler
+//      even from inlined NavRecord.InsertAsync bodies).
+//   3. For each (publisher,event) key in our registry, build a real NavEventSubscription via
+//      BC's own 5-arg ctor and append it to NavEventScope.registeredSubscriptions (created by
+//      NavTriggerEventHandler.GetEventScope(evt, EventScopeGetOption.CreateIfNotFound)).
+//   4. Dispatch path is then 100% BC's own code — IsEventSubscribed → HasSubscribersForAppGroup
+//      → registeredSubscriptions[] → ProcessCallToTypeAndManualSubscriptionsAsync →
+//      new NavCodeunitHandle(scope, codeunitId).Target → CallEventSubscriberInternalAsync.
+//
+// Loud failures: subscribers we cannot match throw RunnerOutOfScopeException — never silently
+// skipped (see .claude/rules/loud-failures.md).
+
+using System.Collections.Concurrent;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using AlRunnerV2.Infrastructure;
+using Microsoft.Dynamics.Nav.EventSubscription;
+using Microsoft.Dynamics.Nav.Types;
+
+namespace AlRunnerV2.Patches;
+
+public static class EventSubscriberPatches
+{
+    private readonly record struct Key(int PublisherId, int EventTypeOrdinal);
+
+    private sealed record SubscriberHandle(
+        Type CodeunitType,
+        int CodeunitId,
+        MethodInfo Method,
+        int PublisherId,
+        int EventTypeOrdinal,
+        string DiagnosticName);
+
+    private static readonly object _lock = new();
+    private static readonly Dictionary<Key, List<SubscriberHandle>> _byKey = new();
+    private static readonly HashSet<MethodInfo> _injectedSubscriberMethods = new();
+    private static int _lastScannedCount = 0;
+    private static bool _registered = false;
+    private static bool _reflectionFailed = false;
+
+    // Reflected BC types / members.
+    private static Type? _tNavTriggerEventType;
+    private static Type? _tEventScopeGetOption;
+    private static Type? _tNavAppGroup;
+    private static Type? _tNavEventScope;
+    private static Type? _tNavEventSubscription;
+    private static Type? _tNavEventSubscriberMethodInfo;
+    private static Type? _tNavEventSubscriberReflectionWrapper;
+    private static Type? _tNavEventSubscriptionModifiers;
+    private static Type? _tNavTableTriggerEventHandler;
+    private static Type? _tNCLMetaTable;
+    private static MethodInfo? _miGetEventScope;          // NavTriggerEventHandler.GetEventScope(2-arg)
+    private static FieldInfo? _fRegisteredSubscriptions;  // NavEventScope.registeredSubscriptions
+    private static FieldInfo? _fTableTriggerEventHandler; // NCLMetaTable.tableTriggerEventHandler
+    private static ConstructorInfo? _ciNavEventSubscription;
+    private static ConstructorInfo? _ciNavEventSubscriberMethodInfo;
+    private static ConstructorInfo? _ciNavEventSubscriberReflectionWrapper;
+    private static ConstructorInfo? _ciNavTableTriggerEventHandler;
+    private static object? _navAppGroupBaseGroup;
+    private static object? _emptyModifiers;
+
+    private static Func<int, object?>? _publisherLookup;
+
+    /// <summary>
+    /// Resolve BC types once and remember the publisher → NCLMetaTable lookup callback
+    /// (typically the closure over RecordPatches._metaTableCache).
+    /// </summary>
+    public static void Register(Assembly navNcl)
+    {
+        if (_registered) return;
+        _registered = true;
+        try { EnsureReflection(navNcl); }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[Subscribers] Register failed (dispatch disabled): " +
+                $"{ex.GetType().Name}: {ex.Message}");
+            _reflectionFailed = true;
+        }
+    }
+
+    /// <summary>
+    /// Build a fresh NavTableTriggerEventHandler instance via its parameterless internal ctor —
+    /// used by RecordPatches.NclMetaTableBuilder to populate NCLMetaTable.tableTriggerEventHandler.
+    /// Returns null if reflection setup failed.
+    /// </summary>
+    public static object? CreateTableTriggerEventHandler()
+    {
+        if (_reflectionFailed) return null;
+        if (_ciNavTableTriggerEventHandler == null) return null;
+        try { return _ciNavTableTriggerEventHandler.Invoke(null); }
+        catch (Exception ex)
+        {
+            var inner = ex is TargetInvocationException tie ? tie.InnerException ?? ex : ex;
+            Console.Error.WriteLine($"[Subscribers] NavTableTriggerEventHandler ctor failed: " +
+                $"{inner.GetType().Name}: {inner.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Inject all discovered subscribers into the per-table NavEventScope objects.
+    /// Idempotent — each subscriber MethodInfo is added at most once.
+    /// Lookup callback returns the NCLMetaTable for a given publisher table id, or null.
+    /// </summary>
+    public static void InjectAll(Func<int, object?> getNclMetaTable)
+    {
+        _publisherLookup = getNclMetaTable;
+        InjectAllUsingStoredLookup();
+    }
+
+    /// <summary>
+    /// Re-run injection using the lookup callback installed by a prior <see cref="InjectAll"/>.
+    /// Called by TestExecutor before each test bundle runs so subscribers in AL assemblies
+    /// loaded after PopulateNclMetadataCache (e.g. the test codeunit's containing assembly)
+    /// get wired up too.
+    /// </summary>
+    public static void InjectAllUsingStoredLookup()
+    {
+        if (_publisherLookup == null) return;
+        DoInject(_publisherLookup);
+    }
+
+    private static void DoInject(Func<int, object?> getNclMetaTable)
+    {
+        if (_reflectionFailed) return;
+        EnsureRegistryFresh();
+        if (_byKey.Count == 0) return;
+        if (_navAppGroupBaseGroup == null) return;
+
+        int injected = 0, failed = 0, skipped = 0;
+        lock (_lock)
+        {
+            foreach (var kv in _byKey)
+            {
+                int publisherId = kv.Key.PublisherId;
+                int ord = kv.Key.EventTypeOrdinal;
+
+                object? metaTable;
+                try { metaTable = getNclMetaTable(publisherId); }
+                catch { metaTable = null; }
+                if (metaTable == null)
+                {
+                    // Publisher table not yet built — will retry on next InjectAll pass.
+                    foreach (var s in kv.Value) if (!_injectedSubscriberMethods.Contains(s.Method)) skipped++;
+                    continue;
+                }
+
+                object? handler;
+                try { handler = _fTableTriggerEventHandler!.GetValue(metaTable); }
+                catch { handler = null; }
+                if (handler == null)
+                {
+                    foreach (var s in kv.Value) if (!_injectedSubscriberMethods.Contains(s.Method)) skipped++;
+                    continue;
+                }
+
+                var ordEnum = Enum.ToObject(_tNavTriggerEventType!, ord);
+                var createIfNotFound = Enum.ToObject(_tEventScopeGetOption!, 1); // CreateIfNotFound
+                object? scope;
+                try { scope = _miGetEventScope!.Invoke(handler, new object?[] { ordEnum, createIfNotFound }); }
+                catch (Exception ex)
+                {
+                    var inner = ex is TargetInvocationException tie ? tie.InnerException ?? ex : ex;
+                    Console.Error.WriteLine($"[Subscribers] GetEventScope({publisherId},{ord}) failed: " +
+                        $"{inner.GetType().Name}: {inner.Message}");
+                    failed += kv.Value.Count;
+                    continue;
+                }
+                if (scope == null)
+                {
+                    failed += kv.Value.Count;
+                    continue;
+                }
+
+                var existing = (Array?)_fRegisteredSubscriptions!.GetValue(scope);
+                var newOnes = new List<object>();
+                foreach (var sub in kv.Value)
+                {
+                    if (_injectedSubscriberMethods.Contains(sub.Method)) continue;
+                    object? subscription;
+                    try { subscription = BuildSubscription(sub); }
+                    catch (Exception ex)
+                    {
+                        var inner = ex is TargetInvocationException tie ? tie.InnerException ?? ex : ex;
+                        Console.Error.WriteLine($"[Subscribers] BuildSubscription failed for " +
+                            $"{sub.DiagnosticName}: {inner.GetType().Name}: {inner.Message}");
+                        failed++;
+                        _injectedSubscriberMethods.Add(sub.Method); // don't retry
+                        continue;
+                    }
+                    if (subscription == null) { failed++; _injectedSubscriberMethods.Add(sub.Method); continue; }
+                    newOnes.Add(subscription);
+                    _injectedSubscriberMethods.Add(sub.Method);
+                    injected++;
+                }
+                if (newOnes.Count == 0) continue;
+
+                int oldLen = existing?.Length ?? 0;
+                var merged = Array.CreateInstance(_tNavEventSubscription!, oldLen + newOnes.Count);
+                if (existing != null && oldLen > 0) Array.Copy(existing, 0, merged, 0, oldLen);
+                for (int i = 0; i < newOnes.Count; i++) merged.SetValue(newOnes[i], oldLen + i);
+                FieldPoke.SetInstance(_fRegisteredSubscriptions, scope, merged);
+            }
+        }
+
+        if (injected > 0 || failed > 0)
+            Console.Error.WriteLine($"[Subscribers] inject: injected={injected} failed={failed} " +
+                $"skipped-no-publisher={skipped} keys={_byKey.Count}");
+    }
+
+    /// <summary>
+    /// Discovery: walk loaded assemblies for [NavEventSubscriberAttribute] methods, index
+    /// by (publisher id, NavTriggerEventType ordinal). Incremental — only re-scans when the
+    /// assembly count grows.
+    /// </summary>
+    private static void EnsureRegistryFresh()
+    {
+        var asms = AppDomain.CurrentDomain.GetAssemblies();
+        if (asms.Length == _lastScannedCount) return;
+        lock (_lock)
+        {
+            asms = AppDomain.CurrentDomain.GetAssemblies();
+            if (asms.Length == _lastScannedCount) return;
+
+            int added = 0;
+            int scannedAttrs = 0;
+            foreach (var asm in asms)
+            {
+                var name = asm.GetName().Name ?? "";
+                if (name.StartsWith("System.") || name.StartsWith("Microsoft.Extensions.")
+                    || name.StartsWith("Microsoft.Dynamics.Nav.") || name == "netstandard"
+                    || name == "mscorlib" || name == "Microsoft.CodeAnalysis"
+                    || name.StartsWith("Microsoft.CodeAnalysis.")
+                    || name == "AlRunnerV2" || name == "Runner") continue;
+                Type[] types;
+                try { types = asm.GetTypes(); }
+                catch (ReflectionTypeLoadException ex) { types = ex.Types.Where(t => t != null).ToArray()!; }
+                catch { continue; }
+                foreach (var t in types)
+                {
+                    if (t == null) continue;
+                    MethodInfo[] methods;
+                    try { methods = t.GetMethods(BindingFlags.Public | BindingFlags.NonPublic
+                                                  | BindingFlags.Instance | BindingFlags.Static); }
+                    catch { continue; }
+                    int codeunitId = -1; // lazy: only read when first subscriber found
+                    foreach (var m in methods)
+                    {
+                        object? attr;
+                        try
+                        {
+                            attr = m.GetCustomAttributes(inherit: false)
+                                .FirstOrDefault(a => a.GetType().Name == "NavEventSubscriberAttribute");
+                        }
+                        catch { continue; }
+                        if (attr == null) continue;
+                        if (codeunitId < 0) codeunitId = TryReadCodeunitId(t);
+                        scannedAttrs++;
+                        if (!TryReadAttribute(attr, out int publisherObjType,
+                                              out int publisherId, out string methodName))
+                        { Console.Error.WriteLine($"[Subscribers] could not read attr on {t.Name}.{m.Name}"); continue; }
+                        // Only Table publishers handled by this path (ObjectType.Table == 1).
+                        if (publisherObjType != 1) continue;
+                        int ord = ResolveEventOrdinalFromName(methodName);
+                        if (ord == 0) continue;
+                        var key = new Key(publisherId, ord);
+                        if (!_byKey.TryGetValue(key, out var lst))
+                            _byKey[key] = lst = new List<SubscriberHandle>();
+                        if (lst.Any(h => h.Method == m)) continue;
+                        lst.Add(new SubscriberHandle(t, codeunitId, m, publisherId, ord,
+                            $"{t.Name}.{m.Name} → Table {publisherId}/{methodName}"));
+                        added++;
+                    }
+                }
+            }
+            _lastScannedCount = asms.Length;
+            int total = _byKey.Values.Sum(v => v.Count);
+            if (added > 0 || scannedAttrs == 0)
+                Console.Error.WriteLine(
+                    $"[Subscribers] registered {added} new (total {total}) " +
+                    $"across {_byKey.Count} publisher-event keys (scanned-attrs={scannedAttrs})");
+        }
+    }
+
+    private static bool TryReadAttribute(object attr, out int publisherType,
+                                         out int publisherId, out string methodName)
+    {
+        publisherType = 0; publisherId = 0; methodName = "";
+        var t = attr.GetType();
+        var targetObjectIdProp = t.GetProperty("TargetObjectId", BindingFlags.Public | BindingFlags.Instance);
+        var methodNameProp = t.GetProperty("TargetMethodName", BindingFlags.Public | BindingFlags.Instance);
+        if (targetObjectIdProp == null || methodNameProp == null) return false;
+        var oid = targetObjectIdProp.GetValue(attr);
+        if (oid == null) return false;
+        var oidT = oid.GetType();
+        var otProp = oidT.GetProperty("ObjectType", BindingFlags.Public | BindingFlags.Instance);
+        var onProp = oidT.GetProperty("ObjectNumber", BindingFlags.Public | BindingFlags.Instance);
+        if (otProp == null || onProp == null) return false;
+        publisherType = (int)(otProp.GetValue(oid) ?? 0);
+        publisherId = (int)(onProp.GetValue(oid) ?? 0);
+        methodName = (string?)methodNameProp.GetValue(attr) ?? "";
+        return true;
+    }
+
+    private static int TryReadCodeunitId(Type clrType)
+    {
+        // Use CustomAttributeData (metadata-only) instead of GetCustomAttributes to avoid
+        // CustomAttributeFormatException on types whose IL references attribute properties
+        // we don't carry (e.g. [JsonObject(MemberSerialization=...)] in some BC types).
+        IList<CustomAttributeData> attrs;
+        try { attrs = CustomAttributeData.GetCustomAttributes(clrType); }
+        catch { return 0; }
+        foreach (var ad in attrs)
+        {
+            if (ad.AttributeType.Name != "ApplicationObjectIdAttribute") continue;
+            // ctor signature varies; we want the ApplicationObjectId with ObjectNumber.
+            // Easiest path: materialize just this one attribute.
+            try
+            {
+                var attr = clrType.GetCustomAttributes(ad.AttributeType, inherit: false).FirstOrDefault();
+                if (attr == null) return 0;
+                var prop = attr.GetType().GetProperty("ApplicationObjectId",
+                    BindingFlags.Public | BindingFlags.Instance);
+                var aoid = prop?.GetValue(attr);
+                if (aoid == null) return 0;
+                var on = aoid.GetType().GetProperty("ObjectNumber",
+                    BindingFlags.Public | BindingFlags.Instance);
+                return (int)(on?.GetValue(aoid) ?? 0);
+            }
+            catch { return 0; }
+        }
+        return 0;
+    }
+
+    private static int ResolveEventOrdinalFromName(string name) => name switch
+    {
+        "OnBeforeInsertEvent" => 1,
+        "OnAfterInsertEvent"  => 2,
+        "OnBeforeModifyEvent" => 3,
+        "OnAfterModifyEvent"  => 4,
+        "OnBeforeDeleteEvent" => 5,
+        "OnAfterDeleteEvent"  => 6,
+        "OnBeforeRenameEvent" => 7,
+        "OnAfterRenameEvent"  => 8,
+        _ => 0,
+    };
+
+    private static object? BuildSubscription(SubscriberHandle sub)
+    {
+        // NavEventSubscriberMethodInfo(MethodInfo)
+        var methodInfoObj = _ciNavEventSubscriberMethodInfo!.Invoke(new object?[] { sub.Method });
+        // Replace the captured NavEventSubscriberAttribute with a zeroed copy (no
+        // SkipOnMissing{License,Permission}) so BC's SkipCallDueToLackOfPermissions
+        // short-circuits — accessing subscriberInstance.Session.Permissions / Company
+        // would NRE on our skeleton session.
+        ReplaceAttributeWithZeroedCopy(methodInfoObj!);
+        // INavEventSubscriber adapter — codeunit identity points BC's dispatcher at the right
+        // codeunit handle when it calls `new NavCodeunitHandle(scope, ObjectNumber).Target`.
+        int codeunitId = sub.CodeunitId != 0 ? sub.CodeunitId : ExtractCodeunitIdFromTypeName(sub.CodeunitType);
+        if (codeunitId == 0)
+            throw new RunnerOutOfScopeException(
+                $"Subscriber {sub.DiagnosticName}",
+                $"could not determine codeunit ID from {sub.CodeunitType.FullName} — " +
+                "missing [ApplicationObjectIdAttribute] and type name not Codeunit<N>");
+        var subscriber = new AlEventSubscriberAdapter(sub.CodeunitType, codeunitId);
+        // NavEventSubscription(subscriber, methodInfo, appGroup, modifiers, memberId)
+        return _ciNavEventSubscription!.Invoke(new object?[] {
+            subscriber, methodInfoObj, _navAppGroupBaseGroup, _emptyModifiers, 0
+        });
+    }
+
+    /// <summary>
+    /// Replace NavEventSubscriberMethodInfo.Attribute with a copy that has
+    /// EventSubscriberCallOptions=0 (no SkipOnMissingLicense / SkipOnMissingPermission).
+    /// The AL compiler always emits both flags as true, which would force BC to read
+    /// subscriberInstance.Session.Permissions — null on the skeleton session and NREs.
+    /// </summary>
+    private static void ReplaceAttributeWithZeroedCopy(object methodInfoObj)
+    {
+        var miType = methodInfoObj.GetType();
+        var attrProp = miType.GetProperty("Attribute", BindingFlags.Public | BindingFlags.Instance);
+        var original = attrProp?.GetValue(methodInfoObj);
+        if (original == null) return;
+        var oType = original.GetType();
+        var targetObjectId = oType.GetProperty("TargetObjectId")!.GetValue(original)!;
+        var oidT = targetObjectId.GetType();
+        var ot = (int)oidT.GetProperty("ObjectType")!.GetValue(targetObjectId)!;
+        var on = (int)oidT.GetProperty("ObjectNumber")!.GetValue(targetObjectId)!;
+        var methodName = (string)oType.GetProperty("TargetMethodName")!.GetValue(original)!;
+        var memberId = (int)oType.GetProperty("MemberId")!.GetValue(original)!;
+        // Find the 5-arg ctor: (ObjectType, int, string, int memberId, string fieldName, EventSubscriberCallOptions options)
+        var ctor = oType.GetConstructors().FirstOrDefault(c =>
+        {
+            var p = c.GetParameters();
+            return p.Length == 6 && p[3].ParameterType == typeof(int)
+                && p[4].ParameterType == typeof(string);
+        });
+        object? replacement = null;
+        if (ctor != null)
+        {
+            var optsParam = ctor.GetParameters()[5].ParameterType;
+            var zeroOpts = Enum.ToObject(optsParam, 0);
+            replacement = ctor.Invoke(new object?[] {
+                Enum.ToObject(typeof(ObjectType), ot), on, methodName, memberId, "", zeroOpts
+            });
+        }
+        if (replacement == null) return;
+        // Field-poke the auto-prop backing field.
+        var backing = miType.GetField("<Attribute>k__BackingField",
+            BindingFlags.NonPublic | BindingFlags.Instance);
+        if (backing != null)
+            FieldPoke.SetInstance(backing, methodInfoObj, replacement);
+    }
+
+    private static int ExtractCodeunitIdFromTypeName(Type t)
+    {
+        var n = t.Name;
+        if (n.StartsWith("Codeunit", StringComparison.OrdinalIgnoreCase)
+            && int.TryParse(n.AsSpan("Codeunit".Length), out var id))
+            return id;
+        return 0;
+    }
+
+    private static void EnsureReflection(Assembly navNcl)
+    {
+        var typesAsm = AppDomain.CurrentDomain.GetAssemblies()
+            .FirstOrDefault(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Types")
+            ?? throw new InvalidOperationException("Microsoft.Dynamics.Nav.Types not loaded");
+
+        _tNavTriggerEventType = typesAsm.GetType("Microsoft.Dynamics.Nav.Types.NavTriggerEventType")
+            ?? throw new InvalidOperationException("NavTriggerEventType not found");
+
+        _tNavAppGroup = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.Apps.NavAppGroup")
+            ?? throw new InvalidOperationException("NavAppGroup not found");
+        _tNavEventScope = navNcl.GetType("Microsoft.Dynamics.Nav.EventSubscription.NavEventScope")
+            ?? throw new InvalidOperationException("NavEventScope not found");
+        _tNavEventSubscription = navNcl.GetType("Microsoft.Dynamics.Nav.EventSubscription.NavEventSubscription")
+            ?? throw new InvalidOperationException("NavEventSubscription not found");
+        _tNavEventSubscriberMethodInfo = navNcl.GetType("Microsoft.Dynamics.Nav.EventSubscription.NavEventSubscriberMethodInfo")
+            ?? throw new InvalidOperationException("NavEventSubscriberMethodInfo not found");
+        _tNavEventSubscriberReflectionWrapper = navNcl.GetType("Microsoft.Dynamics.Nav.EventSubscription.NavEventSubscriberReflectionWrapper")
+            ?? throw new InvalidOperationException("NavEventSubscriberReflectionWrapper not found");
+        _tNavEventSubscriptionModifiers = navNcl.GetType("Microsoft.Dynamics.Nav.EventSubscription.NavEventSubscriptionModifiers")
+            ?? throw new InvalidOperationException("NavEventSubscriptionModifiers not found");
+        _tNavTableTriggerEventHandler = navNcl.GetType("Microsoft.Dynamics.Nav.EventSubscription.NavTableTriggerEventHandler")
+            ?? throw new InvalidOperationException("NavTableTriggerEventHandler not found");
+        _tNCLMetaTable = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NCLMetaTable")
+            ?? throw new InvalidOperationException("NCLMetaTable not found");
+        _tEventScopeGetOption = navNcl.GetType("Microsoft.Dynamics.Nav.EventSubscription.EventScopeGetOption")
+            ?? throw new InvalidOperationException("EventScopeGetOption not found");
+
+        var tNavTriggerEventHandler = navNcl.GetType("Microsoft.Dynamics.Nav.EventSubscription.NavTriggerEventHandler")
+            ?? throw new InvalidOperationException("NavTriggerEventHandler not found");
+        _miGetEventScope = tNavTriggerEventHandler.GetMethods(
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            .FirstOrDefault(m => m.Name == "GetEventScope" && m.GetParameters().Length == 2
+                                  && m.GetParameters()[0].ParameterType == _tNavTriggerEventType)
+            ?? throw new InvalidOperationException("NavTriggerEventHandler.GetEventScope(2-arg) not found");
+
+        _fRegisteredSubscriptions = _tNavEventScope.GetField("registeredSubscriptions",
+            BindingFlags.NonPublic | BindingFlags.Instance)
+            ?? throw new InvalidOperationException("NavEventScope.registeredSubscriptions not found");
+        _fTableTriggerEventHandler = _tNCLMetaTable.GetField("tableTriggerEventHandler",
+            BindingFlags.NonPublic | BindingFlags.Instance)
+            ?? throw new InvalidOperationException("NCLMetaTable.tableTriggerEventHandler not found");
+
+        _ciNavTableTriggerEventHandler = _tNavTableTriggerEventHandler
+            .GetConstructor(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance,
+                null, Type.EmptyTypes, null)
+            ?? throw new InvalidOperationException("NavTableTriggerEventHandler parameterless ctor not found");
+
+        _ciNavEventSubscription = _tNavEventSubscription.GetConstructors(
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+            .FirstOrDefault(c => c.GetParameters().Length == 5)
+            ?? throw new InvalidOperationException("NavEventSubscription 5-arg ctor not found");
+        _ciNavEventSubscriberMethodInfo = _tNavEventSubscriberMethodInfo.GetConstructors(
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+            .FirstOrDefault(c => c.GetParameters().Length == 1)
+            ?? throw new InvalidOperationException("NavEventSubscriberMethodInfo(MethodInfo) ctor not found");
+        _ciNavEventSubscriberReflectionWrapper = _tNavEventSubscriberReflectionWrapper.GetConstructors(
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+            .FirstOrDefault(c => c.GetParameters().Length == 1)
+            ?? throw new InvalidOperationException("NavEventSubscriberReflectionWrapper(Type) ctor not found");
+
+        _navAppGroupBaseGroup = _tNavAppGroup.GetProperty("BaseGroup",
+                BindingFlags.Public | BindingFlags.Static)?.GetValue(null)
+            ?? _tNavAppGroup.GetField("BaseGroup",
+                BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
+        if (_navAppGroupBaseGroup == null)
+            throw new InvalidOperationException("NavAppGroup.BaseGroup not resolvable");
+
+        // Empty NavEventSubscriptionModifiers — only consulted on the non-table branch, but the
+        // ctor needs a non-null value.
+        var modCtor = _tNavEventSubscriptionModifiers.GetConstructors(
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+            .First();
+        var modArgs = modCtor.GetParameters().Select(p =>
+            (object)Array.CreateInstance(p.ParameterType.GenericTypeArguments[0], 0)).ToArray();
+        _emptyModifiers = modCtor.Invoke(modArgs);
+    }
+
+    /// <summary>
+    /// Adapter implementing <see cref="INavEventSubscriber"/>. The publisher dispatch path only
+    /// reads ApplicationObjectId.ObjectNumber + IsEventManualBinding off the subscriber object
+    /// (other members are consumed by manual-binding / sender-validation paths we don't take).
+    /// </summary>
+    internal sealed class AlEventSubscriberAdapter : INavEventSubscriber
+    {
+        private readonly NavEventSubscriberReflectionWrapper _wrapper;
+        public AlEventSubscriberAdapter(Type clrType, int codeunitId)
+        {
+            ApplicationObjectClrType = clrType;
+            ApplicationObjectId = new ApplicationObjectId(ObjectType.CodeUnit, codeunitId);
+            _wrapper = new NavEventSubscriberReflectionWrapper(clrType);
+        }
+        public bool OriginatesFromBase => false;
+        public NavEventSubscriberReflectionWrapper SubscriberReflectionWrapper => _wrapper;
+        public Type ApplicationObjectClrType { get; }
+        public ApplicationObjectId ApplicationObjectId { get; }
+        public bool IsEventManualBinding => false;
+    }
+}

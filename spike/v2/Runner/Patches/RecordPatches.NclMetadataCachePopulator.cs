@@ -70,6 +70,15 @@ public static partial class RecordPatches
         // Reports — §P, mirror via BuildNCLMetaReport using NCLMetaReport.CreateEmptyNCLMetaReport.
         PopulateOneObjectType(arr, objectTypeReport, _parsedReports.Keys.ToArray(),
             id => _metaReportCache.GetOrAdd(id, BuildNCLMetaReport), "Report");
+
+        // W-8b A-prime: now that every publisher table has an NCLMetaTable with its
+        // tableTriggerEventHandler field populated, inject AL-emitted [NavEventSubscriber]
+        // methods into each table's NavEventScope.registeredSubscriptions array. BC's own
+        // CheckAndFireTriggerEventsAsync then dispatches them naturally during Insert/Modify/
+        // Delete/Rename (no JmpHook on the dispatch path — that approach was killed by
+        // R2R inlining in session 82e7fffc).
+        AlRunnerV2.Patches.EventSubscriberPatches.InjectAll(
+            id => _metaTableCache.TryGetValue(id, out var m) ? m : null);
     }
 
     /// <summary>

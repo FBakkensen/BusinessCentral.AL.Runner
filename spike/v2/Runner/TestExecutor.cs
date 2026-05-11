@@ -23,6 +23,12 @@ public sealed class TestExecutor
         {
             if (!IsTestCodeunit(t)) continue;
 
+            // W-8b A-prime: this assembly may contain AL [EventSubscriber] codeunits whose
+            // classes weren't in AppDomain when PopulateNclMetadataCache initially ran
+            // EventSubscriberPatches.InjectAll. Re-run injection now (idempotent — each
+            // subscriber MethodInfo is injected at most once).
+            AlRunnerV2.Patches.EventSubscriberPatches.InjectAllUsingStoredLookup();
+
             object? instance;
             try { instance = InstantiateCodeunit(t); }
             catch (Exception ex)

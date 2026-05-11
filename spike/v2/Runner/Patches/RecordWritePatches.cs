@@ -36,6 +36,11 @@ public static partial class BcRuntime
         // TempTableDataProvider (in-memory AVL-tree store).
         AlRunnerV2.Patches.RecordPatches.Register();
 
+        // W-8b A-prime: resolve EventSubscriberPatches' reflection state up front so
+        // EventSubscriberPatches.CreateTableTriggerEventHandler / InjectAll can run during
+        // NclMetaTableBuilder / NclMetadataCachePopulator without extra plumbing.
+        AlRunnerV2.Patches.EventSubscriberPatches.Register(navNcl);
+
         // Pre-populate skeleton session's DataAccessSource field directly.
         // NavSession.DataAccessSource getter is inlined by JIT (trivial field return),
         // so the JMP hook on it never fires — we must inject DAS via field reflection.

@@ -96,6 +96,22 @@ public static partial class RecordPatches
                 EnsureCachePopulatorReflection();
                 if (_fNCLMetaAppObjMetadataLoaded != null)
                     AlRunnerV2.Infrastructure.FieldPoke.SetInstance(_fNCLMetaAppObjMetadataLoaded, built, true);
+
+                // W-8b A-prime: poke a real NavTableTriggerEventHandler into the
+                // tableTriggerEventHandler field. NCLMetaTable.TableTriggerEventHandler /
+                // TriggerEventHandler are simple field-getter properties — even when their
+                // call sites are R2R-inlined into NavRecord.InsertAsync, the inlined code
+                // reads our field. EventSubscriberPatches.InjectAll later attaches per-event
+                // NavEventSubscription objects to its NavEventScope.registeredSubscriptions.
+                var triggerHandler = AlRunnerV2.Patches.EventSubscriberPatches
+                    .CreateTableTriggerEventHandler();
+                if (triggerHandler != null)
+                {
+                    var f = built.GetType().GetField("tableTriggerEventHandler",
+                        BindingFlags.NonPublic | BindingFlags.Instance);
+                    if (f != null)
+                        AlRunnerV2.Infrastructure.FieldPoke.SetInstance(f, built, triggerHandler);
+                }
             }
             return built;
         }
