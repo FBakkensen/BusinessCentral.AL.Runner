@@ -197,17 +197,18 @@ public static partial class BcRuntime
             // Modify/Delete/Rename remain bypassed for PR1 scope; W-8 follow-on PR
             // will drain those in lockstep once the Insert path is validated.
 
-            // W-8a PR2: ModifyAsync drain DEFERRED — blocked on a bounded-depth recursion
-            // guard. Draining the bypass exposes
-            // Codeunit108002.Modify_WithRecursiveTrigger_DoesNotStackOverflow whose OnModify
-            // calls Rec.Modify(true). Without a session-level depth-counter guard the process
-            // stack-overflows. Real BC raises a runtime error after a few hundred frames; we
-            // need a faithful equivalent in MethodScopePatches.cs before this drain can land.
-            // Once the guard lands, the block below should mirror the Delete/Rename drain shape.
+            // W-8a PR3: bypass-drain for ModifyAsync. Safe to land now that f8367536's
+            // bounded-depth recursion guard (NavMethodScope depth counter, 500 frames) catches
+            // Codeunit108002.Modify_WithRecursiveTrigger_DoesNotStackOverflow before the
+            // process stack-overflows.
+            //   - IsModifyTriggerDefined powered by the same inherited-objectId field-walk fix
+            //     as Delete/Rename.
+            //   - TrackChanges no-ops cleanly in headless mode.
+            //
+            // The ModifyAsync hook is intentionally NOT installed. NavRecord_ModifyAsync
+            // replacement body is left in place for reference.
             var modifyAsync4 = navRecordType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
                 .FirstOrDefault(m => m.Name == "ModifyAsync" && m.GetParameters().Length == 4);
-            if (modifyAsync4 != null && _mRecordImplementationModifyRecordAsync != null)
-                Hook(modifyAsync4, nameof(NavRecord_ModifyAsync), "NavRecord.ModifyAsync(DataError,bool,bool,bool)");
 
             // W-8a PR2: bypass-drain for DeleteAsync. Same rationale as ModifyAsync above:
             //   - IsDeleteTriggerDefined powered by inherited-objectId field-walk fix.
