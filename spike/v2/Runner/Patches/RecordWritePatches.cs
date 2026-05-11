@@ -197,20 +197,61 @@ public static partial class BcRuntime
             // Modify/Delete/Rename remain bypassed for PR1 scope; W-8 follow-on PR
             // will drain those in lockstep once the Insert path is validated.
 
+            // W-8a PR2: ModifyAsync drain DEFERRED — blocked on a bounded-depth recursion
+            // guard. Draining the bypass exposes
+            // Codeunit108002.Modify_WithRecursiveTrigger_DoesNotStackOverflow whose OnModify
+            // calls Rec.Modify(true). Without a session-level depth-counter guard the process
+            // stack-overflows. Real BC raises a runtime error after a few hundred frames; we
+            // need a faithful equivalent in MethodScopePatches.cs before this drain can land.
+            // Once the guard lands, the block below should mirror the Delete/Rename drain shape.
             var modifyAsync4 = navRecordType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
                 .FirstOrDefault(m => m.Name == "ModifyAsync" && m.GetParameters().Length == 4);
             if (modifyAsync4 != null && _mRecordImplementationModifyRecordAsync != null)
                 Hook(modifyAsync4, nameof(NavRecord_ModifyAsync), "NavRecord.ModifyAsync(DataError,bool,bool,bool)");
 
+            // W-8a PR2: bypass-drain for DeleteAsync. Same rationale as ModifyAsync above:
+            //   - IsDeleteTriggerDefined powered by inherited-objectId field-walk fix.
+            //   - TrackChanges no-ops cleanly.
+            //
+            // The DeleteAsync hook is intentionally NOT installed. NavRecord_DeleteAsync
+            // replacement body is left in place for reference.
             var deleteAsync4 = navRecordType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
                 .FirstOrDefault(m => m.Name == "DeleteAsync" && m.GetParameters().Length == 4);
-            if (deleteAsync4 != null && _mRecordImplementationDeleteRecordAsync != null)
-                Hook(deleteAsync4, nameof(NavRecord_DeleteAsync), "NavRecord.DeleteAsync(DataError,bool,bool,bool)");
 
+            // W-8a PR2: bypass-drain for RenameAsync. Signature differs from the others:
+            //   NavRecord.RenameAsync(DataError, bool runApplicationTrigger, bool runGlobalTrigger, NavValue[])
+            //   - IsRenameTriggerDefined powered by inherited-objectId field-walk fix.
+            //   - TrackChanges no-ops cleanly.
+            //
+            // The RenameAsync hook is intentionally NOT installed. NavRecord_RenameAsync
+            // replacement body is left in place for reference.
             var renameAsync4 = navRecordType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
                 .FirstOrDefault(m => m.Name == "RenameAsync" && m.GetParameters().Length == 4);
-            if (renameAsync4 != null && _mRecordImplementationRenameRecordAsync != null && _mNavRecordCloneRecord != null)
-                Hook(renameAsync4, nameof(NavRecord_RenameAsync), "NavRecord.RenameAsync(DataError,bool,bool,NavValue[])");
+        }
+        // RecordLink.MoveLinksAsync(NavRecord, NavRecord) — called by NavRecord.RenameAsync after
+        // the rename commit to move record-link rows from old PK to new PK. Calls
+        // RecordLink.IsRecordLinkTableLocked(ITreeObject) which NREs on the skeleton session
+        // (no real lock-tracking infrastructure). No-op is safe in headless mode: there are no
+        // record links to move, and the rename itself has already committed before this call.
+        var recordLinkType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.RecordLink");
+        if (recordLinkType != null)
+        {
+            var moveLinks = recordLinkType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
+                .FirstOrDefault(m => m.Name == "MoveLinksAsync" && m.GetParameters().Length == 2);
+            if (moveLinks != null)
+                Hook(moveLinks, nameof(ReturnValueTask2), "RecordLink.MoveLinksAsync(NavRecord,NavRecord)");
+        }
+        // NavRecord.UpdateReferencesOnRenameAsync(List<...>, NavRecord) — called by RenameAsync to
+        // cascade PK changes to related tables. Calls NCLMetaTable.GetReferencingRelations() →
+        // ComputeReferencingRelations(NavAppGroup,...) which NREs because the skeleton session has
+        // no real AppGroup-aware metadata catalog. No-op is safe in headless mode: skeleton tables
+        // have no foreign-key references to cascade.
+        if (navRecordType != null)
+        {
+            var updateRefs = navRecordType.GetMethods(BindingFlags.NonPublic | BindingFlags.Instance)
+                .FirstOrDefault(m => m.Name == "UpdateReferencesOnRenameAsync" && m.GetParameters().Length == 2);
+            if (updateRefs != null)
+                Hook(updateRefs, nameof(ReturnValueTask3), "NavRecord.UpdateReferencesOnRenameAsync");
         }
         // NCLMetaApplicationObject.CheckApplicationObjectIsValid — validates app-group ID matches.
         // Fails on skeleton session because tenant is null. No-op is safe: headless mode doesn't
