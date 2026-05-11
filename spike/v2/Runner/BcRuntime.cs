@@ -1423,6 +1423,9 @@ public static partial class BcRuntime
                     "NCLMetaApplicationObject.get_ApplicationObjectConstructor");
         }
 
+        // ALDatabase static-method NRE cluster — all 8 affected methods are hooked here.
+        RegisterALDatabasePatches(navNcl);
+
         // ── Spike: validate JmpHook.InstallIndirect (cell-patch mechanism) ──────────────────
         // Step 3: sync re-hook smoke test — NavSession.get_IsLocalLanguage is already hooked
         //   above via JmpHook.Apply (WriteJmp 14-byte overwrite path). Re-hook the same method
