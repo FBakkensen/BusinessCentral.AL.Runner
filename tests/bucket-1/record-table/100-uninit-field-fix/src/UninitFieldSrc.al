@@ -22,7 +22,21 @@ table 100001 "UIF Source"
         Helper: Record "UIF Source";
 
     trigger OnInsert()
+    var
+        Counter: Record "UIF Counter";
     begin
+        // W-8a PR1: bump a counter row keyed by the inserted record's PK so the
+        // negative test can prove the trigger body did NOT execute for runTrigger=false
+        // (asserting just TriggerRan=false would also pass if the trigger ran and
+        // failed before reaching the assignment).
+        if Counter.Get(Rec.PK) then begin
+            Counter.Hits += 1;
+            Counter.Modify();
+        end else begin
+            Counter.PK := Rec.PK;
+            Counter.Hits := 1;
+            Counter.Insert();
+        end;
         // Access the table-global variable — null without the fix.
         Rec.TriggerRan := (Helper.PK = 0);
     end;

@@ -46,6 +46,7 @@ codeunit 100002 "UIF Tests"
     procedure OnInsertTrigger_WithoutRunTrigger_DoesNotSetFlag()
     var
         Src: Record "UIF Source";
+        Counter: Record "UIF Counter";
     begin
         // Negative: Insert without runTrigger=true must NOT fire the AL trigger.
         Src.PK := 3;
@@ -53,5 +54,11 @@ codeunit 100002 "UIF Tests"
 
         Src.Get(3);
         Assert.IsFalse(Src.TriggerRan, 'OnInsert trigger must NOT fire when runTrigger=false');
+
+        // Right-reason check: the trigger increments Counter(PK=Rec.PK). After
+        // Insert(false) for PK=3, no Counter row with PK=3 must exist — proving
+        // the trigger body never executed (rather than the negative test merely
+        // observing a default-false TriggerRan).
+        Assert.IsFalse(Counter.Get(3), 'OnInsert trigger body must not run when runTrigger=false (Counter row PK=3 must not exist)');
     end;
 }

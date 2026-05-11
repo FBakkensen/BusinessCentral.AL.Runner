@@ -178,10 +178,24 @@ public static partial class BcRuntime
             }
             _mNavRecordCloneRecord = navRecordType.GetMethod("CloneRecord",
                 BindingFlags.Public | BindingFlags.Instance);
-            var insertAsync4 = navRecordType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
-                .FirstOrDefault(m => m.Name == "InsertAsync" && m.GetParameters().Length == 4);
-            if (insertAsync4 != null && _mRecordImplementationInsertRecordAsync != null)
-                Hook(insertAsync4, nameof(NavRecord_InsertAsync), "NavRecord.InsertAsync(DataError,bool,bool,bool)");
+            // W-8a PR1: bypass-drain for InsertAsync. The real Ncl body
+            // (NavRecord-275.cs:2832-2906) now runs end-to-end:
+            //   - DataModificationListener.Instance: null-checked → no-op when null
+            //   - WriteEventRaised: gated on Session.IsEventSessionRecorderEnabled (false)
+            //   - NavCurrentThread.ResolveAppGroup: falls back to NavAppGroup.BaseGroup
+            //   - NavGlobalTriggers.InsertAsync: short-circuits via IsGlobalTriggerImplemented hook
+            //   - metaTable.IsInsertTriggerDefined: reflects on Record{id}.OnInsert override
+            //     (works after RecordPatches.NCLMetaApplicationObject_get_ApplicationObjectClrType
+            //     hierarchy-walk fix to discover inherited `objectId` non-public field)
+            //   - metaTable.IsEventSubscribed: false until subscribers registered (PR2 work)
+            //   - ParentCompany.TrackChanges: null-tolerant, real body handles
+            //
+            // The InsertAsync hook is intentionally NOT installed below so the real
+            // Ncl trigger-dispatch path runs. NavRecord_InsertAsync replacement body
+            // is left in place for reference / quick re-enable if needed.
+            //
+            // Modify/Delete/Rename remain bypassed for PR1 scope; W-8 follow-on PR
+            // will drain those in lockstep once the Insert path is validated.
 
             var modifyAsync4 = navRecordType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
                 .FirstOrDefault(m => m.Name == "ModifyAsync" && m.GetParameters().Length == 4);
@@ -409,6 +423,7 @@ public static partial class BcRuntime
             return default;
         }
     }
+
 
     /// <summary>
     /// Replacement for NavRecord.InsertAsync(DataError, bool, bool, bool).

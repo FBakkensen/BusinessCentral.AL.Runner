@@ -512,6 +512,20 @@ public static partial class RecordPatches
         var fFactory = tNavCompany.GetField("<SystemCodeunitFactory>k__BackingField",
             BindingFlags.NonPublic | BindingFlags.Instance);
         fFactory?.SetValue(skeletonCompany, factory);
+
+        // W-8a PR1: populate NavCompany.trackChanges so NavRecord.InsertAsync's
+        // `ParentCompany.TrackChanges.TrackChange(...)` call doesn't NRE on the getter.
+        // We leave the internal `trackedChanges` dictionary null — TrackChange checks
+        // `if (trackedChanges == null) return;` and exits cleanly.
+        // (Ref: Ncl NavTrackChanges.TrackChange.)
+        var tTrackChanges = nclAsm.GetType("Microsoft.Dynamics.Nav.Runtime.NavTrackChanges");
+        var fTrackChanges = tNavCompany.GetField("trackChanges",
+            BindingFlags.NonPublic | BindingFlags.Instance);
+        if (tTrackChanges != null && fTrackChanges != null && fTrackChanges.GetValue(skeletonCompany) == null)
+        {
+            var trackChanges = RuntimeHelpers.GetUninitializedObject(tTrackChanges);
+            fTrackChanges.SetValue(skeletonCompany, trackChanges);
+        }
     }
 
     // ─── Hook Implementations ───────────────────────────────────────────────────
@@ -711,9 +725,11 @@ public static partial class RecordPatches
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static Type? NCLMetaApplicationObject_get_ApplicationObjectClrType(object self)
     {
-        // NCLMetaApplicationObject has private readonly ApplicationObjectId objectId.
-        var objIdField = self.GetType().GetField("objectId",
-            BindingFlags.NonPublic | BindingFlags.Instance);
+        // objectId is declared on base NCLMetaApplicationObject. Non-public fields are not
+        // discovered through inheritance by GetField — walk up the type chain manually.
+        FieldInfo? objIdField = null;
+        for (var t = self?.GetType(); t != null && objIdField == null; t = t.BaseType)
+            objIdField = t.GetField("objectId", BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
         if (objIdField == null) return null;
         var objId = objIdField.GetValue(self);
         if (objId == null) return null;
