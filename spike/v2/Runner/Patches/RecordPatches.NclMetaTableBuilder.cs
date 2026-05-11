@@ -54,7 +54,11 @@ public static partial class RecordPatches
             // MutableRecordBuffer.get_SystemId → NCLMetaTable.SystemIdField.
             var timestampParsed = new ParsedField(0, "timestamp", "BigInteger", 0);
             var systemIdParsed = new ParsedField(2000000000, "SystemId", "Guid", 0);
+            // Merge any tableextension fields for this base table.
+            var extFields = _parsedExtensionFields.TryGetValue(parsed.TableName.ToLowerInvariant(), out var ef)
+                ? ef : Enumerable.Empty<ParsedField>();
             var allParsed = new[] { timestampParsed }.Concat(parsed.Fields)
+                .Concat(extFields)
                 .Concat(new[] { systemIdParsed }).ToArray();
             var fields = allParsed.Select((f, idx) =>
                 BuildMetaField(f, idx, parsed.PkFieldIds.Contains(f.FieldId), parsed)).ToArray();

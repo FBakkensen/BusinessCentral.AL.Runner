@@ -15,6 +15,7 @@ using System.Collections.Immutable;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
+using AlRunnerV2.Infrastructure;
 using Microsoft.Dynamics.Nav.Runtime;
 
 namespace AlRunnerV2.Patches;
@@ -64,6 +65,10 @@ public static partial class RecordPatches
     private static MethodInfo? _mTtdpFilter;               // TempTableDataProvider.Filter(int,FiltersAndMarks,MutableRecordBuffer,SortingFieldList,bool)
     private static ConstructorInfo? _ctorFieldDictionaryNavValue; // FieldDictionary<NavValue>(Tuple<INavFieldMetadata,NavValue>[])
 
+    // NCLMetaTable.GetFieldByNo(int extensionObjectId, int fieldNo) — hooked to fall back
+    // to TryGetFieldByNo when the extension object isn't registered (unresolved extension).
+    private static MethodInfo? _mGetFieldByNoExt;
+
     // Cache: tableId → NCLMetaTable built from AL source.
     private static readonly ConcurrentDictionary<int, object?> _metaTableCache = new();
 
@@ -82,6 +87,9 @@ public static partial class RecordPatches
     // Parsed table schemas: tableId → (fields, pkFieldIds).
     private static readonly Dictionary<int, ParsedTable> _parsedTables = new();
 
+    // Parsed tableextension fields: base-table-name (lowercased) → list of extra fields.
+    private static readonly Dictionary<string, List<ParsedField>> _parsedExtensionFields = new();
+
     // Set to true once Register() has been called.
     private static bool _registered;
 
@@ -97,6 +105,7 @@ public static partial class RecordPatches
             {
                 var text = File.ReadAllText(file);
                 TryParseTableFile(text);
+                TryParseTableExtensionFile(text);
                 TryParsePageFile(text);
                 TryParseReportFile(text);
             }
@@ -133,6 +142,18 @@ public static partial class RecordPatches
         _tNCLMetaTable = nclAsm.GetType("Microsoft.Dynamics.Nav.Runtime.NCLMetaTable")!;
         _mCreateFromMetaTable = _tNCLMetaTable.GetMethod("CreateFromMetaTable",
             BindingFlags.NonPublic | BindingFlags.Static)!;
+
+        // Hook NCLMetaTable.GetFieldByNo(int extensionObjectId, int fieldNo) to fall back
+        // to TryGetFieldByNo when the extension object isn't registered in our skeleton.
+        _mGetFieldByNoExt = _tNCLMetaTable.GetMethod("GetFieldByNo",
+            BindingFlags.Public | BindingFlags.Instance, null,
+            new[] { typeof(int), typeof(int) }, null);
+        if (_mGetFieldByNoExt != null)
+        {
+            var repl = typeof(RecordPatches).GetMethod(nameof(NCLMetaTable_GetFieldByNoExt),
+                BindingFlags.Public | BindingFlags.Static)!;
+            JmpHook.Apply(_mGetFieldByNoExt, repl, "NCLMetaTable.GetFieldByNo(extensionId,fieldNo)");
+        }
 
         // DataAccessTableVersionTokens.CreateForTempTable()
         var tDatv = nclAsm.GetType("Microsoft.Dynamics.Nav.Runtime.DataAccessTableVersionTokens")!;
@@ -236,6 +257,24 @@ public static partial class RecordPatches
         var tRecHandle = nclAsm.GetType("Microsoft.Dynamics.Nav.Runtime.NavRecordHandle")!;
         _fNavRecordHandleTemp = tRecHandle.GetField("temp",
             BindingFlags.NonPublic | BindingFlags.Instance);
+    }
+
+    /// <summary>
+    /// Replacement for NCLMetaTable.GetFieldByNo(int extensionObjectId, int fieldNo).
+    /// BC compiled IL calls this overload for extension fields: e.g. GetFieldByNo(52800, 50100).
+    /// Our skeleton NCLMetaTable has no extension objects registered, so the original throws
+    /// NavNCLExtensionFieldNotFoundException. We fall back to TryGetFieldByNo(fieldNo, …) on
+    /// the same instance, which succeeds because BuildNCLMetaTable already merged extension
+    /// fields into allParsed (the base table's field list).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static NCLMetaField NCLMetaTable_GetFieldByNoExt(NCLMetaTable self, int extensionObjectId, int fieldNo)
+    {
+        if (self.TryGetFieldByNo(fieldNo, out NCLMetaField? f) && f != null)
+            return f;
+        // Extension field unknown to us — throw the same exception BC would throw.
+        throw new InvalidOperationException(
+            $"[RecordPatches] extension field {fieldNo} from extension {extensionObjectId} not found in NCLMetaTable {self.TableName}");
     }
 
     /// <summary>

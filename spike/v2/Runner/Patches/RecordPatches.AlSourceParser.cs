@@ -14,6 +14,10 @@ public static partial class RecordPatches
         @"\btable\s+(\d+)\s+(?:""([^""]+)""|([A-Za-z_]\w*))[^{]*?\{",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+    private static readonly Regex RxTableExtension = new(
+        @"\btableextension\s+(\d+)\s+(?:""([^""]+)""|([A-Za-z_]\w*))\s+extends\s+(?:""([^""]+)""|([A-Za-z_]\w*))[^{]*?\{",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.Singleline);
+
     private static readonly Regex RxField = new(
         @"\bfield\s*\(\s*(\d+)\s*;\s*(?:""([^""]+)""|([A-Za-z_]\w*))\s*;\s*([^)]+?)\s*\)",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
@@ -46,7 +50,11 @@ public static partial class RecordPatches
         {
             var files = Directory.GetFiles(dir, "*.al", SearchOption.AllDirectories);
             foreach (var file in files)
-                TryParseTableFile(File.ReadAllText(file));
+            {
+                var text = File.ReadAllText(file);
+                TryParseTableFile(text);
+                TryParseTableExtensionFile(text);
+            }
         }
     }
 
@@ -58,11 +66,17 @@ public static partial class RecordPatches
         var tableMatches = RxTable.Matches(text);
         if (tableMatches.Count == 0) return;
 
+        // Collect all tableextension start positions so we can use them as slice boundaries.
+        var extPositions = RxTableExtension.Matches(text).Cast<Match>().Select(m => m.Index).ToArray();
+
         for (int i = 0; i < tableMatches.Count; i++)
         {
             var tableMatch = tableMatches[i];
             int sliceStart = tableMatch.Index;
-            int sliceEnd = (i + 1 < tableMatches.Count) ? tableMatches[i + 1].Index : text.Length;
+            int nextTableIdx = (i + 1 < tableMatches.Count) ? tableMatches[i + 1].Index : text.Length;
+            // Also stop at any tableextension that follows this table block.
+            int nextExtIdx = extPositions.Where(p => p > sliceStart).Append(text.Length).Min();
+            int sliceEnd = Math.Min(nextTableIdx, nextExtIdx);
             var slice = text.Substring(sliceStart, sliceEnd - sliceStart);
 
             if (!int.TryParse(tableMatch.Groups[1].Value, out int tableId)) continue;
@@ -109,6 +123,51 @@ public static partial class RecordPatches
                 pkFieldIds.Add(fields[0].FieldId);
 
             _parsedTables[tableId] = new ParsedTable(tableId, tableName, fields, pkFieldIds);
+        }
+    }
+
+    private static void TryParseTableExtensionFile(string text)
+    {
+        var extMatches = RxTableExtension.Matches(text);
+        if (extMatches.Count == 0) return;
+
+        for (int i = 0; i < extMatches.Count; i++)
+        {
+            var m = extMatches[i];
+            if (!int.TryParse(m.Groups[1].Value, out int extId)) continue;
+            var extName = m.Groups[2].Success ? m.Groups[2].Value : m.Groups[3].Value;
+            var baseName = m.Groups[4].Success ? m.Groups[4].Value : m.Groups[5].Value;
+
+            int sliceStart = m.Index;
+            int sliceEnd = (i + 1 < extMatches.Count) ? extMatches[i + 1].Index : text.Length;
+            var slice = text.Substring(sliceStart, sliceEnd - sliceStart);
+
+            var fields = new List<ParsedField>();
+            foreach (Match fm in RxField.Matches(slice))
+            {
+                if (!int.TryParse(fm.Groups[1].Value, out int fid)) continue;
+                var fname = fm.Groups[2].Success ? fm.Groups[2].Value : fm.Groups[3].Value;
+                var ftype = fm.Groups[4].Value.Trim();
+                int length = 0;
+                var lm = Regex.Match(ftype, @"\[(\d+)\]");
+                if (lm.Success) int.TryParse(lm.Groups[1].Value, out length);
+
+                var fieldBody = ExtractFieldBody(slice, fm.Index + fm.Length);
+                bool isFlowField = fieldBody != null && RxFieldClass.IsMatch(fieldBody);
+                ParsedCalcFormula? calcFormula = null;
+                if (isFlowField && fieldBody != null)
+                    calcFormula = TryParseCalcFormula(fieldBody);
+
+                fields.Add(new ParsedField(fid, fname, ftype, length, isFlowField, calcFormula));
+            }
+
+            Console.Error.WriteLine($"[TableExt] parsed extension {extId} '{extName}' extends '{baseName}' with {fields.Count} fields");
+
+            var key = baseName.ToLowerInvariant();
+            if (!_parsedExtensionFields.TryGetValue(key, out var existing))
+                _parsedExtensionFields[key] = fields;
+            else
+                existing.AddRange(fields);
         }
     }
 
