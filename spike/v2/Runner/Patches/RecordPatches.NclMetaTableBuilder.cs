@@ -118,6 +118,18 @@ public static partial class RecordPatches
                 // carries the [FieldTriggerHandler] attributes doesn't exist in the
                 // AppDomain yet at NCLMetaTable build time (build runs during
                 // AddSourceDir, before AL emit). See WireFieldTriggerHandlersAll().
+
+                // For AL `Enum "X"`-typed fields the upstream BC factory builds
+                // either a plain NCLOptionMetadataWithCaptions (when EnumTypeId==0)
+                // or an NCLFieldEnumMetadata that chains to NavGlobal.MetadataProvider
+                // (NREs on skeleton). Both paths produce wrong results for
+                // `FieldRef.GetEnumValueCaption/NameFromOrdinalValue(ordinal)` on
+                // sparse AL enums (e.g. value(0), value(5), value(10)) because the
+                // base GetCaptionFromIndex/GetOptionFromIndex treats the AL ordinal
+                // as a 0..Count-1 array index. We swap in AlEnumOptionMetadata which
+                // mirrors NCLEnumMetadata semantics (search indexes[] for matching
+                // ordinal) using data captured by BcCompiler at AL emit time.
+                FixupEnumFieldOptionMetadata(built, parsed, extFields);
             }
             return built;
         }
@@ -667,5 +679,87 @@ public static partial class RecordPatches
             System.Linq.Expressions.Expression.Constant(inner), cast);
         var actT = typeof(Action<>).MakeGenericType(baseType);
         return System.Linq.Expressions.Expression.Lambda(actT, call, prm).Compile();
+    }
+
+    // ── Enum-typed-field metadata fix-up ─────────────────────────────────────
+    //
+    // After NCLMetaField.CreateFromMetaField has run for every field on a new
+    // NCLMetaTable, replace `fieldOptionMetadata` on enum-typed fields with an
+    // AlEnumOptionMetadata built from the AlEnumMetadataRegistry. This makes
+    // FieldRef.GetEnumValue{Caption,Name}FromOrdinalValue and other consumers
+    // (NavOption.Create, GetOptionFromIndex, IsValidOrdinal, ...) behave with
+    // BC NCLEnumMetadata semantics — ordinal-keyed, not array-index-keyed.
+    private static System.Reflection.FieldInfo? _fNCLMetaFieldFieldOptionMetadata;
+    private static System.Text.RegularExpressions.Regex _rxEnumTypeName = new(
+        "^\\s*Enum\\s+(?:\"([^\"]+)\"|([A-Za-z_][\\w]*))\\s*$",
+        System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    // Re-apply enum field-option metadata for every cached NCLMetaTable. Called
+    // from BcRuntime.SetTestAssembly after Emit, by which time AlEnumMetadataRegistry
+    // is populated for the bucket's enums. The first BuildNCLMetaTable pass runs
+    // during AddSourceDir, *before* AL emit, so the registry is empty then and the
+    // initial fixup misses anything.
+    public static void FixupEnumFieldOptionMetadataAll()
+    {
+        foreach (var kvp in _metaTableCache)
+        {
+            if (!(kvp.Value is NCLMetaTable mt)) continue;
+            if (!_parsedTables.TryGetValue(kvp.Key, out var parsed)) continue;
+            var extFields = _parsedExtensionFields.TryGetValue(parsed.TableName.ToLowerInvariant(), out var ef)
+                ? (IEnumerable<ParsedField>)ef : Enumerable.Empty<ParsedField>();
+            FixupEnumFieldOptionMetadata(mt, parsed, extFields);
+        }
+    }
+
+    private static void FixupEnumFieldOptionMetadata(NCLMetaTable table, ParsedTable parsed, IEnumerable<ParsedField> extFields)
+    {
+        try
+        {
+            // Map fieldId -> EnumTypeName (parsed from the AL `Enum "<n>"` TypeName).
+            var enumNameByFieldId = new Dictionary<int, string>();
+            foreach (var f in parsed.Fields.Concat(extFields))
+            {
+                var m = _rxEnumTypeName.Match(f.TypeName ?? string.Empty);
+                if (!m.Success) continue;
+                var enumName = m.Groups[1].Success ? m.Groups[1].Value : m.Groups[2].Value;
+                if (!string.IsNullOrEmpty(enumName))
+                    enumNameByFieldId[f.FieldId] = enumName;
+            }
+            if (enumNameByFieldId.Count == 0) return;
+
+            // Resolve NCLMetaField.fieldOptionMetadata once.
+            if (_fNCLMetaFieldFieldOptionMetadata == null)
+            {
+                var tNCLMetaField = typeof(NCLMetaField);
+                _fNCLMetaFieldFieldOptionMetadata = tNCLMetaField.GetField(
+                    "fieldOptionMetadata",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            }
+            if (_fNCLMetaFieldFieldOptionMetadata == null) return;
+
+            // Snapshot the registry once (by name) so we don't repeat the scan per field.
+            var byName = new Dictionary<string, AlEnumMetadataRegistry.Entry>(StringComparer.OrdinalIgnoreCase);
+            foreach (var e in AlEnumMetadataRegistry.Snapshot())
+                byName[e.Name] = e;
+
+            foreach (var pair in enumNameByFieldId)
+            {
+                if (!table.TryGetFieldByNo(pair.Key, out var nclField) || nclField == null) continue;
+                if (!byName.TryGetValue(pair.Value, out var entry)) continue;
+                try
+                {
+                    var meta = new AlEnumOptionMetadata(entry.Name, entry.Id, entry.Options, entry.Indexes);
+                    AlRunnerV2.Infrastructure.FieldPoke.SetInstance(_fNCLMetaFieldFieldOptionMetadata, nclField, meta);
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine($"[RecordPatches] FixupEnumFieldOptionMetadata: field {pair.Key} ({pair.Value}) failed: {ex.GetType().Name}: {ex.Message}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[RecordPatches] FixupEnumFieldOptionMetadata({parsed.TableId}) failed: {ex.GetType().Name}: {ex.Message}");
+        }
     }
 }

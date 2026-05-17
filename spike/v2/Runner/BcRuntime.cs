@@ -77,6 +77,12 @@ public static partial class BcRuntime
         // the Record CLR type didn't exist yet — we delay wiring to here, the first
         // point at which the AL-emitted Record types are loaded into the AppDomain.
         AlRunnerV2.Patches.RecordPatches.WireFieldTriggerHandlersAll();
+
+        // Enum field-option metadata fix-up: the AlEnumMetadataRegistry is
+        // populated only by BcCompiler.Emit, which runs after AddSourceDir.
+        // The first BuildNCLMetaTable pass therefore misses enum-typed fields.
+        // Re-apply now that the registry has the bucket's emitted enums.
+        AlRunnerV2.Patches.RecordPatches.FixupEnumFieldOptionMetadataAll();
     }
 
     private static void HookXmlPortInitializeComponents(Assembly asm)

@@ -87,6 +87,7 @@ internal sealed class AlEnumOptionMetadata : NCLOptionMetadata
         _name = name;
         _id = id;
         _ordinalValues = indexes;
+        _optionNames = options;
         _names = (NavList)NavListCtorOfNavText.Invoke(
             new object[] { options.Select(o => NavText.Create(o ?? string.Empty)).ToList(), /*asReadOnly*/ true });
         _ordinals = (NavListInt)NavListCtorOfInt.Invoke(
@@ -96,12 +97,72 @@ internal sealed class AlEnumOptionMetadata : NCLOptionMetadata
     public override Microsoft.Dynamics.Nav.Runtime.NavList<NavText> GetNames() => _names;
     public override Microsoft.Dynamics.Nav.Runtime.NavList<int> GetOrdinals() => _ordinals;
 
-    // OrdinalValues is internal-virtual on the base; the base body of
-    // GetOrdinalFromIndex(int) uses it when non-null. Setting it lets
-    // sparse AL enums (e.g. value(5; ...)) resolve correctly.
-    // We can't `override internal` from another assembly, so we rely on the
-    // base default (`null`) — AL Ordinals() goes through GetOrdinals() above
-    // which returns _ordinals directly, so OrdinalValues isn't on the hot path.
+    // IsEnum is consulted by NCLMetaField.InitValue/EmptyValue (line 150397/150423)
+    // to decide whether to evaluate the initialValueText vs use the default-value
+    // path. AL enum-typed fields must report IsEnum=true so InitValue evaluates
+    // expressions like "Status::Closed" correctly.
+    public override bool IsEnum => true;
+
+    // AL emits `FieldRef.GetEnumValueCaptionFromOrdinalValue(ordinal)` →
+    // `MetaField.FieldOptionMetadata.GetCaptionFromIndex(ordinal)` (Ncl line
+    // 37205) and `GetEnumValueNameFromOrdinalValue(ordinal)` →
+    // `GetOptionFromIndex(ordinal, emptyIfNotFound:true)` (Ncl line 37185).
+    // The `ordinal` arg is a *true ordinal value* (e.g. 5, 10 for a sparse
+    // AL enum), NOT a 0..Count-1 array index. The base NCLOptionMetadata
+    // body treats the arg as an array index (line 158238), so for sparse
+    // enums it returns either out-of-range stringification ("10") or the
+    // wrong member ("5" → no member, falls through).
+    //
+    // The real BC subclass NCLEnumMetadata.GetOptionFromIndex (line 158792)
+    // walks indexes[] looking for the matching ordinal value; we mirror that
+    // here using our _ordinalValues. Likewise for GetCaptionFromIndex —
+    // captions on AL-runner-emitted enums collapse to the member name (we
+    // don't ingest CaptionML), so it forwards to GetOptionFromIndex.
+    public override string GetOptionFromIndex(int index, bool emptyIfNotFound = false)
+    {
+        for (int i = 0; i < _ordinalValues.Length; i++)
+        {
+            if (_ordinalValues[i] == index)
+            {
+                // Mimic NCLOptionMetadata.GetOptionFromIndex by reflecting into
+                // the base private `options` array (we passed it to the base
+                // ctor as a comma-joined string). Cached via the constructor
+                // captured _names so we just hand back the captured option text.
+                return _optionNames[i];
+            }
+        }
+        if (!emptyIfNotFound)
+            return index.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        return string.Empty;
+    }
+
+    public override string GetCaptionFromIndex(int index)
+    {
+        return GetOptionFromIndex(index);
+    }
+
+    public override bool IsValidOrdinal(int ordinal)
+    {
+        for (int i = 0; i < _ordinalValues.Length; i++)
+            if (_ordinalValues[i] == ordinal) return true;
+        return false;
+    }
+
+    public override int GetIndexFromOption(string option)
+    {
+        for (int i = 0; i < _optionNames.Length; i++)
+        {
+            if (string.Equals(_optionNames[i], option, StringComparison.Ordinal))
+                return _ordinalValues[i];
+        }
+        if (int.TryParse(option, out var ord))
+            return ord;
+        return -1;
+    }
+
+    public override int GetIndexFromCaption(string caption) => GetIndexFromOption(caption);
+
+    private readonly string[] _optionNames;
 
     // -- reflection cache for NavList<T> internal ctor --
     private static readonly ConstructorInfo NavListCtorOfNavText = ResolveNavListCtor<NavText>();
