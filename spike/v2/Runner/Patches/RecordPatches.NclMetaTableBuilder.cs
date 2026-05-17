@@ -112,6 +112,12 @@ public static partial class RecordPatches
                     if (f != null)
                         AlRunnerV2.Infrastructure.FieldPoke.SetInstance(f, built, triggerHandler);
                 }
+
+                // Field-level OnValidate/OnLookup trigger wiring is deferred to
+                // SetTestAssembly time — the AL-emitted Record<id> CLR type that
+                // carries the [FieldTriggerHandler] attributes doesn't exist in the
+                // AppDomain yet at NCLMetaTable build time (build runs during
+                // AddSourceDir, before AL emit). See WireFieldTriggerHandlersAll().
             }
             return built;
         }
@@ -435,5 +441,213 @@ public static partial class RecordPatches
         // ("old type: Option, new type: Text") via NavRecord.ValidateExpectedType.
         if (n.StartsWith("ENUM")) return Enum.Parse(_tNavType, "Option", ignoreCase: true);
         return Enum.Parse(_tNavType, "Text", ignoreCase: true); // fallback
+    }
+
+    // ── Field-level trigger handler wiring ────────────────────────────────────
+    //
+    // Real BC, given a compiled .app:
+    //   1. NCLMetaApplicationObject.Populate reads NavAppMetadata to learn that
+    //      Record<id>.OnValidate_<fieldName> is a [FieldTriggerHandler(OnValidate, fieldNo)]
+    //      method.
+    //   2. It builds a `FieldTriggerHandler<Record<id>>` (Ncl class, not delegate)
+    //      that wraps an `Action<T>` or `Func<T, ValueTask>` calling that method.
+    //   3. It assigns that wrapper to `NCLMetaField.EventTriggerDataValue.ValidateHandler`.
+    //   4. NavRecord.ValidateAsync(metaField, …) reads ValidateHandler and invokes it.
+    //
+    // We do (1)–(3) here by reflecting on the AL-emitted Record CLR type. The
+    // attribute is `Microsoft.Dynamics.Nav.Runtime.FieldTriggerHandlerAttribute`
+    // with constructor (FieldTriggerType, int fieldNo). We do the same for OnLookup
+    // for symmetry; OnBeforeValidate/OnAfterValidate aren't AL-author-visible so
+    // we don't wire them.
+    private static Type? _tFieldTriggerHandlerAttr;
+    private static Type? _tFieldTriggerType;
+    private static Type? _tFieldTriggerHandler1;
+    private static Type? _tEventTriggerData;
+    private static FieldInfo? _fEventTriggerDataValueBacking;
+    private static FieldInfo? _fValidateHandlerBacking;
+    private static FieldInfo? _fLookupHandlerBacking;
+
+    private static void EnsureFieldTriggerReflection()
+    {
+        if (_tFieldTriggerHandlerAttr != null) return;
+        var navNcl = AppDomain.CurrentDomain.GetAssemblies()
+            .First(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Ncl");
+        _tFieldTriggerHandlerAttr = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.FieldTriggerHandlerAttribute");
+        _tFieldTriggerType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.FieldTriggerType");
+        _tFieldTriggerHandler1 = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.FieldTriggerHandler`1");
+        var nclMetaField = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NCLMetaField")!;
+        _tEventTriggerData = nclMetaField.GetNestedType("EventTriggerData", BindingFlags.Public | BindingFlags.NonPublic);
+        _fEventTriggerDataValueBacking = nclMetaField.GetField("<EventTriggerDataValue>k__BackingField",
+            BindingFlags.NonPublic | BindingFlags.Instance);
+        if (_tEventTriggerData != null)
+        {
+            _fValidateHandlerBacking = _tEventTriggerData.GetField("<ValidateHandler>k__BackingField",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            _fLookupHandlerBacking = _tEventTriggerData.GetField("<LookupHandler>k__BackingField",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+        }
+    }
+
+    /// <summary>
+    /// Walk every NCLMetaTable we built and (idempotently) wire its
+    /// EventTriggerDataValue to the matching AL-emitted [FieldTriggerHandler]
+    /// methods on the now-loaded Record CLR type. Called from
+    /// BcRuntime.SetTestAssembly once the test assembly is in the AppDomain.
+    /// </summary>
+    public static void WireFieldTriggerHandlersAll()
+    {
+        foreach (var kvp in _metaTableCache)
+        {
+            if (kvp.Value is NCLMetaTable mt)
+                WireFieldTriggerHandlers(mt, kvp.Key);
+        }
+    }
+
+    private static void WireFieldTriggerHandlers(NCLMetaTable built, int tableId)
+    {
+        try
+        {
+            EnsureFieldTriggerReflection();
+            if (_tFieldTriggerHandlerAttr == null || _tFieldTriggerType == null
+                || _tFieldTriggerHandler1 == null || _tEventTriggerData == null
+                || _fEventTriggerDataValueBacking == null)
+                return;
+
+            var recordType = FindRecordType(tableId);
+            if (recordType == null) return;
+
+            // Map fieldNo -> (validateMethod, lookupMethod)
+            var byField = new Dictionary<int, (MethodInfo? validate, MethodInfo? lookup)>();
+            foreach (var mi in recordType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic
+                                                     | BindingFlags.Instance | BindingFlags.Static
+                                                     | BindingFlags.DeclaredOnly))
+            {
+                var attrs = mi.GetCustomAttributes(_tFieldTriggerHandlerAttr, inherit: false);
+                if (attrs.Length == 0) continue;
+                foreach (var a in attrs)
+                {
+                    var fieldNo = (int)_tFieldTriggerHandlerAttr.GetProperty("FieldNo")!.GetValue(a)!;
+                    var ttObj = _tFieldTriggerHandlerAttr.GetProperty("TriggerType")!.GetValue(a)!;
+                    var ttName = Enum.GetName(_tFieldTriggerType, ttObj);
+                    byField.TryGetValue(fieldNo, out var pair);
+                    if (ttName == "OnValidate") pair.validate = mi;
+                    else if (ttName == "OnLookup") pair.lookup = mi;
+                    byField[fieldNo] = pair;
+                }
+            }
+            if (byField.Count == 0) return;
+
+            // For each field with handler(s): build EventTriggerData, set ValidateHandler/LookupHandler,
+            // poke onto NCLMetaField.EventTriggerDataValue backing field.
+            foreach (var kvp in byField)
+            {
+                var fieldNo = kvp.Key;
+                NCLMetaField? metaField;
+                try { metaField = built.GetFieldByNo(fieldNo, /*trapError:*/ false); }
+                catch { continue; }
+                if (metaField == null) continue;
+
+                var existing = _fEventTriggerDataValueBacking.GetValue(metaField);
+                var etd = existing ?? Activator.CreateInstance(_tEventTriggerData)!;
+
+                if (kvp.Value.validate != null && _fValidateHandlerBacking != null)
+                {
+                    var handler = BuildFieldTriggerHandler(kvp.Value.validate, recordType);
+                    if (handler != null)
+                        AlRunnerV2.Infrastructure.FieldPoke.SetInstance(_fValidateHandlerBacking, etd, handler);
+                }
+                if (kvp.Value.lookup != null && _fLookupHandlerBacking != null)
+                {
+                    var handler = BuildFieldTriggerHandler(kvp.Value.lookup, recordType);
+                    if (handler != null)
+                        AlRunnerV2.Infrastructure.FieldPoke.SetInstance(_fLookupHandlerBacking, etd, handler);
+                }
+                AlRunnerV2.Infrastructure.FieldPoke.SetInstance(_fEventTriggerDataValueBacking, metaField, etd);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[RecordPatches] WireFieldTriggerHandlers({tableId}) failed: {ex.GetType().Name}: {ex.Message}");
+        }
+    }
+
+    private static Type? _tNavApplicationObjectBase;
+
+    private static object? BuildFieldTriggerHandler(MethodInfo target, Type recordType)
+    {
+        // FieldTriggerHandler<T> is closed by BC over T = NavApplicationObjectBase
+        // (the base class for all AL-emitted Record/Codeunit/etc. types) — this is
+        // visible because NCLMetaField+EventTriggerData.<ValidateHandler>k__BackingField
+        // is typed FieldTriggerHandler<NavApplicationObjectBase>. The handlerType
+        // property carries the concrete (Record100003) type, and the Action/Func
+        // takes the base instance and is responsible for any cast.
+        if (_tNavApplicationObjectBase == null)
+        {
+            var navNcl = AppDomain.CurrentDomain.GetAssemblies()
+                .First(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Ncl");
+            _tNavApplicationObjectBase = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavApplicationObjectBase");
+        }
+        if (_tNavApplicationObjectBase == null) return null;
+
+        var ftHandler = _tFieldTriggerHandler1!.MakeGenericType(_tNavApplicationObjectBase);
+        var ret = target.ReturnType;
+
+        // We can't Delegate.CreateDelegate directly for an Action<NavApplicationObjectBase>
+        // binding to a method whose first param (the implicit `this`) is Record100003 —
+        // the runtime rejects the variance. Wrap via a typed helper closure that casts.
+        if (ret == typeof(System.Threading.Tasks.ValueTask))
+        {
+            var funcT = typeof(Func<,>).MakeGenericType(_tNavApplicationObjectBase, typeof(System.Threading.Tasks.ValueTask));
+            var helper = typeof(RecordPatches).GetMethod(nameof(MakeAsyncTriggerInvoker),
+                BindingFlags.NonPublic | BindingFlags.Static)!.MakeGenericMethod(recordType);
+            var del = (Delegate)helper.Invoke(null, new object?[] { target })!;
+            // del is Func<TConcrete, ValueTask>; we need Func<NavApplicationObjectBase, ValueTask>.
+            // Build via a small wrapper closure.
+            var wrapper = BuildAsyncWrapper(del, _tNavApplicationObjectBase, recordType);
+            var ctor = ftHandler.GetConstructor(new[] { typeof(Type), funcT });
+            return ctor?.Invoke(new object[] { recordType, wrapper });
+        }
+        else if (ret == typeof(void))
+        {
+            var actT = typeof(Action<>).MakeGenericType(_tNavApplicationObjectBase);
+            var helper = typeof(RecordPatches).GetMethod(nameof(MakeSyncTriggerInvoker),
+                BindingFlags.NonPublic | BindingFlags.Static)!.MakeGenericMethod(recordType);
+            var del = (Delegate)helper.Invoke(null, new object?[] { target })!;
+            var wrapper = BuildSyncWrapper(del, _tNavApplicationObjectBase, recordType);
+            var ctor = ftHandler.GetConstructor(new[] { typeof(Type), actT });
+            return ctor?.Invoke(new object[] { recordType, wrapper });
+        }
+        Console.Error.WriteLine($"[RecordPatches] WireFieldTriggerHandlers: skip {target.DeclaringType?.Name}.{target.Name} — unsupported return type {ret.Name}");
+        return null;
+    }
+
+    // Helpers that produce strongly typed delegates over the concrete recordType.
+    private static Func<TRec, System.Threading.Tasks.ValueTask> MakeAsyncTriggerInvoker<TRec>(MethodInfo target)
+        => (Func<TRec, System.Threading.Tasks.ValueTask>)
+           Delegate.CreateDelegate(typeof(Func<TRec, System.Threading.Tasks.ValueTask>), target);
+
+    private static Action<TRec> MakeSyncTriggerInvoker<TRec>(MethodInfo target)
+        => (Action<TRec>)Delegate.CreateDelegate(typeof(Action<TRec>), target);
+
+    // Wrap a Func<TConcrete, ValueTask> as Func<NavApplicationObjectBase, ValueTask> that casts.
+    private static Delegate BuildAsyncWrapper(Delegate inner, Type baseType, Type concreteType)
+    {
+        // Build via expression tree: (NavApplicationObjectBase x) => innerDel((TConcrete)x)
+        var prm = System.Linq.Expressions.Expression.Parameter(baseType, "x");
+        var cast = System.Linq.Expressions.Expression.Convert(prm, concreteType);
+        var call = System.Linq.Expressions.Expression.Invoke(
+            System.Linq.Expressions.Expression.Constant(inner), cast);
+        var funcT = typeof(Func<,>).MakeGenericType(baseType, typeof(System.Threading.Tasks.ValueTask));
+        return System.Linq.Expressions.Expression.Lambda(funcT, call, prm).Compile();
+    }
+
+    private static Delegate BuildSyncWrapper(Delegate inner, Type baseType, Type concreteType)
+    {
+        var prm = System.Linq.Expressions.Expression.Parameter(baseType, "x");
+        var cast = System.Linq.Expressions.Expression.Convert(prm, concreteType);
+        var call = System.Linq.Expressions.Expression.Invoke(
+            System.Linq.Expressions.Expression.Constant(inner), cast);
+        var actT = typeof(Action<>).MakeGenericType(baseType);
+        return System.Linq.Expressions.Expression.Lambda(actT, call, prm).Compile();
     }
 }

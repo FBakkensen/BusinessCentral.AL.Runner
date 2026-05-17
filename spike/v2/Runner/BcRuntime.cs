@@ -70,6 +70,13 @@ public static partial class BcRuntime
         // unreliable. Hooking the override directly (on the concrete XmlPort type in
         // the test assembly) is deterministic since the JIT hasn't seen this method yet.
         HookXmlPortInitializeComponents(asm);
+
+        // Field-level OnValidate/OnLookup wiring. NCLMetaField.EventTriggerDataValue
+        // must point at the AL-emitted [FieldTriggerHandler] methods on the Record CLR
+        // class. The NCLMetaTable was built during AddSourceDir (before AL emit), so
+        // the Record CLR type didn't exist yet — we delay wiring to here, the first
+        // point at which the AL-emitted Record types are loaded into the AppDomain.
+        AlRunnerV2.Patches.RecordPatches.WireFieldTriggerHandlersAll();
     }
 
     private static void HookXmlPortInitializeComponents(Assembly asm)
