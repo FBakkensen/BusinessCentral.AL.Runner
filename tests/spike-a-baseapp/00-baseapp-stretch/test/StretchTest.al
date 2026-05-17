@@ -79,19 +79,20 @@ codeunit 80002 "Spike A2 BaseApp Stretch"
     // from the test's own AL.
     //
     // After Init():
-    //   - "Invoice Rounding Precision" (decimal field 86) defaults
-    //     to 0, the AL Record-level Init contract for unset numeric
-    //     fields. Asserting on the exact 0 catches any populator
-    //     change that inadvertently leaves the slot uninitialised.
+    //   - "Invoice Rounding Precision" (decimal field 86) takes the
+    //     Base-App-declared InitValue of 0.01. Proves the populator
+    //     parsed the field's InitValue and the runtime applied it on
+    //     Init() against an unmodified Base App table.
+    //   - PK Code stays empty (no InitValue on the PK).
     [Test]
-    procedure Currency_Init_LeavesNumericFieldsZero()
+    procedure Currency_Init_AppliesBaseAppInitValues()
     var
         Currency: Record Currency;
     begin
         Currency.Init();
         Assert.AreEqual(
-            0, Currency."Invoice Rounding Precision",
-            'Currency.Init should leave Invoice Rounding Precision at 0');
+            0.01, Currency."Invoice Rounding Precision",
+            'Currency.Init should apply Base App InitValue 0.01 on Invoice Rounding Precision');
         Assert.AreEqual(
             '', Currency.Code,
             'Currency.Init should leave PK Code at empty string');
