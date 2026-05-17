@@ -95,10 +95,10 @@ public static partial class RecordPatches
         if (slotDict == null) return;
         var dict = (System.Collections.IDictionary)slotDict;
 
-        int added = 0, failed = 0;
+        int added = 0, failed = 0, skipped = 0;
         foreach (var id in ids)
         {
-            if (dict.Contains(id)) continue;
+            if (dict.Contains(id)) { skipped++; continue; }
             object? meta;
             try { meta = buildMeta(id); }
             catch (Exception ex)
@@ -133,8 +133,8 @@ public static partial class RecordPatches
             catch { failed++; }
         }
 
-        if (added > 0 || failed > 0)
-            Console.Error.WriteLine($"[RecordPatches] PopulateNclMetadataCache[{label}]: added={added}, failed={failed}, total={ids.Length}");
+        if (added > 0 || failed > 0 || skipped > 0)
+            Console.Error.WriteLine($"[RecordPatches] PopulateNclMetadataCache[{label}]: added={added}, skipped={skipped}, failed={failed}, total={ids.Length}");
     }
 
     private static void EnsureCachePopulatorReflection()

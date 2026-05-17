@@ -21,6 +21,7 @@
 // is cached so subsequent misses are O(1). Negative misses are also cached
 // so a non-existent table doesn't re-scan every .app on every Init().
 
+using System.Reflection;
 using System.Text.RegularExpressions;
 
 namespace AlRunnerV2.Patches;
@@ -29,6 +30,11 @@ public static partial class RecordPatches
 {
     // .app file paths registered by Program.cs after DependencyLoader.LoadAll.
     private static readonly List<string> _bcAppPaths = new();
+
+    // Temp .app file extracted from Microsoft.BusinessCentral.SystemApp.dll's embedded
+    // SystemPackage; persists for the lifetime of the runner process so the index can
+    // re-read its source on demand.
+    private static string? _systemAppTempPath;
 
     // Lazy index: tableId → (appPath, alSource). Built on first miss.
     private static Dictionary<int, (string AppPath, string Source)>? _bcTableIndex;
@@ -90,6 +96,90 @@ public static partial class RecordPatches
     private static readonly Regex _rxAnyTableId = new(
         @"\btable\s+(\d+)\s+(?:""[^""]+""|[A-Za-z_]\w*)[^{]*?\{",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    /// <summary>
+    /// Microsoft.BusinessCentral.SystemApp.dll embeds the AL source for NCL-internal
+    /// system tables (RecordLink=2000000068, Field=2000000041, Object=2000000038, …)
+    /// inside a SystemPackage NAVX stream. Extract it to a temp .app, register the
+    /// path with BcAppFallback, and eagerly parse every table the package contains so
+    /// PopulateNclMetadataCache writes them to NCLMetadata's cache dict.
+    ///
+    /// Why eagerly: BC's own NCL code (e.g. `RecordLink.AddLinkAsync` →
+    /// `new NavRecord(record, 2000000068)`) calls `NCLMetadata.GetMetaTableById`
+    /// directly — bypassing our NavRecordHandle_CreateTarget hook — so lazy
+    /// BcAppFallback never fires; the cache dict must be primed up front.
+    /// </summary>
+    internal static void RegisterSystemAppPackage()
+    {
+        try
+        {
+            var asm = AppDomain.CurrentDomain.GetAssemblies()
+                .FirstOrDefault(a => a.GetName().Name == "Microsoft.BusinessCentral.SystemApp");
+            if (asm == null)
+            {
+                try { asm = Assembly.Load("Microsoft.BusinessCentral.SystemApp"); }
+                catch { /* fall through */ }
+            }
+            if (asm == null)
+            {
+                Console.Error.WriteLine("[RecordPatches] BcAppFallback: SystemApp assembly not loadable; system tables (RecordLink etc.) will fail");
+                return;
+            }
+
+            var tSystemPackage = asm.GetTypes().FirstOrDefault(t => t.Name == "SystemPackage");
+            var mGetStream = tSystemPackage?.GetMethod("GetPackageStream",
+                BindingFlags.Public | BindingFlags.Static | BindingFlags.NonPublic);
+            if (mGetStream == null)
+            {
+                Console.Error.WriteLine("[RecordPatches] BcAppFallback: SystemPackage.GetPackageStream not found in SystemApp DLL");
+                return;
+            }
+
+            using var stream = (Stream)mGetStream.Invoke(null, null)!;
+            var tempPath = Path.Combine(Path.GetTempPath(), $"al-runner-systemapp-{Guid.NewGuid():N}.app");
+            using (var fs = File.Create(tempPath))
+                stream.CopyTo(fs);
+
+            _systemAppTempPath = tempPath;
+            AddBcAppPath(tempPath);
+            Console.Error.WriteLine($"[RecordPatches] BcAppFallback: registered SystemPackage → {Path.GetFileName(tempPath)} ({new FileInfo(tempPath).Length:N0} bytes)");
+
+            EagerParseAllBcAppTables();
+        }
+        catch (Exception ex)
+        {
+            var inner = ex is TargetInvocationException tie ? tie.InnerException ?? ex : ex;
+            Console.Error.WriteLine($"[RecordPatches] BcAppFallback: SystemApp registration failed: {inner.GetType().Name}: {inner.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Walk every (tableId, source) the BC .app index discovered and feed the source
+    /// through TryParseTableFile so its tables land in _parsedTables. Idempotent —
+    /// already-parsed table ids are skipped, and TryParseTableFile is safe to call
+    /// repeatedly on the same text.
+    /// </summary>
+    internal static void EagerParseAllBcAppTables()
+    {
+        lock (_bcTableIndexLock)
+        {
+            EnsureBcTableIndex();
+            if (_bcTableIndex == null) return;
+            int parsedNow = 0;
+            var alreadySeenSources = new HashSet<string>(ReferenceEqualityComparer.Instance);
+            foreach (var (id, entry) in _bcTableIndex)
+            {
+                if (_parsedTables.ContainsKey(id)) continue;
+                // Same Source string may map from many ids when one .al holds multiple
+                // tables — skip duplicates so we don't re-parse identical text.
+                if (!alreadySeenSources.Add(entry.Source)) continue;
+                TryParseTableFile(entry.Source);
+                if (_parsedTables.ContainsKey(id)) parsedNow++;
+            }
+            if (parsedNow > 0)
+                Console.Error.WriteLine($"[RecordPatches] BcAppFallback: eager-parsed {parsedNow} BC .app table(s) into _parsedTables");
+        }
+    }
 
     private static void EnsureBcTableIndex()
     {

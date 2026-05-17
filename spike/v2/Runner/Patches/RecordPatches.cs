@@ -247,6 +247,14 @@ public static partial class RecordPatches
         ParseAllPageSources();
         ParseAllReportSources();
 
+        // NCL-internal system tables (RecordLink=2000000068, Field=2000000041, …)
+        // live as AL source embedded in Microsoft.BusinessCentral.SystemApp.dll's
+        // SystemPackage stream. BC's own NCL code constructs records of those tables
+        // directly via `new NavRecord(parent, id)` — bypassing our NavRecordHandle
+        // patch — so their NCLMetaTable must be in NCLMetadata's cache dict before
+        // any test runs. Eagerly parse them here so the populator below picks them up.
+        RegisterSystemAppPackage();
+
         // §O: lazy-populate the skeleton NCLMetadata cache with one NCLMetaTable
         // per parsed table so NavGlobal.NCLMetadata.GetMetaTableById / Codeunit.Run
         // call sites find an entry instead of throwing
@@ -675,6 +683,10 @@ public static partial class RecordPatches
         // backing field (a single instance), so iterating known sources is sufficient.
         foreach (var (_, perTable) in _dataAccessByTable)
             perTable.Clear();
+
+        // RecordLink polyfill store is also per-test — BC's RecordLink table is part
+        // of the per-test transaction (records' links go away on rollback).
+        AlRunnerV2.Patches.RecordLinkPatches.ResetForTest();
     }
 
     public static object NavDataAccessSource_GetDataAccessForTable(object self, NCLMetaTable table, bool isTemporary)
