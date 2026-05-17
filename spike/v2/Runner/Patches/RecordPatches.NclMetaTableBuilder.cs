@@ -237,6 +237,24 @@ public static partial class RecordPatches
                 args[i] = f.OptionMembers;
                 continue;
             }
+            if (p.Name == "initValue" && !string.IsNullOrEmpty(f.InitValueText))
+            {
+                // Pass the raw AL InitValue expression text. BC stores it on
+                // NCLMetaField.initialValueText and evaluates it via
+                // ALSystemVariable.EvaluateIntoNavValue at Init() time. For Text/Code
+                // fields the AL compiler stores the literal *without* the surrounding
+                // single quotes, so strip them here when present.
+                var iv = f.InitValueText;
+                var tn = f.TypeName.Trim();
+                if ((tn.StartsWith("Text", StringComparison.OrdinalIgnoreCase)
+                        || tn.StartsWith("Code", StringComparison.OrdinalIgnoreCase))
+                    && iv.Length >= 2 && iv.StartsWith("'") && iv.EndsWith("'"))
+                {
+                    iv = iv.Substring(1, iv.Length - 2).Replace("''", "'");
+                }
+                args[i] = iv;
+                continue;
+            }
             if (p.HasDefaultValue) { args[i] = p.DefaultValue; continue; }
             args[i] = p.ParameterType.IsValueType ? Activator.CreateInstance(p.ParameterType) : null;
         }

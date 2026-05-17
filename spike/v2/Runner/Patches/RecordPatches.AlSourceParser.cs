@@ -38,6 +38,15 @@ public static partial class RecordPatches
         @"\bOptionMembers\s*=\s*([^;]+);",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+    // InitValue = <al-expression>; — captures the raw AL expression text up to the
+    // terminating semicolon. Used to populate MetaField.initValue (string) which BC
+    // stores as NCLMetaField.initialValueText and evaluates via
+    // ALSystemVariable.EvaluateIntoNavValue inside the NCLMetaField.InitValue
+    // getter at Init() time.
+    private static readonly Regex RxInitValue = new(
+        @"\bInitValue\s*=\s*([^;]+);",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
     private static readonly Regex RxCalcFormula = new(
         @"\bCalcFormula\s*=\s*([^;]+)\s*;",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
@@ -123,7 +132,19 @@ public static partial class RecordPatches
                     }
                 }
 
-                fields.Add(new ParsedField(fid, fname, ftype, length, isFlowField, calcFormula, optionMembers));
+                // InitValue: capture raw AL expression text for fields with explicit
+                // InitValue = X; — passed verbatim to MetaField.initValue (string), then
+                // BC's NCLMetaField.InitValue getter calls ALSystemVariable.EvaluateIntoNavValue
+                // on it at Init() time.
+                string? initValueText = null;
+                if (fieldBody != null)
+                {
+                    var ivMatch = RxInitValue.Match(fieldBody);
+                    if (ivMatch.Success)
+                        initValueText = ivMatch.Groups[1].Value.Trim();
+                }
+
+                fields.Add(new ParsedField(fid, fname, ftype, length, isFlowField, calcFormula, optionMembers, initValueText));
             }
 
             // Parse first key as PK
@@ -182,7 +203,15 @@ public static partial class RecordPatches
                 if (isFlowField && fieldBody != null)
                     calcFormula = TryParseCalcFormula(fieldBody);
 
-                fields.Add(new ParsedField(fid, fname, ftype, length, isFlowField, calcFormula));
+                string? initValueText = null;
+                if (fieldBody != null)
+                {
+                    var ivMatch = RxInitValue.Match(fieldBody);
+                    if (ivMatch.Success)
+                        initValueText = ivMatch.Groups[1].Value.Trim();
+                }
+
+                fields.Add(new ParsedField(fid, fname, ftype, length, isFlowField, calcFormula, OptionMembers: null, InitValueText: initValueText));
             }
 
             Console.Error.WriteLine($"[TableExt] parsed extension {extId} '{extName}' extends '{baseName}' with {fields.Count} fields");
@@ -239,6 +268,6 @@ public static partial class RecordPatches
 
 internal record ParsedCalcFilter(string SourceFieldName, string ParentFieldName);
 internal record ParsedCalcFormula(string FormulaType, string SourceTableName, string? SourceFieldName, List<ParsedCalcFilter> Filters);
-internal record ParsedField(int FieldId, string FieldName, string TypeName, int Length, bool IsFlowField = false, ParsedCalcFormula? CalcFormula = null, string? OptionMembers = null);
+internal record ParsedField(int FieldId, string FieldName, string TypeName, int Length, bool IsFlowField = false, ParsedCalcFormula? CalcFormula = null, string? OptionMembers = null, string? InitValueText = null);
 internal record ParsedTable(int TableId, string TableName,
     List<ParsedField> Fields, List<int> PkFieldIds);
