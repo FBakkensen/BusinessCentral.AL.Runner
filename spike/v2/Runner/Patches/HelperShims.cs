@@ -34,6 +34,41 @@ public static partial class BcRuntime
     [MethodImpl(MethodImplOptions.NoInlining)] public static object? ReturnNull_OneArg(object a) => null;
     [MethodImpl(MethodImplOptions.NoInlining)] public static object? GetSkeletonCompanyReplacement(object self) => _skeletonCompany;
 
+    /// <summary>
+    /// Replacement for the static NCL <c>ALCompanyProperty.ALDisplayName()</c>. The real body
+    /// reads from a NavRecord on table 2000000006 which the skeleton runtime can't serve
+    /// (system-table DataAccess gap). Returns the stub display name "My Company" — observably
+    /// equivalent to BC running with a Company row whose Display Name field is empty (the
+    /// `GetCompanyDisplayNameDefaulted` fallback path). Faithful per docs/scope.md §2.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static string ALCompanyProperty_ALDisplayName() => "My Company";
+
+    /// <summary>
+    /// Replacement for <c>NavSystemCodeunitGlobalTriggers.GetTriggersOnTable(int tableId)</c>.
+    /// Returns <c>Triggers.None</c> (= 0) for every table. The real body invokes a system
+    /// codeunit via NavSystemCodeunit.Invoke, whose internal scope-machinery state is
+    /// uninitialized on our skeleton factory and NREs. Headless runner has no AL global
+    /// triggers (no codeunit subscribes to [EventSubscriber(GlobalTriggers,…)]), so
+    /// Triggers.None is observably equivalent. Faithful per docs/scope.md §2.
+    /// Return type is the NCL <c>Triggers</c> enum (int-backed, Flags). The JIT-emitted
+    /// callers receive an int in RAX which they treat as the enum value.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static int NavSystemCodeunitGlobalTriggers_GetTriggersOnTable(object self, int tableId) => 0;
+
+    /// <summary>
+    /// Replacement for <c>NavSession.get_GlobalLanguage()</c>. Real body reads
+    /// <c>cultureSettings.LCID</c>, but that struct field is zero-initialized on the
+    /// GetUninitializedObject-built skeleton session. With IsOpen now seeded true, callers
+    /// such as <c>RuntimeLanguage</c> read GlobalLanguage and pass it to
+    /// <c>CultureInfo.GetCultureInfo(0)</c> which throws. Return 1033 (en-US) — the same
+    /// value <c>NavEnvironment.DefaultLanguage</c> returns and what the pre-IsOpen-seeded code
+    /// path was already using as fallback.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static int NavSession_GlobalLanguage_1033(object self) => 1033;
+
     [MethodImpl(MethodImplOptions.NoInlining)] public static bool ReturnFalse_3Args(object? a, object? b, object? c) => false;
     [MethodImpl(MethodImplOptions.NoInlining)] public static bool ReturnFalse2(object? a, object? b) => false;
 

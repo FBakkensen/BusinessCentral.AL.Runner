@@ -389,6 +389,9 @@ public static partial class BcRuntime
 
             // NavSession.Company getter — NavRecord.GetCompanyNameToken reads Session.Company.CompanyNameToken.
             // Build skeleton NavCompany and inject into both the property and the backing field.
+            // Also seed companyName / companyTableId / hasBeenOpened so that the real BC code paths
+            // for ALDatabase.ALCompanyName, NavRecord.ALCurrentCompany, and ALCompanyProperty.ALId
+            // work without hitting NavRecord(table 2000000006) on the skeleton.
             var navCompanyType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavCompany");
             if (navCompanyType != null)
             {
@@ -396,12 +399,125 @@ public static partial class BcRuntime
                 var cnTokenField = navCompanyType.GetField("companyNameToken",
                     BindingFlags.NonPublic | BindingFlags.Instance);
                 cnTokenField?.SetValue(skelCompany, 0);
+
+                // Seed the internal company name. `session.CompanyName => company.companyName`,
+                // so this populates both `ALDatabase.ALCompanyName` (AL `CompanyName()` builtin)
+                // and `NavRecord.ALCurrentCompany` (the table-side `CurrentCompany()` builtin),
+                // provided session.IsOpen returns true (hasBeenOpened seeded below).
+                var companyNameField = navCompanyType.GetField("companyName",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+                if (companyNameField != null)
+                    FieldPoke.SetInstance(companyNameField, skelCompany, "My Company");
+
+                // Seed companyTableId with a deterministic non-default NavGuid so
+                // NavCompany.CompanyTableId returns immediately (no NavRecord(2000000006)
+                // lookup). `ALCompanyProperty.ALId` reads session.CompanyTableId →
+                // company.CompanyTableId; the getter short-circuits when this field
+                // != NavGuid.Default.
+                var companyTableIdField = navCompanyType.GetField("companyTableId",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+                if (companyTableIdField != null)
+                {
+                    try
+                    {
+                        var navGuidType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavGuid");
+                        if (navGuidType != null)
+                        {
+                            // Deterministic Guid derived from the stub company name so it stays
+                            // stable across runs but is observably non-empty.
+                            var stubGuid = new Guid("c0a1bdfa-0000-0000-0000-43524f4e5553"); // 'CRONUS' suffix
+                            var ctor = navGuidType.GetConstructor(
+                                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance,
+                                null, new[] { typeof(Guid) }, null);
+                            if (ctor != null)
+                            {
+                                var navGuid = ctor.Invoke(new object[] { stubGuid });
+                                FieldPoke.SetInstance(companyTableIdField, skelCompany, navGuid);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.Error.WriteLine($"[BcRuntime] WARN: companyTableId seed failed: {ex.GetType().Name}: {ex.Message}");
+                    }
+                }
+
                 _skeletonCompany = skelCompany;
                 var companyField = sessType.GetField("company", BindingFlags.NonPublic | BindingFlags.Instance);
                 if (companyField != null)
                     FieldPoke.SetInstance(companyField, _skeletonSession!, skelCompany);
             }
             HookProperty(sessType, "Company", false, nameof(GetSkeletonCompanyReplacement));
+
+            // RuntimeLanguage getter reads `IsOpen ? GlobalLanguage : NavEnvironment.DefaultLanguage`.
+            // With IsOpen=true (seeded below), GlobalLanguage is read; it returns cultureSettings.LCID
+            // which is 0 on the GetUninitializedObject skeleton — CultureInfo.GetCultureInfo(0) throws.
+            // GlobalLanguage / RuntimeLanguage / NavCode.get_Value are all intra-NCL and get R2R-inlined,
+            // so JmpHook on the getter doesn't reach. Field-poke `cultureSettings.LCID = 1033` so the
+            // inlined caller reads the correct value directly. cultureSettings is a struct — we read it
+            // back, write LCID, and reflect-set it (struct write-back semantics).
+            try
+            {
+                var fCultureSettings = sessType.GetField("cultureSettings",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+                if (fCultureSettings != null)
+                {
+                    var settings = fCultureSettings.GetValue(_skeletonSession);
+                    if (settings != null)
+                    {
+                        var lcidProp = settings.GetType().GetProperty("LCID",
+                            BindingFlags.Public | BindingFlags.Instance);
+                        if (lcidProp != null && lcidProp.CanWrite)
+                            lcidProp.SetValue(settings, 1033);
+                        else
+                        {
+                            // Property may be readonly with a backing field — set the field directly.
+                            var lcidField = settings.GetType().GetField("LCID",
+                                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                                ?? settings.GetType().GetField("<LCID>k__BackingField",
+                                    BindingFlags.NonPublic | BindingFlags.Instance);
+                            if (lcidField != null)
+                            {
+                                // Box, write field, reassign struct.
+                                var boxed = settings;
+                                lcidField.SetValue(boxed, 1033);
+                                settings = boxed;
+                            }
+                        }
+                        fCultureSettings.SetValue(_skeletonSession, settings);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"[BcRuntime] WARN: cultureSettings.LCID seed failed: {ex.GetType().Name}: {ex.Message}");
+            }
+
+            // Seed NavSession.hasBeenOpened = true so session.IsOpen returns true. ALDatabase.ALCompanyName,
+            // ALCompanyProperty.ALDisplayName, ALCompanyProperty.ALUrlName, ALCompanyProperty.ALId all
+            // check `session.IsOpen` and short-circuit to empty/default otherwise. Field-poke (not JmpHook)
+            // because both the getter and its callers live in NCL — R2R inlining could bypass the hook.
+            var hasBeenOpenedField = sessType.GetField("hasBeenOpened",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            if (hasBeenOpenedField != null)
+                FieldPoke.SetInstance(hasBeenOpenedField, _skeletonSession!, true);
+
+            // ALCompanyProperty.ALDisplayName — the real body reads from NavRecord on table 2000000006
+            // (the Company table) which the skeleton can't serve (no DataAccess for system tables —
+            // same gap as RecordLink). The body's fallback (GetCompanyDisplayNameDefaulted) returns
+            // companyName when no row is found, so a stub returning "My Company" is observably
+            // equivalent to BC running with a Company row whose Display Name is empty. Faithful
+            // per docs/scope.md §2 — same justification as RecordLink polyfill.
+            // Hooking the static here (AL-callable surface, called from external compiled AL output)
+            // dodges the R2R-inlining trap that would catch a hook inside NavCompany.CompanyDisplayName.
+            var alCompanyPropType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.ALCompanyProperty");
+            if (alCompanyPropType != null)
+            {
+                var alDisplayName = alCompanyPropType.GetMethod("ALDisplayName",
+                    BindingFlags.Public | BindingFlags.Static);
+                if (alDisplayName != null)
+                    Hook(alDisplayName, nameof(ALCompanyProperty_ALDisplayName), "ALCompanyProperty.ALDisplayName");
+            }
 
             // EventBindings — initialized via field initializer
             // (`new List<NavCodeunit>(128)`) on the real ctor, but skeleton session was

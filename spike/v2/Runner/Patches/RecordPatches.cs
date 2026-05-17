@@ -505,11 +505,42 @@ public static partial class RecordPatches
 
         // Build skeleton GlobalTriggers (uninitialized).
         // NavSystemCodeunitGlobalTriggers.GetTriggersOnTable checks session.IsCompanyOpen first.
-        // Our skeleton session has IsCompanyOpen = false (default bool), so it returns Triggers.None.
+        // Now that we seed hasBeenOpened+companyName (so IsCompanyOpen=true and the real
+        // ALCompanyName/ALCurrentCompany paths work), GetTriggersOnTable proceeds past the
+        // short-circuit and tries `Monitor.TryEnter(triggersOnTables)`. The dict is normally
+        // initialized via field initializer, but GetUninitializedObject skips that — so we
+        // must populate it here, otherwise Monitor.TryEnter NREs ("Value cannot be null").
         var globalTriggers = RuntimeHelpers.GetUninitializedObject(tGlobalTriggers);
         var fSession = tGlobalTriggers.GetField("session",
             BindingFlags.NonPublic | BindingFlags.Instance);
         fSession?.SetValue(globalTriggers, skeletonSession);
+
+        // triggersOnTables: Dictionary<int, Triggers> — initialize empty so Monitor.TryEnter
+        // doesn't NRE on the locked object. The dict is normally allocated via field initializer
+        // which GetUninitializedObject skips.
+        var fTriggersOnTables = tGlobalTriggers.GetField("triggersOnTables",
+            BindingFlags.NonPublic | BindingFlags.Instance);
+        if (fTriggersOnTables != null && fTriggersOnTables.GetValue(globalTriggers) == null)
+        {
+            var dictType = fTriggersOnTables.FieldType;          // Dictionary<int, Triggers>
+            fTriggersOnTables.SetValue(globalTriggers, Activator.CreateInstance(dictType));
+        }
+
+        // Hook GetTriggersOnTable to short-circuit to Triggers.None for the headless runner.
+        // The real body calls NavSystemCodeunit.Invoke(GetGlobalTableTriggerMask, …) on the
+        // skeleton factory, whose own scope-machinery state is uninitialized → NRE inside
+        // InvokeAsync. The headless runner has no AL global-trigger codeunits, so Triggers.None
+        // is observably equivalent to BC running with no [EventSubscriber(GlobalTriggers,…)] hooked.
+        // Faithful per docs/scope.md §2.
+        var mGetTriggersOnTable = tGlobalTriggers.GetMethod("GetTriggersOnTable",
+            BindingFlags.NonPublic | BindingFlags.Instance);
+        if (mGetTriggersOnTable != null)
+        {
+            var repl = typeof(BcRuntime).GetMethod(nameof(BcRuntime.NavSystemCodeunitGlobalTriggers_GetTriggersOnTable),
+                BindingFlags.Public | BindingFlags.Static);
+            if (repl != null)
+                JmpHook.Apply(mGetTriggersOnTable, repl, "NavSystemCodeunitGlobalTriggers.GetTriggersOnTable");
+        }
 
         // Wire global triggers into factory.
         var fGlobalTriggers = tFactory.GetField("globalTriggers",
