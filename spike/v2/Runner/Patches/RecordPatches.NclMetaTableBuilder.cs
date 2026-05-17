@@ -226,6 +226,11 @@ public static partial class RecordPatches
                 args[i] = calcFormulaObj;
                 continue;
             }
+            if (p.Name == "optionString" && !string.IsNullOrEmpty(f.OptionMembers))
+            {
+                args[i] = f.OptionMembers;
+                continue;
+            }
             if (p.HasDefaultValue) { args[i] = p.DefaultValue; continue; }
             args[i] = p.ParameterType.IsValueType ? Activator.CreateInstance(p.ParameterType) : null;
         }

@@ -30,6 +30,14 @@ public static partial class RecordPatches
         @"\bFieldClass\s*=\s*FlowField\b",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+    // OptionMembers = A,B,C; — captures the comma-joined list (whitespace trimmed
+    // per-token by the consumer). Used to populate MetaField.optionString so BC's
+    // NCLOptionMetadataNavTypeField (Field.Type field 5 of table 2000000041 and
+    // similar specialised subclasses) gets the right count.
+    private static readonly Regex RxOptionMembers = new(
+        @"\bOptionMembers\s*=\s*([^;]+);",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
     private static readonly Regex RxCalcFormula = new(
         @"\bCalcFormula\s*=\s*([^;]+)\s*;",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
@@ -101,7 +109,21 @@ public static partial class RecordPatches
                 if (isFlowField && fieldBody != null)
                     calcFormula = TryParseCalcFormula(fieldBody);
 
-                fields.Add(new ParsedField(fid, fname, ftype, length, isFlowField, calcFormula));
+                // Option-type fields: capture OptionMembers if present. The comma-
+                // separated list is what BC's NCLOptionMetadata constructor expects.
+                string? optionMembers = null;
+                if (fieldBody != null && ftype.Trim().Equals("Option", StringComparison.OrdinalIgnoreCase))
+                {
+                    var omMatch = RxOptionMembers.Match(fieldBody);
+                    if (omMatch.Success)
+                    {
+                        // Trim each comma-separated token; keep empty entries (BC allows blanks).
+                        optionMembers = string.Join(",",
+                            omMatch.Groups[1].Value.Split(',').Select(s => s.Trim()));
+                    }
+                }
+
+                fields.Add(new ParsedField(fid, fname, ftype, length, isFlowField, calcFormula, optionMembers));
             }
 
             // Parse first key as PK
@@ -217,6 +239,6 @@ public static partial class RecordPatches
 
 internal record ParsedCalcFilter(string SourceFieldName, string ParentFieldName);
 internal record ParsedCalcFormula(string FormulaType, string SourceTableName, string? SourceFieldName, List<ParsedCalcFilter> Filters);
-internal record ParsedField(int FieldId, string FieldName, string TypeName, int Length, bool IsFlowField = false, ParsedCalcFormula? CalcFormula = null);
+internal record ParsedField(int FieldId, string FieldName, string TypeName, int Length, bool IsFlowField = false, ParsedCalcFormula? CalcFormula = null, string? OptionMembers = null);
 internal record ParsedTable(int TableId, string TableName,
     List<ParsedField> Fields, List<int> PkFieldIds);
