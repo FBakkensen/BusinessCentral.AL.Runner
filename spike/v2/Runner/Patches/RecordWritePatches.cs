@@ -46,6 +46,12 @@ public static partial class BcRuntime
         // our skeleton lacks a TenantDataAccess for system tables (see docs/scope.md §2).
         AlRunnerV2.Patches.RecordLinkPatches.Register(navNcl);
 
+        // IsolatedStorage (ALIsolatedStorage.AL*) in-memory polyfill — real bodies
+        // route through IsolatedStorageRepository which requires a NavTenant +
+        // DataAccessSource for tenant-scoped tables, both NRE on the skeleton.
+        // SetEncrypted/GetEncrypted is real AES-256-CBC (faithful — encrypted ≠ plaintext).
+        AlRunnerV2.Patches.TenantStoragePatches.Register(navNcl);
+
         // Pre-populate skeleton session's DataAccessSource field directly.
         // NavSession.DataAccessSource getter is inlined by JIT (trivial field return),
         // so the JMP hook on it never fires — we must inject DAS via field reflection.

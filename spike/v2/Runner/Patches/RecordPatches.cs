@@ -809,6 +809,10 @@ public static partial class RecordPatches
         // RecordLink polyfill store is also per-test — BC's RecordLink table is part
         // of the per-test transaction (records' links go away on rollback).
         AlRunnerV2.Patches.RecordLinkPatches.ResetForTest();
+
+        // IsolatedStorage in-memory store — per-test reset matches BC semantics where
+        // a test's writes are rolled back on completion.
+        AlRunnerV2.Patches.TenantStoragePatches.ResetForTest();
     }
 
     public static object NavDataAccessSource_GetDataAccessForTable(object self, NCLMetaTable table, bool isTemporary)
