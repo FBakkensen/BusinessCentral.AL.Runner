@@ -50,6 +50,8 @@ public static partial class RecordPatches
     private static FieldInfo? _fDasSession;
     private static FieldInfo? _fDasGlobalFilters;
     private static FieldInfo? _fDasTableVersionTokens;
+    private static FieldInfo? _fDasSessionTransactionManager;
+    private static object? _skeletonSessionTransactionManager;
     private static FieldInfo? _fNavRecordHandleTemp;
     private static object? _skeletonDatabase;   // pre-built NavDatabase skeleton
 
@@ -210,6 +212,11 @@ public static partial class RecordPatches
             BindingFlags.NonPublic | BindingFlags.Instance);
         _fDasTableVersionTokens = _tDataAccessSource.GetField("tableVersionTokens",
             BindingFlags.NonPublic | BindingFlags.Instance);
+        _fDasSessionTransactionManager = _tDataAccessSource.GetField("sessionTransactionManager",
+            BindingFlags.NonPublic | BindingFlags.Instance);
+
+        // Pre-build the singleton STM so all skeleton DAS instances share the same STM identity.
+        _skeletonSessionTransactionManager = BuildSkeletonSessionTransactionManager();
 
         // TempTableDataProvider fields (for manual construction bypassing session.Database in ctor)
         var tTtdp = nclAsm.GetType("Microsoft.Dynamics.Nav.Runtime.TempTableDataProvider")!;
@@ -395,6 +402,19 @@ public static partial class RecordPatches
         _fDasGlobalFilters!.SetValue(das, Activator.CreateInstance(_tGlobalFilters!));
         _fDasTableVersionTokens!.SetValue(das, _mCreateForTempTable!.Invoke(null, null));
 
+        // Pre-populate sessionTransactionManager so the lazy-init path in
+        // DataAccessSource.get_SessionTransactionManager (which would otherwise call
+        // CreateAppDataAccess → CreateAppDataProvider → NRE) is bypassed. The skeleton STM
+        // carries a single LogicalTransaction with TransactionType=Update so that the real
+        // BC body of ALDatabase.get_ALCurrentTransactionType returns Update without machinery,
+        // and SessionTransactionManager.AnyHasWriteTransactionStarted returns false (empty
+        // transactionManagers dict — no per-table TM has ever begun a write transaction).
+        // Faithful: the runner has no real write transaction system; Update is BC's default
+        // for "browsing/reading without a lock-mode override", and IsInWriteTransaction is
+        // observably false because nothing has called BeginTransaction.
+        if (_skeletonSessionTransactionManager != null && _fDasSessionTransactionManager != null)
+            _fDasSessionTransactionManager.SetValue(das, _skeletonSessionTransactionManager);
+
         // Inject directly into the session field (bypass the inlined getter)
         _fSessionDataAccessSource.SetValue(skeletonSession, das);
         Console.Error.WriteLine($"[RecordPatches] Skeleton DAS injected on session: {das.GetType().Name}");
@@ -415,6 +435,71 @@ public static partial class RecordPatches
         // StartCollecting / StopCollecting / Collect all execute unmodified BC code (Option C —
         // reuse service-tier code per HANDOFF §2 invariant 4).
         InjectSkeletonErrorCollection(skeletonSession);
+    }
+
+    /// <summary>
+    /// Build a skeleton SessionTransactionManager whose two read-only getters resolve to
+    /// BC-faithful defaults for a session with no real write transaction:
+    ///   * CurrentTransactionType => TransactionType.Update (BC's default lock mode)
+    ///   * AnyHasWriteTransactionStarted => false (empty per-table TM dict)
+    /// Built reflectively via RuntimeHelpers.GetUninitializedObject so we can skip the real
+    /// ctor (which wires TransactionManagers tied to TenantDataAccess / AppDataAccess — both
+    /// of which require a real connection in our skeleton). All fields the two getters read
+    /// are populated explicitly; nothing else is touched.
+    /// </summary>
+    private static object? BuildSkeletonSessionTransactionManager()
+    {
+        var nclAsm = AppDomain.CurrentDomain.GetAssemblies()
+            .FirstOrDefault(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Ncl");
+        var typesAsm = AppDomain.CurrentDomain.GetAssemblies()
+            .FirstOrDefault(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Types");
+        if (nclAsm == null || typesAsm == null) return null;
+
+        var tStm = nclAsm.GetType("Microsoft.Dynamics.Nav.Runtime.SessionTransactionManager");
+        var tTm = nclAsm.GetType("Microsoft.Dynamics.Nav.Runtime.TransactionManager");
+        var tLt = tTm?.GetNestedType("LogicalTransaction", BindingFlags.NonPublic | BindingFlags.Public);
+        var tTrType = typesAsm.GetType("Microsoft.Dynamics.Nav.Types.TransactionType");
+        if (tStm == null || tTm == null || tLt == null || tTrType == null) return null;
+
+        // LogicalTransaction is a parameterless internal type whose backing fields are
+        // exactly the auto-properties. Construct it and set TransactionType = Update (ordinal 1).
+        var lt = Activator.CreateInstance(tLt, nonPublic: true);
+        if (lt == null) return null;
+        var fLtType = tLt.GetField("<TransactionType>k__BackingField",
+            BindingFlags.NonPublic | BindingFlags.Instance);
+        if (fLtType == null) return null;
+        var updateValue = Enum.ToObject(tTrType, 1); // TransactionType.Update
+        fLtType.SetValue(lt, updateValue);
+
+        // Build a TransactionManager via GetUninitializedObject and populate just the
+        // logicalTransactions stack so get_CurrentTransactionType (which Peek()s the stack)
+        // returns Update without going through TransactionalDataProvider / NavSession state.
+        var tm = RuntimeHelpers.GetUninitializedObject(tTm);
+        var fTmLogicalTransactions = tTm.GetField("logicalTransactions",
+            BindingFlags.NonPublic | BindingFlags.Instance);
+        if (fTmLogicalTransactions == null) return null;
+        var stackType = typeof(Stack<>).MakeGenericType(tLt);
+        var stack = Activator.CreateInstance(stackType)!;
+        stackType.GetMethod("Push")!.Invoke(stack, new[] { lt });
+        fTmLogicalTransactions.SetValue(tm, stack);
+
+        // Build the SessionTransactionManager and populate:
+        //   defaultTransactionManager → our skeleton TM (so STM.CurrentTransactionType works)
+        //   transactionManagers       → empty dict (so AnyHasWriteTransactionStarted returns false)
+        var stm = RuntimeHelpers.GetUninitializedObject(tStm);
+        var fStmDefault = tStm.GetField("defaultTransactionManager",
+            BindingFlags.NonPublic | BindingFlags.Instance);
+        var fStmDict = tStm.GetField("transactionManagers",
+            BindingFlags.NonPublic | BindingFlags.Instance);
+        fStmDefault?.SetValue(stm, tm);
+        if (fStmDict != null)
+        {
+            // dict type: ConcurrentDictionary<TransactionManagerKey, TransactionManager>
+            var dict = Activator.CreateInstance(fStmDict.FieldType);
+            fStmDict.SetValue(stm, dict);
+        }
+
+        return stm;
     }
 
     private static void InjectSkeletonErrorCollection(object skeletonSession)
@@ -627,6 +712,12 @@ public static partial class RecordPatches
         _fDasSession!.SetValue(das, self);
         _fDasGlobalFilters!.SetValue(das, Activator.CreateInstance(_tGlobalFilters!));
         _fDasTableVersionTokens!.SetValue(das, _mCreateForTempTable!.Invoke(null, null));
+
+        // Pre-populate sessionTransactionManager — see InitializeSkeletonSession for
+        // the full rationale. Keeps DataAccessSource.get_SessionTransactionManager out
+        // of CreateAppDataAccess → CreateAppDataProvider (which NREs on no real DB).
+        if (_skeletonSessionTransactionManager != null && _fDasSessionTransactionManager != null)
+            _fDasSessionTransactionManager.SetValue(das, _skeletonSessionTransactionManager);
 
         // Cache it on the session field.
         _fSessionDataAccessSource?.SetValue(self, das);
