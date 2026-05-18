@@ -131,6 +131,20 @@ public sealed class BcAssembler
         ("ALSessionInformation.ALSqlStatementsExecuted", "global::AlRunnerV2Shim.NavRuntimeHelpersShim.ALSqlStatementsExecuted"),
         // ALSystemErrorHandling.ALGetLastErrorCallStack NREs via NavCurrentThread.Session; return "".
         ("ALSystemErrorHandling.ALGetLastErrorCallStack", "global::AlRunnerV2Shim.NavRuntimeHelpersShim.ALGetLastErrorCallStack"),
+        // NavSession.Sleep — real body NREs via session state on the skeleton runtime.
+        // In-scope (§3.9): inline-execution model, no parallel sessions — Sleep is a no-op delay.
+        // The shim sleeps the current thread by `duration` ms (clamped to >=0).
+        ("NavSession.Sleep(", "global::AlRunnerV2Shim.NavRuntimeHelpersShim.NavSession_Sleep("),
+        // ALSession.ALIsSessionActive — real body chases session state that doesn't exist.
+        // Faithful in-scope answer (§3.9): the runner runs sessions inline + synchronously,
+        // so any session id is "no longer active" by the time the caller asks. Return false.
+        ("ALSession.ALIsSessionActive(", "global::AlRunnerV2Shim.NavRuntimeHelpersShim.ALSession_ALIsSessionActive("),
+        // ALSession.ALStartSession — real body schedules an async session via NavCurrentThread/
+        // Diagnostics which both NRE on the skeleton. Faithful in-scope replacement (§3.9):
+        // dispatch the target codeunit synchronously in-process, assign a fresh non-zero
+        // session id, and return true. Missing codeunit → return false (DataError.TrapError
+        // pathway). See BcRuntime.AlRunnerStartSession for the dispatch logic.
+        ("ALSession.ALStartSession(", "global::AlRunnerV2Shim.NavRuntimeHelpersShim.ALSession_ALStartSession("),
     };
 
     private static string ApplyPolyfillRedirects(string code)
@@ -208,6 +222,90 @@ namespace AlRunnerV2Shim
         // ALSystemErrorHandling — GetLastErrorCallStack uses NavCurrentThread.Session which is
         // null in our skeleton run.  Return empty string (no error occurred, no callstack).
         public static string ALGetLastErrorCallStack => string.Empty;
+
+        // ───────────────────────────────────────────────────────────────────────
+        // NavSession.Sleep — in-scope (§3.9). Inline execution model: a Sleep
+        // simply pauses the current thread by `duration` ms (clamped to >= 0).
+        // The real body chases skeleton-null session state and NREs.
+        public static void NavSession_Sleep(int duration)
+        {
+            if (duration <= 0) return;
+            try { System.Threading.Thread.Sleep(duration); } catch { /* ignore */ }
+        }
+
+        // ───────────────────────────────────────────────────────────────────────
+        // ALSession.ALIsSessionActive — in-scope (§3.9). Inline-synchronous
+        // dispatch means any session id is already completed by the time the
+        // caller observes it. Faithful answer for both overloads: false.
+        public static bool ALSession_ALIsSessionActive(int sessionId) => false;
+        public static bool ALSession_ALIsSessionActive(
+            Microsoft.Dynamics.Nav.Runtime.NavSession session, int sessionId) => false;
+
+        // ───────────────────────────────────────────────────────────────────────
+        // ALSession.ALStartSession — in-scope (§3.9). Dispatch the target
+        // codeunit synchronously, assign a fresh positive session id, return true.
+        // Missing codeunit (or any execution error under DataError.TrapError) → false.
+        // All overloads route through the central BcRuntime helper.
+        public static bool ALSession_ALStartSession(
+            Microsoft.Dynamics.Nav.Types.DataError errorLevel,
+            Microsoft.Dynamics.Nav.Runtime.ByRef<int> sessionId,
+            int objectId)
+            => global::AlRunnerV2.BcRuntime.AlRunnerStartSession(
+                errorLevel, sessionId, objectId, null, null);
+
+        public static bool ALSession_ALStartSession(
+            Microsoft.Dynamics.Nav.Types.DataError errorLevel,
+            Microsoft.Dynamics.Nav.Runtime.ByRef<int> sessionId,
+            int objectId,
+            string companyName)
+            => global::AlRunnerV2.BcRuntime.AlRunnerStartSession(
+                errorLevel, sessionId, objectId, companyName, null);
+
+        public static bool ALSession_ALStartSession(
+            Microsoft.Dynamics.Nav.Types.DataError errorLevel,
+            Microsoft.Dynamics.Nav.Runtime.ByRef<int> sessionId,
+            int objectId,
+            Microsoft.Dynamics.Nav.Runtime.NavDuration timeout)
+            => global::AlRunnerV2.BcRuntime.AlRunnerStartSession(
+                errorLevel, sessionId, objectId, null, null);
+
+        public static bool ALSession_ALStartSession(
+            Microsoft.Dynamics.Nav.Types.DataError errorLevel,
+            Microsoft.Dynamics.Nav.Runtime.ByRef<int> sessionId,
+            int objectId,
+            Microsoft.Dynamics.Nav.Runtime.NavDuration timeout,
+            string companyName)
+            => global::AlRunnerV2.BcRuntime.AlRunnerStartSession(
+                errorLevel, sessionId, objectId, companyName, null);
+
+        public static bool ALSession_ALStartSession(
+            Microsoft.Dynamics.Nav.Types.DataError errorLevel,
+            Microsoft.Dynamics.Nav.Runtime.ByRef<int> sessionId,
+            int objectId,
+            Microsoft.Dynamics.Nav.Runtime.NavDuration timeout,
+            string companyName,
+            Microsoft.Dynamics.Nav.Runtime.NavRecord record)
+            => global::AlRunnerV2.BcRuntime.AlRunnerStartSession(
+                errorLevel, sessionId, objectId, companyName, record);
+
+        public static bool ALSession_ALStartSession(
+            Microsoft.Dynamics.Nav.Types.DataError errorLevel,
+            Microsoft.Dynamics.Nav.Runtime.ByRef<int> sessionId,
+            int objectId,
+            string companyName,
+            Microsoft.Dynamics.Nav.Runtime.NavRecord record)
+            => global::AlRunnerV2.BcRuntime.AlRunnerStartSession(
+                errorLevel, sessionId, objectId, companyName, record);
+
+        public static bool ALSession_ALStartSession(
+            Microsoft.Dynamics.Nav.Types.DataError errorLevel,
+            Microsoft.Dynamics.Nav.Runtime.ByRef<int> sessionId,
+            int objectId,
+            string companyName,
+            Microsoft.Dynamics.Nav.Runtime.NavRecord record,
+            Microsoft.Dynamics.Nav.Runtime.NavDuration timeout)
+            => global::AlRunnerV2.BcRuntime.AlRunnerStartSession(
+                errorLevel, sessionId, objectId, companyName, record);
     }
 }
 ";

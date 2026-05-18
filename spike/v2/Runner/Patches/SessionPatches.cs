@@ -146,4 +146,91 @@ public static partial class BcRuntime
     /// </summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static CultureInfo NavSession_get_Culture(object? self) => CultureInfo.InvariantCulture;
+
+    // Monotonic fake session counter (>= 1) handed out to ALSession.ALStartSession callers.
+    // Faithful to the contract that StartSession assigns a fresh non-zero session id.
+    private static int _alRunnerSessionCounter;
+
+    /// <summary>
+    /// In-scope (§3.9) replacement entry point for every ALSession.ALStartSession overload.
+    /// The real implementation enqueues an async session via NavCurrentThread/Diagnostics
+    /// which NRE on the skeleton runtime. Our model is "inline-synchronous execution":
+    /// look up the codeunit by id, instantiate it under the skeleton tree-root, invoke
+    /// OnRun once, then return true with a fresh non-zero session id. Failures under
+    /// DataError.TrapError swallow the exception and return false (matching BC semantics
+    /// where a trapped StartSession returns false without rethrowing).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static bool AlRunnerStartSession(
+        Microsoft.Dynamics.Nav.Types.DataError errorLevel,
+        Microsoft.Dynamics.Nav.Runtime.ByRef<int> sessionId,
+        int objectId,
+        string? companyName,
+        Microsoft.Dynamics.Nav.Runtime.NavRecord? record)
+    {
+        bool trap = errorLevel == Microsoft.Dynamics.Nav.Types.DataError.TrapError;
+        try
+        {
+            var cuType = FindCodeunitTypePublic(objectId);
+            if (cuType == null)
+            {
+                if (trap) return false;
+                throw new InvalidOperationException(
+                    $"ALStartSession: codeunit {objectId} is not present in the loaded test assembly.");
+            }
+
+            // Allocate a fresh session id BEFORE we dispatch so the contract
+            // "SessionId > 0 after StartSession" holds even if dispatch throws
+            // under TrapError (BC returns false in that case but does still
+            // touch the by-ref).
+            int newId = System.Threading.Interlocked.Increment(ref _alRunnerSessionCounter);
+            try { sessionId.Value = newId; } catch { /* setter throws → ignore */ }
+
+            // Construct under the skeleton tree root (same parent the existing
+            // NavCodeunitHandle_CreateTarget uses) so NavApplicationObjectBase.ctor
+            // can read TreeHandler.get_Session via our skeleton patches.
+            var parent = (object?)_skeletonRootScope ?? RootTreeStub;
+            var ctor = cuType.GetConstructors()
+                .FirstOrDefault(c => c.GetParameters().Length == 1 &&
+                    typeof(Microsoft.Dynamics.Nav.Runtime.ITreeObject)
+                        .IsAssignableFrom(c.GetParameters()[0].ParameterType));
+            if (ctor == null)
+            {
+                if (trap) return false;
+                throw new InvalidOperationException(
+                    $"ALStartSession: codeunit {objectId} has no single-arg ITreeObject constructor.");
+            }
+            var instance = ctor.Invoke(new object[] { parent! });
+
+            // Prefer the OnRun(INavRecordHandle) overload if present (record-arg
+            // StartSession overloads). Fall back to OnRun() for parameterless workers.
+            // The `record` arg is a NavRecord (the runtime type); the OnRun parameter
+            // is INavRecordHandle. Pass null when the AL-emitted overload didn't
+            // provide a record (preserves the worker's "no input" contract).
+            var onRunRec = cuType.GetMethod("OnRun",
+                BindingFlags.NonPublic | BindingFlags.Instance, null,
+                new[] { typeof(Microsoft.Dynamics.Nav.Runtime.INavRecordHandle) }, null);
+            if (onRunRec != null)
+            {
+                onRunRec.Invoke(instance, new object?[] { null });
+            }
+            else
+            {
+                var onRun0 = cuType.GetMethod("OnRun",
+                    BindingFlags.NonPublic | BindingFlags.Instance, null, Type.EmptyTypes, null);
+                onRun0?.Invoke(instance, null);
+            }
+            return true;
+        }
+        catch (TargetInvocationException tie) when (trap)
+        {
+            // TrapError semantics: swallow + return false.
+            _ = tie;
+            return false;
+        }
+        catch when (trap)
+        {
+            return false;
+        }
+    }
 }

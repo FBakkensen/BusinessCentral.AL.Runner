@@ -341,6 +341,14 @@ public static partial class BcRuntime
             $"or wait until runtime dependency loading lands.";
     }
 
+    /// <summary>
+    /// Public accessor used by other patches (e.g. SessionPatches.AlRunnerStartSession)
+    /// that need to resolve a codeunit type by AL object id without duplicating the
+    /// test-assembly-first / loaded-assembly-fallback scan logic.
+    /// </summary>
+    public static Type? FindCodeunitTypePublic(int id)
+        => _codeunitTypeCache.GetOrAdd(id, FindCodeunitType);
+
     private static Type? FindCodeunitType(int id)
     {
         var baseCu = typeof(Microsoft.Dynamics.Nav.Runtime.NavCodeunit);
