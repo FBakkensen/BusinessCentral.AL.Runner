@@ -137,18 +137,20 @@ public static class Reporter
     private static string ClassifyTest(string message, string full)
     {
         // Out-of-scope failures (loud-failures.md / docs/scope.md) are classified
-        // by API name, not by stack frame — they're a contract decision, not an NRE.
-        // Format: "RunnerOutOfScopeException: <api> is out of scope. Reason: <reason>. ..."
-        if (message.Contains("RunnerOutOfScopeException", StringComparison.Ordinal)
-            || full.Contains("RunnerOutOfScopeException", StringComparison.Ordinal))
+        // by API name, not by stack frame — contract surface, not an NRE.
+        // Stable message format (see RunnerOutOfScopeException.BuildMessage):
+        //     out-of-scope: <api> — <reason> — see docs/scope.md#<anchor>
+        const string OosPrefix = "out-of-scope: ";
+        int prefixIdx = message.IndexOf(OosPrefix, StringComparison.Ordinal);
+        if (prefixIdx < 0) prefixIdx = full.IndexOf(OosPrefix, StringComparison.Ordinal);
+        if (prefixIdx >= 0)
         {
-            int oosIdx = message.IndexOf("RunnerOutOfScopeException", StringComparison.Ordinal);
-            string tail = oosIdx >= 0 ? message[oosIdx..] : message;
-            int colon = tail.IndexOf(": ", StringComparison.Ordinal);
-            int isOut = tail.IndexOf(" is out of scope", StringComparison.Ordinal);
-            if (colon > 0 && isOut > colon)
+            string tail = (prefixIdx < message.Length ? message : full)[prefixIdx..];
+            int start = OosPrefix.Length;
+            int sep = tail.IndexOf(" — ", start, StringComparison.Ordinal);
+            if (sep > start)
             {
-                var api = tail[(colon + 2)..isOut].Trim();
+                var api = tail[start..sep].Trim();
                 return $"out-of-scope/{api}";
             }
             return "out-of-scope/unknown";

@@ -31,12 +31,15 @@ public sealed class RunnerOutOfScopeException : Exception
         DocAnchor = docAnchor;
     }
 
+    // Stable contract format. AL tests match with:
+    //     Assert.ExpectedError('out-of-scope: <api>')
+    // or just 'out-of-scope:' for any-OOS. Keep the prefix + " — " separators stable.
     private static string BuildMessage(string api, string reason, string? docAnchor)
     {
         var link = docAnchor != null
             ? $"docs/scope.md{(docAnchor.StartsWith("#") ? docAnchor : "#" + docAnchor)}"
             : "docs/scope.md";
-        return $"{api} is out of scope. Reason: {reason}. See {link}.";
+        return $"out-of-scope: {api} — {reason} — see {link}";
     }
 }
 
