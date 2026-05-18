@@ -13377,26 +13377,28 @@ XmlWriteOptions.PreserveWhitespace (Boolean):
 Xmlport.Export (Integer, OutStream, Table):
   layer: runtime-api
   category: Xmlport
-  status: covered
+  status: gap
   tests:
-    - tests/bucket-2/page-report/90-xmlport-instance
-  notes: rewriter routes NavXmlPort.Export -> MockXmlPortHandle.StaticExport which is a no-op.
+    - tests/bucket-2/page-report/84-xmlport
+    - tests/bucket-2/page-report/125-xmlport-query-diagnostics
+  notes: NavXmlPort.StaticExport throws RunnerOutOfScopeException (not-yet-implemented); in-memory XmlPort serialization planned. Tests assert asserterror + ExpectedError('out-of-scope: NavXmlPort.StaticExport').
 
 Xmlport.Import (Integer, InStream, Table):
   layer: runtime-api
   category: Xmlport
-  status: covered
+  status: gap
   tests:
-    - tests/bucket-2/page-report/90-xmlport-instance
-  notes: rewriter routes NavXmlPort.Import -> MockXmlPortHandle.StaticImport which is a no-op.
+    - tests/bucket-2/page-report/84-xmlport
+    - tests/bucket-2/page-report/125-xmlport-query-diagnostics
+  notes: NavXmlPort.StaticImport throws RunnerOutOfScopeException (not-yet-implemented); in-memory XmlPort serialization planned. Tests assert asserterror + ExpectedError('out-of-scope: NavXmlPort.StaticImport').
 
 Xmlport.Run (Integer, Boolean, Boolean, Table):
   layer: runtime-api
   category: Xmlport
-  status: covered
+  status: gap
   tests:
     - tests/bucket-2/page-report/163-xmlport-run
-  notes: rewriter routes NavXmlPort.Run -> MockXmlPortHandle.StaticRun which is a no-op (no file I/O or interactive UI standalone). Accepts all arg shapes via params object?[].
+  notes: NavXmlPort.Run throws RunnerOutOfScopeException (not-yet-implemented); in-memory XmlPort serialization planned. Accepts all arg shapes via params object?[].
 
 # ── XmlportInstance ─────────────────────────────────────────────
 
@@ -13427,10 +13429,12 @@ XmlportInstance.CurrentPath ():
 XmlportInstance.Export ():
   layer: runtime-api
   category: XmlportInstance
-  status: covered
+  status: gap
   tests:
     - tests/bucket-2/page-report/90-xmlport-instance
-  notes: no-op on MockXmlPortHandle
+    - tests/bucket-2/page-report/84-xmlport
+    - tests/bucket-2/page-report/125-xmlport-query-diagnostics
+  notes: NavXmlPort.Export throws RunnerOutOfScopeException (not-yet-implemented); in-memory XmlPort serialization planned. Tests assert asserterror + ExpectedError('out-of-scope: NavXmlPort.Export').
 
 XmlportInstance.FieldDelimiter (Text):
   layer: runtime-api
@@ -13459,10 +13463,12 @@ XmlportInstance.Filename (Text):
 XmlportInstance.Import ():
   layer: runtime-api
   category: XmlportInstance
-  status: covered
+  status: gap
   tests:
     - tests/bucket-2/page-report/90-xmlport-instance
-  notes: no-op on MockXmlPortHandle
+    - tests/bucket-2/page-report/84-xmlport
+    - tests/bucket-2/page-report/125-xmlport-query-diagnostics
+  notes: NavXmlPort.Import throws RunnerOutOfScopeException (not-yet-implemented); in-memory XmlPort serialization planned. Tests assert asserterror + ExpectedError('out-of-scope: NavXmlPort.Import').
 
 XmlportInstance.ImportFile (Boolean):
   layer: runtime-api
@@ -13489,10 +13495,10 @@ XmlportInstance.RecordSeparator (Text):
 XmlportInstance.Run ():
   layer: runtime-api
   category: XmlportInstance
-  status: covered
+  status: gap
   tests:
     - tests/bucket-2/page-report/90-xmlport-instance
-  notes: no-op on MockXmlPortHandle
+  notes: NavXmlPort.Run throws RunnerOutOfScopeException (not-yet-implemented); in-memory XmlPort serialization planned. Tests assert asserterror + ExpectedError('out-of-scope: NavXmlPort.Run').
 
 XmlportInstance.SetDestination (OutStream):
   layer: runtime-api
@@ -13513,10 +13519,10 @@ XmlportInstance.SetSource (InStream):
 XmlportInstance.SetTableView (Table):
   layer: runtime-api
   category: XmlportInstance
-  status: covered
+  status: gap
   tests:
     - tests/bucket-2/page-report/90-xmlport-instance
-  notes: no-op on MockXmlPortHandle
+  notes: NavXmlPort.SetTableView throws RunnerOutOfScopeException (not-yet-implemented); in-memory XmlPort serialization planned. Tests assert asserterror + ExpectedError('out-of-scope: NavXmlPort.SetTableView').
 
 XmlportInstance.Skip ():
   layer: runtime-api

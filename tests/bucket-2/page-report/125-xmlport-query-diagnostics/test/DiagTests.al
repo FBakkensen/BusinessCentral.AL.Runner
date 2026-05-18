@@ -34,47 +34,51 @@ codeunit 56254 "XmlPort Query Diag Tests"
     // ==================================================================
 
     [Test]
-    procedure XmlPortImport_IsNoOp()
+    procedure XmlPortImport_ThrowsOutOfScope()
     var
         InStr: InStream;
     begin
         // [GIVEN] An XmlPort variable
         // [WHEN]  Import() is called
-        // [THEN]  No error — Import is a no-op in standalone mode
-        Logic.TryXmlPortImport(InStr);
+        // [THEN]  RunnerOutOfScopeException — in-memory XmlPort not yet implemented
+        asserterror Logic.TryXmlPortImport(InStr);
+        Assert.ExpectedError('out-of-scope: NavXmlPort.Import');
     end;
 
     [Test]
-    procedure XmlPortExport_IsNoOp()
+    procedure XmlPortExport_ThrowsOutOfScope()
     var
         OutStr: OutStream;
     begin
         // [GIVEN] An XmlPort variable
         // [WHEN]  Export() is called
-        // [THEN]  No error — Export is a no-op in standalone mode
-        Logic.TryXmlPortExport(OutStr);
+        // [THEN]  RunnerOutOfScopeException — in-memory XmlPort not yet implemented
+        asserterror Logic.TryXmlPortExport(OutStr);
+        Assert.ExpectedError('out-of-scope: NavXmlPort.Export');
     end;
 
     [Test]
-    procedure StaticXmlPortImport_IsNoOp()
+    procedure StaticXmlPortImport_ThrowsOutOfScope()
     var
         InStr: InStream;
     begin
         // [GIVEN] A static XmlPort.Import call
         // [WHEN]  XmlPort.Import(portId, InStr) is called
-        // [THEN]  No error — StaticImport is a no-op in standalone mode
-        Logic.TryStaticXmlPortImport(InStr);
+        // [THEN]  RunnerOutOfScopeException — in-memory XmlPort not yet implemented
+        asserterror Logic.TryStaticXmlPortImport(InStr);
+        Assert.ExpectedError('out-of-scope: NavXmlPort.StaticImport');
     end;
 
     [Test]
-    procedure StaticXmlPortExport_IsNoOp()
+    procedure StaticXmlPortExport_ThrowsOutOfScope()
     var
         OutStr: OutStream;
     begin
         // [GIVEN] A static XmlPort.Export call
         // [WHEN]  XmlPort.Export(portId, OutStr) is called
-        // [THEN]  No error — StaticExport is a no-op in standalone mode
-        Logic.TryStaticXmlPortExport(OutStr);
+        // [THEN]  RunnerOutOfScopeException — in-memory XmlPort not yet implemented
+        asserterror Logic.TryStaticXmlPortExport(OutStr);
+        Assert.ExpectedError('out-of-scope: NavXmlPort.StaticExport');
     end;
 
     // ==================================================================

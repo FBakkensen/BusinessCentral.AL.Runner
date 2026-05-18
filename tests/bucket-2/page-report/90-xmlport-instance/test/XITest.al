@@ -7,21 +7,24 @@ codeunit 95001 "XI Tests"
         Src: Codeunit "XI Src";
 
     [Test]
-    procedure Export_IsNoOp()
+    procedure Export_ThrowsOutOfScope()
     begin
-        Assert.IsTrue(Src.CallExport(), 'XmlPort.Export() must be a no-op');
+        asserterror Src.CallExport();
+        Assert.ExpectedError('out-of-scope: NavXmlPort.Export');
     end;
 
     [Test]
-    procedure Import_IsNoOp()
+    procedure Import_ThrowsOutOfScope()
     begin
-        Assert.IsTrue(Src.CallImport(), 'XmlPort.Import() must be a no-op');
+        asserterror Src.CallImport();
+        Assert.ExpectedError('out-of-scope: NavXmlPort.Import');
     end;
 
     [Test]
-    procedure Run_IsNoOp()
+    procedure Run_ThrowsOutOfScope()
     begin
-        Assert.IsTrue(Src.CallRun(), 'XmlPort.Run() must be a no-op');
+        asserterror Src.CallRun();
+        Assert.ExpectedError('out-of-scope: NavXmlPort.Run');
     end;
 
     [Test]
@@ -37,9 +40,10 @@ codeunit 95001 "XI Tests"
     end;
 
     [Test]
-    procedure SetTableView_IsNoOp()
+    procedure SetTableView_ThrowsOutOfScope()
     begin
-        Assert.IsTrue(Src.CallSetTableView(), 'XmlPort.SetTableView() must be a no-op');
+        asserterror Src.CallSetTableView();
+        Assert.ExpectedError('out-of-scope: NavXmlPort.SetTableView');
     end;
 
     [Test]
