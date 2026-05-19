@@ -992,6 +992,22 @@ public static partial class BcRuntime
                     Console.Error.WriteLine("[BcRuntime] hooking ALDatabase.ALSid");
                 }
             }
+
+            // ALDatabase.ALSessionID — same issue: reaches into NavCurrentThread.Session.
+            // No parameters; returns int. Hook returns fixed positive stub (42).
+            var alSessionId = alDbType.GetMethod("ALSessionID",
+                BindingFlags.Public | BindingFlags.Static, null, Type.EmptyTypes, null);
+            if (alSessionId != null)
+            {
+                var repl = typeof(AlRunnerV2.Patches.ALDatabasePatches)
+                    .GetMethod(nameof(AlRunnerV2.Patches.ALDatabasePatches.ALDatabase_ALSessionID),
+                        BindingFlags.Public | BindingFlags.Static);
+                if (repl != null)
+                {
+                    AlRunnerV2.Infrastructure.JmpHook.Apply(alSessionId, repl, "ALDatabase.ALSessionID");
+                    Console.Error.WriteLine("[BcRuntime] hooking ALDatabase.ALSessionID");
+                }
+            }
         }
 
         // NavXmlPortHandle.CreateTarget — same pattern as NavFormHandle/NavReportHandle.

@@ -30,4 +30,10 @@ public static class ALDatabasePatches
     /// Returns a fixed, non-empty, non-real-SID stub.</summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static string ALDatabase_ALSid(string userName) => StubSid;
+
+    /// <summary>Replacement for ALDatabase.ALSessionID().
+    /// Returns a fixed positive integer stub (42). The real getter reaches into
+    /// NavCurrentThread.Session which does not exist in the skeleton runtime.</summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static int ALDatabase_ALSessionID() => 42;
 }
