@@ -972,6 +972,28 @@ public static partial class BcRuntime
                 Hook(createTarget, nameof(NavReportHandle_CreateTarget), "NavReportHandle.CreateTarget");
         }
 
+        // ALDatabase.ALSid — BC's real getter walks NavCurrentThread.Session.Identity
+        // and NREs on the skeleton (no real session). Hook to return a constant stub
+        // SID. The JmpHook fires reliably for this static (R2R spike, 2026-05-18). See
+        // spike/v2/Runner/Patches/ALDatabasePatches.cs for the rationale.
+        var alDbType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.ALDatabase");
+        if (alDbType != null)
+        {
+            var alSid = alDbType.GetMethod("ALSid",
+                BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(string) }, null);
+            if (alSid != null)
+            {
+                var repl = typeof(AlRunnerV2.Patches.ALDatabasePatches)
+                    .GetMethod(nameof(AlRunnerV2.Patches.ALDatabasePatches.ALDatabase_ALSid),
+                        BindingFlags.Public | BindingFlags.Static);
+                if (repl != null)
+                {
+                    AlRunnerV2.Infrastructure.JmpHook.Apply(alSid, repl, "ALDatabase.ALSid");
+                    Console.Error.WriteLine("[BcRuntime] hooking ALDatabase.ALSid");
+                }
+            }
+        }
+
         // NavXmlPortHandle.CreateTarget — same pattern as NavFormHandle/NavReportHandle.
         // GetMetaXmlPortById throws ThrowMetaApplicationObjectNotFound for any XmlPort not
         // compiled by NCLCodeLoader; our cache has skeleton entries but CreateObjectInstance
