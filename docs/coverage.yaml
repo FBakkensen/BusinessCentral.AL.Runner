@@ -133,6 +133,7 @@ report_declaration:
     - tests/bucket-2/page-report/119-report-skip
     - tests/bucket-2/page-report/133-report-handler
     - tests/bucket-2/page-report/91-report-handle
+    - tests/bucket-2/page-report/279-report-instance
 
 table_declaration:
   layer: syntax

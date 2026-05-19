@@ -16,6 +16,10 @@ public static partial class BcRuntime
     // Cache: codeunit ID → generated codeunit Type (cleared per-test-assembly via SetTestAssembly).
     private static readonly ConcurrentDictionary<int, Type?> _codeunitTypeCache = new();
 
+    // Fallback cache: report ID → skeleton NCLMetaReport built via CreateEmptyNCLMetaReport
+    // when NavGlobal.NCLMetadata.GetMetaReportById returns null or throws.
+    private static readonly ConcurrentDictionary<int, object> _metaReportFallbackCache = new();
+
     /// <summary>
     /// Replacement for NavCodeunit.DoRunAsync(DataError, NavRecord).
     /// Bypasses DiagnosticsResolver.GetMostSpecificInstance(Session) which NREs on the skeleton
@@ -143,6 +147,104 @@ public static partial class BcRuntime
         return ctor.Invoke(new object[] { self });
     }
 
+    // One-time hook: NavReport..ctor(ITreeObject, Int32, NCLStaticMetadata) → same replacement
+    // as NavApplicationObjectBase..ctor. Registered lazily on first report creation because
+    // NavReport is in Ncl.dll which is loaded during ApplyAllPatches, but the ctor may not
+    // yet be JIT-compiled when we get here — JmpHook.Apply patches the native code regardless.
+    private static int _navReportCtorHookApplied;
+
+    private static void EnsureNavReportCtorHooked()
+    {
+        if (System.Threading.Interlocked.Exchange(ref _navReportCtorHookApplied, 1) != 0) return;
+        try
+        {
+            var navNcl = AppDomain.CurrentDomain.GetAssemblies()
+                .FirstOrDefault(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Ncl");
+            var navReportType = navNcl?.GetType("Microsoft.Dynamics.Nav.Runtime.NavReport");
+            if (navReportType == null)
+            {
+                Console.Error.WriteLine("[BcRuntime] EnsureNavReportCtorHooked: NavReport type not found");
+                return;
+            }
+            // Find NavReport..ctor(ITreeObject parent, Int32 objectId, NCLStaticMetadata staticMetadata).
+            var navReportCtor = navReportType.GetConstructors(
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                .FirstOrDefault(c =>
+                {
+                    var ps = c.GetParameters();
+                    return ps.Length == 3
+                        && ps[0].ParameterType.Name == "ITreeObject"
+                        && ps[1].ParameterType == typeof(int)
+                        && ps[2].ParameterType.Name == "NCLStaticMetadata";
+                });
+            if (navReportCtor == null)
+            {
+                Console.Error.WriteLine("[BcRuntime] EnsureNavReportCtorHooked: NavReport..ctor(ITreeObject, Int32, NCLStaticMetadata) not found");
+                return;
+            }
+            var replCtor = typeof(BcRuntime).GetMethod(nameof(NavApplicationObjectBaseCtorReplacement),
+                BindingFlags.Public | BindingFlags.Static)
+                ?? throw new InvalidOperationException("NavApplicationObjectBaseCtorReplacement not found");
+            AlRunnerV2.Infrastructure.JmpHook.Apply(navReportCtor, replCtor, "NavReport..ctor(ITreeObject, Int32, NCLStaticMetadata)");
+            Console.Error.WriteLine("[BcRuntime] NavReport..ctor(ITreeObject, Int32, NCLStaticMetadata) hooked → NavApplicationObjectBaseCtorReplacement");
+
+            // Also hook NavReport.BeginInitialization / EndInitialization — same NRE cluster as
+            // NavXmlPort.BeginInitialization (dereferences Session.MetadataProvider on skeleton).
+            var replNoOp = typeof(BcRuntime).GetMethod(nameof(NavReport_BeginEndInitialization),
+                BindingFlags.Public | BindingFlags.Static)
+                ?? throw new InvalidOperationException("NavReport_BeginEndInitialization not found");
+            var beginInit = navReportType.GetMethod("BeginInitialization",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance, null, Type.EmptyTypes, null);
+            if (beginInit != null)
+            {
+                AlRunnerV2.Infrastructure.JmpHook.Apply(beginInit, replNoOp, "NavReport.BeginInitialization()");
+                Console.Error.WriteLine("[BcRuntime] NavReport.BeginInitialization() hooked → NoOp");
+            }
+            var endInit = navReportType.GetMethod("EndInitialization",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance, null, Type.EmptyTypes, null);
+            if (endInit != null)
+            {
+                AlRunnerV2.Infrastructure.JmpHook.Apply(endInit, replNoOp, "NavReport.EndInitialization()");
+                Console.Error.WriteLine("[BcRuntime] NavReport.EndInitialization() hooked → NoOp");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[BcRuntime] EnsureNavReportCtorHooked failed: {ex.Message}");
+        }
+    }
+
+    // Cache: report types whose InitializeComponent has been no-op'd.
+    private static readonly ConcurrentDictionary<Type, byte> _hookedReportInitComponents = new();
+
+    private static void HookReportInitializeComponent(Type reportType)
+    {
+        if (!_hookedReportInitComponents.TryAdd(reportType, 0)) return;
+        try
+        {
+            var m = reportType.GetMethod("InitializeComponent",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance, null, Type.EmptyTypes, null);
+            if (m == null || m.DeclaringType != reportType) return; // no override in this type
+            var repl = typeof(BcRuntime).GetMethod(nameof(NavReport_BeginEndInitialization),
+                BindingFlags.Public | BindingFlags.Static)!;
+            AlRunnerV2.Infrastructure.JmpHook.Apply(m, repl, $"{reportType.Name}.InitializeComponent()");
+            Console.Error.WriteLine($"[BcRuntime] {reportType.Name}.InitializeComponent() hooked → NoOp");
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[BcRuntime] HookReportInitializeComponent({reportType.Name}) failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>No-op replacement for NavReport.BeginInitialization, EndInitialization,
+    /// and Report{N}.InitializeComponent — these dereference Session.MetadataProvider /
+    /// NCLMetaReport fields that are null on the skeleton, causing NREs identical to the
+    /// NavXmlPort.BeginInitialization cluster already patched in XmlPortPatches.cs.</summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void NavReport_BeginEndInitialization(object self)
+    {
+    }
+
     /// <summary>
     /// Replacement for NavReportHandle.CreateTarget().
     /// Same shape as NavFormHandle: bypass NavGlobal.NCLMetadata.GetMetaReportById +
@@ -153,6 +255,7 @@ public static partial class BcRuntime
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static object NavReportHandle_CreateTarget(object self)
     {
+        EnsureNavReportCtorHooked();
         var objIdProp = self.GetType().GetProperty("ObjectId",
             BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
         var objId = objIdProp!.GetValue(self)!;
@@ -164,6 +267,11 @@ public static partial class BcRuntime
         if (reportType == null)
             throw new InvalidOperationException(
                 $"Report{id} is not present in the test assembly or any loaded dependency.");
+        // Hook this report type's InitializeComponent override to no-op before invoking the ctor.
+        // Report{N}.InitializeComponent calls NavReport.BeginInitialization which dereferences
+        // Session.MetadataProvider (null on skeleton). Same NRE cluster as XmlPort — hook the
+        // concrete override before JIT compilation to guarantee the patch lands.
+        HookReportInitializeComponent(reportType);
         // BC emits report ctors as either:
         //   (ITreeObject parent)
         //   (ITreeObject parent, NCLMetaReport metadata)
@@ -181,9 +289,7 @@ public static partial class BcRuntime
         if (twoArg != null)
         {
             var metaParamType = twoArg.GetParameters()[1].ParameterType;
-            object? metaArg = null;
-            try { metaArg = LookupNclMetaForReport(id, metaParamType); }
-            catch { metaArg = null; }
+            var metaArg = LookupNclMetaForReport(id, metaParamType);
             return twoArg.Invoke(new object?[] { self, metaArg });
         }
         throw new InvalidOperationException(
@@ -192,19 +298,68 @@ public static partial class BcRuntime
 
     private static object? LookupNclMetaForReport(int id, Type expectedMetaType)
     {
-        // Reach into NavGlobal.SystemTenant.NCLMetadata's report-cache slot, populated
-        // by the §O/§P cache populator. Falls back to null if anything in the chain
-        // is missing — call sites are robust enough that NavReport.ctor proceeds.
+        // Primary: NavGlobal.NCLMetadata.GetMetaReportById (the real global metadata).
+        // This succeeds only when BC has registered the report in its own metadata store,
+        // which does not happen in runner mode — so we expect null or an exception here.
         var navNcl = AppDomain.CurrentDomain.GetAssemblies()
             .FirstOrDefault(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Ncl");
         var navGlobal = navNcl?.GetType("Microsoft.Dynamics.Nav.Runtime.NavGlobal");
         var nclMeta = navGlobal?.GetProperty("NCLMetadata", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
-        if (nclMeta == null) return null;
-        var getMeta = nclMeta.GetType().GetMethod("GetMetaReportById",
-            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance, null,
-            new[] { typeof(int) }, null);
-        try { return getMeta?.Invoke(nclMeta, new object[] { id }); }
-        catch { return null; }
+        if (nclMeta != null)
+        {
+            var getMeta = nclMeta.GetType().GetMethod("GetMetaReportById",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance, null,
+                new[] { typeof(int) }, null);
+            try
+            {
+                var primary = getMeta?.Invoke(nclMeta, new object[] { id });
+                if (primary != null) return primary;
+            }
+            catch { /* NavNCLApplicationObjectNotFoundException expected — fall through */ }
+        }
+
+        // Fallback: build a skeleton NCLMetaReport via CreateEmptyNCLMetaReport (internal static
+        // factory). This succeeds for any numeric report ID and gives the Report{N}..ctor a
+        // non-null metadata argument, preventing the NRE observed in the Report*..ctor cluster.
+        return _metaReportFallbackCache.GetOrAdd(id, static reportId =>
+        {
+            try
+            {
+                var nclAsm = AppDomain.CurrentDomain.GetAssemblies()
+                    .FirstOrDefault(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Ncl");
+                var tMeta = nclAsm?.GetType("Microsoft.Dynamics.Nav.Runtime.NCLMetaReport");
+                var factory = tMeta?.GetMethod("CreateEmptyNCLMetaReport",
+                    BindingFlags.NonPublic | BindingFlags.Static);
+                if (factory == null)
+                    throw new InvalidOperationException("CreateEmptyNCLMetaReport not found on NCLMetaReport");
+
+                var tAppGroup = nclAsm!.GetType("Microsoft.Dynamics.Nav.Runtime.Apps.NavAppGroup");
+                var baseGroup = tAppGroup?.GetProperty("BaseGroup",
+                        BindingFlags.Public | BindingFlags.Static)?.GetValue(null)
+                    ?? tAppGroup?.GetField("BaseGroup",
+                        BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
+
+                var meta = factory.Invoke(null, new object?[] { null, reportId, baseGroup, -1, string.Empty });
+                if (meta == null)
+                    throw new InvalidOperationException($"CreateEmptyNCLMetaReport returned null for Report{reportId}");
+
+                // Mark metadataLoaded=true so the JMP-hooked Populate path is never entered.
+                var tBase = nclAsm.GetType("Microsoft.Dynamics.Nav.Runtime.NCLMetaApplicationObject");
+                var fLoaded = tBase?.GetField("metadataLoaded",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+                if (fLoaded != null)
+                    AlRunnerV2.Infrastructure.FieldPoke.SetInstance(fLoaded, meta, true);
+
+                Console.Error.WriteLine($"[BcRuntime] LookupNclMetaForReport({reportId}): built skeleton NCLMetaReport via fallback");
+                return meta;
+            }
+            catch (Exception ex)
+            {
+                var inner = ex is TargetInvocationException tie ? tie.InnerException ?? ex : ex;
+                throw new InvalidOperationException(
+                    $"LookupNclMetaForReport fallback failed for Report{reportId}: {inner.GetType().Name}: {inner.Message}", inner);
+            }
+        });
     }
 
     private static Type? FindReportType(int id)
