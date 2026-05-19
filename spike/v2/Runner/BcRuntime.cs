@@ -1086,6 +1086,32 @@ public static partial class BcRuntime
                     Console.Error.WriteLine("[BcRuntime] hooking ALDatabase.ALSessionID");
                 }
             }
+
+            // ALDatabase.ALTenantID — sibling static of ALSid; real getter walks
+            // NavCurrentThread.Session.Tenant.Id and NREs on the skeleton thread.
+            // Hook returns constant "STANDALONE" (BC standalone-mode tenant id).
+            // Probe-verified 2026-05-19: JmpHook fires for this static (unlike
+            // get_ALUserID which is R2R-baked at the call site).
+            var alTenantId = alDbType.GetMethod("ALTenantID",
+                BindingFlags.Public | BindingFlags.Static, null, Type.EmptyTypes, null);
+            if (alTenantId != null)
+            {
+                var repl = typeof(AlRunnerV2.Patches.ALDatabasePatches)
+                    .GetMethod(nameof(AlRunnerV2.Patches.ALDatabasePatches.ALDatabase_ALTenantID),
+                        BindingFlags.Public | BindingFlags.Static);
+                if (repl != null)
+                {
+                    AlRunnerV2.Infrastructure.JmpHook.Apply(alTenantId, repl, "ALDatabase.ALTenantID");
+                    Console.Error.WriteLine("[BcRuntime] hooking ALDatabase.ALTenantID");
+                }
+            }
+
+            // ALDatabase.ALServiceInstanceID — NOT HOOKED. Probe-verified 2026-05-19:
+            // the JmpHook registration succeeds but the replacement body never fires;
+            // the call site is R2R-baked / inlined and returns the default 0. Per
+            // .claude/rules/loud-failures.md we do NOT silently install a hook that
+            // doesn't intercept. Faithfulness gap: Database.ServiceInstanceId returns 0
+            // on the skeleton runtime. Tracked separately.
         }
 
         // NavXmlPortHandle.CreateTarget — same pattern as NavFormHandle/NavReportHandle.

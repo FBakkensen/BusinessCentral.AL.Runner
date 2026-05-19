@@ -36,4 +36,12 @@ public static class ALDatabasePatches
     /// NavCurrentThread.Session which does not exist in the skeleton runtime.</summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static int ALDatabase_ALSessionID() => 42;
+
+    /// <summary>Replacement for ALDatabase.ALTenantID().
+    /// Returns a fixed non-empty tenant id stub. The real getter reaches into
+    /// NavCurrentThread.Session.Tenant.Id which does not exist on the skeleton
+    /// thread. Value 'STANDALONE' matches BC's standalone-mode convention used
+    /// by 318-navtext-string-rewrite.</summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static string ALDatabase_ALTenantID() => "STANDALONE";
 }
