@@ -1,9 +1,8 @@
 /// Tests for File.Upload 5-param AL form (issue #1531).
 ///
 /// BC AL: File.Upload(DialogTitle, FromFolder, FilterText, FromFile, var ToFile)
-/// This is a static method. BC emits in C#:
-///   MockFile.ALUpload(scope, DataError, dialogTitle, fromFolder, filterText, fromFile, ByRef NavText toFile)
-/// = 7 args. MockFile only had 1- and 2-arg overloads, so CS1501 resulted.
+/// This browser-roundtrip upload variant is out-of-scope (§3.4 file-storage).
+/// All call sites must throw RunnerOutOfScopeException with api="NavFile.Upload".
 codeunit 50259 "File Upload Overload Test"
 {
     Subtype = Test;
@@ -11,28 +10,26 @@ codeunit 50259 "File Upload Overload Test"
     var
         Assert: Codeunit Assert;
 
-    // ── File.Upload 5-param static form ─────────────────────────────────────
+    // ── File.Upload 5-param static form — OOS (browser round-trip) ─────────
 
-    /// Positive: Upload with all 5 AL params must compile and run without error.
-    /// In standalone mode there is no UI so var ToFile is set to empty.
+    /// File.Upload (browser round-trip) is out-of-scope (§3.4 file-storage).
     [Test]
-    procedure Upload_FiveParam_SetsToFileEmpty()
+    procedure Upload_FiveParam_ThrowsOutOfScope()
     var
         toFile: Text;
     begin
         toFile := 'original';
-        File.Upload('Choose File', 'C:\temp', '*.txt', 'source.txt', toFile);
-        // In standalone mode (no UI) the upload is a no-op; ToFile is cleared
-        Assert.AreEqual('', toFile, 'File.Upload 5-param: ToFile must be empty string in stub (no UI)');
+        asserterror File.Upload('Choose File', 'C:\temp', '*.txt', 'source.txt', toFile);
+        Assert.ExpectedError('out-of-scope: NavFile.Upload');
     end;
 
-    /// Positive: Upload called with empty strings must not throw.
+    /// File.Upload with empty strings — still out-of-scope.
     [Test]
-    procedure Upload_FiveParam_NoError()
+    procedure Upload_FiveParam_EmptyArgs_ThrowsOutOfScope()
     var
         toFile: Text;
     begin
-        File.Upload('My Dialog', '', 'All Files|*.*', '', toFile);
-        Assert.AreEqual('', toFile, 'File.Upload 5-param stub must succeed without error');
+        asserterror File.Upload('My Dialog', '', 'All Files|*.*', '', toFile);
+        Assert.ExpectedError('out-of-scope: NavFile.Upload');
     end;
 }

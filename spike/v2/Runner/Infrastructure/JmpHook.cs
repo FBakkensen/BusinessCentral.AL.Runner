@@ -42,7 +42,18 @@ internal static class JmpHook
 
         WriteJmp(origFp, replFp);
         if (compiledCode != IntPtr.Zero && compiledCode != origFp && compiledCode != replFp)
-            try { WriteJmp(compiledCode, replFp); } catch { }
+            try {
+                byte[] ccBytes = new byte[8];
+                Marshal.Copy(compiledCode, ccBytes, 0, 8);
+                // Follow one more level of FF 25 indirection (JMP stub chain)
+                if (ccBytes[0] == 0xFF && ccBytes[1] == 0x25)
+                {
+                    var actualNativeCode = Marshal.ReadIntPtr(compiledCode + 6 + BitConverter.ToInt32(ccBytes, 2));
+                    if (actualNativeCode != IntPtr.Zero && actualNativeCode != origFp && actualNativeCode != replFp && actualNativeCode != compiledCode)
+                        try { WriteJmp(actualNativeCode, replFp); } catch { }
+                }
+                WriteJmp(compiledCode, replFp);
+            } catch { }
     }
 
     private static void WriteJmp(IntPtr target, IntPtr destination)
@@ -54,7 +65,7 @@ internal static class JmpHook
         long pageSize = 4096;
         long addr = target.ToInt64();
         long pageStart = addr & ~(pageSize - 1);
-        var regionSize = (nuint)((addr - pageStart) + jmp.Length + pageSize);
+        var regionSize = (nuint)(((addr - pageStart) + jmp.Length + pageSize - 1) & ~(pageSize - 1));
         if (mprotect(new IntPtr(pageStart), regionSize, PROT_READ | PROT_WRITE | PROT_EXEC) != 0)
         {
             Console.Error.WriteLine($"[JmpHook.WriteJmp] mprotect FAILED for target=0x{target:X} errno={Marshal.GetLastSystemError()}");
@@ -144,16 +155,6 @@ internal static class JmpHook
             return false;
         }
 
-        // Print extended precode bytes for diagnostics.
-        byte[] extended = new byte[20];
-        try { Marshal.Copy(precodeAddr, extended, 0, 20); } catch { }
-        string hexBytes = string.Join(" ", extended.Take(20).Select(b => b.ToString("X2")));
-        Console.Error.WriteLine(
-            $"[JmpHook.InstallIndirect] {label}: precode=0x{precodeAddr:X} bytes=[{hexBytes}]");
-        Console.Error.WriteLine(
-            $"[JmpHook.InstallIndirect] {label}: disp32={disp32} cell=0x{cellAddrRaw:X} " +
-            $"orig=0x{originalTarget:X} repl=0x{replFp:X}");
-
         // Step 5: mprotect the page containing the cell to allow writes.
         //
         // Two cases:
@@ -204,8 +205,6 @@ internal static class JmpHook
 
         // Step 7: restore page protection.
         mprotect(new IntPtr(cellPage), regionSize, restoreProt);
-
-        Console.Error.WriteLine($"[JmpHook.InstallIndirect] {label}: cell patched ✓");
         return true;
     }
 }

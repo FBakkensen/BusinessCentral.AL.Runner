@@ -17,6 +17,8 @@ public static partial class BcRuntime
     private static Microsoft.Dynamics.Nav.Runtime.NavMethodScope? _skeletonRootScope;
     public static Microsoft.Dynamics.Nav.Runtime.ITreeObject? RootTreeStub;
 
+    public static volatile bool OosHooksActive;
+
     // Reflected fields used by the NavMethodScope ctor replacement.
     // Populated in ApplyAllPatches; used in NavMethodScopeCtorReplacement.
     private static FieldInfo? _fTreeObjTree;           // TreeObject.tree
@@ -1089,6 +1091,23 @@ public static partial class BcRuntime
                     if (tableNodeCtor != null)
                         Hook(tableNodeCtor, nameof(NavXmlPortTableNode_Ctor), "NavXmlPortTableNode.ctor(NavRecordHandle)");
                 }
+            }
+        }
+
+        // NavFile.ALUpload / ALDownload — browser round-trip (§3.4 file-storage OOS).
+        // The stream-based variants (ALUploadIntoStream, ALDownloadFromStream) are in-scope
+        // and are left untouched.
+        var navFileType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavFile");
+        if (navFileType != null)
+        {
+            foreach (var m in navFileType.GetMethods(BindingFlags.Public | BindingFlags.Static))
+            {
+                if (m.Name != "ALUpload" && m.Name != "ALDownload") continue;
+                var ps = m.GetParameters();
+                if (ps.Length != 6 && ps.Length != 7) continue;
+                var replName = (m.Name == "ALUpload" ? "NavFile_ALUpload" : "NavFile_ALDownload")
+                    + $"_{ps.Length}";
+                Hook(m, replName, $"NavFile.{m.Name}/{ps.Length}p");
             }
         }
 
