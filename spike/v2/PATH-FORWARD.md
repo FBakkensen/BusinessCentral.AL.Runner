@@ -1,22 +1,31 @@
 # Path forward — closing the remaining corpus gap
 
-**Status as of HEAD `678f77c5` (2026-05-19 morning):** 3173/4080 = 77.77% pass. 907 fails left.
+**Status as of HEAD `d05bab7f` (2026-05-19 afternoon):** 3183/4080 = **78.01%** pass. 897 fails left.
 
-Session deltas since `e98ca03c`:
+Session deltas (2026-05-19 follow-up, on top of `8ca3f84f`):
+- `c95debdc` — **Inv 1**: NavSession.Authenticator → NavUser → unlocks AL UserId/UserSecurityId. **+9 P** in record-table. Skeleton field-poke pattern.
+- `d05bab7f` — **Inv 2**: NavRecordId.CollationAwareStringComparer JmpHook (TempTable Modify NRE). +1 P (cluster much smaller than hypothesized).
+
+Inv 3 (Report*.ctor) BLOCKED with two-part fix shape documented in handoff. Inv 4 (FlowField parser) premise INVALIDATED — only 2 tests match, both are AL fixture bugs.
+
+Earlier session deltas (overnight, HEAD `678f77c5`/`8ca3f84f`):
 - `33f8c5f7` — locked `RunnerOutOfScopeException` message contract. Category B Step 1.
 - `292d9bab` — XmlPort batch (+12 P).
 - `c8c09f3b` — working-list docs.
 - `4221bc51` — NavFile.Upload/Download OOS (+2 P). Includes JmpHook FF 25 indirection fix.
 - `8a72e2c2` — NavForm.RunAsync OOS (+9 P). Includes BcAssembler polyfill redirect pattern for R2R-trapped sync wrappers.
 - `d65b07cb` — page-report cluster analysis.
-- `43ef05d3` — ALDatabase.ALSid hook (+6 P). Confirms ALDatabase static getters fire (NOT R2R-trapped).
+- `43ef05d3` — ALDatabase.ALSid hook (+6 P).
 - `678f77c5` — ALDatabase.ALSessionID hook (+3 P).
+- `8ca3f84f` — PATH-FORWARD overnight session-end summary.
 
-Findings this session (see `feedback_r2r_envvar_doesnt_help` for details):
+Findings (consolidated):
 1. **`DOTNET_ReadyToRun=0` doesn't bypass R2R-inline trap** — JIT also inlines tiny bool returners.
 2. **`NavReport.SaveAs*` is R2R-trapped** — ~30 hooks installed, none fired. Reverted. ~54 tests stuck behind this.
-3. **AL `UserId()` doesn't call `ALDatabase.get_ALUserID`** — probe never fires. Different dispatch path. ~7 tests stuck.
-4. **`get_ALCompanyName` flips +1 in target test but bucket-wide regresses by -1** — uncommitted; investigate.
+3. **AL identity builtins (UserId/UserSecurityId/TenantId/ServiceInstanceId) DO compile to `ALDatabase` statics — but those statics are R2R-inlined.** Their inlined bodies read `NavCurrentThread.Session.User.{Name,Id}` and `Session.Tenant.Id`. Inv 1 unlocked this via skeleton field-poke on `NavSession.<Authenticator>k__BackingField → NavUser`. **Pattern reusable for any R2R-inlined ALDatabase getter that reads a Session field.** TenantId + ServiceInstanceId need more state (NavTenant Tree+database, NavEnvironment lazy-init) — followup.
+4. **`get_ALCompanyName` flips +1 in target test but bucket-wide regresses by -1** — still uncommitted; investigate later.
+5. **Report*.ctor "doc-predicted single fix" is incomplete** — fixing `LookupNclMetaForReport` makes metaArg non-null but the NRE shifts to `NavReport..ctor`'s null `metadata.StaticMetadata`. Needs two-part fix.
+6. **Cross-`Patches/*Patches.cs` calls from a JmpHook'd method segfault at startup.** `RuntimeHelpers.PrepareMethod` during `JmpHook.Apply` cascades into the cross-class, colliding with a precode mid-patch. **Workaround:** resolve callee via `Type.GetType().GetMethod().Invoke()` reflection instead of a static-symbol reference.
 
 The remaining fails are not all the same shape. They split into four categories
 with very different fixing strategies and very different yield-per-effort.
