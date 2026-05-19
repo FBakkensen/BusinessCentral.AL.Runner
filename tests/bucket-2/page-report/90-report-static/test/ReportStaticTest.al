@@ -26,31 +26,36 @@ codeunit 91001 "RS Tests"
     end;
 
     // ------------------------------------------------------------------
-    // SaveAs* methods: no file I/O in standalone mode
+    // SaveAs* methods: report-rendering is out-of-scope (OOS)
+    // NavReport.SaveAsAsync is Cecil-rewritten to throw OOS.
     // ------------------------------------------------------------------
 
     [Test]
-    procedure Report_SaveAsPdf_IsNoOp()
+    procedure Report_SaveAsPdf_OutOfScope()
     begin
-        Src.CallSaveAsPdf(99999, 'report.pdf');
+        asserterror Src.CallSaveAsPdf(99999, 'report.pdf');
+        Assert.ExpectedError('out-of-scope: NavReport.SaveAs');
     end;
 
     [Test]
-    procedure Report_SaveAsWord_IsNoOp()
+    procedure Report_SaveAsWord_OutOfScope()
     begin
-        Src.CallSaveAsWord(99999, 'report.docx');
+        asserterror Src.CallSaveAsWord(99999, 'report.docx');
+        Assert.ExpectedError('out-of-scope: NavReport.SaveAs');
     end;
 
     [Test]
-    procedure Report_SaveAsExcel_IsNoOp()
+    procedure Report_SaveAsExcel_OutOfScope()
     begin
-        Src.CallSaveAsExcel(99999, 'report.xlsx');
+        asserterror Src.CallSaveAsExcel(99999, 'report.xlsx');
+        Assert.ExpectedError('out-of-scope: NavReport.SaveAs');
     end;
 
     [Test]
-    procedure Report_SaveAsXml_IsNoOp()
+    procedure Report_SaveAsXml_OutOfScope()
     begin
-        Src.CallSaveAsXml(99999, 'report.xml');
+        asserterror Src.CallSaveAsXml(99999, 'report.xml');
+        Assert.ExpectedError('out-of-scope: NavReport.SaveAs');
     end;
 
     // ------------------------------------------------------------------

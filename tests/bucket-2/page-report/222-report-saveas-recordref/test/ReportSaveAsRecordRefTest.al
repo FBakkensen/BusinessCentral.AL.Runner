@@ -1,5 +1,5 @@
-/// Tests that Report.SaveAs with a RecordRef parameter compiles and runs
-/// without throwing in standalone mode (no-op stub contract).
+/// Tests that Report.SaveAs (with and without RecordRef) is out-of-scope:
+/// NavReport.SaveAsAsync is Cecil-rewritten to throw OOS.
 codeunit 98202 "Report SaveAs RecordRef Test"
 {
     Subtype = Test;
@@ -8,24 +8,26 @@ codeunit 98202 "Report SaveAs RecordRef Test"
         Assert: Codeunit Assert;
 
     [Test]
-    procedure Report_SaveAs_WithRecordRef_IsNoOp()
+    procedure Report_SaveAs_WithRecordRef_OutOfScope()
     var
         Src: Codeunit "Report SaveAs RecordRef Src";
     begin
         // [GIVEN] A report id, request data, and a RecordRef
-        // [WHEN]  Report.SaveAs(Id, RequestData, Format, OutStream, RecordRef) is called
-        // [THEN]  No exception — the 5-arg static overload is a no-op in standalone mode
-        Src.SaveAsWithRecordRef(99999, '');
+        // [WHEN]  NavReport.SaveAsAsync is Cecil-rewritten to throw OOS
+        // [THEN]  Throws out-of-scope error — report-rendering is not supported
+        asserterror Src.SaveAsWithRecordRef(99999, '');
+        Assert.ExpectedError('out-of-scope: NavReport.SaveAs');
     end;
 
     [Test]
-    procedure Report_SaveAs_WithoutRecordRef_IsNoOp()
+    procedure Report_SaveAs_WithoutRecordRef_OutOfScope()
     var
         Src: Codeunit "Report SaveAs RecordRef Src";
     begin
         // [GIVEN] A report id and request data
-        // [WHEN]  Report.SaveAs(Id, RequestData, Format, OutStream) is called (existing form)
-        // [THEN]  No exception — regression guard for existing 4-arg overload
-        Src.SaveAsWithoutRecordRef(99999, '');
+        // [WHEN]  NavReport.SaveAsAsync is Cecil-rewritten to throw OOS
+        // [THEN]  Throws out-of-scope error — report-rendering is not supported
+        asserterror Src.SaveAsWithoutRecordRef(99999, '');
+        Assert.ExpectedError('out-of-scope: NavReport.SaveAs');
     end;
 }

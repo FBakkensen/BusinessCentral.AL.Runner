@@ -7383,66 +7383,85 @@ Report.RunRequestPage (Integer, Text):
 Report.SaveAs (Integer, Text, ReportFormat, OutStream):
   layer: runtime-api
   category: Report
-  status: covered
+  status: out-of-scope
   tests:
-    - tests/bucket-2/page-report/90-report-static
     - tests/bucket-2/page-report/314-report-saveas-bool
-  notes: NavReport.SaveAs → MockReportHandle.StaticSaveAs (4-arg). Returns bool (true) in standalone mode. Fixes #1526.
+    - tests/bucket-2/page-report/222-report-saveas-recordref
+  notes: >
+    Report-rendering is out-of-scope. NavReport.SaveAsAsync is Cecil-rewritten (NclCecilRewrite.cs)
+    to throw InvalidOperationException("out-of-scope: NavReport.SaveAs — report-rendering —
+    see docs/scope.md#report-rendering"). Tests converted from IsNoOp to OutOfScope asserterror shape.
 
 Report.SaveAs (Integer, Text, ReportFormat, OutStream, RecordRef):
   layer: runtime-api
   category: Report
-  status: covered
+  status: out-of-scope
   tests:
-    - tests/bucket-2/page-report/90-report-static
     - tests/bucket-2/page-report/222-report-saveas-recordref
     - tests/bucket-2/page-report/314-report-saveas-bool
-  notes: (path-only, OutStream, OutStream+RecordRef); NavReport.SaveAs → MockReportHandle.StaticSaveAs (5-arg). Returns bool (true) in standalone mode. Fixes #1088, #1526.
+  notes: >
+    Report-rendering is out-of-scope. NavReport.SaveAsAsync is Cecil-rewritten (NclCecilRewrite.cs)
+    to throw InvalidOperationException("out-of-scope: NavReport.SaveAs — report-rendering —
+    see docs/scope.md#report-rendering"). Tests converted from IsNoOp to OutOfScope asserterror shape.
 
 Report.SaveAsExcel (Integer, Text, Table):
   layer: runtime-api
   category: Report
-  status: covered
+  status: out-of-scope
   tests:
     - tests/bucket-2/page-report/90-report-static
     - tests/bucket-2/page-report/314-report-saveas-bool
-  notes: NavReport.SaveAsExcel → MockReportHandle.StaticSaveAsExcel. Returns bool (true) in standalone mode. Fixes #1526.
+  notes: >
+    Report-rendering is out-of-scope. NavReport.SaveAsAsync is Cecil-rewritten (NclCecilRewrite.cs)
+    to throw InvalidOperationException("out-of-scope: NavReport.SaveAs — report-rendering —
+    see docs/scope.md#report-rendering"). Tests converted from IsNoOp to OutOfScope asserterror shape.
 
 Report.SaveAsHtml (Integer, Text, Table):
   layer: runtime-api
   category: Report
-  status: covered
+  status: out-of-scope
   tests:
-    - tests/bucket-2/page-report/90-report-static
     - tests/bucket-2/page-report/314-report-saveas-bool
-  notes: NavReport.SaveAsHtml → MockReportHandle.StaticSaveAsHtml. Returns bool (true) in standalone mode. Fixes #1526.
+  notes: >
+    Report-rendering is out-of-scope. NavReport.SaveAsAsync is Cecil-rewritten (NclCecilRewrite.cs)
+    to throw InvalidOperationException("out-of-scope: NavReport.SaveAs — report-rendering —
+    see docs/scope.md#report-rendering"). Tests converted from IsNoOp to OutOfScope asserterror shape.
 
 Report.SaveAsPdf (Integer, Text, Table):
   layer: runtime-api
   category: Report
-  status: covered
+  status: out-of-scope
   tests:
     - tests/bucket-2/page-report/90-report-static
     - tests/bucket-2/page-report/314-report-saveas-bool
-  notes: NavReport.SaveAsPdf → MockReportHandle.StaticSaveAsPdf. Returns bool (true) in standalone mode. Fixes #1526.
+  notes: >
+    Report-rendering is out-of-scope. NavReport.SaveAsAsync is Cecil-rewritten (NclCecilRewrite.cs)
+    to throw InvalidOperationException("out-of-scope: NavReport.SaveAs — report-rendering —
+    see docs/scope.md#report-rendering"). Tests converted from IsNoOp to OutOfScope asserterror shape.
 
 Report.SaveAsWord (Integer, Text, Table):
   layer: runtime-api
   category: Report
-  status: covered
+  status: out-of-scope
   tests:
     - tests/bucket-2/page-report/90-report-static
     - tests/bucket-2/page-report/314-report-saveas-bool
-  notes: NavReport.SaveAsWord → MockReportHandle.StaticSaveAsWord. Returns bool (true) in standalone mode. Fixes #1526.
+  notes: >
+    Report-rendering is out-of-scope. NavReport.SaveAsAsync is Cecil-rewritten (NclCecilRewrite.cs)
+    to throw InvalidOperationException("out-of-scope: NavReport.SaveAs — report-rendering —
+    see docs/scope.md#report-rendering"). Tests converted from IsNoOp to OutOfScope asserterror shape.
 
 Report.SaveAsXml (Integer, Text, Table):
   layer: runtime-api
   category: Report
-  status: covered
+  status: out-of-scope
   tests:
     - tests/bucket-2/page-report/90-report-static
     - tests/bucket-2/page-report/314-report-saveas-bool
-  notes: NavReport.SaveAsXml → MockReportHandle.StaticSaveAsXml. Returns bool (true) in standalone mode. Fixes #1526.
+  notes: >
+    Report-rendering is out-of-scope. NavReport.SaveAsAsync is Cecil-rewritten (NclCecilRewrite.cs)
+    to throw InvalidOperationException("out-of-scope: NavReport.SaveAs — report-rendering —
+    see docs/scope.md#report-rendering"). Tests converted from IsNoOp to OutOfScope asserterror shape.
 
 Report.ValidateAndPrepareLayout (Integer, InStream, InStream, ReportLayoutType):
   layer: runtime-api
