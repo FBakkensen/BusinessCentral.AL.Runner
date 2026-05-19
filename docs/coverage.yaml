@@ -6370,6 +6370,18 @@ Page.GetBackgroundParameters ():
   status: covered
   notes: returns empty NavDictionary in standalone mode
 
+Page.GetMasterPage ():
+  layer: runtime-api
+  category: Page
+  status: covered
+  notes: >
+    NavForm.GetMasterPage() returns ValueTuple<MasterPage,MetaTable>. R2R-trapped per
+    R2R-DOWNSTREAM-MAP.md §2; Cecil-rewritten in NclCecilRewrite.cs to return
+    default(ValueTuple<MasterPage,MetaTable>) via ldloca.s/initobj/ldloc.0. Allowed
+    per .claude/rules/precompiled-dll-respect.md (Ncl is runtime-engine). Cluster #5
+    from CORPUS-CLASSIFICATION-2026-05-19-FINAL.md (~33 affected tests across
+    page-report + codeunit-runtime).
+
 Page.GetRecord (Table):
   layer: runtime-api
   category: Page

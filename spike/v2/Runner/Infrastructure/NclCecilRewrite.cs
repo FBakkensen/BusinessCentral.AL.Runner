@@ -83,6 +83,57 @@ public static class NclCecilRewrite
             throw new InvalidOperationException("SaveAsAsync method not found in NavReport — Ncl shape changed; do not commit");
         Console.Error.WriteLine($"[Cecil] Rewrote {saveAsRewroteCount} SaveAsAsync overload(s) → throw OOS");
 
+        // NavForm.GetMasterPage → return null/default (R2R-trapped; Cecil-rewrite is the only path)
+        var navFormType = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.NavForm");
+        if (navFormType == null)
+            throw new InvalidOperationException("NavForm type not found in Ncl.dll — Ncl shape changed; do not commit");
+
+        int getMasterPageRewroteCount = 0;
+        foreach (var method in navFormType.Methods.Where(mm => mm.Name == "GetMasterPage").ToList())
+        {
+            var returnType = method.ReturnType;
+            Console.Error.WriteLine($"[Cecil] Rewriting {method.FullName} → return null/default (ReturnType={returnType.FullName}, IsValueType={returnType.IsValueType})");
+
+            if (returnType.FullName.StartsWith("System.Threading.Tasks.Task`"))
+                throw new InvalidOperationException($"GetMasterPage returns Task<T> ({returnType.FullName}) — cannot safely emit default; do not commit");
+
+            var body = method.Body;
+            body.Instructions.Clear();
+            body.Variables.Clear();
+            body.ExceptionHandlers.Clear();
+            var il = body.GetILProcessor();
+
+            if (!returnType.IsValueType)
+            {
+                il.Append(il.Create(OpCodes.Ldnull));
+                il.Append(il.Create(OpCodes.Ret));
+                body.MaxStackSize = 1;
+            }
+            else if (returnType.FullName is "System.Int32" or "System.Boolean" or "System.Byte"
+                                         or "System.Int16" or "System.Int64" or "System.Char")
+            {
+                il.Append(il.Create(OpCodes.Ldc_I4_0));
+                il.Append(il.Create(OpCodes.Ret));
+                body.MaxStackSize = 1;
+            }
+            else
+            {
+                // ValueTask<T>, ValueTuple<...>, or other value types → default(T) via initobj
+                var local = new VariableDefinition(asm.MainModule.ImportReference(returnType));
+                body.Variables.Add(local);
+                body.InitLocals = true;
+                il.Append(il.Create(OpCodes.Ldloca_S, local));
+                il.Append(il.Create(OpCodes.Initobj, asm.MainModule.ImportReference(returnType)));
+                il.Append(il.Create(OpCodes.Ldloc_0));
+                il.Append(il.Create(OpCodes.Ret));
+                body.MaxStackSize = 1;
+            }
+            getMasterPageRewroteCount++;
+        }
+        if (getMasterPageRewroteCount == 0)
+            throw new InvalidOperationException("GetMasterPage method not found in NavForm — Ncl shape changed; do not commit");
+        Console.Error.WriteLine($"[Cecil] Rewrote {getMasterPageRewroteCount} GetMasterPage overload(s) → return null/default");
+
         var outStream = new MemoryStream();
         asm.Write(outStream);
         var modifiedBytes = outStream.ToArray();
