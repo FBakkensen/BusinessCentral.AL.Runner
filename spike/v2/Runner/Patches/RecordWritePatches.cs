@@ -46,6 +46,13 @@ public static partial class BcRuntime
         // our skeleton lacks a TenantDataAccess for system tables (see docs/scope.md §2).
         AlRunnerV2.Patches.RecordLinkPatches.Register(navNcl);
 
+        // NavRecordId.get_CollationAwareStringComparer — real getter walks
+        // Session.Database.CollationAwareStringComparer which NREs on the skeleton
+        // (NavTenant.database LazyEx is null). Hook with a cached comparer to drain
+        // the NRE cluster that surfaces from TempTableDataProvider.Modify on
+        // Rename/Modify paths. See Patches/NavRecordIdPatches.cs.
+        AlRunnerV2.Patches.NavRecordIdPatches.Register(navNcl);
+
         // IsolatedStorage (ALIsolatedStorage.AL*) in-memory polyfill — real bodies
         // route through IsolatedStorageRepository which requires a NavTenant +
         // DataAccessSource for tenant-scoped tables, both NRE on the skeleton.
