@@ -243,9 +243,14 @@ public static partial class BcRuntime
     {
         var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             ".local/share/al-runner/artifacts/27.5.46862.48827");
+        // Ncl is preloaded with Cecil rewrite by Program.cs before this runs.
         foreach (var n in new[] { "Microsoft.Dynamics.Nav.Common", "Microsoft.Dynamics.Nav.Types",
-                                  "Microsoft.Dynamics.Nav.Language", "Microsoft.Dynamics.Nav.Ncl" })
+                                  "Microsoft.Dynamics.Nav.Language" })
             Assembly.LoadFrom(Path.Combine(dir, n + ".dll"));
+        // Sanity: confirm Ncl in the AppDomain is the Cecil-rewritten one (no Location).
+        var ncl = AppDomain.CurrentDomain.GetAssemblies()
+            .FirstOrDefault(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Ncl");
+        Console.Error.WriteLine($"[BcRuntime] Ncl in AppDomain: Location='{ncl?.Location}' (empty = byte-array load OK)");
     }
 
     private static void ApplyAllPatches(Assembly navNcl)
@@ -1072,6 +1077,55 @@ public static partial class BcRuntime
                 var repl = typeof(FormPatches).GetMethod(replName, BindingFlags.Public | BindingFlags.Static)!;
                 Hook(runMethod, repl, $"NavFormHandle.Run/{ps.Length}p");
             }
+        }
+
+        // NavForm.RunModalAsync — PAGE-REPORT-CLUSTERS §2. Hook all 7 overloads
+        // (3 instance + 4 static) to return FormResult.OK without touching skeleton
+        // session state. Static overloads have no `self` parameter.
+        var navFormRuntimeType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavForm");
+        if (navFormRuntimeType != null)
+        {
+            int runModalHooked = 0;
+            foreach (var m in navFormRuntimeType.GetMethods(
+                BindingFlags.Public | BindingFlags.NonPublic |
+                BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly)
+                .Where(m2 => m2.Name == "RunModalAsync"))
+            {
+                var ps = m.GetParameters();
+                string? replName = null;
+                if (!m.IsStatic)
+                {
+                    replName = ps.Length switch
+                    {
+                        0 => nameof(FormPatches.NavForm_RunModalAsync_0),
+                        1 => nameof(FormPatches.NavForm_RunModalAsync_1),
+                        2 => nameof(FormPatches.NavForm_RunModalAsync_2),
+                        _ => null
+                    };
+                }
+                else
+                {
+                    replName = ps.Length switch
+                    {
+                        3 => nameof(FormPatches.NavForm_RunModalAsync_S3),
+                        4 => nameof(FormPatches.NavForm_RunModalAsync_S4),
+                        5 when ps[4].ParameterType == typeof(int)
+                            => nameof(FormPatches.NavForm_RunModalAsync_S5n),
+                        5 => nameof(FormPatches.NavForm_RunModalAsync_S5f),
+                        _ => null
+                    };
+                }
+                if (replName == null) continue;
+                var repl = typeof(FormPatches).GetMethod(replName, BindingFlags.Public | BindingFlags.Static);
+                if (repl == null)
+                {
+                    Console.Error.WriteLine($"[BcRuntime] NavForm.RunModalAsync repl not found: {replName}");
+                    continue;
+                }
+                Hook(m, repl, $"NavForm.RunModalAsync/{(m.IsStatic ? "static" : "inst")}/{ps.Length}p");
+                runModalHooked++;
+            }
+            Console.Error.WriteLine($"[BcRuntime] NavForm.RunModalAsync: {runModalHooked} overloads hooked");
         }
 
         // NavReportHandle.CreateTarget — §P, same shape as NavFormHandle. The default
