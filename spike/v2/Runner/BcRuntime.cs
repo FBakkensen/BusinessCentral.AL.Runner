@@ -936,6 +936,25 @@ public static partial class BcRuntime
                 BindingFlags.NonPublic | BindingFlags.Instance);
             if (createTarget != null)
                 Hook(createTarget, nameof(NavFormHandle_CreateTarget), "NavFormHandle.CreateTarget");
+
+            // NavFormHandle.Run — Page variable .Run() — non-modal UI (§3.11 OOS).
+            // Uses Apply() which patches both the precode and the R2R native code, ensuring
+            // callers that resolve directly to native code are also intercepted.
+            foreach (var runMethod in formHandleType.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+                .Where(m => m.Name == "Run"))
+            {
+                var ps = runMethod.GetParameters();
+                var replName = ps.Length switch
+                {
+                    0 => nameof(FormPatches.NavFormHandle_Run_0),
+                    1 => nameof(FormPatches.NavFormHandle_Run_1),
+                    2 => nameof(FormPatches.NavFormHandle_Run_2),
+                    _ => null
+                };
+                if (replName == null) continue;
+                var repl = typeof(FormPatches).GetMethod(replName, BindingFlags.Public | BindingFlags.Static)!;
+                Hook(runMethod, repl, $"NavFormHandle.Run/{ps.Length}p");
+            }
         }
 
         // NavReportHandle.CreateTarget — §P, same shape as NavFormHandle. The default

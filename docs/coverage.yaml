@@ -2911,8 +2911,8 @@ File.CreateTempFile (TextEncoding):
 File.Download (Text, Text, Text, Text, Text):
   layer: runtime-api
   category: File
-  status: covered
-  notes: MockFile.ALDownload() no-op (no browser/UI in standalone)
+  status: out-of-scope
+  notes: Browser round-trip download throws RunnerOutOfScopeException (§3.4 #file-storage); NavFile_ALDownload_6/7 hooks in FilePatches.cs. DownloadFromStream/InStream variants remain faithful (in-scope).
 
 File.DownloadFromStream (InStream, Text, Text, Text, Text):
   layer: runtime-api
@@ -3010,10 +3010,10 @@ File.Trunc ():
 File.Upload (Text, Text, Text, Text, Text):
   layer: runtime-api
   category: File
-  status: covered
+  status: out-of-scope
   tests:
     - tests/bucket-1/codeunit-runtime/321-file-upload-overload
-  notes: MockFile.ALUpload() no-op (no browser/UI in standalone); 7-arg overload (DataError, title, folder, filter, fromFile, ByRef ToFile, Guid) added for CS1501 fix (issue #1531)
+  notes: Browser round-trip upload throws RunnerOutOfScopeException (§3.4 #file-storage); NavFile_ALUpload_6/7 hooks in FilePatches.cs. UploadIntoStream variants remain faithful (in-scope). 7-arg overload (DataError, title, folder, filter, fromFile, ByRef ToFile, Guid) also intercepted (issue #1531).
 
 File.UploadIntoStream (Text, InStream):
   layer: runtime-api
@@ -6449,42 +6449,37 @@ CurrPage.Run ():
 Page.Run ():
   layer: runtime-api
   category: Page
-  status: covered
+  status: out-of-scope
   tests:
     - tests/bucket-2/page-report/291-page-run-with-var
+    - tests/bucket-2/page-report/48-page-variable
+    - tests/bucket-1/record-table/40-page-run-record
     - tests/bucket-2/page-report/89-page-static
+  notes: Non-modal UI (static Page.Run) throws RunnerOutOfScopeException (§3.11 #ui); NavForm.Run polyfill redirect in BcAssembler.cs. Page.RunModal remains faithful via page-handler dispatch.
 
 Page.Run (Integer, Table, Integer):
   layer: runtime-api
   category: Page
-  status: covered
-  tests:
-    - tests/bucket-2/page-report/100-page-run-3arg
-  notes: 3rd argument (position/focus field) accepted and ignored — no real UI in standalone mode.
+  status: out-of-scope
+  notes: Non-modal UI throws RunnerOutOfScopeException (§3.11 #ui); NavForm.Run polyfill redirect in BcAssembler.cs.
 
 Page.Run (Integer, Table, Joker):
   layer: runtime-api
   category: Page
-  status: covered
-  tests:
-    - tests/bucket-2/page-report/100-page-run-3arg
-  notes: 3rd argument (position/focus field as Joker) accepted and ignored — no real UI in standalone mode.
+  status: out-of-scope
+  notes: Non-modal UI throws RunnerOutOfScopeException (§3.11 #ui); NavForm.Run polyfill redirect in BcAssembler.cs.
 
 Page.Run (Text, Table, Integer):
   layer: runtime-api
   category: Page
-  status: covered
-  tests:
-    - tests/bucket-2/page-report/100-page-run-3arg
-  notes: Text page-ID form. 3rd argument (position/focus field) accepted and ignored — no real UI in standalone mode.
+  status: out-of-scope
+  notes: Non-modal UI throws RunnerOutOfScopeException (§3.11 #ui); NavForm.Run polyfill redirect in BcAssembler.cs.
 
 Page.Run (Text, Table, Joker):
   layer: runtime-api
   category: Page
-  status: covered
-  tests:
-    - tests/bucket-2/page-report/100-page-run-3arg
-  notes: Text page-ID form. 3rd argument (position/focus field as Joker) accepted and ignored — no real UI in standalone mode.
+  status: out-of-scope
+  notes: Non-modal UI throws RunnerOutOfScopeException (§3.11 #ui); NavForm.Run polyfill redirect in BcAssembler.cs.
 
 Page.RunModal ():
   layer: runtime-api

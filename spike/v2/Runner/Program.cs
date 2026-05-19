@@ -259,6 +259,7 @@ foreach (var bundle in bundles)
             {
                 var asm = Assembly.Load(assemblyBytes);
                 BcRuntime.SetTestAssembly(asm);
+                BcRuntime.OosHooksActive = true;
                 tests = executor.Run(asm);
             }
             catch (Exception ex)
@@ -266,6 +267,10 @@ foreach (var bundle in bundles)
                 rt.Stop(); bundleRun += rt.Elapsed;
                 bundleErrors.Add($"<bundled>: EXEC-FAIL: {ex.Message.Split('\n')[0]}");
                 tests = Array.Empty<TestResult>();
+            }
+            finally
+            {
+                BcRuntime.OosHooksActive = false;
             }
             rt.Stop(); bundleRun += rt.Elapsed;
             bundleTests.AddRange(tests);
@@ -310,6 +315,7 @@ foreach (var bundle in bundles)
             {
                 var asm = Assembly.Load(compile.AssemblyBytes!);
                 BcRuntime.SetTestAssembly(asm);
+                BcRuntime.OosHooksActive = true;
                 tests = executor.Run(asm);
             }
             catch (Exception ex)
@@ -317,6 +323,10 @@ foreach (var bundle in bundles)
                 rt.Stop(); bundleRun += rt.Elapsed;
                 bundleErrors.Add($"{suiteName}: EXEC-FAIL: {ex.Message.Split('\n')[0]}");
                 continue;
+            }
+            finally
+            {
+                BcRuntime.OosHooksActive = false;
             }
             rt.Stop(); bundleRun += rt.Elapsed;
             bundleTests.AddRange(tests);

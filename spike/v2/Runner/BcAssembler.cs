@@ -145,6 +145,15 @@ public sealed class BcAssembler
         // session id, and return true. Missing codeunit → return false (DataError.TrapError
         // pathway). See BcRuntime.AlRunnerStartSession for the dispatch logic.
         ("ALSession.ALStartSession(", "global::AlRunnerV2Shim.NavRuntimeHelpersShim.ALSession_ALStartSession("),
+        // NavForm.Run (static, non-modal) — OOS §3.11. BC emits the [Obsolete] sync wrapper
+        // NavForm.Run(...) (not RunAsync) for Page.Run calls. The real body calls
+        // RunAsync().AsTask().GetAwaiter().GetResult() which NREs deep in NavForm/NCLMetaForm
+        // because the skeleton has no live session.  JmpHook.Apply() cannot intercept this
+        // because the JIT resolves the call from freshly compiled AL code to a different
+        // address than what the hook patches (R2R vs JIT code layout mismatch on .NET 8).
+        // Source-level redirect is the reliable alternative: "NavForm.Run(" cannot be a
+        // substring of "NavForm.RunModal(" so there is no false-positive risk.
+        ("NavForm.Run(", "global::AlRunnerV2Shim.NavRuntimeHelpersShim.NavForm_Run("),
     };
 
     private static string ApplyPolyfillRedirects(string code)
@@ -306,6 +315,39 @@ namespace AlRunnerV2Shim
             Microsoft.Dynamics.Nav.Runtime.NavDuration timeout)
             => global::AlRunnerV2.BcRuntime.AlRunnerStartSession(
                 errorLevel, sessionId, objectId, companyName, record);
+
+        // ───────────────────────────────────────────────────────────────────────
+        // NavForm.Run (static, non-modal) — OOS §3.11 #ui.
+        // BC emits NavForm.Run(...) (the [Obsolete] sync wrapper around RunAsync)
+        // for all Page.Run call sites. JmpHook.Apply cannot reliably intercept
+        // these on .NET 8 R2R (code-layout mismatch); source-level redirect is safe.
+        // All overloads throw RunnerOutOfScopeException when OosHooksActive (i.e.
+        // inside a test run); calls during BC SA init pass through harmlessly.
+        public static void NavForm_Run(int formId)
+        {
+            if (global::AlRunnerV2.BcRuntime.OosHooksActive)
+                global::AlRunnerV2.Infrastructure.RunnerScope.ThrowOutOfScope(""NavForm.RunAsync"", ""non-modal-ui"", ""ui"");
+        }
+        public static void NavForm_Run(int formId, Microsoft.Dynamics.Nav.Runtime.NavRecord record)
+        {
+            if (global::AlRunnerV2.BcRuntime.OosHooksActive)
+                global::AlRunnerV2.Infrastructure.RunnerScope.ThrowOutOfScope(""NavForm.RunAsync"", ""non-modal-ui"", ""ui"");
+        }
+        public static void NavForm_Run(int formId, Microsoft.Dynamics.Nav.Runtime.NavRecord record, int fieldNo)
+        {
+            if (global::AlRunnerV2.BcRuntime.OosHooksActive)
+                global::AlRunnerV2.Infrastructure.RunnerScope.ThrowOutOfScope(""NavForm.RunAsync"", ""non-modal-ui"", ""ui"");
+        }
+        public static void NavForm_Run(string fullName, Microsoft.Dynamics.Nav.Runtime.NavRecord record)
+        {
+            if (global::AlRunnerV2.BcRuntime.OosHooksActive)
+                global::AlRunnerV2.Infrastructure.RunnerScope.ThrowOutOfScope(""NavForm.RunAsync"", ""non-modal-ui"", ""ui"");
+        }
+        public static void NavForm_Run(string fullName, Microsoft.Dynamics.Nav.Runtime.NavRecord record, int fieldNo)
+        {
+            if (global::AlRunnerV2.BcRuntime.OosHooksActive)
+                global::AlRunnerV2.Infrastructure.RunnerScope.ThrowOutOfScope(""NavForm.RunAsync"", ""non-modal-ui"", ""ui"");
+        }
     }
 }
 ";

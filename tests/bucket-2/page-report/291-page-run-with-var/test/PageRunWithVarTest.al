@@ -11,14 +11,14 @@ codeunit 79101 "PRV Test"
         Src: Codeunit "PRV Source";
 
     [Test]
-    procedure PageRunWithRecord_IsNoOp()
+    procedure PageRunWithRecord_ThrowsOutOfScope()
     var
         Rec: Record "PRV Row";
     begin
-        // [WHEN] Page.Run(PageId, Rec) is called (BC lowers to NavForm.Run)
-        // [THEN] No error — the call compiles and is a no-op
-        Src.RunWithRecord(Rec);
-        Assert.IsTrue(true, 'Page.Run(PageId, Rec) must compile and be a no-op');
+        // [WHEN] Page.Run(PageId, Rec) — non-modal UI (§3.11)
+        // [THEN] OOS exception: NavForm.RunAsync
+        asserterror Src.RunWithRecord(Rec);
+        Assert.ExpectedError('out-of-scope: NavForm.RunAsync');
     end;
 
     [Test]
@@ -34,23 +34,22 @@ codeunit 79101 "PRV Test"
     end;
 
     [Test]
-    procedure PageVarRun_IsNoOp()
+    procedure PageVarRun_ThrowsOutOfScope()
     begin
-        // [WHEN] A page variable's .Run() is called
-        // [THEN] No error — MockFormHandle.Run() is a no-op
-        Src.PageVarRun();
-        Assert.IsTrue(true, 'Page var .Run() must be a no-op');
+        // [WHEN] A page variable's .Run() is called — non-modal UI (§3.11)
+        // [THEN] OOS exception: NavForm.RunAsync
+        asserterror Src.PageVarRun();
+        Assert.ExpectedError('out-of-scope: NavForm.RunAsync');
     end;
 
     [Test]
-    procedure PageVarSetRecord_IsNoOp()
+    procedure PageVarSetRecord_ThrowsOutOfScope()
     var
         Rec: Record "PRV Row";
     begin
-        // [WHEN] SetRecord and Run are called on a page variable
-        // [THEN] No error
-        Src.PageVarSetRecord(Rec);
-        Assert.IsTrue(true, 'Page var SetRecord+Run must compile and be no-ops');
+        // [WHEN] SetRecord + Run on a page variable — NavFormHandle.Target is null without service tier
+        // [THEN] Throws before Run (NullReferenceException from SetRecord; OOS hook unreachable here)
+        asserterror Src.PageVarSetRecord(Rec);
     end;
 
     [Test]

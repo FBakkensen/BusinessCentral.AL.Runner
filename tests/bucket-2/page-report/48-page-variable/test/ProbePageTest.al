@@ -6,26 +6,24 @@ codeunit 50480 "PV Page Var Tests"
         Assert: Codeunit Assert;
 
     [Test]
-    procedure PageVariableRunIsNoOp()
+    procedure PageVariableRun_ThrowsOutOfScope()
     var
         P: Page "PV Probe Page";
     begin
-        // [GIVEN] A Page "X" variable — BC emits new NavFormHandle(this, pageId),
-        //         which must rewrite to MockFormHandle so the scope class compiles.
-        // [WHEN] Calling .Run() on it
-        // [THEN] Execution reaches the assertion without touching UI
-        P.Run();
-        Assert.IsTrue(true, 'Page variable .Run() must compile and no-op');
+        // [WHEN] Calling .Run() on a page variable — non-modal UI (§3.11)
+        // [THEN] OOS exception: NavForm.RunAsync
+        asserterror P.Run();
+        Assert.ExpectedError('out-of-scope: NavForm.RunAsync');
     end;
 
     [Test]
-    procedure PageRunStaticFormWithRecord()
+    procedure PageRunStaticForm_ThrowsOutOfScope()
     var
         R: Record "PV Row";
     begin
-        // Covers the #6 scenario too: static Page.Run(Page::X, Rec) inside a
-        // test procedure must compile and execute as a no-op.
-        Page.Run(Page::"PV Probe Page", R);
-        Assert.IsTrue(true, 'Page.Run(Page::X, Rec) must compile and no-op');
+        // [WHEN] Static Page.Run(pageId, Rec) — non-modal UI (§3.11)
+        // [THEN] OOS exception: NavForm.RunAsync
+        asserterror Page.Run(Page::"PV Probe Page", R);
+        Assert.ExpectedError('out-of-scope: NavForm.RunAsync');
     end;
 }

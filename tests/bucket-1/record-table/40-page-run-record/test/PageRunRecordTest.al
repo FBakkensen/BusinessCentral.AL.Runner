@@ -7,18 +7,18 @@ codeunit 1056401 "PRR Page Run Tests"
         Assert: Codeunit Assert;
 
     [Test]
-    procedure TestPageRunWithRecordCompiles()
+    procedure TestPageRunWithRecord_ThrowsOutOfScope()
     var
         Caller: Codeunit "PRR Caller";
         Item: Record "PRR Item";
-        Result: Integer;
     begin
         Item."No." := 'X1';
         Item.Insert();
 
-        Result := Caller.ShowItem(Item);
-
-        Assert.AreEqual(42, Result, 'Page.Run(PageId, Rec) should be a no-op and allow caller to return');
+        // [WHEN] Page.Run(PageId, Rec) inside a codeunit — non-modal UI (§3.11)
+        // [THEN] OOS exception: NavForm.RunAsync
+        asserterror Caller.ShowItem(Item);
+        Assert.ExpectedError('out-of-scope: NavForm.RunAsync');
     end;
 
     [Test]
