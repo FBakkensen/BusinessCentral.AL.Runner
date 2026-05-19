@@ -134,8 +134,45 @@ public static partial class BcRuntime
         else
             Console.Error.WriteLine("[Spike4] Warning: NavRecord_ALFieldCaptionAsync replacement method not found");
 
+        // Probe target retained for diagnostic confirmation that the
+        // event→target dispatch path reaches TARGET MATCH end-to-end on a
+        // method that IS reliably JIT'd (ALFieldCaptionAsync did not fire in
+        // a record-table smoke — likely R2R-only-no-JIT in that path).
+        // get_ServiceAccount is a known-JIT'd method on NavEnvironment.
+        // Safe under DryRun: never actually patched.
+        if (repl != null)
+        {
+            JitListener.AddTarget("Microsoft.Dynamics.Nav.Runtime.NavEnvironment", "get_ServiceAccount", repl);
+        }
+
         JitListener.Enable();
         Console.Error.WriteLine("[Spike4] JIT listener started (targets registered, subscribed)");
+
+        // Dump DryRun stats at process exit so we can verify Phase A plumbing
+        // without doing any Console output from the JIT-callback thread.
+        AppDomain.CurrentDomain.ProcessExit += (_, __) =>
+        {
+            try
+            {
+                var jl = JitListener;
+                if (jl == null) return;
+                jl.SnapshotCounters();
+                Console.Error.WriteLine($"[Spike4] === EventPipe DryRun summary ===");
+                Console.Error.WriteLine($"[Spike4] Total MethodLoad events: {jl.TotalMethodLoadEvents}");
+                Console.Error.WriteLine($"[Spike4] BC MethodLoad events:    {jl.BcMethodLoadEvents}");
+                int i = 0;
+                foreach (var s in jl.DryBcSamples)
+                {
+                    if (++i > 30) break;
+                    Console.Error.WriteLine($"[Spike4] BC sample: {s}");
+                }
+                Console.Error.WriteLine($"[Spike4] Target matches: {jl.DryTargetMatches.Count}");
+                foreach (var m in jl.DryTargetMatches)
+                    Console.Error.WriteLine($"[Spike4] TARGET MATCH (deferred): {m}");
+                Console.Error.WriteLine($"[Spike4] === end ===");
+            }
+            catch (Exception ex) { Console.Error.WriteLine($"[Spike4] ProcessExit dump failed: {ex.Message}"); }
+        };
     }
 
     public static void EnsureApplied()
@@ -144,7 +181,9 @@ public static partial class BcRuntime
         _applied = true;
         Win32Stubs.Register();
 
-        // DISABLED for now: StartJitListener();
+        // Phase A: prove EventPipe plumbing without body patching.
+        EventPipeJitListener.DryRun = true;
+        StartJitListener();
 
         ForceLoadBcDlls();
         var navNcl = AppDomain.CurrentDomain.GetAssemblies()

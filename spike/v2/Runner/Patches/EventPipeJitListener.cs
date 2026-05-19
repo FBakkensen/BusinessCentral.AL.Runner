@@ -63,6 +63,13 @@ public sealed class EventPipeJitListener : EventListener
     // ── Configuration ──────────────────────────────────────────────────────────
 
     /// <summary>
+    /// Phase-A diagnostic mode: when true, OnEventWritten logs TARGET MATCH but
+    /// does NOT attempt any body/precode patching. Lets us verify EventPipe
+    /// plumbing (events arriving + target matching) without risk of segfault.
+    /// </summary>
+    public static bool DryRun = false;
+
+    /// <summary>
     /// Methods to intercept: (full type name, method name, replacement MethodInfo).
     /// Populated before enabling the listener.
     /// </summary>
@@ -76,6 +83,15 @@ public sealed class EventPipeJitListener : EventListener
 
     // Hook status per target (indexed same as _targets)
     private readonly Dictionary<string, bool> _patched = new();
+
+    // DryRun: thread-safe accumulators populated from JIT-callback thread without
+    // any Console.Error.WriteLine (which proved to SEGV under heavy JIT volume
+    // due to reentrancy: formatting/locking on a thread that itself may be
+    // running inside a JIT helper).
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _dryBcSamples = new();
+    private readonly System.Collections.Concurrent.ConcurrentBag<string> _dryTargetMatches = new();
+    public IReadOnlyCollection<string> DryBcSamples => _dryBcSamples.Keys.ToList();
+    public IReadOnlyCollection<string> DryTargetMatches => _dryTargetMatches.ToArray();
 
     // Verbose logging flag: set to suppress after first few hundred events
     private int _loggedCount;
@@ -126,7 +142,10 @@ public sealed class EventPipeJitListener : EventListener
             return;
 
         Interlocked.Increment(ref _rawTotalEvents);
-        int total = Interlocked.Increment(ref _rawTotalEvents);
+
+        // Fast-path: if DryRun, do minimal work and NEVER call Console.Error.WriteLine
+        // (proved to SEGV under heavy JIT-volume reentrancy).
+        bool dry = DryRun;
 
         try
         {
@@ -150,8 +169,16 @@ public sealed class EventPipeJitListener : EventListener
                 int bcCount = Interlocked.Increment(ref _rawBcEvents);
                 BcEventsObserved = true;
 
-                if (bcCount <= MaxVerboseLog)
+                if (dry)
+                {
+                    // Stash a small sample of BC type+method pairs (cap implicitly via dictionary).
+                    if (_dryBcSamples.Count < 60)
+                        _dryBcSamples.TryAdd(methodNamespace + "." + methodName, 0);
+                }
+                else if (bcCount <= MaxVerboseLog)
+                {
                     Console.Error.WriteLine($"[EventPipeJIT] BC MethodLoad: {methodNamespace}.{methodName} (EventName={eventData.EventName})");
+                }
             }
 
             // Check against targets
@@ -165,16 +192,6 @@ public sealed class EventPipeJitListener : EventListener
                 // Don't dedup — re-patch every time the method is (re)JIT'd (tiered compilation
                 // can produce multiple MethodLoad events for the same method at different addresses).
                 lock (_lock) { _patched[key] = true; }
-
-                // Log MethodFlags to identify tier (0x100 = TieredCompilation tier-1 in .NET 8).
-                uint mflags = 0;
-                try
-                {
-                    var rawF = eventData.Payload.Count > 5 ? eventData.Payload[5] : null;
-                    if (rawF != null)
-                        mflags = rawF switch { uint u => u, int i => (uint)i, ulong u => (uint)u, _ => Convert.ToUInt32(rawF) };
-                }
-                catch { }
 
                 // Extract MethodStartAddress from payload[2]
                 ulong startAddr = 0;
@@ -190,11 +207,7 @@ public sealed class EventPipeJitListener : EventListener
                         _       => Convert.ToUInt64(raw)
                     };
                 }
-                catch (Exception ex)
-                {
-                    Console.Error.WriteLine($"[EventPipeJIT] {key}: failed to extract MethodStartAddress: {ex.Message}");
-                    continue;
-                }
+                catch { continue; }
 
                 uint methodSize = 0;
                 try
@@ -210,6 +223,22 @@ public sealed class EventPipeJitListener : EventListener
                     };
                 }
                 catch { }
+
+                uint mflags = 0;
+                try
+                {
+                    var rawF = eventData.Payload.Count > 5 ? eventData.Payload[5] : null;
+                    if (rawF != null)
+                        mflags = rawF switch { uint u => u, int i => (uint)i, ulong u => (uint)u, _ => Convert.ToUInt32(rawF) };
+                }
+                catch { }
+
+                if (dry)
+                {
+                    // Stash and return — no console output, no patching.
+                    _dryTargetMatches.Add($"{key} addr=0x{startAddr:X} size={methodSize} flags=0x{mflags:X} ev={eventData.EventName}");
+                    continue;
+                }
 
                 Console.Error.WriteLine(
                     $"[EventPipeJIT] TARGET MATCH: {key} " +
