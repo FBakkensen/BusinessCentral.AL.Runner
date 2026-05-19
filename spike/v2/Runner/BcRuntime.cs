@@ -457,6 +457,84 @@ public static partial class BcRuntime
             }
             HookProperty(sessType, "Company", false, nameof(GetSkeletonCompanyReplacement));
 
+            // ── Identity seed: UserId / UserSecurityId / TenantId ────────────────────────────
+            // Same R2R-inline trap as CompanyName: ALDatabase.get_ALUserID /
+            // ALDatabase.ALUserSecurityId / ALDatabase.ALTenantID are static getters in
+            // Ncl that the JIT R2R-bakes — a JmpHook on those entries does not fire
+            // (verified by probe spike 2026-05-19). The IL chains are:
+            //   get_ALUserID      → NavCurrentThread.Session.User.Name  → NavUser.userName
+            //   ALUserSecurityId  → NavCurrentThread.Session.User.Id    → NavUser.userGuid.Value
+            //   ALTenantID        → NavCurrentThread.Session.Tenant.Id  → NavTenant.id
+            // NavCurrentThread.Session is already wired to _skeletonSession in
+            // RecordPatches.WireNavCurrentThreadSession, so the rest is field-poke:
+            // populate Authenticator → NavUser (userName + userGuid) and tenant → NavTenant.id.
+            try
+            {
+                var navUserType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavUser");
+                var navAuthType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavUserAuthentication");
+                var navGuidType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavGuid");
+                if (navUserType != null && navAuthType != null && navGuidType != null)
+                {
+                    // Build skeleton NavUser with userName="TESTUSER" and a deterministic userGuid.
+                    // Default user-id matches AlRunner v1's `AlScope.UserId` default ("TESTUSER",
+                    // see AlRunner/Runtime/AlScope.cs:248). Guid is stable across runs so
+                    // UserSecurityId() callers can compare for equality without flake.
+                    var skelUser = RuntimeHelpers.GetUninitializedObject(navUserType);
+                    var fUserName = navUserType.GetField("userName", BindingFlags.NonPublic | BindingFlags.Instance);
+                    if (fUserName != null) FieldPoke.SetInstance(fUserName, skelUser, "TESTUSER");
+
+                    var fFullName = navUserType.GetField("fullName", BindingFlags.NonPublic | BindingFlags.Instance);
+                    if (fFullName != null) FieldPoke.SetInstance(fFullName, skelUser, "TESTUSER");
+
+                    var fUserGuid = navUserType.GetField("userGuid", BindingFlags.NonPublic | BindingFlags.Instance);
+                    if (fUserGuid != null)
+                    {
+                        // Deterministic stub Guid — clearly synthetic ("TESTUSER" ASCII suffix).
+                        var stubUserGuid = new Guid("c0a1bdfa-0000-0000-0000-545553545553"); // 'TESTUS' suffix
+                        var guidCtor = navGuidType.GetConstructor(
+                            BindingFlags.Public | BindingFlags.Instance,
+                            null, new[] { typeof(Guid) }, null);
+                        if (guidCtor != null)
+                        {
+                            var navGuid = guidCtor.Invoke(new object[] { stubUserGuid });
+                            FieldPoke.SetInstance(fUserGuid, skelUser, navGuid);
+                        }
+                    }
+
+                    // Build skeleton NavUserAuthentication with navUser = skelUser.
+                    var skelAuth = RuntimeHelpers.GetUninitializedObject(navAuthType);
+                    var fNavUser = navAuthType.GetField("navUser", BindingFlags.NonPublic | BindingFlags.Instance);
+                    if (fNavUser != null) FieldPoke.SetInstance(fNavUser, skelAuth, skelUser);
+                    var fAuthUserName = navAuthType.GetField("userName", BindingFlags.NonPublic | BindingFlags.Instance);
+                    if (fAuthUserName != null) FieldPoke.SetInstance(fAuthUserName, skelAuth, "TESTUSER");
+
+                    // Wire Authenticator backing field on the skeleton session.
+                    var fAuthenticator = sessType.GetField("<Authenticator>k__BackingField",
+                        BindingFlags.NonPublic | BindingFlags.Instance);
+                    if (fAuthenticator != null)
+                        FieldPoke.SetInstance(fAuthenticator, _skeletonSession!, skelAuth);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"[BcRuntime] WARN: identity (user) seed failed: {ex.GetType().Name}: {ex.Message}");
+            }
+
+            // Tenant seed — NavSession.tenant.id powers ALDatabase.ALTenantID. ALTenantID
+            // also calls session.CheckConnectionIsOpen() which requires IsOpen=true
+            // (already seeded above via hasBeenOpened=true).
+            //
+            // NOT IMPLEMENTED YET: populating a skeleton NavTenant breaks ~466 tests in
+            // bucket-1/record-table because DataAccess.CheckCloudStateReadyReplicationAllowOperation
+            // is called on every Insert/Find, and its short-circuit is
+            //   `if (tenant != null && tenant.IsDatabaseDisposed) return;`
+            // — a null `tenant` short-circuits silently, but a non-null uninitialized tenant
+            // has Tree==null which makes `get_IsDisposed` return true → IsDatabaseDisposed
+            // throws ObjectDisposedException. Faithfully seeding Tree + database + state on
+            // NavTenant pulls in the full database-bring-up chain and is out of scope for
+            // this identity spike. Left as a follow-up — see HANDOFF "TenantId requires
+            // NavTenant.Tree wiring".
+
             // RuntimeLanguage getter reads `IsOpen ? GlobalLanguage : NavEnvironment.DefaultLanguage`.
             // With IsOpen=true (seeded below), GlobalLanguage is read; it returns cultureSettings.LCID
             // which is 0 on the GetUninitializedObject skeleton — CultureInfo.GetCultureInfo(0) throws.
