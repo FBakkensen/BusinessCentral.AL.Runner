@@ -134,6 +134,58 @@ public static class NclCecilRewrite
             throw new InvalidOperationException("GetMasterPage method not found in NavForm — Ncl shape changed; do not commit");
         Console.Error.WriteLine($"[Cecil] Rewrote {getMasterPageRewroteCount} GetMasterPage overload(s) → return null/default");
 
+        // NavForm.GetAutoFormatStringAsync → return default/empty (R2R-trapped; cluster #2 in CORPUS-CLASSIFICATION-2026-05-19-FINAL.md)
+        int getAutoFormatRewroteCount = 0;
+        foreach (var method in navFormType.Methods.Where(mm => mm.Name == "GetAutoFormatStringAsync").ToList())
+        {
+            var returnType = method.ReturnType;
+            Console.Error.WriteLine($"[Cecil] Rewriting {method.FullName} (ReturnType={returnType.FullName})");
+
+            var body = method.Body;
+            body.Instructions.Clear();
+            body.Variables.Clear();
+            body.ExceptionHandlers.Clear();
+            var il = body.GetILProcessor();
+
+            if (returnType.FullName.StartsWith("System.Threading.Tasks.ValueTask`1<"))
+            {
+                // ValueTask.FromResult<string>("") — returns completed ValueTask<string> with Result=""
+                var fromResultGenericDef = typeof(System.Threading.Tasks.ValueTask)
+                    .GetMethods()
+                    .FirstOrDefault(m => m.Name == "FromResult" && m.IsGenericMethod && m.GetParameters().Length == 1)
+                    ?? throw new InvalidOperationException("ValueTask.FromResult<T> not found via reflection");
+                var fromResultRef = asm.MainModule.ImportReference(
+                    fromResultGenericDef.MakeGenericMethod(typeof(string)));
+                il.Append(il.Create(OpCodes.Ldstr, ""));
+                il.Append(il.Create(OpCodes.Call, fromResultRef));
+                il.Append(il.Create(OpCodes.Ret));
+                body.MaxStackSize = 1;
+            }
+            else if (returnType.FullName.StartsWith("System.Threading.Tasks.Task`1<"))
+            {
+                // Task.FromResult<string>("") — returns completed Task<string> with Result=""
+                var fromResultMethodInfo = typeof(System.Threading.Tasks.Task)
+                    .GetMethods()
+                    .FirstOrDefault(m => m.Name == "FromResult" && m.IsGenericMethod && m.GetParameters().Length == 1)
+                    ?? throw new InvalidOperationException("Task.FromResult<T> not found via reflection");
+                var fromResultRef = asm.MainModule.ImportReference(
+                    fromResultMethodInfo.MakeGenericMethod(typeof(string)));
+                il.Append(il.Create(OpCodes.Ldstr, ""));
+                il.Append(il.Create(OpCodes.Call, fromResultRef));
+                il.Append(il.Create(OpCodes.Ret));
+                body.MaxStackSize = 1;
+            }
+            else
+            {
+                throw new InvalidOperationException(
+                    $"GetAutoFormatStringAsync has unexpected return type: {returnType.FullName} — log and STOP; do not commit");
+            }
+            getAutoFormatRewroteCount++;
+        }
+        if (getAutoFormatRewroteCount == 0)
+            throw new InvalidOperationException("GetAutoFormatStringAsync method not found in NavForm — Ncl shape changed; do not commit");
+        Console.Error.WriteLine($"[Cecil] Rewrote {getAutoFormatRewroteCount} GetAutoFormatStringAsync overload(s) → return default ValueTask");
+
         var outStream = new MemoryStream();
         asm.Write(outStream);
         var modifiedBytes = outStream.ToArray();

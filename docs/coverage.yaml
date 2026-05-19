@@ -6370,6 +6370,18 @@ Page.GetBackgroundParameters ():
   status: covered
   notes: returns empty NavDictionary in standalone mode
 
+Page.GetAutoFormatString (Integer, Integer, RecordRef):
+  layer: runtime-api
+  category: Page
+  status: covered
+  notes: >
+    NavForm.GetAutoFormatStringAsync() returns ValueTask<string>. R2R-trapped per
+    R2R-DOWNSTREAM-MAP.md §3; Cecil-rewritten in NclCecilRewrite.cs to return
+    ValueTask.FromResult<string>("") via ldstr ""/call ValueTask.FromResult<string>. Allowed
+    per .claude/rules/precompiled-dll-respect.md (Ncl is runtime-engine). Cluster #2
+    from CORPUS-CLASSIFICATION-2026-05-19-FINAL.md (115 affected tests estimated across
+    page-report + codeunit-runtime + record-table).
+
 Page.GetMasterPage ():
   layer: runtime-api
   category: Page
