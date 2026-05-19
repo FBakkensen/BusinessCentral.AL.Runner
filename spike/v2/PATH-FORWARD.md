@@ -1,10 +1,22 @@
 # Path forward — closing the remaining corpus gap
 
-**Status as of HEAD `292d9bab` (2026-05-18 evening):** 3154/4071 = 77.5% pass. 917 fails left.
+**Status as of HEAD `678f77c5` (2026-05-19 morning):** 3173/4080 = 77.77% pass. 907 fails left.
 
 Session deltas since `e98ca03c`:
-- `33f8c5f7` — locked `RunnerOutOfScopeException` message contract (`out-of-scope: <api> — <reason> — see docs/scope.md#<anchor>`). Category B Step 1.
-- `292d9bab` — converted 12 XmlPort OOS tests to `asserterror`/`Assert.ExpectedError`. Category B Step 4 batch 1. Net +12P across 3 suites.
+- `33f8c5f7` — locked `RunnerOutOfScopeException` message contract. Category B Step 1.
+- `292d9bab` — XmlPort batch (+12 P).
+- `c8c09f3b` — working-list docs.
+- `4221bc51` — NavFile.Upload/Download OOS (+2 P). Includes JmpHook FF 25 indirection fix.
+- `8a72e2c2` — NavForm.RunAsync OOS (+9 P). Includes BcAssembler polyfill redirect pattern for R2R-trapped sync wrappers.
+- `d65b07cb` — page-report cluster analysis.
+- `43ef05d3` — ALDatabase.ALSid hook (+6 P). Confirms ALDatabase static getters fire (NOT R2R-trapped).
+- `678f77c5` — ALDatabase.ALSessionID hook (+3 P).
+
+Findings this session (see `feedback_r2r_envvar_doesnt_help` for details):
+1. **`DOTNET_ReadyToRun=0` doesn't bypass R2R-inline trap** — JIT also inlines tiny bool returners.
+2. **`NavReport.SaveAs*` is R2R-trapped** — ~30 hooks installed, none fired. Reverted. ~54 tests stuck behind this.
+3. **AL `UserId()` doesn't call `ALDatabase.get_ALUserID`** — probe never fires. Different dispatch path. ~7 tests stuck.
+4. **`get_ALCompanyName` flips +1 in target test but bucket-wide regresses by -1** — uncommitted; investigate.
 
 The remaining fails are not all the same shape. They split into four categories
 with very different fixing strategies and very different yield-per-effort.
