@@ -1,6 +1,56 @@
 # Path forward — closing the remaining corpus gap
 
-**Status as of HEAD `d05bab7f` (2026-05-19 afternoon):** 3183/4080 = **78.01%** pass. 897 fails left.
+**Status as of HEAD `4db4455e` (2026-05-19 evening):** 3195/4080 = **78.31%** pass. 885 fails left. Cold-run wall-clock: **308s** (was 617s — light-bucket migration cut 61%).
+
+## Today's architectural breakthroughs
+
+1. **Cecil-rewrite of `Microsoft.Dynamics.Nav.Ncl.dll` is viable** (uncommitted in `stash@{0}`). Rewrite trapped method bodies' IL → strip R2R native data → write modified bytes back to bin path before CLR class-init → CLR JITs from our IL. Probe-verified end-to-end on `NCLMetaApplicationObject.IsEventSubscribed`. Zero regressions. Per `precompiled-dll-respect.md`, Ncl.dll is explicitly modifiable (runtime engine, NOT AL-business-logic).
+
+2. **Light-bucket migration landed** (3 commits: `4a4a6d33`, `05748492`, `9b82e385`). `tests/bucket-1/` and `tests/bucket-2/` declare `dependencies: []` + 5 v1 stubs in `_shared/`. Only 1 suite needed heavy splitting (`bucket-1-heavy/codeunit-runtime/316-no-series-getnextno-overloads`).
+
+3. **R2R Downstream Map + corpus classification refresh** (`cbd1cbf7`, `4db4455e`) replaced stale 12-day-old failure sizing. **279 of 885 fails are Cecil-addressable** — the highest-yield single intervention.
+
+## Live corpus snapshot
+
+| Bucket | P / F / T | Wall |
+|---|---:|---:|
+| bucket-1/codeunit-runtime | 764 / 224 / 988 | 41s |
+| bucket-1/record-table | 749 / 156 / 905 | 84s |
+| bucket-1-heavy/codeunit-runtime | 0 / 3 / 3 | 56s |
+| bucket-2/data-formats | 1402 / 157 / 1559 | 37s |
+| bucket-2/page-report | 272 / 345 / 617 | 30s |
+| spike-a-baseapp | 8 / 0 / 8 | 60s |
+| **Total** | **3195 / 885 / 4080 (78.31%)** | **308s** |
+
+## Top 5 ranked failure clusters
+
+(Full detail in `spike/v2/CORPUS-CLASSIFICATION-2026-05-19-FINAL.md`)
+
+| # | Cluster | Tests | Cat | Action |
+|---:|---|---:|---|---|
+| 1 | `NavForm.GetAutoFormatStringAsync` | 115 | D | Cecil-rewrite body → `ValueTask.FromResult("")` |
+| 2 | `NavReport.{RunReport,SaveAs,RunRequestPage}Async` | 62 | D | Cecil-rewrite → throw `RunnerOutOfScopeException` (shared body, 1 rewrite drains all 3) |
+| 3 | `NCLMetadata.ThrowMetaApplicationObjectNotFound` | 56 | A | Register stub NCLMeta entries (Cat A, not Cecil) |
+| 4 | `Report*..ctor` family (8 codeunits, shared shape) | 45 | D | Cecil-rewrite (see PAGE-REPORT-CLUSTERS.md §1) |
+| 5 | `NavForm.GetMasterPage` | 33 | D | Cecil-rewrite → return null |
+
+**Cat D total: ~279 tests** (32% of remaining fails). Cat A NCLMetadata: 56. Cat B/C tail: ~550.
+
+## Session deltas (evening)
+
+- `c95debdc` — Inv 1 NavSession.Authenticator → NavUser (+9 P, AL UserId/UserSecurityId)
+- `d05bab7f` — Inv 2 NavRecordId.CollationAwareStringComparer (+1 P)
+- `6ab7b420` — PATH-FORWARD morning session summary
+- `33642638` — Inv 1b ALDatabase.ALTenantID JmpHook (+2-3 P)
+- `4742bb2f` — EventPipe Phase A (DryRun listener, infra)
+- `cbd1cbf7` — R2R Downstream Map (research)
+- `8a7a0b6a` — Light-bucket A/B spike (proves concept)
+- `4a4a6d33` — Migrate bucket-1 to light + heavy split (infra)
+- `05748492` — Migrate bucket-2 to light (infra)
+- `9b82e385` — Light-bucket migration doc
+- `4db4455e` — Corpus classification refresh (research)
+
+`stash@{0}`: Cecil-rewrite mechanism scaffold, ready for next session.
 
 Session deltas (2026-05-19 follow-up, on top of `8ca3f84f`):
 - `c95debdc` — **Inv 1**: NavSession.Authenticator → NavUser → unlocks AL UserId/UserSecurityId. **+9 P** in record-table. Skeleton field-poke pattern.
