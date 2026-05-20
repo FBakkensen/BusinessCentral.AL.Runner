@@ -1170,6 +1170,79 @@ public static partial class BcRuntime
                 Hook(createTarget, nameof(NavReportHandle_CreateTarget), "NavReportHandle.CreateTarget");
         }
 
+        // REPORT.RUN(id [, reqPage [, sysPrinter [, record]]]) in AL compiles to static
+        // NavReport.Run(int, ...) overloads; REPORT.RUNMODAL(...) to NavReport.RunModal(...).
+        // Without hooks BC calls NCLMetadata.GetMetaReportById → ThrowMetaApplicationObjectNotFound.
+        // All Run/RunModal overloads are void → silent no-op is correct for standalone mode.
+        var navReportType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavReport");
+        if (navReportType != null)
+        {
+            var reportNavRecordType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavRecord");
+
+            // Resolve ReportRunOptions from whichever assembly exposes it.
+            var reportRunOptionsType = AppDomain.CurrentDomain.GetAssemblies()
+                .SelectMany(a => { try { return a.GetTypes(); } catch { return Array.Empty<Type>(); } })
+                .FirstOrDefault(t => t.FullName == "Microsoft.Dynamics.Nav.Types.Report.Base.ReportRunOptions");
+
+            int staticRunHooked = 0;
+            int staticRunModalHooked = 0;
+
+            // ── Run overloads ──────────────────────────────────────────
+            var rr1 = navReportType.GetMethod("Run",
+                BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(int) }, null);
+            if (rr1 != null) { Hook(rr1, nameof(NavReport_StaticRun1), "NavReport.Run(int)"); staticRunHooked++; }
+
+            var rr2 = navReportType.GetMethod("Run",
+                BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(int), typeof(bool) }, null);
+            if (rr2 != null) { Hook(rr2, nameof(NavReport_StaticRun2), "NavReport.Run(int,bool)"); staticRunHooked++; }
+
+            if (reportRunOptionsType != null)
+            {
+                var rrOpts = navReportType.GetMethod("Run",
+                    BindingFlags.Public | BindingFlags.Static, null, new[] { reportRunOptionsType }, null);
+                if (rrOpts != null) { Hook(rrOpts, nameof(NavReport_StaticRunOpts), "NavReport.Run(ReportRunOptions)"); staticRunHooked++; }
+            }
+
+            var rr3 = navReportType.GetMethod("Run",
+                BindingFlags.Public | BindingFlags.Static, null,
+                new[] { typeof(int), typeof(bool), typeof(bool) }, null);
+            if (rr3 != null) { Hook(rr3, nameof(NavReport_StaticRun3), "NavReport.Run(int,bool,bool)"); staticRunHooked++; }
+
+            if (reportNavRecordType != null)
+            {
+                var rr4 = navReportType.GetMethod("Run",
+                    BindingFlags.Public | BindingFlags.Static, null,
+                    new[] { typeof(int), typeof(bool), typeof(bool), reportNavRecordType }, null);
+                if (rr4 != null) { Hook(rr4, nameof(NavReport_StaticRun4), "NavReport.Run(int,bool,bool,NavRecord)"); staticRunHooked++; }
+            }
+
+            Console.Error.WriteLine($"[BcRuntime] NavReport.Run static overloads: {staticRunHooked} hooked");
+
+            // ── RunModal overloads ─────────────────────────────────────
+            var rm1 = navReportType.GetMethod("RunModal",
+                BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(int) }, null);
+            if (rm1 != null) { Hook(rm1, nameof(NavReport_StaticRunModal1), "NavReport.RunModal(int)"); staticRunModalHooked++; }
+
+            var rm2 = navReportType.GetMethod("RunModal",
+                BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(int), typeof(bool) }, null);
+            if (rm2 != null) { Hook(rm2, nameof(NavReport_StaticRunModal2), "NavReport.RunModal(int,bool)"); staticRunModalHooked++; }
+
+            var rm3 = navReportType.GetMethod("RunModal",
+                BindingFlags.Public | BindingFlags.Static, null,
+                new[] { typeof(int), typeof(bool), typeof(bool) }, null);
+            if (rm3 != null) { Hook(rm3, nameof(NavReport_StaticRunModal3), "NavReport.RunModal(int,bool,bool)"); staticRunModalHooked++; }
+
+            if (reportNavRecordType != null)
+            {
+                var rm4 = navReportType.GetMethod("RunModal",
+                    BindingFlags.Public | BindingFlags.Static, null,
+                    new[] { typeof(int), typeof(bool), typeof(bool), reportNavRecordType }, null);
+                if (rm4 != null) { Hook(rm4, nameof(NavReport_StaticRunModal4), "NavReport.RunModal(int,bool,bool,NavRecord)"); staticRunModalHooked++; }
+            }
+
+            Console.Error.WriteLine($"[BcRuntime] NavReport.RunModal static overloads: {staticRunModalHooked} hooked");
+        }
+
         // ALDatabase.ALSid — BC's real getter walks NavCurrentThread.Session.Identity
         // and NREs on the skeleton (no real session). Hook to return a constant stub
         // SID. The JmpHook fires reliably for this static (R2R spike, 2026-05-18). See
