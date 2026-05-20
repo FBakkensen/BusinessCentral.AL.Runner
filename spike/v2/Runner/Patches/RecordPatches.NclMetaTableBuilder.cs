@@ -539,10 +539,33 @@ public static partial class RecordPatches
     /// </summary>
     public static void WireFieldTriggerHandlersAll()
     {
+        PrewarmRecordTypeCache();
         foreach (var kvp in _metaTableCache)
         {
             if (kvp.Value is NCLMetaTable mt)
                 WireFieldTriggerHandlers(mt, kvp.Key);
+        }
+    }
+
+    // Single AppDomain walk that finds every NavRecord-derived "Record<N>" type and bulk-populates
+    // _recordTypeCache. Without this, each WireFieldTriggerHandlers(tableId) call triggers its own
+    // cold-miss full-AppDomain walk via FindRecordType — O(N×M) where N=tables, M=total types.
+    // Prewarm is O(M); subsequent FindRecordType calls become O(1) dictionary hits.
+    private static void PrewarmRecordTypeCache()
+    {
+        foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            Type[] types;
+            try { types = asm.GetTypes(); }
+            catch { continue; }
+            foreach (var t in types)
+            {
+                var name = t.Name;
+                if (name.Length < 7 || !name.StartsWith("Record", StringComparison.Ordinal)) continue;
+                if (!int.TryParse(name.AsSpan(6), out var id)) continue;
+                if (!typeof(NavRecord).IsAssignableFrom(t)) continue;
+                _recordTypeCache.TryAdd(id, t);
+            }
         }
     }
 
