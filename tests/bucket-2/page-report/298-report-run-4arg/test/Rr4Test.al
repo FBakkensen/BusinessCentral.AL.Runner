@@ -11,24 +11,25 @@ codeunit 79802 "RR4 Tests"
     // ------------------------------------------------------------------
 
     [Test]
-    procedure ReportRun_FourArgs_OutOfScope()
+    procedure ReportRun_FourArgs_NoError()
     var
         Rec: Record "RR4 Table";
     begin
         // [GIVEN] A record variable (empty, no filter)
         // [WHEN]  Report.Run(id, false, false, Rec) is called
-        // [THEN]  Throws OOS — report execution is out-of-scope in standalone mode
-        asserterror Src.CallRunFourArgs(29800, Rec);
-        Assert.ExpectedError('out-of-scope: NavReport.Run');
+        // [THEN]  No error — 4-arg overload must compile and execute without crashing
+        Src.CallRunFourArgs(29800, Rec);
     end;
 
     [Test]
-    procedure ReportRun_FourArgs_FilterSurvivesCall_OutOfScope()
+    procedure ReportRun_FourArgs_FilterSurvivesCall()
+    var
+        FilterAfter: Text;
     begin
         // [GIVEN] A record with a filter applied
         // [WHEN]  Report.Run(id, false, false, Rec) is called
-        // [THEN]  Throws OOS — report execution is out-of-scope; filter check is moot
-        asserterror Src.SetupTableAndRun(29800);
-        Assert.ExpectedError('out-of-scope: NavReport.Run');
+        // [THEN]  The filter on the record variable is still present after the call
+        FilterAfter := Src.SetupTableAndRun(29800);
+        Assert.AreEqual('R4-001', FilterAfter, 'Filter on record variable must survive Report.Run call');
     end;
 }

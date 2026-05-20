@@ -12,22 +12,20 @@ codeunit 310202 "RR2 Tests"
     // ------------------------------------------------------------------
 
     [Test]
-    procedure ReportRun_TwoArgs_RequestPageFalse_OutOfScope()
+    procedure ReportRun_TwoArgs_RequestPageFalse_NoError()
     begin
         // [GIVEN] A report ID
         // [WHEN]  Report.Run(id, false) is called — 2-arg overload
-        // [THEN]  Throws OOS — report execution is out-of-scope in standalone mode
-        asserterror Src.CallRunTwoArgs(310200);
-        Assert.ExpectedError('out-of-scope: NavReport.Run');
+        // [THEN]  No error — must compile and execute without crashing
+        Src.CallRunTwoArgs(310200);
     end;
 
     [Test]
-    procedure ReportRun_TwoArgs_RequestPageTrue_OutOfScope()
+    procedure ReportRun_TwoArgs_RequestPageTrue_NoError()
     begin
         // [GIVEN] A report ID
-        // [WHEN]  Report.Run(id, true) — requestPage=true
-        // [THEN]  Throws OOS — report execution is out-of-scope in standalone mode
-        asserterror Src.CallRunTwoArgsRequestPageTrue(310200);
-        Assert.ExpectedError('out-of-scope: NavReport.Run');
+        // [WHEN]  Report.Run(id, true) — requestPage=true, still no-op in standalone mode
+        // [THEN]  No error
+        Src.CallRunTwoArgsRequestPageTrue(310200);
     end;
 }
