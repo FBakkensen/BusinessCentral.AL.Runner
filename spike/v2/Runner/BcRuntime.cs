@@ -501,6 +501,22 @@ public static partial class BcRuntime
             }
             HookProperty(sessType, "Company", false, nameof(GetSkeletonCompanyReplacement));
 
+            // ── ClientTimeZone seed ──────────────────────────────────────────────────────────
+            // ALSystemDate.ALRoundDateTime (and similar DateTime helpers) round-trip the value
+            // through NavDateTime.ConvertToLocalTime → math → NavDateTime.ConvertToUTc. The two
+            // helpers read the session TZ via *different* fallback paths when the backing field
+            // is null: ConvertToLocalTime falls back to TimeZoneInfo.Local, while ConvertToUTc
+            // routes through NavSessionOrDefaultProvider.GetClientTimeZone which falls back to
+            // appInitFallbackValues.DefaultClientTimeZone (UTC on a skeleton AppInit). The
+            // asymmetry skews every round-trip by the local UTC offset (CET → +1h winter, CEST →
+            // +2h summer), surfacing as off-by-one-hour failures in RoundDateTime tests.
+            // Populate the backing field with TimeZoneInfo.Local so both fallback paths land on
+            // the same TZ and the round-trip is identity.
+            var clientTzField = sessType.GetField("<ClientTimeZone>k__BackingField",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            if (clientTzField != null)
+                FieldPoke.SetInstance(clientTzField, _skeletonSession!, TimeZoneInfo.Local);
+
             // ── Identity seed: UserId / UserSecurityId / TenantId ────────────────────────────
             // Same R2R-inline trap as CompanyName: ALDatabase.get_ALUserID /
             // ALDatabase.ALUserSecurityId / ALDatabase.ALTenantID are static getters in
