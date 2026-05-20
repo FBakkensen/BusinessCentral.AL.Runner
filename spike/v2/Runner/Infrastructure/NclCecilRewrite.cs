@@ -209,6 +209,26 @@ public static class NclCecilRewrite
             Console.Error.WriteLine($"[Cecil] WARNING: NavMediaValueBase not found in Ncl");
         }
 
+        // NavDialog.ALStrMenu* and ALConfirm* → mark NoInlining so JmpHooks can intercept
+        // them reliably. These are static non-virtual methods; R2R may inline them into
+        // caller IL, bypassing the JmpHook entry-point patch.
+        var navDialogCecilType = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.NavDialog");
+        if (navDialogCecilType != null)
+        {
+            int navDialogMarked = 0;
+            foreach (var m in navDialogCecilType.Methods
+                .Where(m => m.Name == "ALStrMenu" || m.Name == "ALConfirm"))
+            {
+                m.ImplAttributes |= Mono.Cecil.MethodImplAttributes.NoInlining;
+                navDialogMarked++;
+            }
+            Console.Error.WriteLine($"[Cecil] Marked {navDialogMarked} NavDialog.ALStrMenu/ALConfirm overloads NoInlining");
+        }
+        else
+        {
+            Console.Error.WriteLine("[Cecil] WARNING: NavDialog not found in Ncl");
+        }
+
         var outStream = new MemoryStream();
         asm.Write(outStream);
         var modifiedBytes = outStream.ToArray();

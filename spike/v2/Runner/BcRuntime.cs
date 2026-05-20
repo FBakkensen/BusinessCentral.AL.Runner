@@ -1877,6 +1877,12 @@ public static partial class BcRuntime
         // get_ALCount/ALItem/ALImport/ALExport. All real implementations reach the DB/Session
         // tier; ConditionalWeakTable<self, List<Guid>> store gives a functional in-memory set.
         ApplyNavMediaSetPatches(navNcl);
+
+        // NavDialog StrMenu + Confirm — PAGE-REPORT-CLUSTERS §5: both methods invoke BC's
+        // callback mechanism (NavNCLCallbackNotAllowedException) in standalone mode.
+        // JmpHook all ALStrMenu overloads (return 0 or defaultNo) and all ALConfirm overloads
+        // (return false). Cecil NoInlining marks in NclCecilRewrite.cs defeat R2R inlining.
+        ApplyNavDialogPatches(navNcl);
     }
 
     // ── InstallIndirect spike implementation ────────────────────────────────────────────────
@@ -2064,6 +2070,72 @@ public static partial class BcRuntime
                 Console.Error.WriteLine("[BcRuntime] NavMediaSet: get_ALMediaId hooked (base slot)");
             }
         }
+    }
+
+    // ── NavDialog patches — PAGE-REPORT-CLUSTERS §5 ─────────────────────────────────────
+
+    private static void ApplyNavDialogPatches(Assembly navNcl)
+    {
+        var navDialogType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavDialog");
+        if (navDialogType == null)
+        {
+            Console.Error.WriteLine("[BcRuntime] NavDialog NOT FOUND — skipping StrMenu/Confirm hooks");
+            return;
+        }
+
+        var patchType = typeof(AlRunnerV2.Patches.DialogPatches);
+        int hooked = 0;
+
+        foreach (var m in navDialogType.GetMethods(
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly))
+        {
+            var ps = m.GetParameters();
+            if (m.Name == "ALStrMenu")
+            {
+                // Distinguish overloads by (a) presence of NavSession first param and
+                // (b) whether defaultNumber (Int32) is present.
+                bool hasSession = ps.Length > 0 && ps[0].ParameterType.Name == "NavSession";
+                bool hasDefault = ps.Any(p => p.ParameterType == typeof(int));
+
+                string replName = (hasSession, hasDefault, ps.Length) switch
+                {
+                    (false, false, _) => nameof(AlRunnerV2.Patches.DialogPatches.NavDialog_ALStrMenu_2),
+                    (true,  false, _) => nameof(AlRunnerV2.Patches.DialogPatches.NavDialog_ALStrMenu_S2),
+                    (false, true, 3)  => nameof(AlRunnerV2.Patches.DialogPatches.NavDialog_ALStrMenu_3),
+                    (true,  true, 4) when ps[3].ParameterType == typeof(Guid)
+                                      => nameof(AlRunnerV2.Patches.DialogPatches.NavDialog_ALStrMenu_S3),
+                    (false, true, _)  => nameof(AlRunnerV2.Patches.DialogPatches.NavDialog_ALStrMenu_4),
+                    (true,  true, _)  => nameof(AlRunnerV2.Patches.DialogPatches.NavDialog_ALStrMenu_S4),
+                };
+                var repl = patchType.GetMethod(replName, BindingFlags.Public | BindingFlags.Static);
+                if (repl != null)
+                {
+                    JmpHook.Apply(m, repl, $"NavDialog.ALStrMenu/{ps.Length}");
+                    hooked++;
+                }
+            }
+            else if (m.Name == "ALConfirm")
+            {
+                bool hasSession = ps.Length > 0 && ps[0].ParameterType.Name == "NavSession";
+                bool hasValues  = ps.Any(p => p.ParameterType.IsArray);
+
+                string replName = (hasSession, hasValues) switch
+                {
+                    (false, false) => nameof(AlRunnerV2.Patches.DialogPatches.NavDialog_ALConfirm_2),
+                    (true,  false) => nameof(AlRunnerV2.Patches.DialogPatches.NavDialog_ALConfirm_S2),
+                    (false, true)  => nameof(AlRunnerV2.Patches.DialogPatches.NavDialog_ALConfirm_4),
+                    (true,  true)  => nameof(AlRunnerV2.Patches.DialogPatches.NavDialog_ALConfirm_S4),
+                };
+                var repl = patchType.GetMethod(replName, BindingFlags.Public | BindingFlags.Static);
+                if (repl != null)
+                {
+                    JmpHook.Apply(m, repl, $"NavDialog.ALConfirm/{ps.Length}");
+                    hooked++;
+                }
+            }
+        }
+
+        Console.Error.WriteLine($"[BcRuntime] NavDialog: {hooked} methods hooked (StrMenu + Confirm)");
     }
 
     private static void HookProperty(Type t, string propName, bool isStatic, string replacementName)
