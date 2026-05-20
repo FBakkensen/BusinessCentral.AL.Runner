@@ -12,20 +12,22 @@ codeunit 308202 "RR3 Tests"
     // ------------------------------------------------------------------
 
     [Test]
-    procedure ReportRun_ThreeArgs_NoError()
+    procedure ReportRun_ThreeArgs_OutOfScope()
     begin
         // [GIVEN] A report ID
         // [WHEN]  Report.Run(id, false, false) is called — 3-arg overload
-        // [THEN]  No error — must compile and execute without crashing
-        Src.CallRunThreeArgs(308200);
+        // [THEN]  Throws OOS — report execution is out-of-scope in standalone mode
+        asserterror Src.CallRunThreeArgs(308200);
+        Assert.ExpectedError('out-of-scope: NavReport.Run');
     end;
 
     [Test]
-    procedure ReportRun_ThreeArgs_RequestPageTrue_NoError()
+    procedure ReportRun_ThreeArgs_RequestPageTrue_OutOfScope()
     begin
         // [GIVEN] A report ID
-        // [WHEN]  Report.Run(id, true, false) — requestPage=true, still no-op in standalone mode
-        // [THEN]  No error
-        Src.CallRunThreeArgsRequestPage(308200);
+        // [WHEN]  Report.Run(id, true, false) — requestPage=true
+        // [THEN]  Throws OOS — report execution is out-of-scope in standalone mode
+        asserterror Src.CallRunThreeArgsRequestPage(308200);
+        Assert.ExpectedError('out-of-scope: NavReport.Run');
     end;
 }

@@ -11,18 +11,23 @@ codeunit 91001 "RS Tests"
     // ------------------------------------------------------------------
 
     [Test]
-    procedure Report_Run_IsNoOp()
+    procedure Report_Run_OutOfScope()
     begin
-        // [GIVEN] A report id with no registered handler
-        // [WHEN]  We call Report.Run(id) with a non-existent report
-        // [THEN]  No error — static method is a no-op in standalone mode
-        Src.CallRun(99999);
+        // [GIVEN] A report id
+        // [WHEN]  We call Report.Run(id) in standalone mode
+        // [THEN]  Throws OOS — report execution is out-of-scope
+        asserterror Src.CallRun(99999);
+        Assert.ExpectedError('out-of-scope: NavReport.Run');
     end;
 
     [Test]
-    procedure Report_RunModal_IsNoOp()
+    procedure Report_RunModal_OutOfScope()
     begin
-        Src.CallRunModal(99999);
+        // [GIVEN] A report id
+        // [WHEN]  We call Report.RunModal(id) in standalone mode
+        // [THEN]  Throws OOS — report execution is out-of-scope
+        asserterror Src.CallRunModal(99999);
+        Assert.ExpectedError('out-of-scope: NavReport.RunModal');
     end;
 
     // ------------------------------------------------------------------

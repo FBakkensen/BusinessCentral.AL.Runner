@@ -11,40 +11,44 @@ codeunit 163002 "RRM4 Tests"
     // ------------------------------------------------------------------
 
     [Test]
-    procedure Report_RunModal_1Arg_IsNoOp()
+    procedure Report_RunModal_1Arg_OutOfScope()
     begin
         // [GIVEN] A non-existent report id
         // [WHEN]  Report.RunModal(id) 1-arg is called
-        // [THEN]  No error — stub is a no-op in standalone mode
-        Src.CallRunModal1Arg(99999);
+        // [THEN]  Throws OOS — report execution is out-of-scope in standalone mode
+        asserterror Src.CallRunModal1Arg(99999);
+        Assert.ExpectedError('out-of-scope: NavReport.RunModal');
     end;
 
     [Test]
-    procedure Report_RunModal_2Arg_IsNoOp()
+    procedure Report_RunModal_2Arg_OutOfScope()
     begin
         // [GIVEN] A non-existent report id
         // [WHEN]  Report.RunModal(id, false) 2-arg is called
-        // [THEN]  No error — stub is a no-op in standalone mode
-        Src.CallRunModal2Arg(99999, false);
+        // [THEN]  Throws OOS — report execution is out-of-scope in standalone mode
+        asserterror Src.CallRunModal2Arg(99999, false);
+        Assert.ExpectedError('out-of-scope: NavReport.RunModal');
     end;
 
     [Test]
-    procedure Report_RunModal_3Arg_IsNoOp()
+    procedure Report_RunModal_3Arg_OutOfScope()
     begin
         // [GIVEN] A non-existent report id
         // [WHEN]  Report.RunModal(id, false, false) 3-arg is called
-        // [THEN]  No error — stub is a no-op in standalone mode
-        Src.CallRunModal3Arg(99999, false, false);
+        // [THEN]  Throws OOS — report execution is out-of-scope in standalone mode
+        asserterror Src.CallRunModal3Arg(99999, false, false);
+        Assert.ExpectedError('out-of-scope: NavReport.RunModal');
     end;
 
     [Test]
-    procedure Report_RunModal_4Arg_IsNoOp()
+    procedure Report_RunModal_4Arg_OutOfScope()
     var
         DummyRec: Record "RRM4 Dummy";
     begin
         // [GIVEN] A non-existent report id and a record variable
         // [WHEN]  Report.RunModal(id, false, false, Rec) 4-arg is called
-        // [THEN]  No error — stub is a no-op in standalone mode
-        Src.CallRunModal4Arg(99999, false, false, DummyRec);
+        // [THEN]  Throws OOS — report execution is out-of-scope in standalone mode
+        asserterror Src.CallRunModal4Arg(99999, false, false, DummyRec);
+        Assert.ExpectedError('out-of-scope: NavReport.RunModal');
     end;
 }

@@ -7358,50 +7358,60 @@ Report.RdlcLayout (Integer, InStream):
 Report.Run (Integer, Boolean):
   layer: runtime-api
   category: Report
-  status: covered
+  status: out-of-scope
   tests:
     - tests/bucket-2/page-report/310200-report-run-2arg
-  notes: "Report.Run(ReportId, RequestPage) — 2-arg overload. BC emits this when systemPrinter is omitted. Fixes CS1501 'StaticRun' (2 args) — issue #1427."
+  notes: |
+    Report execution is out-of-scope for standalone mode. NavReport.Run static overloads (2-arg) are
+    JIT-hooked (ReportPatches.cs) to throw InvalidOperationException("out-of-scope: NavReport.Run
+    — report-execution — see docs/scope.md#report-rendering"). Tests use asserterror + Assert.ExpectedError.
 
 Report.Run (Integer, Boolean, Boolean, Table):
   layer: runtime-api
   category: Report
-  status: covered
+  status: out-of-scope
   tests:
     - tests/bucket-2/page-report/298-report-run-4arg
     - tests/bucket-2/page-report/300-report-run-3arg
-    - tests/bucket-2/page-report/300-report-run-3arg
     - tests/bucket-2/page-report/90-report-static
-  notes: "Report.Run(ReportId, RequestPage, SystemPrinter) — 3-arg overload. BC emits this when no record is passed. Fixes CS7036 'systemPrinter' missing argument — issue #1336."
+  notes: |
+    Report execution is out-of-scope for standalone mode. NavReport.Run static overloads (3-arg and 4-arg) are
+    JIT-hooked (ReportPatches.cs) to throw InvalidOperationException("out-of-scope: NavReport.Run
+    — report-execution — see docs/scope.md#report-rendering"). Tests use asserterror + Assert.ExpectedError.
 
 Report.Run (Text, Boolean, Boolean, Table):
   layer: runtime-api
   category: Report
-  status: covered
+  status: out-of-scope
   tests:
     - tests/bucket-2/page-report/309700-report-text-name-overloads
-  notes: MockReportHandle.StaticRun(string, bool, bool) and StaticRun(string, bool, bool, object) — no-op in standalone mode. Fixes #1377.
+  notes: |
+    Report execution is out-of-scope for standalone mode. NavReport.Run static overloads (text-name form) are
+    JIT-hooked (ReportPatches.cs) to throw InvalidOperationException("out-of-scope: NavReport.Run
+    — report-execution — see docs/scope.md#report-rendering"). Tests use asserterror + Assert.ExpectedError.
 
 Report.RunModal (Integer, Boolean, Boolean, Table):
   layer: runtime-api
   category: Report
-  status: covered
+  status: out-of-scope
   tests:
     - tests/bucket-2/page-report/287-report-runmodal-4arg
     - tests/bucket-2/page-report/90-report-static
-    - tests/bucket-2/page-report/90-report-static
-    - tests/bucket-2/page-report/301-report-static-runrequestpage
-    - tests/bucket-2/page-report/301-report-static-runrequestpage
-    - tests/bucket-2/page-report/308-report-instance-runrequestpage
-  notes: Rep.RunRequestPage(requestParameters) instance form — BC emits this when a Report variable calls RunRequestPage with one Text argument (e.g. SuggestVendorPayments.RunRequestPage(OldParameters)). Returns empty string in standalone mode. Fixes #1333.
+  notes: |
+    Report execution is out-of-scope for standalone mode. NavReport.RunModal static overloads (1/2/3/4-arg) are
+    JIT-hooked (ReportPatches.cs) to throw InvalidOperationException("out-of-scope: NavReport.RunModal
+    — report-execution — see docs/scope.md#report-rendering"). Tests use asserterror + Assert.ExpectedError.
 
 Report.RunModal (Text, Boolean, Boolean, Table):
   layer: runtime-api
   category: Report
-  status: covered
+  status: out-of-scope
   tests:
     - tests/bucket-2/page-report/309700-report-text-name-overloads
-  notes: MockReportHandle.StaticRunModal(string, bool, bool) and StaticRunModal(string, bool, bool, object) — no-op in standalone mode. Fixes #1377.
+  notes: |
+    Report execution is out-of-scope for standalone mode. NavReport.RunModal static overloads (text-name form) are
+    JIT-hooked (ReportPatches.cs) to throw InvalidOperationException("out-of-scope: NavReport.RunModal
+    — report-execution — see docs/scope.md#report-rendering"). Tests use asserterror + Assert.ExpectedError.
 
 Report.RunRequestPage (Integer):
   layer: runtime-api
