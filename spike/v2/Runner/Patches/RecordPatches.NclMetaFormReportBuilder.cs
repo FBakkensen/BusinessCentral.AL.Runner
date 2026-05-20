@@ -51,7 +51,7 @@ public static partial class RecordPatches
         _tNCLMetaForm = nclAsm.GetType("Microsoft.Dynamics.Nav.Runtime.NCLMetaForm");
         _tNCLMetaReport = nclAsm.GetType("Microsoft.Dynamics.Nav.Runtime.NCLMetaReport");
 
-        // Both factories are `internal static`.
+        // Factories are `internal static`.
         _mCreateEmptyNCLMetaForm = _tNCLMetaForm?.GetMethod("CreateEmptyNCLMetaForm",
             BindingFlags.NonPublic | BindingFlags.Static);
         _mCreateEmptyNCLMetaReport = _tNCLMetaReport?.GetMethod("CreateEmptyNCLMetaReport",

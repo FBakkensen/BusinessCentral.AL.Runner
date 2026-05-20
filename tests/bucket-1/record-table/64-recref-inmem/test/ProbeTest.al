@@ -11,7 +11,7 @@ codeunit 50592 "RR Mem Tests"
     begin
         // [GIVEN] No rows in the RR Mem Row table
         // [THEN] RecRef.IsEmpty() must be true — HasRows returns false
-        Assert.IsFalse(Probe.HasRows(56640), 'RecRef over empty table must report empty');
+        Assert.IsFalse(Probe.HasRows(50190), 'RecRef over empty table must report empty');
     end;
 
     [Test]
@@ -27,7 +27,7 @@ codeunit 50592 "RR Mem Tests"
 
         // [WHEN] RecRef opens the same table
         // [THEN] RecRef.IsEmpty() sees the row — HasRows returns true
-        Assert.IsTrue(Probe.HasRows(56640), 'RecRef over seeded table must report non-empty');
+        Assert.IsTrue(Probe.HasRows(50190), 'RecRef over seeded table must report non-empty');
     end;
 
     [Test]
@@ -39,6 +39,6 @@ codeunit 50592 "RR Mem Tests"
         R.Id := 2;
         R.Insert();
 
-        Assert.IsTrue(Probe.HasRowsInCompany(56640, 'CRONUS'), 'Three-arg Open must also route to in-memory store');
+        Assert.IsTrue(Probe.HasRowsInCompany(50190, 'CRONUS'), 'Three-arg Open must also route to in-memory store');
     end;
 }

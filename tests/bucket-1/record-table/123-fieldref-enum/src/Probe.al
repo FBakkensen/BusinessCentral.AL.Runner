@@ -90,7 +90,7 @@ codeunit 50430 "FE Probe"
     var
         RecRef: RecordRef;
     begin
-        RecRef.Open(56230);
+        RecRef.Open(50093);
         exit(Format(RecRef.SystemIdNo) + ',' +
              Format(RecRef.SystemCreatedAtNo) + ',' +
              Format(RecRef.SystemCreatedByNo) + ',' +

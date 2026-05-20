@@ -30,7 +30,7 @@ codeunit 50604 "Gui FieldClass Test"
         recRef: RecordRef;
     begin
         // Positive: Field 1 on a table should be FieldClass::Normal.
-        recRef.Open(79100);
+        recRef.Open(50195);
         Assert.IsTrue(Lib.IsNormalField(recRef, 1), 'Field 1 should be Normal class');
         recRef.Close();
     end;
@@ -43,7 +43,7 @@ codeunit 50604 "Gui FieldClass Test"
     begin
         // Negative: verify the comparison actually works (not always true).
         // We test that the FieldClass comparison at least compiles and runs.
-        recRef.Open(79100);
+        recRef.Open(50195);
         fldRef := recRef.Field(2);
         // All stub fields return Normal, so this is true — but the point is
         // that FieldClass::Normal == comparison compiles without CS0019.
@@ -60,7 +60,7 @@ codeunit 50604 "Gui FieldClass Test"
         v: Variant;
     begin
         // Positive: RecordRef can be assigned to a Variant without type errors.
-        recRef.Open(79100);
+        recRef.Open(50195);
         Lib.RecRefToVariant(recRef, v);
         // If we get here without a compile/runtime error, the NavComplexValue
         // assignability is working.

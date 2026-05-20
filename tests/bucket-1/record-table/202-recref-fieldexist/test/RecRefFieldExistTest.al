@@ -9,16 +9,16 @@ codeunit 50502 "RFE Test"
     [Test]
     procedure FieldExist_KnownField_True()
     begin
-        // Field 1 ("Id") exists on table 60300.
-        Assert.IsTrue(Src.FieldExist_ByNo(60300, 1),
+        // Field 1 ("Id") exists on table 50118.
+        Assert.IsTrue(Src.FieldExist_ByNo(50118, 1),
             'FieldExist must return true for a known field number');
     end;
 
     [Test]
     procedure FieldExist_Unknown_False()
     begin
-        // Field 999 does not exist on table 60300.
-        Assert.IsFalse(Src.FieldExist_ByNo(60300, 999),
+        // Field 999 does not exist on table 50118.
+        Assert.IsFalse(Src.FieldExist_ByNo(50118, 999),
             'FieldExist must return false for an unknown field number');
     end;
 
@@ -26,7 +26,7 @@ codeunit 50502 "RFE Test"
     procedure FieldExist_SecondField_True()
     begin
         // Field 2 ("Name") exists.
-        Assert.IsTrue(Src.FieldExist_ByNo(60300, 2),
+        Assert.IsTrue(Src.FieldExist_ByNo(50118, 2),
             'FieldExist must return true for a second known field');
     end;
 
@@ -43,8 +43,8 @@ codeunit 50502 "RFE Test"
     begin
         // Negative trap: FieldExist must actually introspect.
         Assert.AreNotEqual(
-            Src.FieldExist_ByNo(60300, 1),
-            Src.FieldExist_ByNo(60300, 999),
+            Src.FieldExist_ByNo(50118, 1),
+            Src.FieldExist_ByNo(50118, 999),
             'FieldExist on known and unknown field must produce different results');
     end;
 }

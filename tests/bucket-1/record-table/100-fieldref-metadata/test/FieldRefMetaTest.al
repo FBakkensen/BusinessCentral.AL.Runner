@@ -10,7 +10,7 @@ codeunit 50393 FieldRefMetaTest
         FieldName: Text;
     begin
         // Field 1 of our AL-compiled table has quoted name "Document No."
-        FieldName := Src.GetFieldName(109000, 1);
+        FieldName := Src.GetFieldName(50063, 1);
         Assert.AreEqual('Document No.', FieldName, 'FieldRef.Name should return actual quoted field name, not stub');
     end;
 
@@ -21,7 +21,7 @@ codeunit 50393 FieldRefMetaTest
         FieldName: Text;
     begin
         // Field 2 has bare name Description
-        FieldName := Src.GetFieldName(109000, 2);
+        FieldName := Src.GetFieldName(50063, 2);
         Assert.AreEqual('Description', FieldName, 'FieldRef.Name should return bare field name');
     end;
 
@@ -32,7 +32,7 @@ codeunit 50393 FieldRefMetaTest
         Caption: Text;
     begin
         // Field 2 has Caption = 'Description Caption'
-        Caption := Src.GetFieldCaption(109000, 2);
+        Caption := Src.GetFieldCaption(50063, 2);
         Assert.AreEqual('Description Caption', Caption, 'FieldRef.Caption should return explicit caption');
     end;
 
@@ -43,7 +43,7 @@ codeunit 50393 FieldRefMetaTest
         Caption: Text;
     begin
         // Field 3 "Amount" has no explicit Caption — should fall back to field name
-        Caption := Src.GetFieldCaption(109000, 3);
+        Caption := Src.GetFieldCaption(50063, 3);
         Assert.AreEqual('Amount', Caption, 'FieldRef.Caption should fall back to field name when no caption declared');
     end;
 
@@ -54,7 +54,7 @@ codeunit 50393 FieldRefMetaTest
         FieldName: Text;
     begin
         // Verify it does not return the stub "Field1" pattern
-        FieldName := Src.GetFieldName(109000, 1);
+        FieldName := Src.GetFieldName(50063, 1);
         Assert.AreNotEqual('Field1', FieldName, 'FieldRef.Name must not return stub value "Field1"');
     end;
 
@@ -65,7 +65,7 @@ codeunit 50393 FieldRefMetaTest
         FieldName: Text;
     begin
         // FieldIndex(1) is the 1st field by ordinal position (field 1 = "Document No.")
-        FieldName := Src.GetFieldNameByIndex(109000, 1);
+        FieldName := Src.GetFieldNameByIndex(50063, 1);
         Assert.AreEqual('Document No.', FieldName, 'FieldRef.Name via FieldIndex should return actual field name, not stub');
     end;
 
@@ -76,7 +76,7 @@ codeunit 50393 FieldRefMetaTest
         FieldName: Text;
     begin
         // Field 10 is added by tableextension; Name should be "Extended Field"
-        FieldName := Src.GetFieldName(109000, 10);
+        FieldName := Src.GetFieldName(50063, 10);
         Assert.AreEqual('Extended Field', FieldName, 'FieldRef.Name for tableextension field should return actual name, not stub');
     end;
 
@@ -87,7 +87,7 @@ codeunit 50393 FieldRefMetaTest
         Caption: Text;
     begin
         // Field 10 from tableextension has Caption = 'Extended Field Caption'
-        Caption := Src.GetFieldCaption(109000, 10);
+        Caption := Src.GetFieldCaption(50063, 10);
         Assert.AreEqual('Extended Field Caption', Caption, 'FieldRef.Caption for tableextension field should return actual caption');
     end;
 }

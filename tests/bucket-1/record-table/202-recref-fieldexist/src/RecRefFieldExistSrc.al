@@ -23,7 +23,7 @@ codeunit 50501 "RFE Src"
     var
         rr: RecordRef;
     begin
-        rr.Open(60300);
+        rr.Open(50118);
         exit(rr.RecordLevelLocking());
     end;
 }

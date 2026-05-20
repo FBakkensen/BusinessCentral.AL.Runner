@@ -10,7 +10,7 @@ codeunit 50397 "RecRef Factory Test"
     begin
         // Positive: array of RecordRef compiles and works correctly
         Result := Src.GetRecRefFromArray();
-        Assert.AreEqual(2, Result, 'RecRefs[2].Number should be 2 after Open(2)');
+        Assert.AreEqual(50001, Result, 'RecRefs[2].Number should be 50001 after Open(50001)');
     end;
 
     [Test]
@@ -19,10 +19,10 @@ codeunit 50397 "RecRef Factory Test"
         RecRefs: array[2] of RecordRef;
     begin
         // Positive: each element in a RecordRef array is independent
-        RecRefs[1].Open(10);
-        RecRefs[2].Open(20);
-        Assert.AreEqual(10, RecRefs[1].Number, 'RecRefs[1] should have table 10');
-        Assert.AreEqual(20, RecRefs[2].Number, 'RecRefs[2] should have table 20');
+        RecRefs[1].Open(50000);
+        RecRefs[2].Open(50001);
+        Assert.AreEqual(50000, RecRefs[1].Number, 'RecRefs[1] should have table 50000');
+        Assert.AreEqual(50001, RecRefs[2].Number, 'RecRefs[2] should have table 50001');
     end;
 
     var

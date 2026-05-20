@@ -51,7 +51,7 @@ codeunit 50240 "List Of RecordRef Test"
         RecRef: RecordRef;
     begin
         // [GIVEN] A list with one entry
-        RecRef.Open(308700);
+        RecRef.Open(50022);
         Refs.Add(RecRef);
         Assert.AreEqual(1, Refs.Count(), 'List should have 1 element before UpdateList');
 

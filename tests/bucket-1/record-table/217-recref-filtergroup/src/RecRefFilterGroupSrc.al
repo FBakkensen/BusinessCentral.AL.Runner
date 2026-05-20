@@ -14,7 +14,7 @@ codeunit 50507 "RFG Src"
     var
         rr: RecordRef;
     begin
-        rr.Open(60460);
+        rr.Open(50121);
         rr.FilterGroup(group);
         exit(rr.FilterGroup());
     end;
@@ -23,7 +23,7 @@ codeunit 50507 "RFG Src"
     var
         rr: RecordRef;
     begin
-        rr.Open(60460);
+        rr.Open(50121);
         exit(rr.FilterGroup());
     end;
 }

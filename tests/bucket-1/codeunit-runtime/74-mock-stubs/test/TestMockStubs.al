@@ -51,7 +51,7 @@ codeunit 50346 "Stub Methods Tests"
         Rec.Insert(true);
 
         // [WHEN] Opening RecRef and calling SetLoadFields then finding
-        RecRef.Open(57400);
+        RecRef.Open(50050);
         RecRef.SetLoadFields(1, 2);
         RecRef.FindFirst();
 
@@ -72,7 +72,7 @@ codeunit 50346 "Stub Methods Tests"
         Rec.Insert(true);
 
         // [WHEN] SetLoadFields is called with only field 1
-        RecRef.Open(57400);
+        RecRef.Open(50050);
         RecRef.SetLoadFields(1);
         RecRef.FindFirst();
 
@@ -87,7 +87,7 @@ codeunit 50346 "Stub Methods Tests"
         TableName: Text;
     begin
         // [GIVEN] A RecordRef opened on a table
-        RecRef.Open(57400);
+        RecRef.Open(50050);
         // [WHEN] Reading the Name property
         TableName := RecRef.Name;
         // [THEN] It returns a non-error text value

@@ -5,10 +5,8 @@ codeunit 50560 "RR Open Probe"
         RecRef: RecordRef;
     begin
         // Three-arg form: TableNo, Temporary, CompanyName.
-        // The RecordRef stub is compile-only; we only assert here that the
-        // procedure compiles and reaches the sentinel assignment after the
-        // Open/IsEmpty calls (whatever those return in the current stub).
-        RecRef.Open(18, false, CompanyName);
+        // Use a local table (50000 = "Audit Log Entry") to avoid BC system-table dependency.
+        RecRef.Open(50000, false, CompanyName);
         if RecRef.IsEmpty() then
             exit(42);
         exit(42);
@@ -18,9 +16,8 @@ codeunit 50560 "RR Open Probe"
     var
         RecRef: RecordRef;
     begin
-        // Single-arg form must compile. Value of IsEmpty is intentionally
-        // not asserted because BC lowering across versions differs.
-        RecRef.Open(18);
+        // Single-arg form must compile. Use a local table (50000 = "Audit Log Entry").
+        RecRef.Open(50000);
         if RecRef.IsEmpty() then;
         exit(7);
     end;

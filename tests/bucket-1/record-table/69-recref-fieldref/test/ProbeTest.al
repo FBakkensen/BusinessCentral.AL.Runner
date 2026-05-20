@@ -9,9 +9,9 @@ codeunit 50598 "RF Tests"
     var
         Probe: Codeunit "RF Probe";
     begin
-        // [GIVEN] RecRef opened on table 56680
-        // [THEN] Number() returns 56680
-        Assert.AreEqual(56680, Probe.TableNoAfterOpen(56680), 'TableNo must match opened table');
+        // [GIVEN] RecRef opened on table 50193
+        // [THEN] Number() returns 50193
+        Assert.AreEqual(50193, Probe.TableNoAfterOpen(50193), 'TableNo must match opened table');
     end;
 
     [Test]
@@ -21,7 +21,7 @@ codeunit 50598 "RF Tests"
         R: Record "RF Test Item";
     begin
         // [GIVEN] A row inserted via RecordRef with Field().Value
-        Probe.SetFieldAndInsert(56680, 1, 42, 2, 'Widget');
+        Probe.SetFieldAndInsert(50193, 1, 42, 2, 'Widget');
 
         // [THEN] Typed Record can read it back
         R.Get(42);
@@ -41,7 +41,7 @@ codeunit 50598 "RF Tests"
 
         // [WHEN] Reading via RecordRef.Field(2).Value
         // [THEN] The value matches
-        Assert.AreEqual('Gadget', Probe.GetFieldValue(56680, 2), 'FieldRef.Value must return field content');
+        Assert.AreEqual('Gadget', Probe.GetFieldValue(50193, 2), 'FieldRef.Value must return field content');
     end;
 
     [Test]
@@ -55,7 +55,7 @@ codeunit 50598 "RF Tests"
         R.Insert();
 
         // [THEN] FieldRef.Number() returns the field number
-        Assert.AreEqual(2, Probe.FieldNumber(56680, 2), 'FieldRef.Number must return field number');
+        Assert.AreEqual(2, Probe.FieldNumber(50193, 2), 'FieldRef.Number must return field number');
     end;
 
     [Test]
@@ -70,7 +70,7 @@ codeunit 50598 "RF Tests"
         R.Id := 3; R.Insert();
 
         // [THEN] RecRef.Count() returns 3
-        Assert.AreEqual(3, Probe.CountRecords(56680), 'Count must be 3');
+        Assert.AreEqual(3, Probe.CountRecords(50193), 'Count must be 3');
     end;
 
     [Test]
@@ -80,7 +80,7 @@ codeunit 50598 "RF Tests"
     begin
         // [GIVEN] No rows
         // [THEN] Count is 0
-        Assert.AreEqual(0, Probe.CountRecords(56680), 'Count of empty table must be 0');
+        Assert.AreEqual(0, Probe.CountRecords(50193), 'Count of empty table must be 0');
     end;
 
     // --- FindSet + Next iteration ---
@@ -98,7 +98,7 @@ codeunit 50598 "RF Tests"
 
         // [WHEN] Iterating via RecRef FindSet + Next
         // [THEN] All names appear in order
-        Assert.AreEqual('Alpha,Bravo,Charlie', Probe.IterateNames(56680), 'Must iterate all rows');
+        Assert.AreEqual('Alpha,Bravo,Charlie', Probe.IterateNames(50193), 'Must iterate all rows');
     end;
 
     [Test]
@@ -108,7 +108,7 @@ codeunit 50598 "RF Tests"
     begin
         // [GIVEN] Empty table
         // [THEN] IterateNames returns empty string (FindSet returns false)
-        Assert.AreEqual('', Probe.IterateNames(56680), 'Empty table must yield empty result');
+        Assert.AreEqual('', Probe.IterateNames(50193), 'Empty table must yield empty result');
     end;
 
     // --- IsEmpty ---
@@ -118,7 +118,7 @@ codeunit 50598 "RF Tests"
     var
         Probe: Codeunit "RF Probe";
     begin
-        Assert.IsTrue(Probe.IsTableEmpty(56680), 'Empty table must be empty');
+        Assert.IsTrue(Probe.IsTableEmpty(50193), 'Empty table must be empty');
     end;
 
     [Test]
@@ -128,7 +128,7 @@ codeunit 50598 "RF Tests"
         R: Record "RF Test Item";
     begin
         R.Id := 1; R.Insert();
-        Assert.IsFalse(Probe.IsTableEmpty(56680), 'Table with row must not be empty');
+        Assert.IsFalse(Probe.IsTableEmpty(50193), 'Table with row must not be empty');
     end;
 
     // --- Delete ---
@@ -144,10 +144,10 @@ codeunit 50598 "RF Tests"
         R.Id := 2; R.Name := 'Remove'; R.Insert();
 
         // [WHEN] Delete row with Id=2 via RecordRef
-        Assert.IsTrue(Probe.DeleteFirstById(56680, 2), 'Delete must succeed');
+        Assert.IsTrue(Probe.DeleteFirstById(50193, 2), 'Delete must succeed');
 
         // [THEN] Only 1 row remains
-        Assert.AreEqual(1, Probe.CountRecords(56680), 'One row must remain');
+        Assert.AreEqual(1, Probe.CountRecords(50193), 'One row must remain');
     end;
 
     [Test]
@@ -160,9 +160,9 @@ codeunit 50598 "RF Tests"
         R.Id := 2; R.Insert();
         R.Id := 3; R.Insert();
 
-        Probe.DeleteAll(56680);
+        Probe.DeleteAll(50193);
 
-        Assert.AreEqual(0, Probe.CountRecords(56680), 'All rows must be deleted');
+        Assert.AreEqual(0, Probe.CountRecords(50193), 'All rows must be deleted');
     end;
 
     // --- Modify ---
@@ -174,7 +174,7 @@ codeunit 50598 "RF Tests"
     begin
         // [GIVEN] Insert with name 'Old', then modify to 'New' via RecRef
         // [THEN] Read back returns 'New'
-        Assert.AreEqual('New', Probe.InsertAndModify(56680, 99, 'Old', 'New'), 'Modify must update field');
+        Assert.AreEqual('New', Probe.InsertAndModify(50193, 99, 'Old', 'New'), 'Modify must update field');
     end;
 
     // --- Filtered count (SetRange on FieldRef) ---
@@ -191,7 +191,7 @@ codeunit 50598 "RF Tests"
 
         // [WHEN] SetRange on field 1 with value 2
         // [THEN] Count returns 1
-        Assert.AreEqual(1, Probe.FilteredCount(56680, 1, 2), 'SetRange must filter to 1 row');
+        Assert.AreEqual(1, Probe.FilteredCount(50193, 1, 2), 'SetRange must filter to 1 row');
     end;
 
     // --- Reset clears filters ---
@@ -207,7 +207,7 @@ codeunit 50598 "RF Tests"
 
         // [WHEN] SetRange then Reset
         // [THEN] Count returns all rows
-        Assert.AreEqual(2, Probe.ResetAndCount(56680, 1, 1), 'Reset must clear filters');
+        Assert.AreEqual(2, Probe.ResetAndCount(50193, 1, 1), 'Reset must clear filters');
     end;
 
     // --- Negative tests ---
@@ -223,7 +223,7 @@ codeunit 50598 "RF Tests"
 
         // [WHEN] Insert duplicate via RecRef
         // [THEN] Error is thrown
-        asserterror Probe.SetFieldAndInsert(56680, 1, 1, 2, 'Duplicate');
+        asserterror Probe.SetFieldAndInsert(50193, 1, 1, 2, 'Duplicate');
         Assert.ExpectedError('already exists');
     end;
 
@@ -268,7 +268,7 @@ codeunit 50598 "RF Tests"
         RecRef: RecordRef;
     begin
         // RecRef.FindFirst() must return false on empty table (no error)
-        RecRef.Open(56680);
+        RecRef.Open(50193);
         Assert.IsFalse(RecRef.FindFirst(), 'FindFirst on empty table must return false');
         RecRef.Close();
     end;
@@ -286,7 +286,7 @@ codeunit 50598 "RF Tests"
         R.Id := 2; R.Name := 'Bravo'; R.Insert();
         R.Id := 3; R.Name := 'Alpha'; R.Insert();
 
-        RecRef.Open(56680);
+        RecRef.Open(50193);
         FldRef := RecRef.Field(2);
         FldRef.SetFilter('Alpha');
         Assert.AreEqual(2, RecRef.Count(), 'SetFilter must filter to 2 matching rows');
@@ -301,12 +301,12 @@ codeunit 50598 "RF Tests"
         Probe: Codeunit "RF Probe";
     begin
         // [GIVEN] 3 rows inserted via RecRef
-        Probe.SetFieldAndInsert(56680, 1, 10, 2, 'First');
-        Probe.SetFieldAndInsert(56680, 1, 20, 2, 'Second');
-        Probe.SetFieldAndInsert(56680, 1, 30, 2, 'Third');
+        Probe.SetFieldAndInsert(50193, 1, 10, 2, 'First');
+        Probe.SetFieldAndInsert(50193, 1, 20, 2, 'Second');
+        Probe.SetFieldAndInsert(50193, 1, 30, 2, 'Third');
 
         // [THEN] Iterate via RecRef returns all rows
-        Assert.AreEqual('First,Second,Third', Probe.IterateNames(56680), 'Full round-trip must work');
+        Assert.AreEqual('First,Second,Third', Probe.IterateNames(50193), 'Full round-trip must work');
     end;
 
     // --- Negative: reading FieldRef.Value on unbound RecRef ---
@@ -331,7 +331,7 @@ codeunit 50598 "RF Tests"
         RecRef: RecordRef;
         FldRef: FieldRef;
     begin
-        RecRef.Open(56680);
+        RecRef.Open(50193);
         FldRef := RecRef.Field(1);
         FldRef.Value := 999;
         FldRef := RecRef.Field(2);

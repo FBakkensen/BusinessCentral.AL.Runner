@@ -5,11 +5,11 @@ codeunit 50396 "RecRef Factory Src"
     procedure GetRecRefFromArray(): Integer
     var
         RecRefs: array[3] of RecordRef;
-        i: Integer;
     begin
-        // Open each RecordRef to a different "table"
-        for i := 1 to 3 do
-            RecRefs[i].Open(i);
+        // Open each RecordRef to a different local table (50000..50002 are valid in this bundle).
+        RecRefs[1].Open(50000);
+        RecRefs[2].Open(50001);
+        RecRefs[3].Open(50002);
 
         // Return the table number of the second element to prove array works
         exit(RecRefs[2].Number);

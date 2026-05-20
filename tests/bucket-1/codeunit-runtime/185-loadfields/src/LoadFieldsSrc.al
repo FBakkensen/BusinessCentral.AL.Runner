@@ -101,7 +101,7 @@ codeunit 50144 "LF Src"
         r."Id" := 99;
         r."Name" := 'X';
         r.Insert();
-        recRef.Open(60110);
+        recRef.Open(50021);
         // Standalone contract: every field is always in memory.
         exit(recRef.AreFieldsLoaded(1, 2, 3));
     end;
@@ -110,7 +110,7 @@ codeunit 50144 "LF Src"
     var
         recRef: RecordRef;
     begin
-        recRef.Open(60110);
+        recRef.Open(50021);
         recRef.SetLoadFields(1);
         recRef.AddLoadFields(2);
         // Even fields not explicitly in the load set still report as loaded

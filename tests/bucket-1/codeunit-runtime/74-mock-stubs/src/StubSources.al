@@ -31,7 +31,7 @@ codeunit 50345 "Stub Logic"
         RecRef: RecordRef;
         TableName: Text;
     begin
-        RecRef.Open(57400);
+        RecRef.Open(50050);
         RecRef.SetLoadFields(1, 2);
         TableName := RecRef.Name;
         RecRef.Close();
