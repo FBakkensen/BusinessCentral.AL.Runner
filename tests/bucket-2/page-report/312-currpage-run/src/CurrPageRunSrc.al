@@ -1,7 +1,7 @@
 /// Source page that calls CurrPage.Run() from within a page action.
 /// CurrPage.Run() is lowered by BC to this.Run() on the Page<N> class.
 /// Issue #1444: Page<N> was missing the Run() method, causing CS1061.
-page 312000 "CPR Card"
+page 50033 "CPR Card"
 {
     PageType = Card;
     SourceTable = "CPR Row";
@@ -37,7 +37,7 @@ page 312000 "CPR Card"
     }
 }
 
-table 312000 "CPR Row"
+table 50087 "CPR Row"
 {
     fields
     {
@@ -48,7 +48,7 @@ table 312000 "CPR Row"
 }
 
 /// Source codeunit to exercise CurrPage.Run() indirectly via page invocation.
-codeunit 312000 "CPR Source"
+codeunit 50463 "CPR Source"
 {
     /// Opens the card page (no-op in headless runner) then returns the id to prove execution reached here.
     procedure RunCard(): Integer

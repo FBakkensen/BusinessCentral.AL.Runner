@@ -1,4 +1,4 @@
-codeunit 50601 TimeFormatTest
+codeunit 50208 TimeFormatTest
 {
     Subtype = Test;
 

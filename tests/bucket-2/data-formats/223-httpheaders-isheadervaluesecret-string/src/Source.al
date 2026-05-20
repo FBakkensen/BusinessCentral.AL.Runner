@@ -5,7 +5,7 @@
 // causing CS1503 on compile. The fix adds a string overload.
 //
 // AL: Headers.ContainsSecret('Content-Type') → C#: headers.ALIsHeaderValueSecret("Content-Type")
-codeunit 62230 "HHSecSrc"
+codeunit 50193 "HHSecSrc"
 {
     /// Returns whether the header key is a secret header.
     /// Always false in standalone mode.

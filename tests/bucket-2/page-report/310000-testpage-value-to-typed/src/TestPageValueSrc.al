@@ -1,4 +1,4 @@
-table 70140700 "TPV Read Record"
+table 50081 "TPV Read Record"
 {
     fields
     {
@@ -8,7 +8,7 @@ table 70140700 "TPV Read Record"
     keys { key(PK; "No.") { Clustered = true; } }
 }
 
-page 70140700 "TPV Read Card"
+page 50030 "TPV Read Card"
 {
     PageType = Card;
     SourceTable = "TPV Read Record";

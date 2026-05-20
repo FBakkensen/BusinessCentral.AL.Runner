@@ -1,4 +1,4 @@
-codeunit 60341 "VIT Test"
+codeunit 50170 "VIT Test"
 {
     Subtype = Test;
 

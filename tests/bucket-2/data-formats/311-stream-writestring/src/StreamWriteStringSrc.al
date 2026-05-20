@@ -1,6 +1,6 @@
 /// Helper codeunit exercising OutStream.Write(Text) which transpiles to
 /// MockStream.ALWriteString, and InStream.Read(Text) which reads it back.
-codeunit 59610 "SWST Src"
+codeunit 50248 "SWST Src"
 {
     /// Write a Text value via OutStream.Write (generates ALWriteString),
     /// then read it back via InStream.Read — round-trip.
@@ -34,7 +34,7 @@ codeunit 59610 "SWST Src"
     end;
 }
 
-table 59610 "SWST TempBlob"
+table 50023 "SWST TempBlob"
 {
     fields
     {

@@ -1,4 +1,4 @@
-codeunit 170003 "BTT Bool To Text Tests"
+codeunit 50007 "BTT Bool To Text Tests"
 {
     Subtype = Test;
 

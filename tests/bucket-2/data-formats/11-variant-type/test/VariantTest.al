@@ -1,4 +1,4 @@
-codeunit 50911 "Variant Type Tests"
+codeunit 50023 "Variant Type Tests"
 {
     Subtype = Test;
 

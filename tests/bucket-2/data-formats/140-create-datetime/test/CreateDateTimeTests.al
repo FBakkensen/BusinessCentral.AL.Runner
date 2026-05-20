@@ -1,5 +1,5 @@
 // Renumbered from 60501 to avoid collision in new bucket layout (#1385).
-codeunit 1060501 "CDT Create DateTime Tests"
+codeunit 50055 "CDT Create DateTime Tests"
 {
     Subtype = Test;
 

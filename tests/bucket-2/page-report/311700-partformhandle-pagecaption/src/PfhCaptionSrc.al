@@ -1,6 +1,6 @@
 /// Source objects for MockPartFormHandle.PageCaption tests (issue #1440).
 
-table 311700 "PFH Caption Record"
+table 50084 "PFH Caption Record"
 {
     DataClassification = ToBeClassified;
     fields
@@ -14,7 +14,7 @@ table 311700 "PFH Caption Record"
 }
 
 /// ListPart subpage used to test PageCaption on the part form handle.
-page 311700 "PFH Caption Sub Page"
+page 50031 "PFH Caption Sub Page"
 {
     PageType = ListPart;
     Caption = 'My Sub Page Caption';
@@ -33,7 +33,7 @@ page 311700 "PFH Caption Sub Page"
 }
 
 /// Card page that hosts the subpage and exposes PageCaption get/set on the part.
-page 311701 "PFH Caption Card Page"
+page 50032 "PFH Caption Card Page"
 {
     PageType = Card;
 

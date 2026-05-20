@@ -1,5 +1,5 @@
 /// Table used as the dataitem source for the base report.
-table 59320 "ALDS Item"
+table 50050 "ALDS Item"
 {
     DataClassification = CustomerContent;
     fields
@@ -15,7 +15,7 @@ table 59320 "ALDS Item"
 }
 
 /// Extra table used as a nested child dataitem in the report extension.
-table 59321 "ALDS Sub"
+table 50051 "ALDS Sub"
 {
     DataClassification = CustomerContent;
     fields
@@ -31,7 +31,7 @@ table 59321 "ALDS Sub"
 
 /// Base report with a single dataitem — the reportextension will add a child
 /// dataitem at the end using addlast.
-report 59320 "ALDS Base Report"
+report 50008 "ALDS Base Report"
 {
     dataset
     {
@@ -47,7 +47,7 @@ report 59320 "ALDS Base Report"
 /// reportextension using addlast in the dataset area — adds a new child dataitem
 /// as the last nested dataitem inside ALDSItem.
 /// This is the exact construct issue #420 says fails to compile.
-reportextension 59322 "ALDS Report Ext" extends "ALDS Base Report"
+reportextension 50002 "ALDS Report Ext" extends "ALDS Base Report"
 {
     dataset
     {
@@ -65,7 +65,7 @@ reportextension 59322 "ALDS Report Ext" extends "ALDS Base Report"
 /// Helper codeunit with business logic exercised by the tests.
 /// Proves that the compilation unit containing reportextensions with addlast
 /// in the dataset area compiles and codeunits alongside remain callable.
-codeunit 59320 "ALDS Helper"
+codeunit 50371 "ALDS Helper"
 {
     procedure GetLabel(): Text
     begin

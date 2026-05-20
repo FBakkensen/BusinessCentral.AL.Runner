@@ -1,5 +1,5 @@
 /// Tests for RecordId.TableNo and XmlNameTable.Add/Get.
-codeunit 100101 "SGP Test"
+codeunit 50152 "SGP Test"
 {
     Subtype = Test;
 

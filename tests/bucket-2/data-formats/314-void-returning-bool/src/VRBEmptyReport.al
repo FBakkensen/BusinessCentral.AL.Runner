@@ -1,5 +1,5 @@
 /// Minimal local table used as report dataitem to avoid dependency on Integer table.
-table 1314002 "VRB Dummy Table"
+table 50024 "VRB Dummy Table"
 {
     fields
     {
@@ -9,7 +9,7 @@ table 1314002 "VRB Dummy Table"
 }
 
 /// Minimal report fixture used by VRB tests.
-report 1314001 "VRB Empty Report"
+report 50000 "VRB Empty Report"
 {
     ProcessingOnly = true;
     dataset
@@ -22,7 +22,7 @@ report 1314001 "VRB Empty Report"
 }
 
 /// Minimal local blob-table replacement for Temp Blob codeunit (not available in runner).
-table 1314003 "VRB Blob Store"
+table 50025 "VRB Blob Store"
 {
     fields
     {

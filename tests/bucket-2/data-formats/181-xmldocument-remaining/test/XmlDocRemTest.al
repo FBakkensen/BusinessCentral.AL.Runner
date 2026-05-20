@@ -1,4 +1,4 @@
-codeunit 108001 "XDR Test"
+codeunit 50124 "XDR Test"
 {
     Subtype = Test;
 

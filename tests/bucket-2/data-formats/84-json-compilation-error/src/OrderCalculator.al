@@ -2,7 +2,7 @@
 /// This file compiles successfully and is used to verify that passing
 /// tests still get status "pass" even when other files are excluded by
 /// Roslyn (e.g., the XmlPort below).
-codeunit 50841 "Order Calculator"
+codeunit 50301 "Order Calculator"
 {
     procedure TotalWithTax(Amount: Decimal; TaxRate: Decimal): Decimal
     begin

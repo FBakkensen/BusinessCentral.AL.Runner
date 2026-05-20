@@ -1,4 +1,4 @@
-codeunit 84001 "InStream EOS Test"
+codeunit 50210 "InStream EOS Test"
 {
     Subtype = Test;
 

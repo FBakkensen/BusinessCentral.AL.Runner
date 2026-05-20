@@ -1,4 +1,4 @@
-codeunit 59531 "Dict Test"
+codeunit 50051 "Dict Test"
 {
     Subtype = Test;
 

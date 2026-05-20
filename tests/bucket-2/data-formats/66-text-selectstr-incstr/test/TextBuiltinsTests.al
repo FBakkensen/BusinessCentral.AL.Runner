@@ -1,4 +1,4 @@
-codeunit 58101 "TBI Text Builtins Tests"
+codeunit 50281 "TBI Text Builtins Tests"
 {
     Subtype = Test;
 

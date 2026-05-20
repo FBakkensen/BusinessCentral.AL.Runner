@@ -1,4 +1,4 @@
-table 308400 "GetRange Filter Table"
+table 50002 "GetRange Filter Table"
 {
     fields
     {
@@ -16,7 +16,7 @@ table 308400 "GetRange Filter Table"
     }
 }
 
-codeunit 308401 "GetRange Filter Helper"
+codeunit 50014 "GetRange Filter Helper"
 {
     procedure GetMinDate(var Rec: Record "GetRange Filter Table"): Date
     var

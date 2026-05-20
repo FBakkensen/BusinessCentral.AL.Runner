@@ -2,7 +2,7 @@
 /// BC emits ALCompiler.NavIndirectValueToNavValue<NavText>(variant, metadata)
 /// when assigning a Variant to a Text variable. The 2-arg overload was not
 /// previously handled, causing Roslyn compilation error CS1501.
-codeunit 293001 "VNT Variant NavText Helper"
+codeunit 50228 "VNT Variant NavText Helper"
 {
     /// Assign a Boolean wrapped in Variant to a Text variable.
     /// BC emits NavIndirectValueToNavValue<NavText>(v, metadata).

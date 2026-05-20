@@ -1,4 +1,4 @@
-codeunit 58000 "LSR List Helper"
+codeunit 50278 "LSR List Helper"
 {
     procedure ReverseIntegerList(var Items: List of [Integer])
     begin

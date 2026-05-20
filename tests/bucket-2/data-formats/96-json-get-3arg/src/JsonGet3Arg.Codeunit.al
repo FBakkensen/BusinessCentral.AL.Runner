@@ -1,4 +1,4 @@
-codeunit 1281001 "JSON Get 3-Arg Helper"
+codeunit 50324 "JSON Get 3-Arg Helper"
 {
     /// <summary>
     /// Helper that exercises 3-arg GetInteger, GetBoolean, and GetDecimal

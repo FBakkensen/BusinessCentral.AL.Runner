@@ -1,4 +1,4 @@
-codeunit 58201 "STM Secret Text Tests"
+codeunit 50283 "STM Secret Text Tests"
 {
     Subtype = Test;
 

@@ -1,4 +1,4 @@
-codeunit 56741 "TPN TestPage Nav Tests"
+codeunit 50499 "TPN TestPage Nav Tests"
 {
     Subtype = Test;
 

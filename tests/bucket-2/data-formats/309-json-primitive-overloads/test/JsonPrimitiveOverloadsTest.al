@@ -3,7 +3,7 @@
 /// JsonObject.Replace, and JsonValue.SetValue.
 /// All 71 typed overloads route through NavJsonToken implicit-conversion
 /// in the BC runtime (no TrappableOperationExecutor path).
-codeunit 309000 "Json Primitive Overloads Test"
+codeunit 50241 "Json Primitive Overloads Test"
 {
     Subtype = Test;
 

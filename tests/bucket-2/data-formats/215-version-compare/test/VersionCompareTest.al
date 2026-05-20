@@ -1,4 +1,4 @@
-codeunit 60431 "VC Test"
+codeunit 50182 "VC Test"
 {
     Subtype = Test;
 

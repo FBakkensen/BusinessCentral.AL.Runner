@@ -1,4 +1,4 @@
-codeunit 60351 "JVX Test"
+codeunit 50172 "JVX Test"
 {
     Subtype = Test;
 

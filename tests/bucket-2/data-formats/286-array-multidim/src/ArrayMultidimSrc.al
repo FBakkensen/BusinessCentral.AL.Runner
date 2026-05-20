@@ -1,7 +1,7 @@
 /// Source codeunit exercising multi-dimensional arrays and GetSubArray — issue #974.
 /// BC emits arr[r, c] (2-arg indexer) for 2D arrays and arr.GetSubArray(rowIndex)
 /// when passing a 2D array row to a 1D array parameter.
-codeunit 134001 "AMD Source"
+codeunit 50221 "AMD Source"
 {
     /// Build a 2×3 integer array and return element [r, c] (1-based).
     procedure Get2DElement(r: Integer; c: Integer): Integer

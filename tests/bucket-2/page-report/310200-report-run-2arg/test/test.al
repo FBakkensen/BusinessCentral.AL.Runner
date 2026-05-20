@@ -1,4 +1,4 @@
-codeunit 310202 "RR2 Tests"
+codeunit 50459 "RR2 Tests"
 {
     Subtype = Test;
 

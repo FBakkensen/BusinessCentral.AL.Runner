@@ -1,5 +1,5 @@
 /// Helper codeunit exercising Cookie property get/set (Name, Value) and read-only properties (Domain, Path, Secure, HttpOnly, Expires).
-codeunit 61830 "CP Helper"
+codeunit 50076 "CP Helper"
 {
     /// Sets Name and Value (writable) and reads back both.
     procedure CreateCookieWithNameValue(

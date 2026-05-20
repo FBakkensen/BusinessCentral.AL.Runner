@@ -1,4 +1,4 @@
-codeunit 1260002 "Object NavValue Test"
+codeunit 50327 "Object NavValue Test"
 {
     Subtype = Test;
 

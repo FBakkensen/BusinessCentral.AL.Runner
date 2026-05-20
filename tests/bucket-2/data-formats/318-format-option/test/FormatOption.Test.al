@@ -1,4 +1,4 @@
-codeunit 1315002 "Format Option Test"
+codeunit 50258 "Format Option Test"
 {
     Subtype = Test;
 

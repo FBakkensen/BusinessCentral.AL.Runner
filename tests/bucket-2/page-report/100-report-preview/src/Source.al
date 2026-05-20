@@ -1,4 +1,4 @@
-table 98000 "RP Test Data"
+table 50036 "RP Test Data"
 {
     fields
     {
@@ -8,7 +8,7 @@ table 98000 "RP Test Data"
     keys { key(PK; Id) { Clustered = true; } }
 }
 
-report 98000 "RP Preview Report"
+report 50001 "RP Preview Report"
 {
     dataset
     {
@@ -23,7 +23,7 @@ report 98000 "RP Preview Report"
     end;
 }
 
-codeunit 98001 "RP Preview Runner"
+codeunit 50342 "RP Preview Runner"
 {
     procedure RunPreviewReport()
     var

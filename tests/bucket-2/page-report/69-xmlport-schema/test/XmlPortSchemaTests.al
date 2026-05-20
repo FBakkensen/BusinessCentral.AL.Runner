@@ -1,4 +1,4 @@
-codeunit 58701 "XPS XmlPort Schema Tests"
+codeunit 50486 "XPS XmlPort Schema Tests"
 {
     Subtype = Test;
 

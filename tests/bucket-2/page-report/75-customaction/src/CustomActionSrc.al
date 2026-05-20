@@ -1,4 +1,4 @@
-table 59600 "CA Order"
+table 50105 "CA Order"
 {
     DataClassification = CustomerContent;
     fields
@@ -16,7 +16,7 @@ table 59600 "CA Order"
 /// Card page containing customaction() declarations — used to integrate with
 /// Power Automate flows or other external services. Custom actions have no
 /// runtime effect in a unit-test context; this proves they do not block compilation.
-page 59600 "CA Order Card"
+page 50053 "CA Order Card"
 {
     PageType = Card;
     SourceTable = "CA Order";
@@ -55,7 +55,7 @@ page 59600 "CA Order Card"
 }
 
 /// Helper procedure for page-instantiation test.
-codeunit 59602 "CA Page Runner"
+codeunit 50502 "CA Page Runner"
 {
     procedure RunOrderCard()
     var
@@ -67,7 +67,7 @@ codeunit 59602 "CA Page Runner"
 
 /// Business logic helper — proves that the compilation unit containing
 /// a page with customaction declarations compiles and runs correctly.
-codeunit 59600 "CA Order Helper"
+codeunit 50503 "CA Order Helper"
 {
     procedure CalcTax(Amount: Decimal; TaxRate: Decimal): Decimal
     begin

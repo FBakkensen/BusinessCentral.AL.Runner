@@ -4,7 +4,7 @@
 // which previously failed to compile with CS1503: cannot convert from
 // MockTestPageField to NavValue, because ALGoToKey only exposed a
 // `params NavValue[]` overload.
-table 1215001 "GoToKey TF Rec"
+table 50042 "GoToKey TF Rec"
 {
     fields
     {
@@ -14,7 +14,7 @@ table 1215001 "GoToKey TF Rec"
     keys { key(PK; "No.") { Clustered = true; } }
 }
 
-page 1215001 "GoToKey TF List"
+page 50003 "GoToKey TF List"
 {
     PageType = List;
     SourceTable = "GoToKey TF Rec";

@@ -1,5 +1,5 @@
 /// Exercises string-manipulation dot-methods on codeunit-level Label (TextConst) values.
-codeunit 89000 "TCM Src"
+codeunit 50311 "TCM Src"
 {
     var
         HelloWorld: Label 'Hello, World!';

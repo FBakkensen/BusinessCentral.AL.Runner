@@ -1,5 +1,5 @@
 /// Exercises Report instance variable RunRequestPage overloads — issue #1333.
-codeunit 308000 "ReportInstanceRRP Src"
+codeunit 50453 "ReportInstanceRRP Src"
 {
     /// Call Rep.RunRequestPage(requestParameters) — 1-arg instance overload.
     procedure RunRequestPage1Arg(requestParameters: Text): Text
@@ -18,7 +18,7 @@ codeunit 308000 "ReportInstanceRRP Src"
     end;
 }
 
-report 308000 "ReportInstanceRRP Report"
+report 50019 "ReportInstanceRRP Report"
 {
     dataset
     {

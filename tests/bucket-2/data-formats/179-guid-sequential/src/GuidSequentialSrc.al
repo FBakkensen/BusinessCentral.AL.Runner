@@ -1,5 +1,5 @@
 /// Helper codeunit exercising Guid.CreateSequentialGuid().
-codeunit 60040 "GCSG Src"
+codeunit 50117 "GCSG Src"
 {
     procedure GetSequentialGuid(): Guid
     var

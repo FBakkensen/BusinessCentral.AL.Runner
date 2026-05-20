@@ -1,5 +1,5 @@
 /// Tests for the Version built-in type: Create, Major, Minor, Build, Revision, ToText.
-codeunit 99101 "VER Test"
+codeunit 50331 "VER Test"
 {
     Subtype = Test;
 

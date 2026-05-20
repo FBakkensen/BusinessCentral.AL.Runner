@@ -1,5 +1,5 @@
 /// Helper codeunit exercising remaining XmlDocument methods from issue #810.
-codeunit 108000 "XDR Src"
+codeunit 50123 "XDR Src"
 {
     // ── AsXmlNode ───────────────────────────────────────────────────────────────
 

@@ -1,5 +1,5 @@
 /// Table backing the base page used by the page extension in this suite.
-table 60400 "ALV Product"
+table 50055 "ALV Product"
 {
     DataClassification = CustomerContent;
     fields
@@ -15,7 +15,7 @@ table 60400 "ALV Product"
 }
 
 /// Base page with an existing view so the pageextension has something to append after.
-page 60400 "ALV Product List"
+page 50008 "ALV Product List"
 {
     PageType = List;
     SourceTable = "ALV Product";
@@ -45,7 +45,7 @@ page 60400 "ALV Product List"
 /// Page extension using addlast() in the views area — appends a view at the end
 /// of the views section. addlast in views is a compile-time directive; it has
 /// no runtime effect in unit-test context, so proving compilation is sufficient.
-pageextension 60400 "ALV Product List Ext" extends "ALV Product List"
+pageextension 50003 "ALV Product List Ext" extends "ALV Product List"
 {
     views
     {
@@ -67,7 +67,7 @@ pageextension 60400 "ALV Product List Ext" extends "ALV Product List"
 
 /// Business logic helper — proves that the compilation unit containing a
 /// pageextension with addlast(views) compiles and executes logic correctly.
-codeunit 60400 "ALV Helper"
+codeunit 50379 "ALV Helper"
 {
     procedure GetLabel(): Text
     begin

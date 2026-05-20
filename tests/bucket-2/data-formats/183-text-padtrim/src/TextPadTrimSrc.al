@@ -1,5 +1,5 @@
 /// Helper codeunit exercising Text padding/trim/remove/replace methods.
-codeunit 60080 "TPT Src"
+codeunit 50131 "TPT Src"
 {
     procedure PadLeftIt(v: Text; totalLength: Integer; padChar: Char): Text
     begin

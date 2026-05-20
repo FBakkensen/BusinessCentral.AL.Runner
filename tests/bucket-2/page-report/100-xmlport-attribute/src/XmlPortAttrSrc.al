@@ -1,4 +1,4 @@
-table 64000 "XPA Item"
+table 50038 "XPA Item"
 {
     fields
     {
@@ -54,7 +54,7 @@ xmlport 64000 "XPA Items"
 /// Helper codeunit — in the same compilation unit as the xmlport_attribute XmlPort.
 /// Proves that a codeunit that declares an XmlPort variable (with attribute schema)
 /// compiles and runs correctly without invoking I/O.
-codeunit 64000 "XPA Helper"
+codeunit 50346 "XPA Helper"
 {
     procedure GetPortId(): Integer
     var

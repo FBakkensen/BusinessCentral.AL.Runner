@@ -1,5 +1,5 @@
 /// Helper codeunit exercising XmlDocumentType — issue #769.
-codeunit 101000 "XDT Src"
+codeunit 50105 "XDT Src"
 {
     procedure CreateDocType(): XmlDocumentType
     begin

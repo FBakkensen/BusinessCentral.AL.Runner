@@ -1,4 +1,4 @@
-codeunit 1313001 "Duration To Integer Test"
+codeunit 50252 "Duration To Integer Test"
 {
     Subtype = Test;
 

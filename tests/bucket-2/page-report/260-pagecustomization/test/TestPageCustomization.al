@@ -1,4 +1,4 @@
-codeunit 50262 "Test PageCustomization"
+codeunit 50416 "Test PageCustomization"
 {
     Subtype = Test;
 

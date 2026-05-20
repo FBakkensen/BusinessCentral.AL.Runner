@@ -1,6 +1,6 @@
 /// Report with data items used to exercise TestRequestPage.GetDataItem.
 /// The data items expose filters that tests can set and verify via GetDataItem().
-report 311900 "TRP GDI Report"
+report 50022 "TRP GDI Report"
 {
     Caption = 'TRP GDI Report';
     dataset
@@ -39,7 +39,7 @@ report 311900 "TRP GDI Report"
         FilterValue: Text[50];
 }
 
-table 311901 "TRP GDI Cust"
+table 50085 "TRP GDI Cust"
 {
     fields
     {
@@ -52,7 +52,7 @@ table 311901 "TRP GDI Cust"
     }
 }
 
-table 311902 "TRP GDI Entry"
+table 50086 "TRP GDI Entry"
 {
     fields
     {
@@ -66,7 +66,7 @@ table 311902 "TRP GDI Entry"
     }
 }
 
-codeunit 99800 "TRP GDI Src"
+codeunit 50461 "TRP GDI Src"
 {
     procedure RunReport()
     begin

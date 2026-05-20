@@ -1,4 +1,4 @@
-codeunit 60171 "XEL Test"
+codeunit 50146 "XEL Test"
 {
     Subtype = Test;
 

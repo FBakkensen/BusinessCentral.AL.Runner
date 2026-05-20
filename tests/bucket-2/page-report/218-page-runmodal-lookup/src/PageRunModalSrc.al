@@ -1,4 +1,4 @@
-page 60470 "PRM Card"
+page 50015 "PRM Card"
 {
     PageType = Card;
     SourceTable = "PRM Source";
@@ -12,7 +12,7 @@ page 60470 "PRM Card"
     }
 }
 
-table 60470 "PRM Source"
+table 50059 "PRM Source"
 {
     fields
     {
@@ -22,7 +22,7 @@ table 60470 "PRM Source"
 }
 
 /// Exercises Page<N>.RunModal and LookupMode on a generated page class.
-codeunit 60470 "PRM Src"
+codeunit 50400 "PRM Src"
 {
     procedure PageRunModal_ReturnsAction(): Action
     var

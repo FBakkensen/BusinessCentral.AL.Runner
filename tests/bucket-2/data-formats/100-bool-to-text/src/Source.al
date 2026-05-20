@@ -1,4 +1,4 @@
-table 170001 "BTT Bool Table"
+table 50000 "BTT Bool Table"
 {
     fields
     {
@@ -9,7 +9,7 @@ table 170001 "BTT Bool Table"
     keys { key(PK; Id) { Clustered = true; } }
 }
 
-codeunit 170002 "BTT Bool Helper"
+codeunit 50006 "BTT Bool Helper"
 {
     /// Copy a Boolean FieldRef.Value into a Text FieldRef.Value, then read the text field.
     /// The BC transpiler stores the Boolean field via MockRecordRef with NavType.Text, and

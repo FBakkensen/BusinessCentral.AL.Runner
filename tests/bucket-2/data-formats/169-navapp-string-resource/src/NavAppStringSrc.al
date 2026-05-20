@@ -2,7 +2,7 @@
 // BC may emit the resource name as a C# string literal (CS1503: string → NavText).
 // MockNavApp now has string overloads for ALGetResource, ALGetResourceAsText, and
 // ALGetResourceAsJson to handle this.
-codeunit 169001 "NASR Source"
+codeunit 50092 "NASR Source"
 {
     procedure GetResourceText(ResourceName: Text): Text
     var

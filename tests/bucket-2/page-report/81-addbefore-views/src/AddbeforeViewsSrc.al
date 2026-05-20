@@ -1,5 +1,5 @@
 /// Table backing the base page used by the page extension in this suite.
-table 50816 "ABV Product"
+table 50110 "ABV Product"
 {
     DataClassification = CustomerContent;
     fields
@@ -14,7 +14,7 @@ table 50816 "ABV Product"
 }
 
 /// Base page with an existing view so the pageextension has something to addbefore.
-page 50816 "ABV Product List"
+page 50058 "ABV Product List"
 {
     PageType = List;
     SourceTable = "ABV Product";
@@ -42,7 +42,7 @@ page 50816 "ABV Product List"
 
 /// pageextension using addbefore inside the views area.
 /// This is the exact construct issue #424 says fails to compile.
-pageextension 50816 "ABV Product List Before" extends "ABV Product List"
+pageextension 50020 "ABV Product List Before" extends "ABV Product List"
 {
     views
     {
@@ -59,7 +59,7 @@ pageextension 50816 "ABV Product List Before" extends "ABV Product List"
 
 /// pageextension using addbefore in views with multiple views inserted.
 /// Proves addbefore with multiple view declarations compiles.
-pageextension 50817 "ABV Product List BeforeMulti" extends "ABV Product List"
+pageextension 50021 "ABV Product List BeforeMulti" extends "ABV Product List"
 {
     views
     {
@@ -81,7 +81,7 @@ pageextension 50817 "ABV Product List BeforeMulti" extends "ABV Product List"
 /// Helper codeunit with business logic exercised by the tests.
 /// Proves the compilation unit containing pageextensions with addbefore in the
 /// views area compiles and codeunits alongside remain callable.
-codeunit 50816 "ABV Product Helper"
+codeunit 50513 "ABV Product Helper"
 {
     procedure GetViewLabel(): Text
     begin

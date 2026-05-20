@@ -1,6 +1,6 @@
 /// Helper codeunit that sets a Code[20] field via FieldRef (NavText) and reads it back directly.
 /// This triggers the NavText stored in Code field slot → cast fails on direct access.
-codeunit 98400 "NTC Helper"
+codeunit 50018 "NTC Helper"
 {
     /// Set a Code field via FieldRef (value arrives as NavText) then read it back directly.
     /// This is the exact pattern that causes InvalidCastException:

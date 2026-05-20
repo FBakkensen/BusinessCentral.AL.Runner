@@ -1,4 +1,4 @@
-codeunit 110000 XmlDocNodeManipSrc
+codeunit 50020 XmlDocNodeManipSrc
 {
     procedure RemoveDoc(var Doc: XmlDocument)
     begin

@@ -5,7 +5,7 @@
 /// The fix adds NavOption → NavText coercion in:
 ///   1. MockRecordHandle.CoerceToExpectedType (NavType.Text + NavOption stored value)
 ///   2. MockCodeunitHandle.ConvertArgInternal (NavOption arg for NavText parameter)
-codeunit 235001 "NOT Tests"
+codeunit 50204 "NOT Tests"
 {
     Subtype = Test;
 

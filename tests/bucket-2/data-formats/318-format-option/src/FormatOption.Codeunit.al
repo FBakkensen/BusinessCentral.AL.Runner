@@ -1,4 +1,4 @@
-codeunit 1315001 "Format Option Helper"
+codeunit 50257 "Format Option Helper"
 {
     procedure FormatStyle(Style: Option Standard,Attention,Favorable): Text
     begin

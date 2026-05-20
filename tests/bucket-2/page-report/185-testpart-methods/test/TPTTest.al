@@ -1,5 +1,5 @@
 /// Tests for TestPart methods — covers all 20 methods listed in issue #687.
-codeunit 97302 "TPT Tests"
+codeunit 50393 "TPT Tests"
 {
     Subtype = Test;
 

@@ -3,7 +3,7 @@
 // ID 130 ("Assert") is in LibraryAssert.al for backward compatibility.
 // ID 131 ("Library Assert") allows projects that reference Codeunit "Library Assert" to compile.
 // At runtime, MockCodeunitHandle routes codeunit 131 calls to MockAssert.
-codeunit 131 "Library Assert"
+codeunit 50002 "Library Assert"
 {
     procedure AreEqual(Expected: Variant; Actual: Variant; Msg: Text)
     begin

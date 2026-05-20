@@ -12,7 +12,7 @@
 /// keeping the normal string path active in standalone mode.  The tests prove
 /// that SetFilter/GetFilter round-trips are correct regardless of the source
 /// of the filter expression.
-codeunit 312200 "TPF Object Test"
+codeunit 50466 "TPF Object Test"
 {
     Subtype = Test;
 

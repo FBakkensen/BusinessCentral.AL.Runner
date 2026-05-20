@@ -1,5 +1,5 @@
 /// Table backing the base page used by the page extension in this suite.
-table 50826 "PXT Customer"
+table 50112 "PXT Customer"
 {
     DataClassification = CustomerContent;
     fields
@@ -16,7 +16,7 @@ table 50826 "PXT Customer"
 
 /// Base page with an existing field and action so the pageextension has
 /// anchors to addafter.
-page 50826 "PXT Customer List"
+page 50060 "PXT Customer List"
 {
     PageType = List;
     SourceTable = "PXT Customer";
@@ -52,7 +52,7 @@ page 50826 "PXT Customer List"
 /// Comprehensive pageextension — this is the construct issue #370 says the
 /// runner should compile: a single extension that combines layout addafter,
 /// actions addafter, local variables, and a page trigger.
-pageextension 50826 "PXT Customer List Ext" extends "PXT Customer List"
+pageextension 50023 "PXT Customer List Ext" extends "PXT Customer List"
 {
     layout
     {
@@ -105,7 +105,7 @@ pageextension 50826 "PXT Customer List Ext" extends "PXT Customer List"
 /// Helper codeunit with business logic exercised by the tests and by the
 /// pageextension's triggers/actions. Proves that the compilation unit
 /// containing a multi-feature pageextension compiles and stays live.
-codeunit 50826 "PXT Customer Helper"
+codeunit 50517 "PXT Customer Helper"
 {
     procedure BuildCaption(context: Text): Text
     begin

@@ -1,5 +1,5 @@
 /// Temporary table providing a Blob field for OutStream/InStream roundtrip.
-table 309300 "XWT Blob"
+table 50011 "XWT Blob"
 {
     fields
     {
@@ -13,7 +13,7 @@ table 309300 "XWT Blob"
 /// Covers: WriteTo(var Text), WriteTo(XmlWriteOptions, var OutStream), WriteTo(XmlWriteOptions, var Text)
 /// on XmlDocument, XmlElement, XmlCData, XmlComment, XmlDeclaration, XmlText,
 /// XmlAttribute, XmlProcessingInstruction, and XmlNode.
-codeunit 309301 "XWT Src"
+codeunit 50187 "XWT Src"
 {
     // ── XmlDocument ───────────────────────────────────────────────────────────
 

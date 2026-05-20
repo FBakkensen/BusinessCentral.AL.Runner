@@ -9,7 +9,7 @@
 ///   - ALFind(NavText, bool)                              for Find(SearchExpr, ForceNew) in some BC builds
 ///
 /// All four ALTestFieldSafe variants and the two ALFind variants are exercised here.
-codeunit 62102 "TFNvBl Test"
+codeunit 50227 "TFNvBl Test"
 {
     Subtype = Test;
 

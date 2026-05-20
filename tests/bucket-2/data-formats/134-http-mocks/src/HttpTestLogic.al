@@ -1,4 +1,4 @@
-codeunit 56370 "Http Test Logic"
+codeunit 50048 "Http Test Logic"
 {
     procedure WriteAndReadContent(Input: Text): Text
     var

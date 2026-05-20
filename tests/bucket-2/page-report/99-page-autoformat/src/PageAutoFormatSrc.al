@@ -1,4 +1,4 @@
-table 307900 "PAF Test Record"
+table 50123 "PAF Test Record"
 {
     fields
     {
@@ -12,7 +12,7 @@ table 307900 "PAF Test Record"
     keys { key(PK; Id) { Clustered = true; } }
 }
 
-page 307900 "PAF Test Card"
+page 50066 "PAF Test Card"
 {
     PageType = Card;
     SourceTable = "PAF Test Record";
@@ -31,7 +31,7 @@ page 307900 "PAF Test Card"
     }
 }
 
-codeunit 307901 "PAF Helper"
+codeunit 50547 "PAF Helper"
 {
     procedure InsertAndGetAmount(Id: Integer; Amount: Decimal): Decimal
     var

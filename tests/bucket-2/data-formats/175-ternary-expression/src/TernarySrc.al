@@ -1,6 +1,6 @@
 /// Helper codeunit exercising AL ternary operator: Condition ? ValueA : ValueB
 /// (BC 25+ / 2024 Wave 2 syntax — available in BC 26.0+)
-codeunit 61220 "Ternary Src"
+codeunit 50109 "Ternary Src"
 {
     /// Return 'big' when n > 3, 'small' otherwise.
     procedure Classify(n: Integer): Text

@@ -1,4 +1,4 @@
-table 56901 BlobTable
+table 50030 BlobTable
 {
     fields
     {
@@ -7,7 +7,7 @@ table 56901 BlobTable
     }
 }
 
-codeunit 56902 BlobHelper
+codeunit 50293 BlobHelper
 {
     procedure WriteText(var Rec: Record BlobTable; InputText: Text)
     var

@@ -1,4 +1,4 @@
-table 50480 "PV Row"
+table 50096 "PV Row"
 {
     fields
     {
@@ -7,7 +7,7 @@ table 50480 "PV Row"
     keys { key(PK; Id) { Clustered = true; } }
 }
 
-page 50480 "PV Probe Page"
+page 50042 "PV Probe Page"
 {
     PageType = List;
     SourceTable = "PV Row";

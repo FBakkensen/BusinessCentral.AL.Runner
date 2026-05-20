@@ -1,5 +1,5 @@
 /// Tests for Report instance variable RunRequestPage OOS — issue #1333.
-codeunit 308001 "ReportInstanceRRP Test"
+codeunit 50454 "ReportInstanceRRP Test"
 {
     Subtype = Test;
 

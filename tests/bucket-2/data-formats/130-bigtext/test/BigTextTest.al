@@ -1,4 +1,4 @@
-codeunit 50930 "BigText Tests"
+codeunit 50041 "BigText Tests"
 {
     Subtype = Test;
 

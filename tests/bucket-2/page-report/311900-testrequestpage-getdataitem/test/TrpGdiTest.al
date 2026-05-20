@@ -3,7 +3,7 @@
 /// data item (e.g. RequestPage.Customer) from inside a RequestPageHandler.
 /// The Mock must expose GetDataItem(string) returning an object that supports
 /// ALSetFilter / ALGetFilter so that the generated C# compiles and runs.
-codeunit 99801 "TRP GDI Tests"
+codeunit 50462 "TRP GDI Tests"
 {
     Subtype = Test;
 

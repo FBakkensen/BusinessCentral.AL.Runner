@@ -1,7 +1,7 @@
 /// Exercises XmlPort variable (instance form) and static XmlPort.Import/Export calls.
 /// The XmlPort operations themselves throw NotSupportedException — this codeunit
 /// exposes testable wrappers so test code can use asserterror to verify them.
-codeunit 58400 "XmlPort Logic"
+codeunit 50523 "XmlPort Logic"
 {
     /// Returns a value that doesn't use XmlPort at all — proves the codeunit
     /// compiles and that code around XmlPort variable declarations runs fine.

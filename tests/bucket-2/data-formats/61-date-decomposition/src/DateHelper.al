@@ -1,4 +1,4 @@
-codeunit 60500 "Date Decomposition Helper"
+codeunit 50271 "Date Decomposition Helper"
 {
     procedure GetDay(D: Date): Integer
     begin

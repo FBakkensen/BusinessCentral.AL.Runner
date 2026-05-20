@@ -1,5 +1,5 @@
 /// Helper codeunit exercising XmlComment.
-codeunit 59780 "XCM Src"
+codeunit 50082 "XCM Src"
 {
     procedure CreateAndGetValue(text: Text): Text
     var

@@ -2,7 +2,7 @@
 // are used in List of [Code[N]] operations. The BC compiler emits NavValue for some
 // Code field accesses; NavList<NavCode> operations must handle NavValue arguments.
 // Fix: NavIndirectValueToNavValue<NavCode> in AlCompat handles NavValue→NavCode coercion.
-codeunit 234001 "NVL Tests"
+codeunit 50202 "NVL Tests"
 {
     Subtype = Test;
 

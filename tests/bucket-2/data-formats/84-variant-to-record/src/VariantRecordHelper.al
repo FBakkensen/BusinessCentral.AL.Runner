@@ -1,4 +1,4 @@
-table 84001 "VR Item"
+table 50032 "VR Item"
 {
     fields
     {
@@ -15,7 +15,7 @@ table 84001 "VR Item"
 }
 
 // Renumbered from 84001 to avoid collision in new bucket layout (#1385).
-codeunit 1084001 "Variant Record Helper"
+codeunit 50303 "Variant Record Helper"
 {
     /// <summary>
     /// Simulates a workflow event handler that receives a record via Variant.

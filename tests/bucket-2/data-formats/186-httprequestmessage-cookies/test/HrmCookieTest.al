@@ -1,5 +1,5 @@
 /// Tests for HttpRequestMessage cookie and secret URI methods — issue #738.
-codeunit 122001 "HRMC Test"
+codeunit 50136 "HRMC Test"
 {
     Subtype = Test;
 

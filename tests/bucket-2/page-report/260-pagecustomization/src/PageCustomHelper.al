@@ -1,4 +1,4 @@
-codeunit 50261 "PageCustom Helper"
+codeunit 50415 "PageCustom Helper"
 {
     procedure GetLabel(): Text
     begin

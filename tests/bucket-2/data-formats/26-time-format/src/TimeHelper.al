@@ -1,4 +1,4 @@
-codeunit 50600 TimeHelper
+codeunit 50207 TimeHelper
 {
     procedure GetMorningTime(): Time
     begin

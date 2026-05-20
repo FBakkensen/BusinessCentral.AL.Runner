@@ -1,4 +1,4 @@
-codeunit 60091 "TXSP Test"
+codeunit 50134 "TXSP Test"
 {
     Subtype = Test;
 

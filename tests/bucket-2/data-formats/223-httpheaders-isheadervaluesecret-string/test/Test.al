@@ -2,7 +2,7 @@
 //
 // BC emits ALIsHeaderValueSecret("Content-Type") with a raw string literal.
 // The mock must accept a string key, not just NavText.
-codeunit 62231 "HHSecTest"
+codeunit 50194 "HHSecTest"
 {
     Subtype = Test;
 

@@ -1,5 +1,5 @@
 /// Tests for Clear(arr[i]) on arrays of complex types — issue #1448.
-codeunit 312101 "ACSI Test"
+codeunit 50251 "ACSI Test"
 {
     Subtype = Test;
 

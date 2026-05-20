@@ -13,7 +13,7 @@ xmlport 61800 "XIF XmlPort"
     }
 }
 
-codeunit 61801 "XIF Helper"
+codeunit 50382 "XIF Helper"
 {
     /// Call xp.ImportFile() on an XmlPort instance — must be a no-op stub
     /// in standalone mode (no actual file I/O performed).

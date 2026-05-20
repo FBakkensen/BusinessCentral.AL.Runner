@@ -1,6 +1,6 @@
 /// Tests for XmlDocument.Create, Add, GetRoot, ReadFrom, WriteTo,
 /// GetChildNodes, SelectNodes, GetDeclaration, RemoveNodes.
-codeunit 100201 "XmlDoc Test"
+codeunit 50156 "XmlDoc Test"
 {
     Subtype = Test;
 

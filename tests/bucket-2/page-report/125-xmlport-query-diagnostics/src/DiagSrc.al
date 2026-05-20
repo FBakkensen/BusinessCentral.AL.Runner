@@ -1,4 +1,4 @@
-table 56250 "Diag Test Item"
+table 50043 "Diag Test Item"
 {
     fields
     {
@@ -51,7 +51,7 @@ query 56252 "Diag Item Query"
 }
 
 /// Logic codeunit that wraps XmlPort and Query calls for test access.
-codeunit 56253 "Diag Logic"
+codeunit 50361 "Diag Logic"
 {
     // ---- XmlPort lifecycle (should NOT throw) ----
 

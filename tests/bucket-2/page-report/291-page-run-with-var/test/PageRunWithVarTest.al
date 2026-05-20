@@ -2,7 +2,7 @@
 /// Issue #1106: CS1503 — Page<N> can't be passed where NavForm is expected after
 /// NavForm is stripped from the page class base list.  The fix injects an implicit
 /// conversion operator on every generated Page<N> class.
-codeunit 79101 "PRV Test"
+codeunit 50443 "PRV Test"
 {
     Subtype = Test;
 

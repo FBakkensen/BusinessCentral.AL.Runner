@@ -1,4 +1,4 @@
-codeunit 169002 "NASR Test"
+codeunit 50093 "NASR Test"
 {
     Subtype = Test;
     var

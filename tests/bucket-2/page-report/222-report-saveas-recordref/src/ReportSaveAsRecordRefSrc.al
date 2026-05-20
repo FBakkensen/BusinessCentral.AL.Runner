@@ -1,5 +1,5 @@
 /// Helper table providing a Blob field for OutStream creation in tests.
-table 98200 "RSRR Blob"
+table 50062 "RSRR Blob"
 {
     fields
     {
@@ -14,7 +14,7 @@ table 98200 "RSRR Blob"
 
 /// Exercises Report.SaveAs(ReportId; RequestData; Format; var OutStream; RecordRef) —
 /// the 5-arg static overload with a RecordRef filter parameter.
-codeunit 98201 "Report SaveAs RecordRef Src"
+codeunit 50406 "Report SaveAs RecordRef Src"
 {
     procedure SaveAsWithRecordRef(ReportId: Integer; RequestData: Text)
     var

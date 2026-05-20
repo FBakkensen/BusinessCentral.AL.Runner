@@ -5,7 +5,7 @@
 ///   Remove(Text, Text)                   — Remove by namespaceURI + localName
 ///   Set(Text, Text, Text)                — Set namespaceURI + localName + value
 /// All are BC-native methods on NavXmlAttributeCollection. Issue #1376.
-codeunit 310000 "XACNS Src"
+codeunit 50244 "XACNS Src"
 {
     // ── Get(localName: Text, var attr: XmlAttribute) ──────────────────────────
     // Text overload — retrieve by attribute name string.

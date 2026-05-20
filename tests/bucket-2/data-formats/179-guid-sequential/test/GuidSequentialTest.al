@@ -1,4 +1,4 @@
-codeunit 60041 "GCSG Test"
+codeunit 50118 "GCSG Test"
 {
     Subtype = Test;
 

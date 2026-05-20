@@ -1,5 +1,5 @@
 // Renumbered from 58400 to avoid collision in new bucket layout (#1385).
-table 1058400 "XmlPort Item"
+table 50115 "XmlPort Item"
 {
     fields
     {

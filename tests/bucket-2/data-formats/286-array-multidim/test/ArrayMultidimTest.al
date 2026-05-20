@@ -1,4 +1,4 @@
-codeunit 134002 "AMD Test"
+codeunit 50222 "AMD Test"
 {
     Subtype = Test;
     var

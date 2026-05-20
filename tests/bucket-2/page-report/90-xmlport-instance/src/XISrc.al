@@ -1,4 +1,4 @@
-table 95000 "XI Item"
+table 50118 "XI Item"
 {
     fields
     {
@@ -29,7 +29,7 @@ xmlport 95000 "XI Item Port"
     }
 }
 
-codeunit 95000 "XI Src"
+codeunit 50535 "XI Src"
 {
     procedure CallExport(): Boolean
     var

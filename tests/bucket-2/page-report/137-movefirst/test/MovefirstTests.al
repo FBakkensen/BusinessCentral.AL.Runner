@@ -1,4 +1,4 @@
-codeunit 60201 "MF Movefirst Tests"
+codeunit 50376 "MF Movefirst Tests"
 {
     Subtype = Test;
 

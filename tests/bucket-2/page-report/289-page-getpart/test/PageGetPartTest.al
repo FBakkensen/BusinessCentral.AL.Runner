@@ -1,4 +1,4 @@
-codeunit 164001 "PGP Test"
+codeunit 50441 "PGP Test"
 {
     Subtype = Test;
     var

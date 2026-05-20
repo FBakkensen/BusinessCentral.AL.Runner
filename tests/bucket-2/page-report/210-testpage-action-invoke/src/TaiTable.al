@@ -1,4 +1,4 @@
-table 114000 "TAI Table"
+table 50058 "TAI Table"
 {
     DataClassification = ToBeClassified;
 
@@ -11,7 +11,7 @@ table 114000 "TAI Table"
     keys { key(PK; "No.") { Clustered = true; } }
 }
 
-page 114000 "TAI Card"
+page 50014 "TAI Card"
 {
     PageType = Card;
     SourceTable = "TAI Table";

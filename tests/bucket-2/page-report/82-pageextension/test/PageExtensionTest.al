@@ -1,4 +1,4 @@
-codeunit 50982 "PXT PageExt Test"
+codeunit 50518 "PXT PageExt Test"
 {
     Subtype = Test;
 

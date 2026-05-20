@@ -1,6 +1,6 @@
 /// Exercises JsonValue — SetValue + typed As* extraction,
 /// IsUndefined, Path, AsToken, Clone.
-codeunit 60350 "JVX Src"
+codeunit 50171 "JVX Src"
 {
     procedure SetAndGetInteger(): Integer
     var

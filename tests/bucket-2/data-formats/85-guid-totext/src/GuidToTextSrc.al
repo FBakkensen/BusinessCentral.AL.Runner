@@ -1,5 +1,5 @@
 /// Helper codeunit exercising Guid.ToText() overloads.
-codeunit 82100 "GT Src"
+codeunit 50305 "GT Src"
 {
     /// Returns g.ToText() — default format with braces and hyphens.
     procedure ToTextDefault(g: Guid): Text

@@ -1,5 +1,5 @@
 /// Source objects for TestPart method coverage tests.
-table 97300 "TPT Record"
+table 50057 "TPT Record"
 {
     fields
     {
@@ -13,7 +13,7 @@ table 97300 "TPT Record"
 }
 
 /// ListPart page used as the subpage part on the card.
-page 97300 "TPT Lines"
+page 50011 "TPT Lines"
 {
     PageType = ListPart;
     SourceTable = "TPT Record";
@@ -31,7 +31,7 @@ page 97300 "TPT Lines"
 }
 
 /// Card page containing a part — gives tests a TestPart to work with.
-page 97301 "TPT Card"
+page 50012 "TPT Card"
 {
     PageType = Card;
     layout

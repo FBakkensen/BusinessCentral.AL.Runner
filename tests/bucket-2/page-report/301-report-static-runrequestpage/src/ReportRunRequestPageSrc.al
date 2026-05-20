@@ -1,5 +1,5 @@
 /// Exercises Report.RunRequestPage with the 2-argument overload (reportId, requestParameters).
-codeunit 307400 "RRP Src"
+codeunit 50448 "RRP Src"
 {
     /// Call Report.RunRequestPage(reportId, requestParameters) — 2-arg overload.
     procedure RunRequestPage2Arg(reportId: Integer; requestParameters: Text): Text

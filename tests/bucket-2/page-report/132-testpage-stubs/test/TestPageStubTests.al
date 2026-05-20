@@ -1,4 +1,4 @@
-codeunit 59982 "TestPage Stub Tests"
+codeunit 50368 "TestPage Stub Tests"
 {
     Subtype = Test;
 

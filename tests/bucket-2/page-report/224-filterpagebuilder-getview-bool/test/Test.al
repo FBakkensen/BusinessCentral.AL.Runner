@@ -2,7 +2,7 @@
 //
 // BC emits ALGetView(NavText, bool) for the two-arg GetView form. Exercises the fix
 // that adds the missing overloads to MockFilterPageBuilder.
-codeunit 62233 "FPBGetViewTest"
+codeunit 50409 "FPBGetViewTest"
 {
     Subtype = Test;
 

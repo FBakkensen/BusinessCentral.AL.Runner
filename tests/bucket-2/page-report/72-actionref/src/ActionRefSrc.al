@@ -1,6 +1,6 @@
 /// Helper codeunit to prove the compilation unit compiles correctly even when
 /// it contains a page with actionref (promoted-action) declarations.
-codeunit 72000 "AR Helper"
+codeunit 50491 "AR Helper"
 {
     procedure GetValue(): Text
     begin
@@ -15,7 +15,7 @@ codeunit 72000 "AR Helper"
 
 /// A page that declares an actionref section (promoted action binding).
 /// This is the construct that used to crash the runner's Roslyn compilation step.
-page 72000 "AR Test Page"
+page 50047 "AR Test Page"
 {
     PageType = Card;
 

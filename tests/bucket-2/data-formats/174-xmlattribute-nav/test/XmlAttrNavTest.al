@@ -1,7 +1,7 @@
 /// Tests for XmlAttribute navigation and namespace methods:
 /// NamespacePrefix, IsNamespaceDeclaration, CreateNamespaceDeclaration,
 /// WriteTo, GetParent, GetDocument, Remove, SelectNodes, SelectSingleNode.
-codeunit 97401 "XAN Test"
+codeunit 50104 "XAN Test"
 {
     Subtype = Test;
 

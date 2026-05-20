@@ -1,7 +1,7 @@
 /// Tests that methods used in `if not Method(...)` guards return Boolean — issue #1432.
 /// Three concrete methods were reported: IsolatedStorage.Set, XmlElement.AddBeforeSelf,
 /// and ReportInstance.SaveAs.  All previously returned void in the runner, causing CS0023.
-codeunit 1314002 "VRB Test"
+codeunit 50254 "VRB Test"
 {
     Subtype = Test;
 

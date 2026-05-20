@@ -16,7 +16,7 @@
 ///   JsonToken.WriteTo (Text)
 ///   JsonValue.ReadFrom (Text)
 ///   JsonValue.WriteTo (Text)
-codeunit 1316001 "Json Typed RW Test"
+codeunit 50043 "Json Typed RW Test"
 {
     Subtype = Test;
 

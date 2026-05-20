@@ -1,4 +1,4 @@
-codeunit 115001 "JAEX Test"
+codeunit 50130 "JAEX Test"
 {
     Subtype = Test;
 

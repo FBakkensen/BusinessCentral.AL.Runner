@@ -1,4 +1,4 @@
-codeunit 110001 XmlDocNodeManipTest
+codeunit 50021 XmlDocNodeManipTest
 {
     Subtype = Test;
     var Assert: Codeunit Assert;

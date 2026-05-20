@@ -1,4 +1,4 @@
-codeunit 297001 "Variant Clear Helper"
+codeunit 50336 "Variant Clear Helper"
 {
     procedure SetIntegerValue(var V: Variant; Value: Integer)
     begin

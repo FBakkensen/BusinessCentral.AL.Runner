@@ -1,5 +1,5 @@
 // Renumbered from 97001 to avoid collision in new bucket layout (#1385).
-codeunit 1097001 "EI PageNo Tests"
+codeunit 50389 "EI PageNo Tests"
 {
     Subtype = Test;
 

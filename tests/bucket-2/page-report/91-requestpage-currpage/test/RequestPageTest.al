@@ -4,7 +4,7 @@
 /// Proof strategy: if MockCurrPage is missing any of these methods, the
 /// Roslyn compilation of the rewritten C# fails with CS1061 and ALL tests
 /// in the bucket become RED. Adding them turns this bucket GREEN.
-codeunit 91003 "RPC Test"
+codeunit 50540 "RPC Test"
 {
     Subtype = Test;
 

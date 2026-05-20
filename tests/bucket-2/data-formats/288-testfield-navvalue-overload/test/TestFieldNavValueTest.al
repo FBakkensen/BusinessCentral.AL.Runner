@@ -2,7 +2,7 @@
 /// variable (Integer, Decimal, Text, Boolean) — the transpiler emits a NavValue
 /// subtype (NavInteger, NavDecimal, etc.) which previously caused CS0121 ambiguous
 /// overload errors on ALTestFieldSafe. Regression test for issue #1018.
-codeunit 161001 "TFNav Test"
+codeunit 50223 "TFNav Test"
 {
     Subtype = Test;
 

@@ -1,5 +1,5 @@
 /// Minimal table for RecordRef / NavIndirectValueToNavValue coverage.
-table 97900 "NVI Table"
+table 50010 "NVI Table"
 {
     fields
     {
@@ -16,7 +16,7 @@ table 97900 "NVI Table"
 /// Exercises patterns that the BC compiler lowers to
 /// NavIndirectValueToNavValue<NavRecordRef>(…), which the runner must
 /// translate without requiring MockRecordRef : NavValue.
-codeunit 97901 "NVI Src"
+codeunit 50179 "NVI Src"
 {
     /// Assign a RecordRef to a Variant, then recover it from the Variant.
     /// The BC compiler emits NavIndirectValueToNavValue<NavRecordRef> for the

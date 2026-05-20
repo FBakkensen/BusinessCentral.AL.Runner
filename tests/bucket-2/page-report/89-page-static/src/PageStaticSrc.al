@@ -1,6 +1,6 @@
 /// Source codeunit + fixtures exercising Page.* method calls.
 /// Static calls (Page.Run, Page.RunModal) and instance calls on a page variable.
-codeunit 89100 "PST Source"
+codeunit 50529 "PST Source"
 {
     // ------------------------------------------------------------------
     // Static Page.* calls
@@ -92,7 +92,7 @@ codeunit 89100 "PST Source"
     end;
 }
 
-table 89100 "PST Record"
+table 50116 "PST Record"
 {
     fields
     {
@@ -102,7 +102,7 @@ table 89100 "PST Record"
     keys { key(PK; Id) { Clustered = true; } }
 }
 
-page 89100 "PST Card"
+page 50063 "PST Card"
 {
     PageType = Card;
     SourceTable = "PST Record";

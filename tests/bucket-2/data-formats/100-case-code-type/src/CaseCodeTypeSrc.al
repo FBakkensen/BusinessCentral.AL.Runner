@@ -2,7 +2,7 @@
 /// BC codegen for Code comparisons in case statements calls into
 /// NavEnvironment-dependent methods, which the runner must intercept.
 // Renumbered from 59200 to avoid collision in new bucket layout (#1385).
-codeunit 1059200 "CCT Helper"
+codeunit 50010 "CCT Helper"
 {
     procedure CategoryLabel(Category: Code[10]): Text
     begin

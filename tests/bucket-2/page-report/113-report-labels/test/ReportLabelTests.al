@@ -1,4 +1,4 @@
-codeunit 50913 "Report Label Tests"
+codeunit 50357 "Report Label Tests"
 {
     Subtype = Test;
 

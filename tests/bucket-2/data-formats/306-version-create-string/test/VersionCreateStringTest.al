@@ -1,4 +1,4 @@
-codeunit 306001 "Version Create String Test"
+codeunit 50236 "Version Create String Test"
 {
     Subtype = Test;
 

@@ -1,4 +1,4 @@
-codeunit 60361 "JVR Test"
+codeunit 50174 "JVR Test"
 {
     Subtype = Test;
 

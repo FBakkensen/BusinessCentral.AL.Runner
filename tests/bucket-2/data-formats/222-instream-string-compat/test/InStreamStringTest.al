@@ -1,4 +1,4 @@
-codeunit 62221 "InStream String Test"
+codeunit 50192 "InStream String Test"
 {
     Subtype = Test;
 

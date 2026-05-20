@@ -1,4 +1,4 @@
-codeunit 59201 "VS Views Section Tests"
+codeunit 50494 "VS Views Section Tests"
 {
     Subtype = Test;
 

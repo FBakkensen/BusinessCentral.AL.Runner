@@ -1,6 +1,6 @@
 /// Tests that Report.SaveAs (with and without RecordRef) is out-of-scope:
 /// NavReport.SaveAsAsync is Cecil-rewritten to throw OOS.
-codeunit 98202 "Report SaveAs RecordRef Test"
+codeunit 50407 "Report SaveAs RecordRef Test"
 {
     Subtype = Test;
 

@@ -1,4 +1,4 @@
-codeunit 70502 "Report Skip Tests"
+codeunit 50359 "Report Skip Tests"
 {
     Subtype = Test;
 

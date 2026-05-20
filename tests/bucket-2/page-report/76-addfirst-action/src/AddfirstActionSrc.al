@@ -1,5 +1,5 @@
 /// Table backing the base page used by the page extension in this suite.
-table 50796 "AFA Product"
+table 50107 "AFA Product"
 {
     DataClassification = CustomerContent;
     fields
@@ -14,7 +14,7 @@ table 50796 "AFA Product"
 }
 
 /// Base page with an existing action so the pageextension has something to addfirst against.
-page 50796 "AFA Product Card"
+page 50055 "AFA Product Card"
 {
     PageType = Card;
     SourceTable = "AFA Product";
@@ -36,7 +36,7 @@ page 50796 "AFA Product Card"
 
 /// pageextension using addfirst in the actions area (single action inserted).
 /// This is the exact construct issue #413 says fails to compile.
-pageextension 50796 "AFA Product Card First" extends "AFA Product Card"
+pageextension 50014 "AFA Product Card First" extends "AFA Product Card"
 {
     actions
     {
@@ -59,7 +59,7 @@ pageextension 50796 "AFA Product Card First" extends "AFA Product Card"
 
 /// pageextension using addfirst in the actions area with multiple actions inserted.
 /// Proves addfirst with multiple action bodies compiles.
-pageextension 50797 "AFA Product Card FirstMulti" extends "AFA Product Card"
+pageextension 50015 "AFA Product Card FirstMulti" extends "AFA Product Card"
 {
     actions
     {
@@ -88,7 +88,7 @@ pageextension 50797 "AFA Product Card FirstMulti" extends "AFA Product Card"
 /// Helper codeunit with business logic exercised by the tests.
 /// Proves that the compilation unit containing pageextensions with addfirst
 /// in the actions area compiles and codeunits alongside remain callable.
-codeunit 50796 "AFA Product Helper"
+codeunit 50507 "AFA Product Helper"
 {
     procedure GetMessage(): Text
     begin

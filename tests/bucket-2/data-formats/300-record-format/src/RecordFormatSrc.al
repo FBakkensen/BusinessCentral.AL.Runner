@@ -1,4 +1,4 @@
-table 80000 "Record Format Table"
+table 50020 "Record Format Table"
 {
     DataClassification = CustomerContent;
     fields
@@ -9,7 +9,7 @@ table 80000 "Record Format Table"
     keys { key(PK; Id) { Clustered = true; } }
 }
 
-codeunit 80001 "Record Format Src"
+codeunit 50231 "Record Format Src"
 {
     /// <summary>
     /// Format() a Record variable. In AL, Format(SomeRecord) returns the

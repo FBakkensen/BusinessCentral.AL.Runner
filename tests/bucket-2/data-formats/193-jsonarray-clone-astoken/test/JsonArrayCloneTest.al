@@ -1,5 +1,5 @@
 /// Tests for JsonArray.Clone() and JsonArray.AsToken().
-codeunit 62011 "JAC Test"
+codeunit 50148 "JAC Test"
 {
     Subtype = Test;
 

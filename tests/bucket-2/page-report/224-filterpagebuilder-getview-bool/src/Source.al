@@ -4,7 +4,7 @@
 // FilterPageBuilder.GetView(caption, useNames). The existing mock only accepts
 // ALGetView(string) and ALGetView(DataError, string), causing CS1503 on compile.
 // The fix adds the (NavText/string, bool) overloads.
-codeunit 62232 "FPBGetViewSrc"
+codeunit 50408 "FPBGetViewSrc"
 {
     /// Registers a table, sets a view, and retrieves it using the two-arg GetView form.
     /// Mimics the PermissionHelper.GetCustomFilter pattern.

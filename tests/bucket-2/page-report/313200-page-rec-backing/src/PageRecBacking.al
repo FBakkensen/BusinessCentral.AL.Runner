@@ -1,4 +1,4 @@
-table 313200 "PRB Demo Tbl"
+table 50090 "PRB Demo Tbl"
 {
     fields
     {
@@ -11,7 +11,7 @@ table 313200 "PRB Demo Tbl"
     }
 }
 
-page 313200 "PRB Demo Page"
+page 50036 "PRB Demo Page"
 {
     PageType = Card;
     SourceTable = "PRB Demo Tbl";

@@ -1,4 +1,4 @@
-codeunit 95100 "WSAC Src"
+codeunit 50541 "WSAC Src"
 {
     // ObjectId — round-trip: set value, get it back
     procedure SetObjectIdAndGet(var Ctx: WebServiceActionContext; ObjId: Integer): Integer

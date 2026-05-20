@@ -1,5 +1,5 @@
 /// Table backing the base page used by the page extension in this suite.
-table 50786 "ALA Product"
+table 50108 "ALA Product"
 {
     DataClassification = CustomerContent;
     fields
@@ -14,7 +14,7 @@ table 50786 "ALA Product"
 }
 
 /// Base page with an existing action so the pageextension has something to addlast inside.
-page 50786 "ALA Product Card"
+page 50056 "ALA Product Card"
 {
     PageType = Card;
     SourceTable = "ALA Product";
@@ -37,7 +37,7 @@ page 50786 "ALA Product Card"
 
 /// pageextension using addlast in the actions area (single action appended).
 /// This is the exact construct issue #415 says fails to compile.
-pageextension 50786 "ALA Product Card Last" extends "ALA Product Card"
+pageextension 50016 "ALA Product Card Last" extends "ALA Product Card"
 {
     actions
     {
@@ -60,7 +60,7 @@ pageextension 50786 "ALA Product Card Last" extends "ALA Product Card"
 
 /// pageextension using addlast in the actions area with multiple actions appended.
 /// Proves addlast with multiple action bodies compiles.
-pageextension 50787 "ALA Product Card LastMulti" extends "ALA Product Card"
+pageextension 50017 "ALA Product Card LastMulti" extends "ALA Product Card"
 {
     actions
     {
@@ -89,7 +89,7 @@ pageextension 50787 "ALA Product Card LastMulti" extends "ALA Product Card"
 /// Helper codeunit with business logic exercised by the tests.
 /// Proves the compilation unit containing pageextensions with addlast in the
 /// actions area compiles and codeunits alongside remain callable.
-codeunit 50786 "ALA Product Helper"
+codeunit 50509 "ALA Product Helper"
 {
     procedure GetLabel(): Text
     begin

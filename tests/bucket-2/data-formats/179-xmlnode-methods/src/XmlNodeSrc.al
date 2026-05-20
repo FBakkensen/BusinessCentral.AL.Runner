@@ -1,5 +1,5 @@
 /// Helper codeunit exercising XmlNode type-checking, casting, and navigation methods.
-codeunit 106000 "XNN Src"
+codeunit 50119 "XNN Src"
 {
     // ── Type checks ─────────────────────────────────────────────────────────────
 

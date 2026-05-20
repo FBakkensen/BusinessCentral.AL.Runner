@@ -2,7 +2,7 @@
 /// and XmlElement.IsEmpty — the surface issue #481 names.
 /// Builds XmlElements programmatically (no XmlDocument.ReadFrom) so the test
 /// does not depend on the XML-text-parser path.
-codeunit 59370 "XC Src"
+codeunit 50062 "XC Src"
 {
     procedure GetChildElementCount_Empty(): Integer
     var

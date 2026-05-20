@@ -1,4 +1,4 @@
-codeunit 50117 "Text Builder Helper"
+codeunit 50095 "Text Builder Helper"
 {
     procedure BuildGreeting(Name: Text; Title: Text): Text
     var

@@ -1,4 +1,4 @@
-codeunit 85100 PictureFormatHelper
+codeunit 50525 PictureFormatHelper
 {
     // Returns decimal formatted with precision picture string e.g. Format(1.567, 0, '<Precision,1:2>')
     procedure FormatDecimalPrecision(Value: Decimal; MinDec: Integer; MaxDec: Integer): Text

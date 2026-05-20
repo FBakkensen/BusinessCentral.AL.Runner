@@ -1,6 +1,6 @@
 /// Helper codeunit exercising namespace-aware XPath: SelectNodes(xpath, XmlNamespaceManager, nodeList)
 /// and SelectSingleNode(xpath, XmlNamespaceManager, node) on XmlDocument and XmlElement — issue #1371.
-codeunit 309400 "XmlNs XPath Src"
+codeunit 50334 "XmlNs XPath Src"
 {
     // ── XmlDocument.SelectNodes(xpath, nsmgr, nodeList) ──────────────────────
 

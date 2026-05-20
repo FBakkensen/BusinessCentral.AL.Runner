@@ -1,5 +1,5 @@
 /// Exercises HttpContent.GetHeaders() — must be invocable as a method.
-codeunit 60440 "HCGH Src"
+codeunit 50183 "HCGH Src"
 {
     procedure GetContentHeaders_DoesNotThrow(): Boolean
     var

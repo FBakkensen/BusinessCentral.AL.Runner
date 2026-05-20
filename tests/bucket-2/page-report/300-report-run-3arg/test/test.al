@@ -1,4 +1,4 @@
-codeunit 308202 "RR3 Tests"
+codeunit 50447 "RR3 Tests"
 {
     Subtype = Test;
 

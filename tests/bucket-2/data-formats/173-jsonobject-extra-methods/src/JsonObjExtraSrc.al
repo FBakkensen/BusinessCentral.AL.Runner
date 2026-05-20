@@ -1,5 +1,5 @@
 /// Helper codeunit exercising JsonObject — GetChar, GetDate, GetDateTime, WriteWithSecretsTo.
-codeunit 100000 "JOE Src"
+codeunit 50101 "JOE Src"
 {
     procedure GetCharValue(Obj: JsonObject; KeyName: Text): Char
     begin

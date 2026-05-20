@@ -1,4 +1,4 @@
-report 50258 "Report With Triggers"
+report 50012 "Report With Triggers"
 {
     UsageCategory = ReportsAndAnalysis;
     ApplicationArea = All;

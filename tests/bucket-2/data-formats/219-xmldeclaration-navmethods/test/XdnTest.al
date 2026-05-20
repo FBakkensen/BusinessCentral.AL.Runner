@@ -1,7 +1,7 @@
 /// Proving tests for XmlDeclaration navigation and tree-manipulation methods
 /// (issue #779): WriteTo, AsXmlNode, GetParent, GetDocument, Remove,
 /// AddAfterSelf, AddBeforeSelf, ReplaceWith, SelectNodes, SelectSingleNode.
-codeunit 97908 "XDN Test"
+codeunit 50186 "XDN Test"
 {
     Subtype = Test;
 

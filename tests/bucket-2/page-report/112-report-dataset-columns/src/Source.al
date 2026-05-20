@@ -1,7 +1,7 @@
 // Report object with column elements in the dataset.
 // The runner should compile this with Code|Navigation (no RDLC layout)
 // and produce a stub class that doesn't crash at emit time.
-report 70400 "TestReportWithColumns"
+report 50003 "TestReportWithColumns"
 {
     DefaultLayout = RDLC;
     dataset
@@ -18,7 +18,7 @@ report 70400 "TestReportWithColumns"
     }
 }
 
-codeunit 50300 "Report Helper"
+codeunit 50354 "Report Helper"
 {
     procedure GetReportId(): Integer
     begin
@@ -31,7 +31,7 @@ codeunit 50300 "Report Helper"
     end;
 }
 
-table 50300 "Test Customer"
+table 50041 "Test Customer"
 {
     fields
     {

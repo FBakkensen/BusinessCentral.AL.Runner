@@ -7,7 +7,7 @@
 /// code typically goes through JsonArray.Get(idx, token) and then calls
 /// AsValue().AsInteger() etc. This suite exercises that (equivalent) path
 /// so the runner's BC-native JsonArray/JsonToken handling is proven.
-codeunit 60130 "JATG Src"
+codeunit 50139 "JATG Src"
 {
     procedure BuildMixedArray(): JsonArray
     var

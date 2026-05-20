@@ -1,4 +1,4 @@
-table 53800 "CurrPage Table"
+table 50094 "CurrPage Table"
 {
     DataClassification = CustomerContent;
 

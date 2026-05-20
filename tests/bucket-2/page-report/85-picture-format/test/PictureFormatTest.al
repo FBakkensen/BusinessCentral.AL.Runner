@@ -1,4 +1,4 @@
-codeunit 85101 PictureFormatTest
+codeunit 50526 PictureFormatTest
 {
     Subtype = Test;
     var Assert: Codeunit Assert;

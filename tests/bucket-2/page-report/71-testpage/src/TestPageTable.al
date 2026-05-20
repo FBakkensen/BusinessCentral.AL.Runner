@@ -1,4 +1,4 @@
-table 56700 "TP Test Record"
+table 50100 "TP Test Record"
 {
     fields
     {
@@ -9,7 +9,7 @@ table 56700 "TP Test Record"
     keys { key(PK; Id) { Clustered = true; } }
 }
 
-page 56700 "TP Test Card"
+page 50046 "TP Test Card"
 {
     PageType = Card;
     SourceTable = "TP Test Record";
@@ -24,7 +24,7 @@ page 56700 "TP Test Card"
     }
 }
 
-codeunit 56701 "TP Confirm Logic"
+codeunit 50489 "TP Confirm Logic"
 {
     procedure DoSomethingWithConfirm(): Boolean
     begin

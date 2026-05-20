@@ -3,7 +3,7 @@
 ///   WriteTo, AsXmlNode, GetParent, GetDocument,
 ///   Remove, AddAfterSelf, AddBeforeSelf, ReplaceWith,
 ///   SelectNodes, SelectSingleNode.
-codeunit 97907 "XDN Src"
+codeunit 50185 "XDN Src"
 {
     // ── WriteTo ──────────────────────────────────────────────────────────────────
 

@@ -4,7 +4,7 @@
 /// rewritten C# fails and the entire bucket becomes RED.
 
 // ── Minimal page (target for the extension) ───────────────────────────────────
-page 91000 "RPC Page"
+page 50064 "RPC Page"
 {
     PageType = Card;
     ApplicationArea = All;
@@ -13,7 +13,7 @@ page 91000 "RPC Page"
 }
 
 // ── Page extension exercising all missing CurrPage stubs ──────────────────────
-pageextension 91001 "RPC Page Ext" extends "RPC Page"
+pageextension 50027 "RPC Page Ext" extends "RPC Page"
 {
     trigger OnOpenPage()
     var
@@ -37,7 +37,7 @@ pageextension 91001 "RPC Page Ext" extends "RPC Page"
 }
 
 // ── Helper for test assertions ────────────────────────────────────────────────
-codeunit 91002 "RPC Helper"
+codeunit 50539 "RPC Helper"
 {
     // Returns a known non-default value so Caption assertions are non-trivial.
     procedure ExpectedCaption(): Text

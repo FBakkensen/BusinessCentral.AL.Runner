@@ -3,7 +3,7 @@
 ///
 /// Proof strategy: if any mock method is missing, Roslyn compilation fails
 /// with CS1061 and ALL tests in this bucket go RED.
-codeunit 99201 "HCR Test"
+codeunit 50100 "HCR Test"
 {
     Subtype = Test;
 

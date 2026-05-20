@@ -2,7 +2,7 @@
 /// CS1503: 'string' → 'NavText' in telemetry issue #1322.
 /// BC emits string literals as C# string, not NavText, when they appear
 /// directly in Version.Create() calls inline (not via a Text variable).
-codeunit 306000 "Version Create String Src"
+codeunit 50235 "Version Create String Src"
 {
     /// Returns true when ApiVersion (Text) <= the literal threshold.
     /// This reproduces the exact pattern from the telemetry report:

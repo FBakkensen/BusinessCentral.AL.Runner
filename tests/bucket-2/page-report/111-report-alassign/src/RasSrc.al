@@ -1,12 +1,12 @@
 /// Minimal report stub for Report.ALAssign coverage (issue #1328).
-report 307200 "RAS Report"
+report 50002 "RAS Report"
 {
     dataset { }
 }
 
 /// Source codeunit exercising Report := Report assignment (ALAssign).
 /// BC compiler lowers Rep1 := Rep2 to Rep1.ALAssign(Rep2) on MockReportHandle.
-codeunit 307201 "RAS Src"
+codeunit 50352 "RAS Src"
 {
     /// Assign one report variable to another and run the assigned variable.
     /// This exercises the Rep1 := Rep2 path which emits ALAssign on the handle.

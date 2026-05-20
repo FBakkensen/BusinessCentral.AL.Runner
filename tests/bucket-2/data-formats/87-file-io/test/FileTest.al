@@ -1,4 +1,4 @@
-codeunit 87001 "FIO Test"
+codeunit 50310 "FIO Test"
 {
     Subtype = Test;
 

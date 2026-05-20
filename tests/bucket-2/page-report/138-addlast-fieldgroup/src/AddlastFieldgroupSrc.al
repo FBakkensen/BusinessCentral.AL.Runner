@@ -1,5 +1,5 @@
 /// Base table with a fieldgroup — the tableextension will append to it using addlast.
-table 50138 "ALFG Item"
+table 50054 "ALFG Item"
 {
     DataClassification = CustomerContent;
     fields
@@ -21,7 +21,7 @@ table 50138 "ALFG Item"
 
 /// tableextension using addlast inside fieldgroups — appends Description to
 /// the DropDown fieldgroup. This is the construct issue #443 says fails.
-tableextension 50139 "ALFG Item Ext" extends "ALFG Item"
+tableextension 50000 "ALFG Item Ext" extends "ALFG Item"
 {
     fieldgroups
     {
@@ -31,7 +31,7 @@ tableextension 50139 "ALFG Item Ext" extends "ALFG Item"
 
 /// Helper codeunit with business logic in the same compilation unit as the
 /// tableextension. Proves the unit compiles and codeunit logic is callable.
-codeunit 50138 "ALFG Helper"
+codeunit 50377 "ALFG Helper"
 {
     procedure GetLabel(): Text
     begin

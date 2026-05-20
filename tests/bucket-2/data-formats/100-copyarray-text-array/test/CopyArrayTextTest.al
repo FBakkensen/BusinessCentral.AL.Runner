@@ -1,7 +1,7 @@
 /// Tests for CopyArray on fixed-length Text arrays.
 /// Regression for issue #1232: CS0411 when element type is a fixed-length NavText subtype
 /// (occurs both in codeunit locals and in page-level var fields).
-codeunit 99701 "CA Text Test"
+codeunit 50013 "CA Text Test"
 {
     Subtype = Test;
 

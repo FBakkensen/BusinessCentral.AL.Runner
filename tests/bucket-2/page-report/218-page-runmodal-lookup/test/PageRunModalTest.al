@@ -1,4 +1,4 @@
-codeunit 60471 "PRM Test"
+codeunit 50401 "PRM Test"
 {
     Subtype = Test;
 

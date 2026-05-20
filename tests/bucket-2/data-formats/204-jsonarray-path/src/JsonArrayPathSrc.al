@@ -1,6 +1,6 @@
 /// Exercises JsonArray.Path, AsToken, Clone, WriteTo — methods not yet
 /// covered by earlier suites.
-codeunit 60320 "JAP Src"
+codeunit 50167 "JAP Src"
 {
     procedure PathOfRootArray(): Text
     var

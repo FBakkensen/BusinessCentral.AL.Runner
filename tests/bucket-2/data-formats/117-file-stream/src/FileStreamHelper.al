@@ -1,4 +1,4 @@
-codeunit 50118 "File Stream Helper"
+codeunit 50026 "File Stream Helper"
 {
     procedure TestUploadWithFileName(): Boolean
     var

@@ -1,4 +1,4 @@
-codeunit 56580 "HL Probe"
+codeunit 50480 "HL Probe"
 {
     procedure OpenDoc(): Integer
     begin

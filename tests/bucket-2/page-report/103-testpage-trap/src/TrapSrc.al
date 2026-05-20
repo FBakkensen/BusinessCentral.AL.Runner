@@ -1,4 +1,4 @@
-page 118000 "TRAP Card Page"
+page 50002 "TRAP Card Page"
 {
     PageType = Card;
     ApplicationArea = All;

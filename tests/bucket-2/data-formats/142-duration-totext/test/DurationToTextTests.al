@@ -1,4 +1,4 @@
-codeunit 60701 "DTT Duration ToText Tests"
+codeunit 50059 "DTT Duration ToText Tests"
 {
     Subtype = Test;
 

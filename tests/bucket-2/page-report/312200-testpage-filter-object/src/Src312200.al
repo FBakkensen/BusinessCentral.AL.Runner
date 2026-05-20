@@ -1,6 +1,6 @@
 // Support table and page for TestPage.Filter.SetFilter object-overload tests.
 // Suite 312200 — issue #1459.
-table 312200 "TPF Object Table"
+table 50088 "TPF Object Table"
 {
     DataClassification = CustomerContent;
 
@@ -17,7 +17,7 @@ table 312200 "TPF Object Table"
     }
 }
 
-page 312200 "TPF Object Page"
+page 50034 "TPF Object Page"
 {
     PageType  = Card;
     SourceTable = "TPF Object Table";
@@ -44,7 +44,7 @@ page 312200 "TPF Object Page"
 /// with a dynamically typed argument so the test proves that filter
 /// round-trips work correctly via SetFilter → GetFilter.
 /// </summary>
-codeunit 312201 "TPF Object Helper"
+codeunit 50465 "TPF Object Helper"
 {
     procedure SetFilterViaVariant(var Page: TestPage "TPF Object Page"; FieldFilter: Variant)
     begin

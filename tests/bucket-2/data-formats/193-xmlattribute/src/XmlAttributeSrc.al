@@ -1,6 +1,6 @@
 /// Helper codeunit exercising XmlAttribute — Create, Name, Value, NamespaceUri,
 /// LocalName, AsXmlNode, IsDefault, plus attaching via XmlElement.SetAttribute.
-codeunit 60190 "XAT Src"
+codeunit 50149 "XAT Src"
 {
     procedure CreateAndReadValue(): Text
     var

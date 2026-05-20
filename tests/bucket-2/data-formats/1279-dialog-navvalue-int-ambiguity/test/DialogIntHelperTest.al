@@ -2,7 +2,7 @@
 // ambiguity between MockDialog.ALUpdate(int, NavValue) and ALUpdate(int, int).
 // NavValue has implicit conversion to int, so the compiler cannot choose.
 // Fix: remove the int overload since NavValue already covers it.
-codeunit 1279002 "DNIA Tests"
+codeunit 50039 "DNIA Tests"
 {
     Subtype = Test;
 

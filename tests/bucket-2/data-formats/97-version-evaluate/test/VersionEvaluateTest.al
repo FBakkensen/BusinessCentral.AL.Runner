@@ -2,7 +2,7 @@
 /// correctly parses dotted version strings into a Version variable.
 /// This exercises the BC code path that emits ALSystemVariable.ALEvaluate<NavVersion>
 /// which requires MockVersion to be a reference type (CS0452 gap).
-codeunit 1297002 "Version Evaluate Test"
+codeunit 50339 "Version Evaluate Test"
 {
     Subtype = Test;
 

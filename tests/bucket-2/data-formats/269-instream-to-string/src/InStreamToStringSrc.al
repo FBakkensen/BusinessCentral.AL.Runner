@@ -8,7 +8,7 @@
 /// conversion works end-to-end.
 ///
 /// GetVersion() is a pure-logic sentinel to confirm the codeunit compiled.
-table 304010 "InStr To Str Table"
+table 50015 "InStr To Str Table"
 {
     fields
     {
@@ -17,7 +17,7 @@ table 304010 "InStr To Str Table"
     }
 }
 
-codeunit 304010 "InStream To String Src"
+codeunit 50213 "InStream To String Src"
 {
     /// Writes text into a Blob via OutStream, reads it back via InStream.ReadText.
     procedure WriteAndReadBlob(Input: Text): Text

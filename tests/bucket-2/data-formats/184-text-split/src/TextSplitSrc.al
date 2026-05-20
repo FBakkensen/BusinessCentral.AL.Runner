@@ -1,5 +1,5 @@
 /// Helper codeunit exercising Text.Split (3 overloads).
-codeunit 60090 "TXSP Src"
+codeunit 50133 "TXSP Src"
 {
     procedure SplitCharJoin(v: Text; sep: Char): Text
     var

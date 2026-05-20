@@ -1,5 +1,5 @@
 // Renumbered from 59201 to avoid collision in new bucket layout (#1385).
-codeunit 1059201 "CCT Tests"
+codeunit 50011 "CCT Tests"
 {
     Subtype = Test;
 

@@ -1,4 +1,4 @@
-codeunit 50226 "Multi Format Tests"
+codeunit 50196 "Multi Format Tests"
 {
     Subtype = Test;
 

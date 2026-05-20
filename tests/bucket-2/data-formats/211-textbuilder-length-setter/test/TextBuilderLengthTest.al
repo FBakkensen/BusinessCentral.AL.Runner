@@ -1,4 +1,4 @@
-codeunit 60381 "TBL Test"
+codeunit 50176 "TBL Test"
 {
     Subtype = Test;
 

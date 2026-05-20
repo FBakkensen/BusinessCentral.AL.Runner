@@ -1,4 +1,4 @@
-codeunit 304003 "CalcDate Helper Test"
+codeunit 50321 "CalcDate Helper Test"
 {
     Subtype = Test;
 

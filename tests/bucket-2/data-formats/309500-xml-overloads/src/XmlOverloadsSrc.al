@@ -2,7 +2,7 @@
 /// Tests XmlDocument/XmlElement/XmlDocumentType missing overloads:
 /// Create, GetChildElements, GetDescendantElements, ReadFrom (with XmlReadOptions),
 /// RemoveAttribute, SetAttribute.
-codeunit 309500 "XmlOverloads Src"
+codeunit 50242 "XmlOverloads Src"
 {
     // ── XmlDocument.Create(Joker) ────────────────────────────────
 

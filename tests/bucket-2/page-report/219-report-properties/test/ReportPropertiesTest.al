@@ -1,4 +1,4 @@
-codeunit 60481 "RPR Test"
+codeunit 50403 "RPR Test"
 {
     Subtype = Test;
 

@@ -1,7 +1,7 @@
 /// Source helpers for testing methods that must return Boolean — issue #1432.
 /// AL uses these methods in `if not Method(...)` guards, so the runner mocks
 /// must return bool, not void.
-codeunit 1314001 "VRB Src"
+codeunit 50253 "VRB Src"
 {
     /// IsolatedStorage.Set(key, value) — must return Boolean (true on success).
     procedure IsoSet_ReturnsTrue(StorageKey: Text; StorageValue: Text): Boolean

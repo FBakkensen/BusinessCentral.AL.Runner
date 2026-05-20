@@ -1,4 +1,4 @@
-codeunit 59601 "CA Custom Action Tests"
+codeunit 50504 "CA Custom Action Tests"
 {
     Subtype = Test;
 

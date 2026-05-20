@@ -1,6 +1,6 @@
 /// Source objects for tooltip_control_property test suite.
 /// Verifies that Tooltip on page controls compiles without error.
-table 80950 "TTP Test Record"
+table 50066 "TTP Test Record"
 {
     fields
     {
@@ -12,7 +12,7 @@ table 80950 "TTP Test Record"
     keys { key(PK; Id) { Clustered = true; } }
 }
 
-page 80950 "TTP Test Page"
+page 50022 "TTP Test Page"
 {
     PageType = Card;
     SourceTable = "TTP Test Record";

@@ -1,4 +1,4 @@
-codeunit 58200 "STM Secret Text Helper"
+codeunit 50282 "STM Secret Text Helper"
 {
     /// <summary>
     /// Returns true when the given SecretText holds no value.

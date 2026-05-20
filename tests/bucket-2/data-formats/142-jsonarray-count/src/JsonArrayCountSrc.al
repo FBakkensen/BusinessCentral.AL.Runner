@@ -1,6 +1,6 @@
 /// Helper codeunit exercising JsonArray.Count() — the method issue #468 says
 /// is not supported at runtime.
-codeunit 59350 "JAC Count Src"
+codeunit 50060 "JAC Count Src"
 {
     procedure GetCount(arr: JsonArray): Integer
     begin

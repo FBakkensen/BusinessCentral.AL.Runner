@@ -1,4 +1,4 @@
-codeunit 61221 "Ternary Tests"
+codeunit 50110 "Ternary Tests"
 {
     Subtype = Test;
 

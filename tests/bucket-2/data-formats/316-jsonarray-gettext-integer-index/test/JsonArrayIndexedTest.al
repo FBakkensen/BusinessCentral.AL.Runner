@@ -1,6 +1,6 @@
 /// Tests for JsonArray integer-index overloads: GetText, GetInteger, GetDecimal, GetBoolean, GetArray.
 /// Regression for issue #1426: CS1503 'int' → 'string' when passing Integer index to JsonArray.GetText(Integer).
-codeunit 316101 "Json Array Indexed Test"
+codeunit 50256 "Json Array Indexed Test"
 {
     Subtype = Test;
 

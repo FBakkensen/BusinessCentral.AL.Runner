@@ -1,5 +1,5 @@
 /// Tests for MockPartFormHandle.SetTableView and Update (issue #1186).
-codeunit 231004 "PPS Tests"
+codeunit 50413 "PPS Tests"
 {
     Subtype = Test;
 

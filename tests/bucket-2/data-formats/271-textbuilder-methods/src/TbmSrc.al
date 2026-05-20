@@ -1,5 +1,5 @@
 /// Helper codeunit exercising the 8 missing TextBuilder methods.
-codeunit 84405 "TBM Src"
+codeunit 50217 "TBM Src"
 {
     // ── Insert ──────────────────────────────────────────────────────────────────
     procedure InsertAtPosition(base: Text; pos: Integer; toInsert: Text): Text

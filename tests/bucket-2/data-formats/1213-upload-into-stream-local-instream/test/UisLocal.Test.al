@@ -3,7 +3,7 @@
 /// — previously triggered CS1503 at args 1 (DataError→string) and 4
 /// (Guid→MockInStream) because C# overload resolution fell back to the
 /// 4-arg `(string, string, ByRef<NavText>, MockInStream)` signature.
-codeunit 121212 "UIS Local Test"
+codeunit 50033 "UIS Local Test"
 {
     Subtype = Test;
 

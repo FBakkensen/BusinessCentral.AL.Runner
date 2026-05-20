@@ -2,7 +2,7 @@
 /// AddAfterSelf, AddBeforeSelf, GetDescendantElements, GetDescendantNodes,
 /// GetDocument, GetNamespaceOfPrefix, GetPrefixOfNamespace, NamespaceUri,
 /// ReplaceNodes, ReplaceWith.
-codeunit 97601 "XER Test"
+codeunit 50164 "XER Test"
 {
     Subtype = Test;
 

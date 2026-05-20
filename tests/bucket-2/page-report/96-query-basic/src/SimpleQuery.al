@@ -1,4 +1,4 @@
-query 229001 "Simple Item Query"
+query 50000 "Simple Item Query"
 {
     QueryType = Normal;
     elements

@@ -1,5 +1,5 @@
 /// Table backing the base page used by the page extension in this suite.
-table 59510 "MAF Product"
+table 50052 "MAF Product"
 {
     DataClassification = CustomerContent;
     fields
@@ -16,7 +16,7 @@ table 59510 "MAF Product"
 
 /// Base page with three fields and two actions so the pageextension has
 /// anchors to moveafter in both layout and actions.
-page 59510 "MAF Product List"
+page 50006 "MAF Product List"
 {
     PageType = List;
     SourceTable = "MAF Product";
@@ -62,7 +62,7 @@ page 59510 "MAF Product List"
 
 /// pageextension using moveafter in the layout area to reposition a field.
 /// This is the exact construct issue #432 says fails to compile.
-pageextension 59510 "MAF Product List Ext" extends "MAF Product List"
+pageextension 50000 "MAF Product List Ext" extends "MAF Product List"
 {
     layout
     {
@@ -72,7 +72,7 @@ pageextension 59510 "MAF Product List Ext" extends "MAF Product List"
 
 /// pageextension using moveafter in the actions area to reposition an action,
 /// plus a second moveafter in the layout area (multiple moveafter blocks).
-pageextension 59511 "MAF Product List Ext2" extends "MAF Product List"
+pageextension 50001 "MAF Product List Ext2" extends "MAF Product List"
 {
     layout
     {
@@ -87,7 +87,7 @@ pageextension 59511 "MAF Product List Ext2" extends "MAF Product List"
 /// Helper codeunit with business logic exercised by the tests.
 /// Proves the compilation unit containing pageextensions with moveafter
 /// compiles and codeunits alongside remain callable.
-codeunit 59510 "MAF Product Helper"
+codeunit 50373 "MAF Product Helper"
 {
     procedure GetLabel(): Text
     begin

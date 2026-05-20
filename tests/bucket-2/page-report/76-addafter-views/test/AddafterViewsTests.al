@@ -1,4 +1,4 @@
-codeunit 59701 "AV Addafter Views Tests"
+codeunit 50506 "AV Addafter Views Tests"
 {
     Subtype = Test;
 

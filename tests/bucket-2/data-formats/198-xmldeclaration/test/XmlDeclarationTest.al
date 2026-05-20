@@ -1,4 +1,4 @@
-codeunit 60251 "XDL Test"
+codeunit 50160 "XDL Test"
 {
     Subtype = Test;
 

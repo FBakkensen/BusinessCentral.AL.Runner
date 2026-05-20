@@ -1,5 +1,5 @@
 /// Report with a request page used to exercise TestRequestPage methods.
-report 84402 "TRM Report"
+report 50013 "TRM Report"
 {
     Caption = 'TRM Report';
     dataset { }
@@ -27,7 +27,7 @@ report 84402 "TRM Report"
         AmountValue: Decimal;
 }
 
-table 84403 "TRM Nav Rec"
+table 50067 "TRM Nav Rec"
 {
     fields
     {
@@ -39,7 +39,7 @@ table 84403 "TRM Nav Rec"
     }
 }
 
-codeunit 84400 "TRM Src"
+codeunit 50420 "TRM Src"
 {
     procedure RunReport()
     begin

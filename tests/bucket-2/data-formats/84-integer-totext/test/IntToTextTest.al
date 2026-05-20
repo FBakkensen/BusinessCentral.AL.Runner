@@ -1,4 +1,4 @@
-codeunit 83501 "Int ToText Tests"
+codeunit 50300 "Int ToText Tests"
 {
     Subtype = Test;
 

@@ -1,4 +1,4 @@
-codeunit 127002 "MFO Test"
+codeunit 50434 "MFO Test"
 {
     Subtype = Test;
     var

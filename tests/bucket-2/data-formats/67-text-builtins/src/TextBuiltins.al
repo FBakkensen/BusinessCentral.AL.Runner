@@ -1,4 +1,4 @@
-codeunit 50167 "Text Builtins Helper"
+codeunit 50284 "Text Builtins Helper"
 {
     procedure CallToLower(Input: Text): Text
     begin

@@ -1,7 +1,7 @@
 /// Helper codeunit exercising XmlElement.RemoveAllAttributes().
 /// Builds XmlElement programmatically (avoiding XmlDocument.ReadFrom which
 /// hits a separate rewriter gap — see #481).
-codeunit 59720 "RAA Src"
+codeunit 50078 "RAA Src"
 {
     procedure BuildWithThreeAttrs(): XmlElement
     var

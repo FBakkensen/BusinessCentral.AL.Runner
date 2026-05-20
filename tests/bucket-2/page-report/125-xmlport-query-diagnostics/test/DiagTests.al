@@ -1,4 +1,4 @@
-codeunit 56254 "XmlPort Query Diag Tests"
+codeunit 50362 "XmlPort Query Diag Tests"
 {
     Subtype = Test;
 

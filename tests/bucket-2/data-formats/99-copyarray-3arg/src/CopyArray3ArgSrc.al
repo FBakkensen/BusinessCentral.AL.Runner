@@ -1,5 +1,5 @@
 /// Helper codeunit for CopyArray 3-arg overload (no count parameter).
-codeunit 99600 "CA3 Src"
+codeunit 50340 "CA3 Src"
 {
     // ── CopyArray 3-arg (no count) ────────────────────────────────────────────
 

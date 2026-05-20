@@ -1,6 +1,6 @@
 /// Source objects for page-part SetTableView / Update tests (issue #1186).
 
-table 231001 "PPS Record"
+table 50063 "PPS Record"
 {
     fields
     {
@@ -14,7 +14,7 @@ table 231001 "PPS Record"
 }
 
 /// ListPart that will be embedded in a card page.
-page 231001 "PPS Lines"
+page 50018 "PPS Lines"
 {
     PageType = ListPart;
     SourceTable = "PPS Record";
@@ -33,7 +33,7 @@ page 231001 "PPS Lines"
 }
 
 /// Card page that hosts a ListPart — allows calling SetTableView/Update on the part.
-page 231002 "PPS Card"
+page 50019 "PPS Card"
 {
     PageType = Card;
 
@@ -62,7 +62,7 @@ page 231002 "PPS Card"
 }
 
 /// Helper codeunit that drives the page and exercises SetTableView / Update.
-codeunit 231003 "PPS Helper"
+codeunit 50412 "PPS Helper"
 {
     procedure SetTableView_NoError(): Boolean
     var

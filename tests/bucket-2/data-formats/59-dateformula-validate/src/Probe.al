@@ -1,4 +1,4 @@
-table 56590 "DF Probe Row"
+table 50027 "DF Probe Row"
 {
     fields
     {

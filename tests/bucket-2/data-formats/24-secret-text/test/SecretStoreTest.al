@@ -1,4 +1,4 @@
-codeunit 50401 SecretStoreTest
+codeunit 50206 SecretStoreTest
 {
     Subtype = Test;
 

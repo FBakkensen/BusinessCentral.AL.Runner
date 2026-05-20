@@ -1,6 +1,6 @@
 /// Helper codeunit exercising DateTime.ToText() and Decimal.ToText() — the
 /// methods issue #480 says are not implemented.
-codeunit 59390 "TT Src"
+codeunit 50064 "TT Src"
 {
     procedure FormatDateTime(dt: DateTime): Text
     begin

@@ -1,4 +1,4 @@
-codeunit 56581 "HL Probe Tests"
+codeunit 50481 "HL Probe Tests"
 {
     Subtype = Test;
 

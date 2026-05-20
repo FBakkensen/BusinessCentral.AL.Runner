@@ -1,4 +1,4 @@
-table 1316001 "FER Log"
+table 50026 "FER Log"
 {
     DataClassification = SystemMetadata;
     fields

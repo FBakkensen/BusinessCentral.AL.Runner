@@ -1,4 +1,4 @@
-codeunit 50264 "Test Part Section"
+codeunit 50418 "Test Part Section"
 {
     Subtype = Test;
 

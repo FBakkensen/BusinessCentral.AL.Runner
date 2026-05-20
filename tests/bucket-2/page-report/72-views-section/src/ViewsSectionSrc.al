@@ -1,4 +1,4 @@
-table 59200 "VS Product"
+table 50101 "VS Product"
 {
     DataClassification = CustomerContent;
     fields
@@ -17,7 +17,7 @@ table 59200 "VS Product"
 /// List page with a views section — the most common place for view_definition
 /// in BC. Named views pre-filter the list to a subset of records.
 /// The views section has no runtime effect in a unit-test context.
-page 59200 "VS Product List"
+page 50048 "VS Product List"
 {
     PageType = List;
     SourceTable = "VS Product";
@@ -57,7 +57,7 @@ page 59200 "VS Product List"
 
 /// Business logic helper — proves that the compilation unit containing
 /// the page with a views section compiles and runs correctly.
-codeunit 59200 "VS Product Helper"
+codeunit 50493 "VS Product Helper"
 {
     procedure CountInStock(Stock: Integer): Boolean
     begin

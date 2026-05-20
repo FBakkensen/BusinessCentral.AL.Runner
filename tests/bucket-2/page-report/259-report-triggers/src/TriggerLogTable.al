@@ -1,4 +1,4 @@
-table 50259 "Trigger Log Table"
+table 50064 "Trigger Log Table"
 {
     DataClassification = ToBeClassified;
 

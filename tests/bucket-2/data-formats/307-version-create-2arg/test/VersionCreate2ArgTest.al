@@ -1,4 +1,4 @@
-codeunit 307001 "Version Create 2Arg Test"
+codeunit 50238 "Version Create 2Arg Test"
 {
     Subtype = Test;
 

@@ -1,5 +1,5 @@
 // Renumbered from 91002 to avoid collision in new bucket layout (#1385).
-codeunit 1091002 "RH Report Handle Tests"
+codeunit 50538 "RH Report Handle Tests"
 {
     Subtype = Test;
 

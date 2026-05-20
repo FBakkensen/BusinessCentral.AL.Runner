@@ -1,4 +1,4 @@
-codeunit 50847 "MLT Movelast Test"
+codeunit 50520 "MLT Movelast Test"
 {
     Subtype = Test;
 

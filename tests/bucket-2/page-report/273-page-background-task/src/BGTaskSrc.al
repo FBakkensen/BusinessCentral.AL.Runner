@@ -3,7 +3,7 @@
 /// GetBackgroundParameters, SetBackgroundTaskResult are static Page.* methods.
 
 // ── Minimal page ──────────────────────────────────────────────────────────────
-page 115000 "BGT Page"
+page 50023 "BGT Page"
 {
     PageType = Card;
     ApplicationArea = All;
@@ -12,7 +12,7 @@ page 115000 "BGT Page"
 }
 
 // ── Page extension that calls all four background task methods ────────────────
-pageextension 115001 "BGT Page Ext" extends "BGT Page"
+pageextension 50004 "BGT Page Ext" extends "BGT Page"
 {
     trigger OnOpenPage()
     var
@@ -36,12 +36,12 @@ pageextension 115001 "BGT Page Ext" extends "BGT Page"
 }
 
 // ── Stub codeunit for the background task (just needs to exist) ───────────────
-codeunit 115002 "BGT Codeunit"
+codeunit 50426 "BGT Codeunit"
 {
 }
 
 // ── Helper codeunit with assertions accessible from test ─────────────────────
-codeunit 115003 "BGT Helper"
+codeunit 50427 "BGT Helper"
 {
     procedure AllMethodsCompile(): Boolean
     begin

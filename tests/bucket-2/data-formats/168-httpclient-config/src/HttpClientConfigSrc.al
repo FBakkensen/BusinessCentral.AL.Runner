@@ -1,5 +1,5 @@
 /// Helper codeunit exercising HttpClient configuration methods — issue #732.
-codeunit 94000 "HCC Src"
+codeunit 50090 "HCC Src"
 {
     // SetBaseAddress + GetBaseAddress — round-trip
     procedure SetAndGetBaseAddress(url: Text): Text

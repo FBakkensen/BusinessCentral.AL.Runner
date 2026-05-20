@@ -1,5 +1,5 @@
 /// Tests for TestHttpRequestMessage — issue #752.
-codeunit 121001 "THRQM Test"
+codeunit 50135 "THRQM Test"
 {
     Subtype = Test;
 

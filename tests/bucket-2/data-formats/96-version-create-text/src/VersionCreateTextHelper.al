@@ -1,4 +1,4 @@
-codeunit 1296001 "Version Create Text Helper"
+codeunit 50332 "Version Create Text Helper"
 {
     procedure CreateFromText(VersionText: Text): Text
     var

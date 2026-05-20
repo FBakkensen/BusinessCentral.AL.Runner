@@ -1,4 +1,4 @@
-codeunit 59351 "JAC Count Test"
+codeunit 50061 "JAC Count Test"
 {
     Subtype = Test;
 

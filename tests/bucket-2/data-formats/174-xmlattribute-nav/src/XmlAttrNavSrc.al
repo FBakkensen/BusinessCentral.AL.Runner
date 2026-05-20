@@ -2,7 +2,7 @@
 /// NamespacePrefix, IsNamespaceDeclaration, CreateNamespaceDeclaration,
 /// WriteTo, GetParent, GetDocument, Remove, AddAfterSelf, AddBeforeSelf,
 /// ReplaceWith, SelectNodes, SelectSingleNode.
-codeunit 97400 "XAN Src"
+codeunit 50103 "XAN Src"
 {
     // ── NamespacePrefix ───────────────────────────────────────────────────────
 

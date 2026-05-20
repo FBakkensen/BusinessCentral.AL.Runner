@@ -1,4 +1,4 @@
-codeunit 50759 "Test Run Bool"
+codeunit 50291 "Test Run Bool"
 {
     Subtype = Test;
 

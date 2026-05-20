@@ -1,4 +1,4 @@
-codeunit 160001 "TRAP Test"
+codeunit 50351 "TRAP Test"
 {
     Subtype = Test;
 

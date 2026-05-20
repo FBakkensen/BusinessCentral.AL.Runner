@@ -1,4 +1,4 @@
-codeunit 60101 "EVL Tests"
+codeunit 50057 "EVL Tests"
 {
     Subtype = Test;
 

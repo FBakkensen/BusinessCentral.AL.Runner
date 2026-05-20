@@ -1,5 +1,5 @@
 /// Helper codeunit exercising HttpClient ALAssign (`:=` operator) — issue #1447.
-codeunit 311000 "HCA Src"
+codeunit 50246 "HCA Src"
 {
     // ConfigureAndAssign — sets base address on source, assigns to target via `:=`, returns target base address.
     procedure ConfigureAndAssign(url: Text): Text

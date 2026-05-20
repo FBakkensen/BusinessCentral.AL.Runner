@@ -1,4 +1,4 @@
-codeunit 50130 "BigText Helper"
+codeunit 50040 "BigText Helper"
 {
     procedure AddAndRead(InputText: Text): Text
     var

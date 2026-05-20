@@ -1,4 +1,4 @@
-codeunit 1259002 "Media Id Arg Test"
+codeunit 50364 "Media Id Arg Test"
 {
     Subtype = Test;
     var

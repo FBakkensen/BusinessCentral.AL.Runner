@@ -1,6 +1,6 @@
 /// Helper codeunit exercising XmlElement — creation, attributes, children,
 /// query, and properties.
-codeunit 60170 "XEL Src"
+codeunit 50145 "XEL Src"
 {
     procedure Create_Name(): Text
     var

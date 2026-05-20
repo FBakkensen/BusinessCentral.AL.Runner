@@ -1,7 +1,7 @@
 /// Tests for namespace-aware XPath overloads: Xml*.SelectNodes/SelectSingleNode(xpath, XmlNamespaceManager, ...).
 /// All 20 overloads across 10 node types are backed by the same .NET XmlNode.SelectNodes/SelectSingleNode.
 /// This suite proves XmlDocument and XmlElement (representative types) work correctly — issue #1371.
-codeunit 309401 "XmlNs XPath Test"
+codeunit 50335 "XmlNs XPath Test"
 {
     Subtype = Test;
 

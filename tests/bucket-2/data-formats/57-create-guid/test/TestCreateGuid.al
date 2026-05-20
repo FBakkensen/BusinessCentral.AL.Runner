@@ -1,4 +1,4 @@
-codeunit 56501 "Test Create Guid"
+codeunit 50265 "Test Create Guid"
 {
     Subtype = Test;
 

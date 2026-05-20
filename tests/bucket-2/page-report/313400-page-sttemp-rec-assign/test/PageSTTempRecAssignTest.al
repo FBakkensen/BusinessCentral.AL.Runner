@@ -1,4 +1,4 @@
-codeunit 313400 "PSTRA Test"
+codeunit 50470 "PSTRA Test"
 {
     Subtype = Test;
 

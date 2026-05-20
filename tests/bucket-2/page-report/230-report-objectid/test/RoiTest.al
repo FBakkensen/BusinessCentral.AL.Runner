@@ -1,5 +1,5 @@
 /// Tests for CurrReport.ObjectId(false) inside report triggers (issue #1191).
-codeunit 230003 "ROI Tests"
+codeunit 50411 "ROI Tests"
 {
     Subtype = Test;
 

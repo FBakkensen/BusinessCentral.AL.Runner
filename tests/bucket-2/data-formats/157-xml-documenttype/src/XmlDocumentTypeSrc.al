@@ -1,6 +1,6 @@
 /// Helper codeunit exercising XmlDocumentType methods in standalone mode.
 /// Actual signatures: GetName(var Result: Text): Boolean, etc.
-codeunit 61720 "XDT Helper"
+codeunit 50072 "XDT Helper"
 {
     // ── Already-covered: Create + GetName ────────────────────────────────────
 

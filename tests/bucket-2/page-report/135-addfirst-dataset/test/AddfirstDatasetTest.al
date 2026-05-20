@@ -1,4 +1,4 @@
-codeunit 59302 "AFDS Addfirst Dataset Test"
+codeunit 50370 "AFDS Addfirst Dataset Test"
 {
     Subtype = Test;
 

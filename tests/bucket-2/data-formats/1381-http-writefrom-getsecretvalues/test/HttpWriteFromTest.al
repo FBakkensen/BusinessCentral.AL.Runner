@@ -1,6 +1,6 @@
 /// Tests for HttpContent.WriteFrom(Text), WriteFrom(SecretText) round-trips
 /// and HttpHeaders.GetSecretValues(Text, List of [SecretText]) — issue #1381.
-codeunit 310301 "HWF Test"
+codeunit 50053 "HWF Test"
 {
     Subtype = Test;
 

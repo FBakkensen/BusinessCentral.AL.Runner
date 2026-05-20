@@ -1,4 +1,4 @@
-table 1279001 "DNIA Job"
+table 50005 "DNIA Job"
 {
     DataClassification = ToBeClassified;
 
@@ -15,7 +15,7 @@ table 1279001 "DNIA Job"
     }
 }
 
-codeunit 1279001 "DNIA Helper"
+codeunit 50038 "DNIA Helper"
 {
     /// <summary>
     /// Mimics the telemetry scenario: Dialog.Update(3, "No.") where "No." is a Code field.

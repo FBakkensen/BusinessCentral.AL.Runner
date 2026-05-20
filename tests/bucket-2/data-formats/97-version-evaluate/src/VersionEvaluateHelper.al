@@ -3,7 +3,7 @@
 /// ALSystemVariable.ALEvaluate<NavVersion>(DataError, ByRef<NavVersion>, text, radix).
 /// After type rewriting NavVersion → MockVersion the generic constraint
 /// 'where T : class' on ALEvaluate<T> fails with CS0452 because MockVersion is a struct.
-codeunit 1297001 "Version Evaluate Helper"
+codeunit 50338 "Version Evaluate Helper"
 {
     /// Parse a dotted version string into a Version variable.
     /// Returns true if Evaluate succeeded, false otherwise.

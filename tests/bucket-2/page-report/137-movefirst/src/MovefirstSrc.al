@@ -1,5 +1,5 @@
 /// Table backing the base page used by the page extension in this suite.
-table 60200 "MF Item"
+table 50053 "MF Item"
 {
     DataClassification = CustomerContent;
     fields
@@ -17,7 +17,7 @@ table 60200 "MF Item"
 
 /// Base page with multiple fields in the layout so the pageextension has
 /// something to reposition with movefirst.
-page 60200 "MF Item Card"
+page 50007 "MF Item Card"
 {
     PageType = Card;
     SourceTable = "MF Item";
@@ -38,7 +38,7 @@ page 60200 "MF Item Card"
 /// QuantityField to be first in the content area.
 /// movefirst is a layout reorder directive; it has no effect on runtime data
 /// but must not block compilation.
-pageextension 60200 "MF Item Card Ext" extends "MF Item Card"
+pageextension 50002 "MF Item Card Ext" extends "MF Item Card"
 {
     layout
     {
@@ -48,7 +48,7 @@ pageextension 60200 "MF Item Card Ext" extends "MF Item Card"
 
 /// Business logic helper — proves that the compilation unit containing a
 /// pageextension with movefirst compiles and executes logic correctly.
-codeunit 60200 "MF Helper"
+codeunit 50375 "MF Helper"
 {
     procedure GetLabel(): Text
     begin

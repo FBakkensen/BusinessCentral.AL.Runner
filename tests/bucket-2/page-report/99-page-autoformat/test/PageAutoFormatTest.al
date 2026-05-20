@@ -1,4 +1,4 @@
-codeunit 307902 "PAF Page AutoFormat Tests"
+codeunit 50548 "PAF Page AutoFormat Tests"
 {
     Subtype = Test;
 

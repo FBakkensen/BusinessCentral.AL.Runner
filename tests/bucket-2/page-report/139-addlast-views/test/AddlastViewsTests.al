@@ -1,5 +1,5 @@
 // Renumbered from 60401 to avoid collision in new bucket layout (#1385).
-codeunit 1060401 "ALV Addlast Views Tests"
+codeunit 50380 "ALV Addlast Views Tests"
 {
     Subtype = Test;
 

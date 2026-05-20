@@ -1,4 +1,4 @@
-codeunit 60011 "LBM Test"
+codeunit 50114 "LBM Test"
 {
     Subtype = Test;
 

@@ -1,5 +1,5 @@
 /// Minimal table needed so tests can pass a record Variant to Report.RunModal.
-table 163000 "RRM4 Dummy"
+table 50075 "RRM4 Dummy"
 {
     fields
     {
@@ -12,7 +12,7 @@ table 163000 "RRM4 Dummy"
 }
 
 /// Source codeunit that exercises Report.RunModal with 2-, 3-, and 4-argument forms.
-codeunit 163001 "RRM4 Src"
+codeunit 50439 "RRM4 Src"
 {
     procedure CallRunModal1Arg(reportId: Integer)
     begin

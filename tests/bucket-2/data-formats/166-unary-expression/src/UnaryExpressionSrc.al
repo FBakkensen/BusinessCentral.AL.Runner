@@ -1,5 +1,5 @@
 /// Helper codeunit exercising AL unary operators: `-x`, `+x`, `not b`.
-codeunit 59860 "UNE Src"
+codeunit 50084 "UNE Src"
 {
     procedure Negate(n: Integer): Integer
     begin

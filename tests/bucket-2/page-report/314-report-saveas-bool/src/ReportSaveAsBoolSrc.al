@@ -1,7 +1,7 @@
 /// Source codeunit exercising Report.SaveAs/SaveAsPdf/SaveAsWord/SaveAsExcel/SaveAsHtml/SaveAsXml
 /// in a Boolean context (i.e. `if Report.SaveAs(...) then`).
 /// This verifies that the static stub overloads return bool, not void.
-table 1319000 "RSB Blob"
+table 50092 "RSB Blob"
 {
     fields
     {
@@ -14,7 +14,7 @@ table 1319000 "RSB Blob"
     }
 }
 
-codeunit 1319001 "Report SaveAs Bool Src"
+codeunit 50471 "Report SaveAs Bool Src"
 {
     /// Returns true when Report.SaveAs used as Boolean returns true (no-op stub).
     procedure SaveAsReturnsTrue(ReportId: Integer; RequestData: Text): Boolean

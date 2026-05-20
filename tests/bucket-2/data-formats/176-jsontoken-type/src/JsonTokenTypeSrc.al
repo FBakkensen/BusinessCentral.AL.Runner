@@ -1,6 +1,6 @@
 /// Helper codeunit exercising JsonToken type-checking:
 /// IsArray, IsObject, IsValue, AsArray, AsObject, AsValue, Clone, Path.
-codeunit 97100 "JTT Src"
+codeunit 50111 "JTT Src"
 {
     /// Returns 'array', 'object', 'value', or 'unknown' based on token type.
     procedure TokenKind(JT: JsonToken): Text

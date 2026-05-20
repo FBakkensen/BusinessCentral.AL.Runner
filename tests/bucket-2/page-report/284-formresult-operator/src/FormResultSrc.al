@@ -2,13 +2,13 @@
 /// Root cause: MockFilterPageBuilder.ALRunModal() returned FormResult (wrong type),
 /// causing CS0019 when used in compound boolean expressions.
 /// FilterPageBuilder.RunModal() returns Boolean in AL; BC emits ALRunModal → bool.
-table 132000 "FRO FPB Table"
+table 50073 "FRO FPB Table"
 {
     fields { field(1; Id; Integer) { } }
     keys { key(PK; Id) { Clustered = true; } }
 }
 
-codeunit 132001 "FRO Source"
+codeunit 50435 "FRO Source"
 {
     // AL compound condition: SomeBoolean and (Action = Action::OK)
     // BC emits: boolVar & (formResult == FormResult.OK)

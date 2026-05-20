@@ -1,4 +1,4 @@
-table 56600 "GRT Row"
+table 50028 "GRT Row"
 {
     fields
     {
@@ -8,7 +8,7 @@ table 56600 "GRT Row"
     keys { key(PK; "Package ID") { Clustered = true; } }
 }
 
-table 56601 "GRT Alert"
+table 50029 "GRT Alert"
 {
     fields
     {

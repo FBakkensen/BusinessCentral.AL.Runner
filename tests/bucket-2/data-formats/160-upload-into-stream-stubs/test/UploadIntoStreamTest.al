@@ -2,7 +2,7 @@
 /// The 5-arg AL form (Title, Folder, Filter, FileName, InStream) is tested here.
 /// The 4-arg AL form (Title, Filter, FileName, InStream) — available in newer BC
 /// versions — is covered at the C# level in AlRunner.Tests/MockFile4ArgTests.cs.
-codeunit 160003 "UIS Test"
+codeunit 50081 "UIS Test"
 {
     Subtype = Test;
 

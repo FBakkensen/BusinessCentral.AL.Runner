@@ -1,5 +1,5 @@
 /// Tests for MockPartFormHandle.Close and GetRecord (issue #1325).
-codeunit 306003 "PFH Tests"
+codeunit 50452 "PFH Tests"
 {
     Subtype = Test;
 

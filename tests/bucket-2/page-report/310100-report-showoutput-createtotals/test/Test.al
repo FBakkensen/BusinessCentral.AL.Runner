@@ -1,6 +1,6 @@
 /// Tests proving ReportInstance.ShowOutput(Boolean) and
 /// ReportInstance.CreateTotals(Decimal, Decimal) are no-op stubs (issue #1379).
-codeunit 310101 "RSO Test"
+codeunit 50457 "RSO Test"
 {
     Subtype = Test;
     var

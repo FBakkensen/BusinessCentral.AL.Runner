@@ -1,5 +1,5 @@
 /// Source objects for ReportInstance method tests (issue #675).
-table 126000 "RIM Table"
+table 50072 "RIM Table"
 {
     fields
     {
@@ -11,7 +11,7 @@ table 126000 "RIM Table"
 
 /// Report used as a ReportInstance variable target.
 /// The OnAfterGetRecord trigger exercises CurrReport.Quit/PrintOnlyIfDetail.
-report 126000 "RIM Report"
+report 50015 "RIM Report"
 {
     dataset
     {
@@ -30,7 +30,7 @@ report 126000 "RIM Report"
 }
 
 /// Exercises all ReportInstance (handle) methods accessible from external code.
-codeunit 126001 "RIM Source"
+codeunit 50431 "RIM Source"
 {
     // ── SaveAs* ────────────────────────────────────────────────────────────────
 

@@ -1,5 +1,5 @@
 /// Helper codeunit for JSON typed Add/ReadFrom/WriteTo overload tests (issue #1400).
-codeunit 1316000 "Json Typed RW Src"
+codeunit 50042 "Json Typed RW Src"
 {
     // ── JsonArray.Add typed helpers ──────────────────────────────────────────
 

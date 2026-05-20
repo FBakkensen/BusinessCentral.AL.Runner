@@ -1,4 +1,4 @@
-codeunit 58600 "Test Boolean ToText"
+codeunit 50267 "Test Boolean ToText"
 {
     Subtype = Test;
 

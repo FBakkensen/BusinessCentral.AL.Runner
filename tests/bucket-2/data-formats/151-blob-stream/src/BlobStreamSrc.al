@@ -1,5 +1,5 @@
 /// Temporary-record helper with a Blob field, exercised by the blob stream tests.
-table 59580 "BST TempBlob"
+table 50009 "BST TempBlob"
 {
     fields
     {
@@ -12,7 +12,7 @@ table 59580 "BST TempBlob"
 /// Helper codeunit exercising Blob.CreateOutStream + OutStream.WriteText for
 /// writing and Blob.CreateInStream + InStream.ReadText for reading — the
 /// blob-via-stream surface issue #472 names.
-codeunit 59580 "BST Src"
+codeunit 50066 "BST Src"
 {
     procedure WriteAndRead(InputText: Text): Text
     var

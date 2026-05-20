@@ -1,4 +1,4 @@
-codeunit 305001 "FPB Assign Src"
+codeunit 50450 "FPB Assign Src"
 {
     /// <summary>
     /// Creates a FilterPageBuilder, adds a table, sets a view,

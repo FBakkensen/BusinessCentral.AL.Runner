@@ -1,4 +1,4 @@
-codeunit 118002 "GTK Test"
+codeunit 50429 "GTK Test"
 {
     Subtype = Test;
     var

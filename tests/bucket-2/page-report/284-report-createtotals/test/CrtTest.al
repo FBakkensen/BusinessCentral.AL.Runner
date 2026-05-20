@@ -1,5 +1,5 @@
 /// Tests proving CurrReport.CreateTotals() is a no-op stub in standalone mode (issue #991).
-codeunit 140002 "CRT Test"
+codeunit 50438 "CRT Test"
 {
     Subtype = Test;
     var

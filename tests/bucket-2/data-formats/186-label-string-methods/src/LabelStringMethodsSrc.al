@@ -3,7 +3,7 @@
 /// target method directly on the Label value — Labels in BC are string-like
 /// values so these routing tests exercise the same NavText code paths as
 /// plain Text but via the Label syntax.
-codeunit 60120 "LBS Src"
+codeunit 50137 "LBS Src"
 {
     procedure Split_ByComma_Count(): Integer
     var

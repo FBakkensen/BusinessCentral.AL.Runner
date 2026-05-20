@@ -1,4 +1,4 @@
-codeunit 59512 "MAF Moveafter Test"
+codeunit 50374 "MAF Moveafter Test"
 {
     Subtype = Test;
 

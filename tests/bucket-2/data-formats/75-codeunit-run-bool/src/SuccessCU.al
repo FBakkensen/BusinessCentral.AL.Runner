@@ -1,4 +1,4 @@
-codeunit 50751 "Success CU"
+codeunit 50290 "Success CU"
 {
     trigger OnRun()
     begin

@@ -4,7 +4,7 @@
 // A subsequent direct record field read emits (NavCode)GetFieldValueSafe(2, NavType.Code),
 // which throws InvalidCastException because the stored value is NavText not NavCode.
 // Fix: SetFieldValueSafe must coerce NavText → NavCode when expectedType == NavType.Code.
-codeunit 98401 "NTC Tests"
+codeunit 50019 "NTC Tests"
 {
     Subtype = Test;
 

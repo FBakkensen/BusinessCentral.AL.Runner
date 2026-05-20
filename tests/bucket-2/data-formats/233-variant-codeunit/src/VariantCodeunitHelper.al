@@ -3,7 +3,7 @@ interface IVCProcessor
     procedure Process(Value: Integer): Integer;
 }
 
-codeunit 233000 "VCU Doubler" implements IVCProcessor
+codeunit 50197 "VCU Doubler" implements IVCProcessor
 {
     procedure Process(Value: Integer): Integer
     begin
@@ -11,7 +11,7 @@ codeunit 233000 "VCU Doubler" implements IVCProcessor
     end;
 }
 
-codeunit 233001 "VCU Tripler" implements IVCProcessor
+codeunit 50198 "VCU Tripler" implements IVCProcessor
 {
     procedure Process(Value: Integer): Integer
     begin
@@ -19,7 +19,7 @@ codeunit 233001 "VCU Tripler" implements IVCProcessor
     end;
 }
 
-codeunit 233002 "VCU Dispatcher"
+codeunit 50199 "VCU Dispatcher"
 {
     /// <summary>
     /// Stores a codeunit reference in a Variant and then assigns it back.

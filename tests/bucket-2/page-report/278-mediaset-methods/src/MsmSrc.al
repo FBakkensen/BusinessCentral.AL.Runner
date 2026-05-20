@@ -1,5 +1,5 @@
 /// Source objects for MediaSet method tests (issue #716).
-table 122000 "MSM Table"
+table 50071 "MSM Table"
 {
     fields
     {

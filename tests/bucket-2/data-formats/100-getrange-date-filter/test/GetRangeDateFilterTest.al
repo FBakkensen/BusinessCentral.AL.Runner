@@ -1,4 +1,4 @@
-codeunit 308402 "GetRange Date Filter Test"
+codeunit 50015 "GetRange Date Filter Test"
 {
     Subtype = Test;
 

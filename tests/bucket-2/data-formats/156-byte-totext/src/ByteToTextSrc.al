@@ -1,5 +1,5 @@
 /// Helper codeunit that wraps Byte.ToText() calls.
-codeunit 50156 "BTT Helper"
+codeunit 50070 "BTT Helper"
 {
     procedure ByteToText(B: Byte): Text
     begin

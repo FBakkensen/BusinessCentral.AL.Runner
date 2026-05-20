@@ -1,6 +1,6 @@
 // Stub for the al-runner-only configuration codeunit.
 // At runtime, MockCodeunitHandle routes codeunit 131100 calls to MockSession.
-codeunit 131100 "AL Runner Config"
+codeunit 50000 "AL Runner Config"
 {
     /// <summary>
     /// Sets the value that CompanyName() will return.

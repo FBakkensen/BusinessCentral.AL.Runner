@@ -1,4 +1,4 @@
-codeunit 84404 "XTX Test"
+codeunit 50216 "XTX Test"
 {
     Subtype = Test;
 

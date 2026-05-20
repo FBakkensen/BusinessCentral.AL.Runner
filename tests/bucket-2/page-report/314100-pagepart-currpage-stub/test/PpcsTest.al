@@ -1,7 +1,7 @@
 // Tests for issue #1597: page parts must not trigger stub usercontrol injection.
 // When a page has part(X; SomePage) and calls CurrPage.X.Page.Method(), the runner
 // must not inject a stub usercontrol for X — it is already declared as a PagePart.
-codeunit 1320102 "Ppcs Test"
+codeunit 50473 "Ppcs Test"
 {
     Subtype = Test;
 

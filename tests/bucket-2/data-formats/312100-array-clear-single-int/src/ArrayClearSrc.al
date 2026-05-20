@@ -1,7 +1,7 @@
 /// Helper codeunit for Clear(arr[i]) on arrays of complex types — issue #1448.
 /// BC emits arr.Clear(int) for the AL built-in Clear(arr[n]) but
 /// MockArray<T> was missing the single-int overload.
-codeunit 312100 "ACSI Src"
+codeunit 50250 "ACSI Src"
 {
     /// Populate both slots of an XmlNodeList array, clear slot [1],
     /// and return the count in slot [2] — proving that only slot [1] was cleared

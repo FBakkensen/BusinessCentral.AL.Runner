@@ -1,4 +1,4 @@
-codeunit 94001 "HCC Test"
+codeunit 50091 "HCC Test"
 {
     Subtype = Test;
 

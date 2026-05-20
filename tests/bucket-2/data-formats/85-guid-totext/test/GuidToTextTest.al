@@ -1,4 +1,4 @@
-codeunit 82101 "GT Tests"
+codeunit 50306 "GT Tests"
 {
     Subtype = Test;
 

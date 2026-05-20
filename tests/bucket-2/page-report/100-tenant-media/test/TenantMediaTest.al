@@ -1,6 +1,6 @@
 /// Tests that the Tenant Media system table (ID 2000000184) can be referenced
 /// via the auto-stub mechanism without a NavMediaSystemRecord constructor error.
-codeunit 303001 "TMD Tests"
+codeunit 50345 "TMD Tests"
 {
     Subtype = Test;
 

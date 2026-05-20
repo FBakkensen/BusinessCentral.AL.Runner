@@ -1,5 +1,5 @@
 /// Tests string-to-NavText conversion in ErrorInfo.Create — issue #1278.
-codeunit 1278002 "StringNavText Test"
+codeunit 50037 "StringNavText Test"
 {
     Subtype = Test;
 

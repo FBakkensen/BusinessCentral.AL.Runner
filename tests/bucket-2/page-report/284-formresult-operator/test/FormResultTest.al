@@ -1,4 +1,4 @@
-codeunit 132002 "FRO Test"
+codeunit 50436 "FRO Test"
 {
     Subtype = Test;
     var

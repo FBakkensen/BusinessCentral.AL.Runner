@@ -1,7 +1,7 @@
 /// Source helpers for JsonArray integer-index GetText/GetInteger/GetDecimal/GetBoolean/GetArray
 /// overloads. Reproduces issue #1426: CS1503 int→string when passing an Integer index
 /// to JsonArray.GetText() / GetInteger() / GetDecimal() / GetBoolean() / GetArray().
-codeunit 316100 "Json Array Indexed Src"
+codeunit 50255 "Json Array Indexed Src"
 {
     /// JsonArray.GetText(Integer index) — reproduces CS1503 from issue #1426.
     procedure GetTextAtIndex(Cols: JsonArray; Index: Integer): Text

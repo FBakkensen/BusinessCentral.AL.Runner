@@ -1,4 +1,4 @@
-codeunit 62211 "HH GetValues List Test"
+codeunit 50190 "HH GetValues List Test"
 {
     Subtype = Test;
 

@@ -1,5 +1,5 @@
 /// Table backing the base page used by the page extension in this suite.
-table 50806 "MAM Product"
+table 50109 "MAM Product"
 {
     DataClassification = CustomerContent;
     fields
@@ -14,7 +14,7 @@ table 50806 "MAM Product"
 }
 
 /// Base page with an action whose properties the pageextension will modify.
-page 50806 "MAM Product Card"
+page 50057 "MAM Product Card"
 {
     PageType = Card;
     SourceTable = "MAM Product";
@@ -46,7 +46,7 @@ page 50806 "MAM Product Card"
 
 /// pageextension using modify inside the actions area.
 /// This is the exact construct issue #422 says fails to compile.
-pageextension 50806 "MAM Product Card Mod" extends "MAM Product Card"
+pageextension 50018 "MAM Product Card Mod" extends "MAM Product Card"
 {
     actions
     {
@@ -59,7 +59,7 @@ pageextension 50806 "MAM Product Card Mod" extends "MAM Product Card"
 
 /// pageextension using multiple modify blocks in the actions area.
 /// Proves multiple modify modifications in one extension compile.
-pageextension 50807 "MAM Product Card MultiMod" extends "MAM Product Card"
+pageextension 50019 "MAM Product Card MultiMod" extends "MAM Product Card"
 {
     actions
     {
@@ -78,7 +78,7 @@ pageextension 50807 "MAM Product Card MultiMod" extends "MAM Product Card"
 /// Helper codeunit with business logic exercised by the tests.
 /// Proves the compilation unit containing pageextensions with modify in the
 /// actions area compiles and codeunits alongside remain callable.
-codeunit 50806 "MAM Product Helper"
+codeunit 50511 "MAM Product Helper"
 {
     procedure GetActionCaption(): Text
     begin

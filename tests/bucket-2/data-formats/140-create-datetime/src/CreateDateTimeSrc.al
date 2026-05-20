@@ -1,6 +1,6 @@
 /// Helper codeunit exercising CreateDateTime / DT2Date / DT2Time built-ins.
 // Renumbered from 60500 to avoid collision in new bucket layout (#1385).
-codeunit 1060500 "CDT Helper"
+codeunit 50054 "CDT Helper"
 {
     procedure MakeDateTime(d: Date; t: Time): DateTime
     begin

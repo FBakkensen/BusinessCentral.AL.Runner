@@ -8,7 +8,7 @@
 /// ReadAsConditional() exercises the exact pattern that triggered CS0019.
 /// GetProbeVersion() is a pure-logic sentinel called by tests to confirm compilation.
 /// </summary>
-codeunit 51250 "HTTP ReadAs Bool Probe"
+codeunit 50034 "HTTP ReadAs Bool Probe"
 {
     /// <summary>
     /// Uses HttpContent.ReadAs(var Text) as the condition of an 'if' statement.

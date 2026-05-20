@@ -1,5 +1,5 @@
 // Renumbered from 58401 to avoid collision in new bucket layout (#1385).
-codeunit 1058401 "XmlPort Tests"
+codeunit 50524 "XmlPort Tests"
 {
     Subtype = Test;
 

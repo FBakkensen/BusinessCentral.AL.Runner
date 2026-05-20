@@ -1,5 +1,5 @@
 /// Helper codeunit exercising FilterPageBuilder in standalone mode.
-codeunit 97200 "FPB Src"
+codeunit 50390 "FPB Src"
 {
     /// Add one table and return the count.
     procedure AddTableAndCount(): Integer

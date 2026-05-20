@@ -1,6 +1,6 @@
 /// Helper codeunit exercising FileUpload.FileName() and FileUpload.CreateInStream().
 /// In standalone mode the default FileUpload has no file data or name.
-codeunit 86000 "FU Src"
+codeunit 50527 "FU Src"
 {
     procedure GetFileName(Upload: FileUpload): Text
     begin

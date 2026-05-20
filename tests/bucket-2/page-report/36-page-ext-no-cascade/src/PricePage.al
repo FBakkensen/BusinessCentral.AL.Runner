@@ -1,4 +1,4 @@
-page 53600 "Price Page"
+page 50040 "Price Page"
 {
     PageType = Card;
     SourceTable = "Price Table";

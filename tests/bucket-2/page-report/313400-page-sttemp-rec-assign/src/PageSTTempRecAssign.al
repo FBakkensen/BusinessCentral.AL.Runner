@@ -1,4 +1,4 @@
-table 313400 "PSTRA Demo Tbl"
+table 50091 "PSTRA Demo Tbl"
 {
     DataClassification = CustomerContent;
 
@@ -17,7 +17,7 @@ table 313400 "PSTRA Demo Tbl"
     }
 }
 
-page 313400 "PSTRA Demo ListPart"
+page 50037 "PSTRA Demo ListPart"
 {
     PageType = ListPart;
     SourceTable = "PSTRA Demo Tbl";

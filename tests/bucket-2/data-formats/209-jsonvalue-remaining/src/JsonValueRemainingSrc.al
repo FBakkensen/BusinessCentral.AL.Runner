@@ -1,7 +1,7 @@
 /// Exercises remaining JsonValue typed conversions that compile in AL 16.2:
 /// AsBigInteger, AsCode, AsOption, AsDate, AsTime, AsDateTime.
 /// AsByte/AsChar/AsDuration/SetValueToUndefined may be BC 21+ only.
-codeunit 60360 "JVR Src"
+codeunit 50173 "JVR Src"
 {
     procedure AsBigInteger(): BigInteger
     var

@@ -9,7 +9,7 @@
 // This suite validates that TestPage.Filter.SetFilter works correctly when the
 // filter expression comes from complex sources (Variant, code-path-dependent values).
 
-table 313000 "FOS Table"
+table 50089 "FOS Table"
 {
     DataClassification = CustomerContent;
 
@@ -42,7 +42,7 @@ table 313000 "FOS Table"
     }
 }
 
-page 313000 "FOS Card"
+page 50035 "FOS Card"
 {
     PageType = List;
     SourceTable = "FOS Table";
@@ -64,7 +64,7 @@ page 313000 "FOS Card"
     }
 }
 
-codeunit 313000 "FOS Helper"
+codeunit 50467 "FOS Helper"
 {
     procedure GetFilterText(): Text
     begin

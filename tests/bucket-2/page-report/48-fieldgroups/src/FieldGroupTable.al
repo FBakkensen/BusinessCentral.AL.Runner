@@ -1,4 +1,4 @@
-table 55400 "FieldGroup Test Table"
+table 50095 "FieldGroup Test Table"
 {
     DataClassification = ToBeClassified;
 

@@ -1,4 +1,4 @@
-codeunit 53601 "Price Calc"
+codeunit 50474 "Price Calc"
 {
     procedure CalcTotal(var Rec: Record "Price Table"; Qty: Integer): Decimal
     begin

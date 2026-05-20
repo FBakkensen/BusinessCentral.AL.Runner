@@ -10,7 +10,7 @@
 /// required so C# overload resolution picks a matching signature instead of
 /// trying to bind to the 4-arg `(string, string, ByRef<NavText>, MockInStream)`
 /// and raising CS1503 at args 1 (DataError→string) and 4 (Guid→MockInStream).
-codeunit 121211 "UIS Local Src"
+codeunit 50032 "UIS Local Src"
 {
     /// <summary>
     /// Calls UploadIntoStream with a LOCAL InStream variable.

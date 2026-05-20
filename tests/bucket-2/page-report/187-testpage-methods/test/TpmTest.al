@@ -1,7 +1,7 @@
 /// Tests for TestPage gap methods — issue #678.
 /// Covers: Close, Caption, Expand/IsExpanded, First, Last, Previous,
 ///         ValidationErrorCount, FindFirstField, View, No, Yes.
-codeunit 123001 "TPM Test"
+codeunit 50394 "TPM Test"
 {
     Subtype = Test;
 

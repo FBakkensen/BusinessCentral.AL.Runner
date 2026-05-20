@@ -1,4 +1,4 @@
-codeunit 50260 "Test Report Triggers"
+codeunit 50414 "Test Report Triggers"
 {
     Subtype = Test;
 

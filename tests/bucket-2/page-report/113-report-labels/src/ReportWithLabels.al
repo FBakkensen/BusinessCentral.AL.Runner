@@ -1,4 +1,4 @@
-report 50113 "Report With Labels"
+report 50004 "Report With Labels"
 {
     dataset
     {
@@ -19,7 +19,7 @@ report 50113 "Report With Labels"
     end;
 }
 
-codeunit 50113 "Report Label Helper"
+codeunit 50356 "Report Label Helper"
 {
     procedure GetReportTitle(): Text
     var

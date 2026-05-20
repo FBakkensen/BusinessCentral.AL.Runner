@@ -1,7 +1,7 @@
 /// Source objects for ReportInstance.ShowOutput and CreateTotals(Decimal,Decimal) tests (issue #1379).
 
 /// Minimal table backing the report dataset.
-table 310100 "RSO Table"
+table 50082 "RSO Table"
 {
     fields
     {
@@ -13,7 +13,7 @@ table 310100 "RSO Table"
 
 /// Report that exercises CurrReport.ShowOutput(Boolean) and
 /// CurrReport.CreateTotals(Decimal, Decimal) in triggers.
-report 310100 "RSO Report"
+report 50020 "RSO Report"
 {
     dataset
     {
@@ -31,7 +31,7 @@ report 310100 "RSO Report"
 
 /// Helper codeunit that exercises ShowOutput and CreateTotals(Decimal, Decimal)
 /// from inside a report trigger, and also exercises them directly on a Report variable.
-codeunit 310100 "RSO Source"
+codeunit 50456 "RSO Source"
 {
     procedure RunReport_NoThrow()
     var

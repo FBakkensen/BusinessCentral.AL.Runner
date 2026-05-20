@@ -1,4 +1,4 @@
-table 84500 "RDT Record"
+table 50068 "RDT Record"
 {
     fields
     {
@@ -8,7 +8,7 @@ table 84500 "RDT Record"
     keys { key(PK; Id) { Clustered = true; } }
 }
 
-report 84501 "RDT Report"
+report 50014 "RDT Report"
 {
     dataset
     {
@@ -70,7 +70,7 @@ report 84501 "RDT Report"
     end;
 }
 
-codeunit 84502 "RDT Src"
+codeunit 50422 "RDT Src"
 {
     procedure RunReport()
     var

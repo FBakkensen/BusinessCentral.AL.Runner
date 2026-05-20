@@ -1,4 +1,4 @@
-codeunit 59100 "List Processor"
+codeunit 50297 "List Processor"
 {
     /// Appends JsonObject items to a var List parameter (cross-codeunit ByRef).
     procedure BuildJsonList(var Items: List of [JsonObject])

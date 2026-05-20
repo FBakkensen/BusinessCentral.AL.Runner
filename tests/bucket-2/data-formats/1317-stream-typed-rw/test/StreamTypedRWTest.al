@@ -12,7 +12,7 @@
 ///   InStream.Read (Integer, Integer)     — 2-arg length form
 ///   InStream.Read (Boolean, Integer)     — 2-arg length form
 ///   InStream.Read (Decimal, Integer)     — 2-arg length form
-codeunit 1317001 "Stream Typed RW Test"
+codeunit 50045 "Stream Typed RW Test"
 {
     Subtype = Test;
 

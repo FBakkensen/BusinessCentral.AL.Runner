@@ -1,4 +1,4 @@
-codeunit 304002 "CalcDate Helper"
+codeunit 50320 "CalcDate Helper"
 {
     /// Reproduce the scenario from telemetry: take CurrentDateTime,
     /// extract the date, CalcDate +7D on it, then CreateDateTime back.

@@ -1,5 +1,5 @@
 /// Table used as the dataitem source for the base report.
-table 59300 "AFDS Item"
+table 50048 "AFDS Item"
 {
     DataClassification = CustomerContent;
     fields
@@ -15,7 +15,7 @@ table 59300 "AFDS Item"
 }
 
 /// Extra table used as a nested child dataitem in the report extension.
-table 59301 "AFDS Sub"
+table 50049 "AFDS Sub"
 {
     DataClassification = CustomerContent;
     fields
@@ -31,7 +31,7 @@ table 59301 "AFDS Sub"
 
 /// Base report with a single dataitem — the reportextension will add a child
 /// dataitem at the beginning using addfirst.
-report 59300 "AFDS Base Report"
+report 50007 "AFDS Base Report"
 {
     dataset
     {
@@ -47,7 +47,7 @@ report 59300 "AFDS Base Report"
 /// reportextension using addfirst in the dataset area — adds a new child dataitem
 /// as the first nested dataitem inside AFDSItem.
 /// This is the exact construct issue #416 says fails to compile.
-reportextension 59302 "AFDS Report Ext" extends "AFDS Base Report"
+reportextension 50001 "AFDS Report Ext" extends "AFDS Base Report"
 {
     dataset
     {
@@ -65,7 +65,7 @@ reportextension 59302 "AFDS Report Ext" extends "AFDS Base Report"
 /// Helper codeunit with business logic exercised by the tests.
 /// Proves that the compilation unit containing reportextensions with addfirst
 /// in the dataset area compiles and codeunits alongside remain callable.
-codeunit 59300 "AFDS Helper"
+codeunit 50369 "AFDS Helper"
 {
     procedure GetLabel(): Text
     begin

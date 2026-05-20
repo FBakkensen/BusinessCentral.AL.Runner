@@ -1,4 +1,4 @@
-codeunit 313201 "PRB Demo Test"
+codeunit 50469 "PRB Demo Test"
 {
     Subtype = Test;
     var Assert: Codeunit Assert;

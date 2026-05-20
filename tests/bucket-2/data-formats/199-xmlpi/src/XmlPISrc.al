@@ -1,6 +1,6 @@
 /// Exercises XmlProcessingInstruction — Create, GetTarget, GetData,
 /// SetTarget, SetData, WriteTo.
-codeunit 60260 "XPI Src"
+codeunit 50161 "XPI Src"
 {
     procedure CreateAndGetTarget(): Text
     var

@@ -1,4 +1,4 @@
-codeunit 61802 "XIF XmlPortImportFile Test"
+codeunit 50383 "XIF XmlPortImportFile Test"
 {
     Subtype = Test;
 

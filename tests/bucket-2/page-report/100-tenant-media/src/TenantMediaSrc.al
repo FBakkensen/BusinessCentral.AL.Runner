@@ -1,7 +1,7 @@
 /// Minimal stub for the Tenant Media system table (ID 2000000184).
 /// BC's compiler generates NavMediaSystemRecord as the base class for
 /// system tables in this ID range — the runner's rewriter must handle that.
-table 2000000184 "Tenant Media"
+table 50037 "Tenant Media"
 {
     fields
     {
@@ -17,7 +17,7 @@ table 2000000184 "Tenant Media"
 
 /// Helper codeunit that references the Tenant Media system table.
 /// Exercises basic record operations against the in-memory mock.
-codeunit 303000 "TMD Helper"
+codeunit 50344 "TMD Helper"
 {
     procedure IsEmpty(): Boolean
     var

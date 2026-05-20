@@ -1,6 +1,6 @@
 /// Helper codeunit exercising File I/O methods in standalone mode.
 /// All file operations are in-memory; no real filesystem is touched.
-codeunit 87000 "FIO Src"
+codeunit 50309 "FIO Src"
 {
     procedure FileExists(FileName: Text): Boolean
     begin

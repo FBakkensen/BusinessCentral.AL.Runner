@@ -1,6 +1,6 @@
 /// Helper codeunit for HttpContent.Clear / WriteFrom / IsSecretContent
 /// and HttpResponseMessage.GetCookie / GetCookieNames / IsBlockedByEnvironment.
-codeunit 99200 "HCR Helper"
+codeunit 50099 "HCR Helper"
 {
     // ── HttpContent ───────────────────────────────────────────────────────────
 

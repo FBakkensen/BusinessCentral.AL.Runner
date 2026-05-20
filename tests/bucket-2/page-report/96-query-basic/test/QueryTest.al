@@ -1,4 +1,4 @@
-codeunit 229002 "Query Basic Test"
+codeunit 50545 "Query Basic Test"
 {
     Subtype = Test;
 

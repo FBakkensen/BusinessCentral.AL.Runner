@@ -60,16 +60,37 @@ tests/<bucket>/<category>/<NN-descriptive-name>/
 
 When adding a new suite, pick the `<bucket>/<category>` folder that matches the feature theme. Reuse the next free `NN-` prefix in the chosen category.
 
-## Object IDs — unique within the bucket
+## Object IDs — unique within the bucket, inside the bucket's idRange
 
-Suites in the same top-level bucket compile together, so object IDs must be unique within a bucket. IDs may repeat across buckets. ID collisions cause CS0101 build errors on all BC versions.
+Each bucket has an idRange declared in `tests/bucket-N/app.json` (currently `50000..99999`). All object IDs in the bucket must fit inside that range AND be unique within the bucket. IDs may repeat across buckets. ID collisions or out-of-range IDs cause AL compile errors.
 
 ```bash
 grep -rh "^codeunit \|^table \|^page \|^enum " tests/bucket-1/ \
   | awk '{print $1, $2}' | sort -k2 -n
 ```
 
+**Object resolution is by NAME, not ID.** IDs are a licensing-era artifact in AL — renumbering them does not break cross-references. But two suites in the same bucket cannot share an object NAME (only one definition wins in a bundled compile), so each suite's codeunit/table/page names must be unique within the bucket.
+
 ## Running tests
+
+### V2 — bundled per bucket (canonical, fast, matches V1 semantics)
+
+The V2 runner now compiles and runs an entire bucket as one AL package — this is the canonical way to run tests. Each bucket's `app.json` declares its `idRange`, `target`, and any required `preprocessorSymbols`, so the bundle compiles like a normal BC extension.
+
+```bash
+dotnet build spike/v2/Runner -c Release
+dotnet run --project spike/v2/Runner -c Release --no-build -- tests/bucket-1
+dotnet run --project spike/v2/Runner -c Release --no-build -- tests/bucket-2
+```
+
+Or pass multiple buckets in one invocation:
+```bash
+dotnet run --project spike/v2/Runner -c Release --no-build -- tests/bucket-1 tests/bucket-2
+```
+
+Per-suite mode (`--per-suite`) still exists for diagnostic comparison but is no longer the default. Bundled mode is 5-7× faster on representative buckets and exercises the same name-based object resolution V1 used.
+
+### V1 — per-suite (legacy)
 
 ```bash
 # Run all buckets (mirrors .github/workflows/test-matrix.yml)

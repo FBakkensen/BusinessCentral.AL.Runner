@@ -1,4 +1,4 @@
-codeunit 50225 "Multi Format Helper"
+codeunit 50195 "Multi Format Helper"
 {
     procedure FormatPrecisionStd(Value: Decimal): Text
     begin

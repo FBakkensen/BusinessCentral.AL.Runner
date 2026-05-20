@@ -1,4 +1,4 @@
-table 56370 "Http Test Blob"
+table 50008 "Http Test Blob"
 {
     fields
     {

@@ -1,4 +1,4 @@
-codeunit 95101 "WSAC Tests"
+codeunit 50542 "WSAC Tests"
 {
     Subtype = Test;
 

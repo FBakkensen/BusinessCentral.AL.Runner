@@ -1,6 +1,6 @@
 /// Source objects for MockPartFormHandle.Close / GetRecord tests (issue #1325).
 
-table 306001 "PFH Record"
+table 50080 "PFH Record"
 {
     DataClassification = ToBeClassified;
     fields
@@ -15,7 +15,7 @@ table 306001 "PFH Record"
 }
 
 /// ListPart subpage used to test Close and GetRecord on the part form handle.
-page 306001 "PFH Sub Page"
+page 50028 "PFH Sub Page"
 {
     PageType = ListPart;
     SourceTable = "PFH Record";
@@ -34,7 +34,7 @@ page 306001 "PFH Sub Page"
 }
 
 /// Card page that hosts the subpage and exposes Close / GetRecord on the part.
-page 306002 "PFH Card Page"
+page 50029 "PFH Card Page"
 {
     PageType = Card;
 

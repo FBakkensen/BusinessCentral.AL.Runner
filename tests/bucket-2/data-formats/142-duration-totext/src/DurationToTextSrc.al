@@ -1,5 +1,5 @@
 /// Helper codeunit exercising Duration.ToText() and Format(Duration).
-codeunit 60700 "DTT Helper"
+codeunit 50058 "DTT Helper"
 {
     procedure FormatDurationViaToText(d: Duration): Text
     begin

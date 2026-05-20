@@ -1,4 +1,4 @@
-codeunit 117001 "OPM Test"
+codeunit 50350 "OPM Test"
 {
     Subtype = Test;
 

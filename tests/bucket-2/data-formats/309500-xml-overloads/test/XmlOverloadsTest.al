@@ -1,7 +1,7 @@
 /// Tests for XML overload methods — issue #1372.
 /// Covers XmlDocument/XmlElement/XmlDocumentType missing Create, GetChildElements,
 /// GetDescendantElements, ReadFrom (with XmlReadOptions), RemoveAttribute, SetAttribute overloads.
-codeunit 309501 "XmlOverloads Test"
+codeunit 50243 "XmlOverloads Test"
 {
     Subtype = Test;
 

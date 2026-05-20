@@ -1,6 +1,6 @@
 /// Helper codeunit for HttpContent.WriteFrom(Text/SecretText) round-trip
 /// and HttpHeaders.GetSecretValues(Text, List) — issue #1381.
-codeunit 310300 "HWF Src"
+codeunit 50052 "HWF Src"
 {
     // ── HttpContent.WriteFrom(Text) ──────────────────────────────────────────
 

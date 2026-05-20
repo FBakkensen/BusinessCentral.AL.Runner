@@ -1,4 +1,4 @@
-table 59000 "Query Test Item"
+table 50117 "Query Test Item"
 {
     fields
     {
@@ -30,7 +30,7 @@ query 59000 "Item Ledger Query"
 
 /// Codeunit that exercises query variables while avoiding Open/Read on the positive path.
 /// Proves that Query objects compile and non-data code, such as Close and filter setup methods, runs correctly.
-codeunit 59000 "Query Logic"
+codeunit 50531 "Query Logic"
 {
     /// Returns a constant to verify the codeunit compiles alongside the query.
     procedure GetStatus(): Text

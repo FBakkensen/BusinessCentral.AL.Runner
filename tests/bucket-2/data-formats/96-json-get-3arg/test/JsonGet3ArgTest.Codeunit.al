@@ -1,4 +1,4 @@
-codeunit 1281002 "JSON Get 3-Arg Test"
+codeunit 50325 "JSON Get 3-Arg Test"
 {
     Subtype = Test;
 

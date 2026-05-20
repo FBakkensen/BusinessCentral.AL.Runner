@@ -1,5 +1,5 @@
 /// Exercises Version comparison operators (==, <, >, <=, >=).
-codeunit 60430 "VC Src"
+codeunit 50181 "VC Src"
 {
     procedure IsGreater(v1: Version; v2: Version): Boolean
     begin

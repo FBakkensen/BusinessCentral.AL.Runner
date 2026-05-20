@@ -3,7 +3,7 @@
 /// 6-arg C# call.  Newer BC also emits a 4-arg form (no Folder/DataError/Guid) —
 /// that path is covered at the C# level in AlRunner.Tests/MockFile4ArgTests.cs
 /// (issue #1021).
-codeunit 160002 "UIS Src"
+codeunit 50080 "UIS Src"
 {
     /// <summary>
     /// Calls the 5-arg AL form and returns both the Boolean result and the

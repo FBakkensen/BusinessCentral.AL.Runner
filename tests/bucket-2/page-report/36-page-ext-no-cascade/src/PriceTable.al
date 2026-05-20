@@ -1,4 +1,4 @@
-table 53600 "Price Table"
+table 50093 "Price Table"
 {
     DataClassification = CustomerContent;
 

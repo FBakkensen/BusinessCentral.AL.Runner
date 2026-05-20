@@ -1,5 +1,5 @@
 /// Exercises XmlDeclaration — Create, Version, Encoding, Standalone.
-codeunit 60250 "XDL Src"
+codeunit 50159 "XDL Src"
 {
     procedure CreateAndGetVersion(): Text
     var

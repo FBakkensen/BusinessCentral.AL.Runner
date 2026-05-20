@@ -1,5 +1,5 @@
 /// Tests for SecretText in HTTP patterns — issues #1086, #1091.
-codeunit 165002 "STH Tests"
+codeunit 50225 "STH Tests"
 {
     Subtype = Test;
 

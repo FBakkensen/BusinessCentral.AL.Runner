@@ -1,4 +1,4 @@
-codeunit 72001 "AR Test"
+codeunit 50492 "AR Test"
 {
     Subtype = Test;
 

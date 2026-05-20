@@ -1,4 +1,4 @@
-codeunit 56291 "ReportExt Parent Tests"
+codeunit 50367 "ReportExt Parent Tests"
 {
     Subtype = Test;
     var

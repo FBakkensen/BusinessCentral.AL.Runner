@@ -1,4 +1,4 @@
-codeunit 56700 "TP TestPage Tests"
+codeunit 50490 "TP TestPage Tests"
 {
     Subtype = Test;
 

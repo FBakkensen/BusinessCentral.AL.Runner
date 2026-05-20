@@ -1,4 +1,4 @@
-codeunit 61101 "LRR RemoveRange Test"
+codeunit 50069 "LRR RemoveRange Test"
 {
     Subtype = Test;
 

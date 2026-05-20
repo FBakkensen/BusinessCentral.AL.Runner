@@ -1,4 +1,4 @@
-codeunit 50912 "Date Formatter Tests"
+codeunit 50029 "Date Formatter Tests"
 {
     Subtype = Test;
 

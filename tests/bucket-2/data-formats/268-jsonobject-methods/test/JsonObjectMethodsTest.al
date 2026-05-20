@@ -1,4 +1,4 @@
-codeunit 84301 "JOM Test"
+codeunit 50212 "JOM Test"
 {
     Subtype = Test;
 

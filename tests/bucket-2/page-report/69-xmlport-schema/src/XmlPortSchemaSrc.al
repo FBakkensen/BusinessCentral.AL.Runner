@@ -1,4 +1,4 @@
-table 58700 "XPS Schema Item"
+table 50098 "XPS Schema Item"
 {
     fields
     {
@@ -49,7 +49,7 @@ xmlport 58701 "XPS Header Only"
     }
 }
 
-codeunit 58700 "XPS Schema Helper"
+codeunit 50485 "XPS Schema Helper"
 {
     /// Returns a constant to prove that a codeunit containing XmlPort
     /// variable declarations and schema sections compiles and runs.

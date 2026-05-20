@@ -1,4 +1,4 @@
-codeunit 70501 "Report Skip Helper"
+codeunit 50358 "Report Skip Helper"
 {
     procedure RunReportSkip()
     var

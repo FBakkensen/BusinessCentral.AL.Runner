@@ -1,4 +1,4 @@
-codeunit 53800 "Test CurrPage"
+codeunit 50477 "Test CurrPage"
 {
     Subtype = Test;
 

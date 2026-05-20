@@ -2,7 +2,7 @@
 /// Before the fix the runner emitted:
 ///   AlCompat.NavIndirectValueToNavValue<NavText>(v, metadata)
 /// which fails compilation (CS1501 – no overload takes 2 arguments).
-codeunit 293002 "VNT Variant NavText Tests"
+codeunit 50229 "VNT Variant NavText Tests"
 {
     Subtype = Test;
 

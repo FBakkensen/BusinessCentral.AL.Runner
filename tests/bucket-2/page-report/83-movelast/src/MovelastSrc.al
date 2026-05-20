@@ -1,5 +1,5 @@
 /// Table backing the base page used by the page extension in this suite.
-table 50846 "MLT Product"
+table 50113 "MLT Product"
 {
     DataClassification = CustomerContent;
     fields
@@ -16,7 +16,7 @@ table 50846 "MLT Product"
 
 /// Base page with multiple fields in the layout so the pageextension has
 /// something to reposition with movelast.
-page 50846 "MLT Product Card"
+page 50061 "MLT Product Card"
 {
     PageType = Card;
     SourceTable = "MLT Product";
@@ -35,7 +35,7 @@ page 50846 "MLT Product Card"
 /// pageextension using movelast in the layout area — moves CodeField to the end
 /// of the Content area. movelast is a layout reorder directive; it has no effect
 /// on runtime data but must not block compilation.
-pageextension 50846 "MLT Product Card Ext" extends "MLT Product Card"
+pageextension 50024 "MLT Product Card Ext" extends "MLT Product Card"
 {
     layout
     {
@@ -46,7 +46,7 @@ pageextension 50846 "MLT Product Card Ext" extends "MLT Product Card"
 /// Helper codeunit with business logic exercised by the tests.
 /// Proves that the compilation unit containing pageextensions with movelast
 /// compiles and codeunits defined alongside remain callable.
-codeunit 50846 "MLT Product Helper"
+codeunit 50519 "MLT Product Helper"
 {
     procedure GetLabel(): Text
     begin

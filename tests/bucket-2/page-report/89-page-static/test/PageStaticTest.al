@@ -1,5 +1,5 @@
 /// Tests for Page.* method stubs — static (Run, RunModal) and instance (Update, ObjectId, etc.)
-codeunit 89101 "PST Test"
+codeunit 50530 "PST Test"
 {
     Subtype = Test;
 

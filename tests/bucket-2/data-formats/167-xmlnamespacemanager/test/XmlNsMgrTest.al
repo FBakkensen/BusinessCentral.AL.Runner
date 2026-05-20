@@ -1,4 +1,4 @@
-codeunit 92001 "XNM Test"
+codeunit 50089 "XNM Test"
 {
     Subtype = Test;
 

@@ -1,4 +1,4 @@
-table 56740 "TPN Test Record"
+table 50103 "TPN Test Record"
 {
     fields
     {
@@ -8,7 +8,7 @@ table 56740 "TPN Test Record"
     keys { key(PK; Id) { Clustered = true; } }
 }
 
-page 56740 "TPN Test Card"
+page 50051 "TPN Test Card"
 {
     PageType = Card;
     SourceTable = "TPN Test Record";

@@ -10,7 +10,7 @@
 // MockTestPageField (via ALValue) and delegates to the NavValue form so the
 // runtime semantics match BC: GoToKey uses the TestField's current value as
 // the lookup key.
-codeunit 1215002 "GoToKey TestField Tests"
+codeunit 50360 "GoToKey TestField Tests"
 {
     Subtype = Test;
 

@@ -1,5 +1,5 @@
 /// Exercises TextBuilder.Length setter (truncates the buffer).
-codeunit 60380 "TBL Src"
+codeunit 50175 "TBL Src"
 {
     procedure Truncate(v: Text; newLength: Integer): Text
     var

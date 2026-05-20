@@ -1,4 +1,4 @@
-codeunit 56541 "NS Tests"
+codeunit 50263 "NS Tests"
 {
     Subtype = Test;
 

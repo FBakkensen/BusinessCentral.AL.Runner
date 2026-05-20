@@ -1,4 +1,4 @@
-codeunit 56981 "HTTP Content Stream Tests"
+codeunit 50323 "HTTP Content Stream Tests"
 {
     Subtype = Test;
 

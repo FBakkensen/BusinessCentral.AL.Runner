@@ -1,4 +1,4 @@
-codeunit 98002 "RP Report Preview Tests"
+codeunit 50343 "RP Report Preview Tests"
 {
     Subtype = Test;
 

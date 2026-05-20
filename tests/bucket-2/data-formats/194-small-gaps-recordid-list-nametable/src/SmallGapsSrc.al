@@ -1,5 +1,5 @@
 /// Source codeunit exercising RecordId.TableNo and XmlNameTable.Add/Get.
-codeunit 100100 "SGP Src"
+codeunit 50151 "SGP Src"
 {
     // ── RecordId.TableNo ──────────────────────────────────────────────────
 

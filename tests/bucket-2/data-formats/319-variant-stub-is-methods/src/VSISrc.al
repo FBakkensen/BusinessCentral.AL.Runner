@@ -5,7 +5,7 @@
 /// cannot be distinguished from a generic Option value (e.g. DataClassification,
 /// ExecutionMode, SecurityFiltering, TableConnectionType, etc.).
 /// Closes #1401.
-codeunit 319001 "VSI Src"
+codeunit 50260 "VSI Src"
 {
     // For each stub we only exercise the false case (v := Integer; v.IsX()),
     // since the named types are either non-Variant-assignable in BC AL or

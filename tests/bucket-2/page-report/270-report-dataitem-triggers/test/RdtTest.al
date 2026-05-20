@@ -1,4 +1,4 @@
-codeunit 84503 "RDT Test"
+codeunit 50423 "RDT Test"
 {
     Subtype = Test;
     var

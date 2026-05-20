@@ -1,4 +1,4 @@
-page 500000 "Repro SetValue Card"
+page 50009 "Repro SetValue Card"
 {
     PageType = Card;
     SourceTable = "Repro SetValue Tab";

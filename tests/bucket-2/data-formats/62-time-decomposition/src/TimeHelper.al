@@ -1,4 +1,4 @@
-codeunit 62000 "Time Decomposition Helper"
+codeunit 50276 "Time Decomposition Helper"
 {
     // Returns hour component as 2-char string using <Hours24,2> picture format
     procedure GetHour(T: Time): Text[2]

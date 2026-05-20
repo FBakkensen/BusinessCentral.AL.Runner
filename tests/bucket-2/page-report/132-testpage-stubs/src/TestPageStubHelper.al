@@ -1,4 +1,4 @@
-table 56310 "TestPage Stub Item"
+table 50047 "TestPage Stub Item"
 {
     fields
     {
@@ -11,7 +11,7 @@ table 56310 "TestPage Stub Item"
     }
 }
 
-page 56310 "TestPage Stub Card"
+page 50005 "TestPage Stub Card"
 {
     PageType = Card;
     SourceTable = "TestPage Stub Item";

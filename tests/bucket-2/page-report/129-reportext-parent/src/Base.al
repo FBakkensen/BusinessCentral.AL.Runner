@@ -1,5 +1,5 @@
 // Base report and table needed for the report extension to compile.
-report 70401 "TestReportWithColumnsExt"
+report 50006 "TestReportWithColumnsExt"
 {
     DefaultLayout = RDLC;
     dataset
@@ -16,7 +16,7 @@ report 70401 "TestReportWithColumnsExt"
     }
 }
 
-table 56290 "Test Customer 129"
+table 50046 "Test Customer 129"
 {
     fields
     {
@@ -30,7 +30,7 @@ table 56290 "Test Customer 129"
     }
 }
 
-codeunit 56290 "ReportExt Probe"
+codeunit 50366 "ReportExt Probe"
 {
     procedure CompilationSucceeded(): Boolean
     begin

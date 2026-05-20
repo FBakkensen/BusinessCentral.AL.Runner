@@ -1,7 +1,7 @@
 /// Tests for Xml*.WriteTo per-format overloads — issue #1370.
 /// Proves WriteTo(var Text), WriteTo(XmlWriteOptions, var Text), and
 /// WriteTo(XmlWriteOptions, var OutStream) across representative Xml node types.
-codeunit 309302 "XWT Test"
+codeunit 50188 "XWT Test"
 {
     Subtype = Test;
 

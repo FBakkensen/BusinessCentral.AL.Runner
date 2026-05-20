@@ -1,4 +1,4 @@
-report 70500 "Report With Skip"
+report 50005 "Report With Skip"
 {
     UsageCategory = ReportsAndAnalysis;
     ApplicationArea = All;

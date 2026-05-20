@@ -1,7 +1,7 @@
 /// Helper codeunit: HttpHeaders.GetValues(key, List of [Text]) — issue #1080.
 /// BC emits NavList<NavText> for List-typed var-parameter; the mock must
 /// accept NavList<NavText> alongside the existing MockArray<NavText> overload.
-codeunit 62210 "HH GetValues List Src"
+codeunit 50189 "HH GetValues List Src"
 {
     /// Adds a header then retrieves it via GetValues into a List of [Text].
     /// Returns the first value found (empty string if none).

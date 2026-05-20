@@ -1,4 +1,4 @@
-codeunit 50301 "Test Report Dataset Columns"
+codeunit 50355 "Test Report Dataset Columns"
 {
     Subtype = Test;
 

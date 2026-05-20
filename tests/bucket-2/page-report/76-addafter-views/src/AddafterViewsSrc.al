@@ -1,4 +1,4 @@
-table 59700 "AV Customer"
+table 50106 "AV Customer"
 {
     DataClassification = CustomerContent;
     fields
@@ -15,7 +15,7 @@ table 59700 "AV Customer"
 }
 
 /// List page with a base view — used as the target for pageextension addafter(views).
-page 59700 "AV Customer List"
+page 50054 "AV Customer List"
 {
     PageType = List;
     SourceTable = "AV Customer";
@@ -46,7 +46,7 @@ page 59700 "AV Customer List"
 /// Page extension that uses addafter() in the views area — proves the runner
 /// compiles view modifications without errors. Views have no runtime effect
 /// in unit-test context; this proves the declaration does not block compilation.
-pageextension 59700 "AV Customer List Ext" extends "AV Customer List"
+pageextension 50013 "AV Customer List Ext" extends "AV Customer List"
 {
     views
     {
@@ -68,7 +68,7 @@ pageextension 59700 "AV Customer List Ext" extends "AV Customer List"
 
 /// Business logic helper — proves the compilation unit containing a
 /// pageextension with addafter(views) compiles and executes logic correctly.
-codeunit 59700 "AV Customer Helper"
+codeunit 50505 "AV Customer Helper"
 {
     procedure IsHighBalance(Balance: Decimal): Boolean
     begin

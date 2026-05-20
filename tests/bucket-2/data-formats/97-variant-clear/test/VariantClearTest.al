@@ -1,4 +1,4 @@
-codeunit 297002 "Variant Clear Tests"
+codeunit 50337 "Variant Clear Tests"
 {
     Subtype = Test;
 

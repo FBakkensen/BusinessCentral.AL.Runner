@@ -5,7 +5,7 @@
 // Without the fix, the runner injects a conflicting usercontrol and either
 // produces AL0155 (duplicate member) or AL0132 (wrong return type).
 
-page 1320100 "Ppcs Host Page"
+page 50038 "Ppcs Host Page"
 {
     PageType = Card;
 
@@ -25,7 +25,7 @@ page 1320100 "Ppcs Host Page"
     end;
 }
 
-page 1320101 "Ppcs Sub Page"
+page 50039 "Ppcs Sub Page"
 {
     PageType = ListPart;
 

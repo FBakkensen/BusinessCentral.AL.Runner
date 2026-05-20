@@ -1,4 +1,4 @@
-codeunit 58100 "TBI Text Builtins Helper"
+codeunit 50280 "TBI Text Builtins Helper"
 {
     procedure SelectStrToken(n: Integer; s: Text): Text
     begin

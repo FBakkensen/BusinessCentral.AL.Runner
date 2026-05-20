@@ -1,7 +1,7 @@
 /// Table used by the TestField NavValue-subtype overload test suite.
 /// Exercises Record.TestField(FieldNo, Value) where Value is a NavValue subtype
 /// (e.g. NavInteger) — the pattern that triggered CS0121 ambiguity.
-table 161000 "TFNav Record"
+table 50017 "TFNav Record"
 {
     fields
     {

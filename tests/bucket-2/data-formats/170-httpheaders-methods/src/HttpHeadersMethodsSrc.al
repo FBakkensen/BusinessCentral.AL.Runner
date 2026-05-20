@@ -1,5 +1,5 @@
 /// Helper codeunit exercising HttpHeaders gap methods — issue #746.
-codeunit 97000 "HHM Src"
+codeunit 50097 "HHM Src"
 {
     // TryAddWithoutValidation — adds header, returns true
     procedure TryAddWithoutValidation(name: Text; value: Text): Boolean

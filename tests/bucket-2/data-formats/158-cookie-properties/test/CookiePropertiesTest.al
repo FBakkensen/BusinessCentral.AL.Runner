@@ -1,4 +1,4 @@
-codeunit 61831 "CP Cookie Properties Tests"
+codeunit 50077 "CP Cookie Properties Tests"
 {
     Subtype = Test;
 

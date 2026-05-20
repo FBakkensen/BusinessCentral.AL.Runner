@@ -1,4 +1,4 @@
-codeunit 84901 "Variant To Record Tests"
+codeunit 50304 "Variant To Record Tests"
 {
     Subtype = Test;
 

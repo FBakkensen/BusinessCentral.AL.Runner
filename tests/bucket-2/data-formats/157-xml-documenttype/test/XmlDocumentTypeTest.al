@@ -1,4 +1,4 @@
-codeunit 61721 "XDT XmlDocumentType Test"
+codeunit 50073 "XDT XmlDocumentType Test"
 {
     Subtype = Test;
 

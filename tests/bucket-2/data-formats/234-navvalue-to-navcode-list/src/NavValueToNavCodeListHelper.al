@@ -1,4 +1,4 @@
-table 234000 "NVL Item"
+table 50012 "NVL Item"
 {
     DataClassification = ToBeClassified;
 
@@ -15,7 +15,7 @@ table 234000 "NVL Item"
     }
 }
 
-codeunit 234000 "NVL Helper"
+codeunit 50201 "NVL Helper"
 {
     /// <summary>
     /// Collects Code field values from a record into a List of [Code[20]].

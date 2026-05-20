@@ -1,4 +1,4 @@
-table 229000 "Query Item"
+table 50121 "Query Item"
 {
     DataClassification = ToBeClassified;
     fields

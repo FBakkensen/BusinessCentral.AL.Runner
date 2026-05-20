@@ -1,5 +1,5 @@
 /// Source objects for TestPage.GoToKey / GoToRecord tests (issue #868).
-table 118000 "GTK Table"
+table 50070 "GTK Table"
 {
     fields
     {
@@ -9,7 +9,7 @@ table 118000 "GTK Table"
     keys { key(PK; "No.") { Clustered = true; } }
 }
 
-page 118001 "GTK List"
+page 50024 "GTK List"
 {
     PageType = List;
     SourceTable = "GTK Table";

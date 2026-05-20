@@ -1,6 +1,6 @@
 /// Helper codeunit exercising AL Dictionary operations: Add, Get, Set, Remove,
 /// ContainsKey, Count, Keys, Values — the surface named in issue #220.
-codeunit 59530 "Dict Helper"
+codeunit 50050 "Dict Helper"
 {
     procedure Build(): Dictionary of [Text, Integer]
     var

@@ -12,7 +12,7 @@
 ///   RecordRef.FindSet (Boolean, Boolean)
 ///   RecordRef.CopyLinks (Table)
 ///   RecordRef.Open (Text, Boolean, Text)
-codeunit 1318000 "Sweep Misc Src"
+codeunit 50046 "Sweep Misc Src"
 {
     // ── TextBuilder.ToText (Integer, Integer) ─────────────────────────────────
 
@@ -139,7 +139,7 @@ codeunit 1318000 "Sweep Misc Src"
     end;
 }
 
-table 1318000 "SMO Rec"
+table 50007 "SMO Rec"
 {
     fields
     {

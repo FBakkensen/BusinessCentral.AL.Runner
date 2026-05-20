@@ -1,4 +1,4 @@
-codeunit 126002 "RIM Test"
+codeunit 50432 "RIM Test"
 {
     Subtype = Test;
     var

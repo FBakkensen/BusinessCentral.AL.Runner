@@ -1,6 +1,6 @@
 /// Source objects for Report.Run 3-arg overload test (issue #1336).
 /// BC emits Report.Run(ReportId, RequestPage, SystemPrinter) — no record argument.
-report 308200 "RR3 Report"
+report 50018 "RR3 Report"
 {
     dataset
     {
@@ -10,7 +10,7 @@ report 308200 "RR3 Report"
     }
 }
 
-table 308200 "RR3 Table"
+table 50079 "RR3 Table"
 {
     fields
     {
@@ -20,7 +20,7 @@ table 308200 "RR3 Table"
 }
 
 /// Exercises Report.Run with 3 arguments: (ReportId, RequestPage, SystemPrinter)
-codeunit 308201 "RR3 Source"
+codeunit 50446 "RR3 Source"
 {
     procedure CallRunThreeArgs(ReportId: Integer)
     begin

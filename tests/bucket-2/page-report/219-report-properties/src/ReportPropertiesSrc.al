@@ -1,4 +1,4 @@
-table 60480 "RPR Row"
+table 50060 "RPR Row"
 {
     fields
     {
@@ -7,7 +7,7 @@ table 60480 "RPR Row"
     keys { key(PK; "Id") { Clustered = true; } }
 }
 
-report 60480 "RPR Simple"
+report 50010 "RPR Simple"
 {
     UsageCategory = Tasks;
     ApplicationArea = All;
@@ -22,7 +22,7 @@ report 60480 "RPR Simple"
 
 /// Exercises Report properties: Preview, PreviewCanPrint, UseRequestPage,
 /// Language, FormatRegion.
-codeunit 60480 "RPR Src"
+codeunit 50402 "RPR Src"
 {
     procedure UseRequestPage_SetAndGet(): Boolean
     var

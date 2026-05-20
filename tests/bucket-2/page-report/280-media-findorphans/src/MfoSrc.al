@@ -1,5 +1,5 @@
 /// Source codeunit for Media/MediaSet.FindOrphans tests (issue #949).
-codeunit 127001 "MFO Source"
+codeunit 50433 "MFO Source"
 {
     procedure GetOrphanedMedia(): List of [Guid]
     begin

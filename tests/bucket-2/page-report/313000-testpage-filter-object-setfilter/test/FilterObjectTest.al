@@ -9,7 +9,7 @@
 ///
 /// This suite covers the run-time behaviour so a regression would produce a
 /// compilation failure or an incorrect result rather than a silent no-op.
-codeunit 313001 "FOS Tests"
+codeunit 50468 "FOS Tests"
 {
     Subtype = Test;
 

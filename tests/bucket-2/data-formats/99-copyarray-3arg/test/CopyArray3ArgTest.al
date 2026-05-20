@@ -1,6 +1,6 @@
 /// Tests for CopyArray with 3 arguments (no count parameter).
 /// Regression for issue #1155: CS7036 — required parameter 'count' missing.
-codeunit 99601 "CA3 Test"
+codeunit 50341 "CA3 Test"
 {
     Subtype = Test;
 

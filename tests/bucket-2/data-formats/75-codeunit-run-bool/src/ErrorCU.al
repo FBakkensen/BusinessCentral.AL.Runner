@@ -1,4 +1,4 @@
-codeunit 50750 "Error CU"
+codeunit 50288 "Error CU"
 {
     trigger OnRun()
     begin

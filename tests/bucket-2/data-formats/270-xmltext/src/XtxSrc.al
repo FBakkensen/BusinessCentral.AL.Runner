@@ -1,5 +1,5 @@
 /// Helper codeunit exercising XmlText methods.
-codeunit 84403 "XTX Src"
+codeunit 50215 "XTX Src"
 {
     // ── Create / Value ──────────────────────────────────────────────────────────
     procedure CreateAndGetValue(txt: Text): Text

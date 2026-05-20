@@ -2,7 +2,7 @@
 /// BC emits BookmarkType, CheckType, and SetRecord on generated Page classes;
 /// without stubs the Roslyn compilation fails with CS1061.
 
-table 1262001 "BkmType Test Table"
+table 50045 "BkmType Test Table"
 {
     DataClassification = CustomerContent;
 
@@ -18,7 +18,7 @@ table 1262001 "BkmType Test Table"
     }
 }
 
-page 1262002 "BkmType Test Page"
+page 50004 "BkmType Test Page"
 {
     PageType = List;
     SourceTable = "BkmType Test Table";

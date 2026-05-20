@@ -1,6 +1,6 @@
 /// Helper codeunit exercising StrMenu — the top-level builtin that pops a menu
 /// and returns the 1-based index of the selected option (or 0 on cancel).
-codeunit 59750 "SM Src"
+codeunit 50384 "SM Src"
 {
     procedure Pick(options: Text): Integer
     begin

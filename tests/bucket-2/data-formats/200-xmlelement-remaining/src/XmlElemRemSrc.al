@@ -2,7 +2,7 @@
 /// AddAfterSelf, AddBeforeSelf, GetDescendantElements, GetDescendantNodes,
 /// GetDocument, GetNamespaceOfPrefix, GetPrefixOfNamespace, NamespaceUri,
 /// ReplaceNodes, ReplaceWith.
-codeunit 97600 "XER Src"
+codeunit 50163 "XER Src"
 {
     // ── NamespaceUri ──────────────────────────────────────────────────────────
 

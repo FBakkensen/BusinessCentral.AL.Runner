@@ -1,4 +1,4 @@
-codeunit 59761 "XPR Test"
+codeunit 50387 "XPR Test"
 {
     Subtype = Test;
 

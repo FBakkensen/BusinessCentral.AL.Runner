@@ -1,6 +1,6 @@
 // Test suite for issue #1211: CS1503 NavValue → NavCode when a Code field
 // is tested with the AL 'in' operator against a list of Code literals.
-codeunit 304001 "NCIL Tests"
+codeunit 50234 "NCIL Tests"
 {
     Subtype = Test;
 

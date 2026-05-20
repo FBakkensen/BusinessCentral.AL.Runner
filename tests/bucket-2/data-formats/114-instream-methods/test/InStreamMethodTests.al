@@ -1,4 +1,4 @@
-codeunit 50914 "InStream Method Tests"
+codeunit 50025 "InStream Method Tests"
 {
     Subtype = Test;
 

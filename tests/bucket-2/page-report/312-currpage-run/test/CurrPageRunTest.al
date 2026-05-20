@@ -2,7 +2,7 @@
 /// Issue #1444: CS1061 — 'Page70327080' does not contain a definition for 'Run'.
 /// BC lowers CurrPage.Run() to this.Run() on the emitted Page class; the runner must
 /// inject a Run() stub into every Page<N> (no-op, consistent with the headless contract).
-codeunit 312001 "CPR Tests"
+codeunit 50464 "CPR Tests"
 {
     Subtype = Test;
 

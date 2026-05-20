@@ -1,4 +1,4 @@
-codeunit 97201 "FPB Tests"
+codeunit 50391 "FPB Tests"
 {
     Subtype = Test;
 

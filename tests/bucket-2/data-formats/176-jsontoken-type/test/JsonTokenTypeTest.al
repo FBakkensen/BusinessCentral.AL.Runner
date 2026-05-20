@@ -1,4 +1,4 @@
-codeunit 97101 "JTT Tests"
+codeunit 50112 "JTT Tests"
 {
     Subtype = Test;
 

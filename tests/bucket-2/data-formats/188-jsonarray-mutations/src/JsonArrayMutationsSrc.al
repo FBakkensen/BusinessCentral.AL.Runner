@@ -1,6 +1,6 @@
 /// Helper codeunit exercising JsonArray mutation methods:
 /// Add, Set, Insert, RemoveAt, IndexOf.
-codeunit 60140 "JAM Src"
+codeunit 50141 "JAM Src"
 {
     procedure BuildThreeElementArray(): JsonArray
     var

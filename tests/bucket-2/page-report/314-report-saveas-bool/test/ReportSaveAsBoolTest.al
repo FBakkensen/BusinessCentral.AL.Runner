@@ -1,6 +1,6 @@
 /// Tests that Report.SaveAs / SaveAsPdf / SaveAsWord / SaveAsExcel / SaveAsHtml / SaveAsXml
 /// are out-of-scope (report-rendering): NavReport.SaveAsAsync is Cecil-rewritten to throw OOS.
-codeunit 1319002 "Report SaveAs Bool Test"
+codeunit 50472 "Report SaveAs Bool Test"
 {
     Subtype = Test;
 

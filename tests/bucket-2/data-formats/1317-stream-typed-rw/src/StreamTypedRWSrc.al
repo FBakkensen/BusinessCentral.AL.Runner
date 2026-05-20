@@ -1,6 +1,6 @@
 /// Helper codeunit for OutStream.Write/InStream.Read typed overload tests (issue #1400).
 /// Covers the 2-arg (value, length) forms and typed value overloads.
-codeunit 1317000 "Stream Typed RW Src"
+codeunit 50044 "Stream Typed RW Src"
 {
     // ── OutStream.Write (Integer) + InStream.Read (Integer) ──────────────────
 
@@ -140,7 +140,7 @@ codeunit 1317000 "Stream Typed RW Src"
     end;
 }
 
-table 1317000 "STRW Blob"
+table 50006 "STRW Blob"
 {
     fields
     {

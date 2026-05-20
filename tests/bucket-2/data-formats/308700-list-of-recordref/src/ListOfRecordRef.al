@@ -1,4 +1,4 @@
-table 308700 "List RecordRef Table"
+table 50022 "List RecordRef Table"
 {
     fields
     {
@@ -11,7 +11,7 @@ table 308700 "List RecordRef Table"
     }
 }
 
-codeunit 308700 "List Of RecordRef Helper"
+codeunit 50239 "List Of RecordRef Helper"
 {
     /// Reproduces CS1503 from issue #1335:
     /// A procedure with List of [RecordRef] var param and Integer param.

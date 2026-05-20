@@ -1,4 +1,4 @@
-codeunit 58001 "LSR List Reverse Tests"
+codeunit 50279 "LSR List Reverse Tests"
 {
     Subtype = Test;
 

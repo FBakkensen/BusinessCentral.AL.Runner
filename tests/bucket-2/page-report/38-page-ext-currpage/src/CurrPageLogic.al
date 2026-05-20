@@ -1,4 +1,4 @@
-codeunit 53801 "CurrPage Logic"
+codeunit 50476 "CurrPage Logic"
 {
     procedure GetStatus(var Rec: Record "CurrPage Table"): Text
     begin

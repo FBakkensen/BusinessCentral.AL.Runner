@@ -1,4 +1,4 @@
-pageextension 53800 "CurrPage Ext" extends "CurrPage Page"
+pageextension 50006 "CurrPage Ext" extends "CurrPage Page"
 {
     trigger OnAfterGetCurrRecord()
     begin

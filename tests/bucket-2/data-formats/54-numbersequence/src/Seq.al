@@ -1,4 +1,4 @@
-codeunit 56540 "NS Probe"
+codeunit 50262 "NS Probe"
 {
     procedure ProbeExistsThenInsert(Name: Text): Integer
     begin

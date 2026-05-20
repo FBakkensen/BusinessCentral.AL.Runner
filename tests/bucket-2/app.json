@@ -3,7 +3,12 @@
   "name": "AL Runner v2 Tests — Bucket 2",
   "publisher": "AL Runner",
   "version": "1.0.0.0",
-  "platform": "27.0.0.0",
-  "application": "27.0.0.0",
-  "dependencies": []
+  "idRanges": [
+    {
+      "from": 50000,
+      "to": 99999
+    }
+  ],
+  "dependencies": [],
+  "target": "OnPrem"
 }

@@ -1,5 +1,5 @@
 /// Helper table for Media test stream setup.
-table 84407 "Media Test Storage"
+table 50069 "Media Test Storage"
 {
     fields
     {

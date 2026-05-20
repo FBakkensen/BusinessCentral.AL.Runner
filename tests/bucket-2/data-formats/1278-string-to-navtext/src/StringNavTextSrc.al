@@ -1,6 +1,6 @@
 /// Exercises string-to-NavText conversion patterns.
 /// BC may emit string literals where NavText parameters are expected.
-codeunit 1278001 "StringNavText Src"
+codeunit 50036 "StringNavText Src"
 {
     /// Creates an ErrorInfo with a string literal message.
     /// BC emits ErrorInfo.Create('msg') as NavALErrorInfo.ALCreate(string),

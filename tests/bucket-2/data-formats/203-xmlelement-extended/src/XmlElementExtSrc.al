@@ -1,6 +1,6 @@
 /// Exercises remaining XmlElement methods: GetChildNodes, GetParent,
 /// GetDocument, AddFirst, Remove, RemoveNodes, WriteTo.
-codeunit 60310 "XEX Src"
+codeunit 50165 "XEX Src"
 {
     procedure GetChildNodeCount(): Integer
     var

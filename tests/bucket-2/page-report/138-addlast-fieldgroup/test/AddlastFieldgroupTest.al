@@ -1,4 +1,4 @@
-codeunit 50139 "ALFG Addlast Fieldgroup Test"
+codeunit 50378 "ALFG Addlast Fieldgroup Test"
 {
     Subtype = Test;
 

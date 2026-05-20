@@ -1,5 +1,5 @@
 /// Source codeunit exercising XmlDocument creation, parsing, navigation, and serialization.
-codeunit 100200 "XmlDoc Src"
+codeunit 50155 "XmlDoc Src"
 {
     // ── Create ────────────────────────────────────────────────────────────────
 

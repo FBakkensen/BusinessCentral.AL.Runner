@@ -4,7 +4,7 @@
 /// (telemetry issue #1210). BC's compiler emits that to a C# call whose
 /// shape does not match our existing `NavFile.ALUploadIntoStream` overloads,
 /// producing CS1503 after the NavInStream -> MockInStream rewrite.
-codeunit 121011 "UIS2 Src"
+codeunit 50030 "UIS2 Src"
 {
     /// <summary>
     /// Calls the 2-arg AL form: UploadIntoStream(Title, var InStream).

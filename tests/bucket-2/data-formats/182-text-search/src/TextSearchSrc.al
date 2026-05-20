@@ -1,5 +1,5 @@
 /// Helper codeunit exercising Text search/navigation methods.
-codeunit 60070 "TXS Src"
+codeunit 50127 "TXS Src"
 {
     procedure Contains_Positive(haystack: Text; needle: Text): Boolean
     begin

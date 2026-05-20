@@ -1,4 +1,4 @@
-codeunit 119001 "TPNE Test"
+codeunit 50392 "TPNE Test"
 {
     Subtype = Test;
 

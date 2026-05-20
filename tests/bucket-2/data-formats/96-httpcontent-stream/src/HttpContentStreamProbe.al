@@ -14,7 +14,7 @@
 /// to confirm the codeunit was successfully loaded into the in-memory assembly —
 /// proof that the CS1503 error is gone and the file compiled without exclusion.
 /// </summary>
-codeunit 56980 "HTTP Content Stream Probe"
+codeunit 50322 "HTTP Content Stream Probe"
 {
     /// <summary>
     /// Proof-of-compilation: HttpContent.WriteFrom(InStream).

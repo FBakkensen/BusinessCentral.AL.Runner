@@ -1,4 +1,4 @@
-codeunit 50224 SecretStoreHelper
+codeunit 50205 SecretStoreHelper
 {
     /// <summary>
     /// Stores a secret text value in IsolatedStorage.

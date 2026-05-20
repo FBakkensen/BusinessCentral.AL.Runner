@@ -1,4 +1,4 @@
-codeunit 56500 "Guid Helper"
+codeunit 50264 "Guid Helper"
 {
     procedure GetNewGuid(): Guid
     begin

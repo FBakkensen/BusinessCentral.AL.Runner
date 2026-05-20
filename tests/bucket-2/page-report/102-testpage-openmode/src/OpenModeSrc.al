@@ -1,4 +1,4 @@
-page 117000 "OPM Card Page"
+page 50001 "OPM Card Page"
 {
     PageType = Card;
     ApplicationArea = All;

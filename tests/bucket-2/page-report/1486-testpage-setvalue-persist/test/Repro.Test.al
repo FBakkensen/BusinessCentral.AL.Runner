@@ -1,4 +1,4 @@
-codeunit 500001 "Repro SetValue Test"
+codeunit 50381 "Repro SetValue Test"
 {
     Subtype = Test;
 

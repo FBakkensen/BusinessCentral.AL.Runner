@@ -1,4 +1,4 @@
-table 50114 "Stream Test Data"
+table 50004 "Stream Test Data"
 {
     fields
     {
@@ -12,7 +12,7 @@ table 50114 "Stream Test Data"
     }
 }
 
-codeunit 50114 "InStream Methods"
+codeunit 50024 "InStream Methods"
 {
     procedure TestLength(): Integer
     var

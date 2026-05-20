@@ -1,4 +1,4 @@
-codeunit 308701 "List Of RecordRef Test"
+codeunit 50240 "List Of RecordRef Test"
 {
     Subtype = Test;
 

@@ -14,7 +14,7 @@ xmlport 59760 "XPR Minimal"
 }
 
 /// Helper codeunit exercising Xmlport.Run.
-codeunit 59760 "XPR Src"
+codeunit 50386 "XPR Src"
 {
     procedure CallRun()
     begin

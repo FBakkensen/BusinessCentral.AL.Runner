@@ -1,5 +1,5 @@
 /// Helper codeunit exercising XmlCData — all 12 methods from issue #706.
-codeunit 90000 "XCD Src"
+codeunit 50086 "XCD Src"
 {
     // Create + Value
     procedure CreateAndGetValue(rawText: Text): Text

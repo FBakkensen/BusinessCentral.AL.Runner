@@ -1,4 +1,4 @@
-table 79100 StreamSurfaceTable
+table 50031 StreamSurfaceTable
 {
     fields
     {

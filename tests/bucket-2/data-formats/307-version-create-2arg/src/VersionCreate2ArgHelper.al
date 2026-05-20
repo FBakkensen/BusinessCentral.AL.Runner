@@ -1,4 +1,4 @@
-codeunit 307000 "Version Create 2Arg Helper"
+codeunit 50237 "Version Create 2Arg Helper"
 {
     procedure CreateMajorMinor(Major: Integer; Minor: Integer): Version
     begin

@@ -1,4 +1,4 @@
-codeunit 79100 StreamSurfaceHelper
+codeunit 50295 StreamSurfaceHelper
 {
     /// <summary>
     /// Writes text via an assigned OutStream (tests OutStr2 := OutStr1).

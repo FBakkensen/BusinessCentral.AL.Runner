@@ -1,5 +1,5 @@
 /// Helper codeunit exercising Media methods via table field access.
-codeunit 84407 "Media Src"
+codeunit 50424 "Media Src"
 {
     procedure GetHasValue(var Rec: Record "Media Test Storage"): Boolean
     begin

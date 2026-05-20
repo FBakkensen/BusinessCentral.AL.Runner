@@ -1,4 +1,4 @@
-table 50263 "Part Page Item"
+table 50065 "Part Page Item"
 {
     DataClassification = ToBeClassified;
 
@@ -14,7 +14,7 @@ table 50263 "Part Page Item"
     }
 }
 
-page 50263 "Part Sub Page"
+page 50020 "Part Sub Page"
 {
     PageType = ListPart;
     SourceTable = "Part Page Item";
@@ -32,7 +32,7 @@ page 50263 "Part Sub Page"
     }
 }
 
-page 50264 "Part Card Page"
+page 50021 "Part Card Page"
 {
     PageType = Card;
     SourceTable = "Part Page Item";
@@ -57,7 +57,7 @@ page 50264 "Part Card Page"
     }
 }
 
-codeunit 50263 "Part Page Helper"
+codeunit 50417 "Part Page Helper"
 {
     procedure GetLabel(): Text
     begin

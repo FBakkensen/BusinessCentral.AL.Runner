@@ -1,6 +1,6 @@
 /// Tests for Media.ImportStream (accepts InStream) and Media.ExportStream (accepts OutStream).
 /// Verifies that stream-based overloads compile and execute without CS1503.
-codeunit 303013 "MST Tests"
+codeunit 50349 "MST Tests"
 {
     Subtype = Test;
 

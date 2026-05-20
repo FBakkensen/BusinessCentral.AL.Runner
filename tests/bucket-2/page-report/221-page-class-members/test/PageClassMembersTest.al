@@ -4,7 +4,7 @@
 /// When AL code inside a page trigger uses CurrPage.LookupMode or CurrPage.RunModal(),
 /// BC generates calls on the Page<N> class directly (via CurrPage => (Page<N>)this).
 /// Without injection, Roslyn compilation fails with CS1061.
-codeunit 60491 "PCM Test"
+codeunit 50405 "PCM Test"
 {
     Subtype = Test;
 

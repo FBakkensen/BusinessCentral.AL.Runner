@@ -1,4 +1,4 @@
-codeunit 88000 "VI Src"
+codeunit 50313 "VI Src"
 {
     procedure IsJsonObjectTrue(): Boolean
     var

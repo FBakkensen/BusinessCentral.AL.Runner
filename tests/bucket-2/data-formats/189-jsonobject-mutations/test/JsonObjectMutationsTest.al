@@ -1,4 +1,4 @@
-codeunit 60151 "JOM Mut Test"
+codeunit 50144 "JOM Mut Test"
 {
     Subtype = Test;
 

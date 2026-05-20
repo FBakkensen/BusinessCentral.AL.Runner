@@ -1,5 +1,5 @@
 /// Exercises XmlAttributeCollection — Get, Set, Remove, RemoveAll.
-codeunit 60240 "XAC Src"
+codeunit 50157 "XAC Src"
 {
     procedure GetAttrValue(attrName: Text): Text
     var

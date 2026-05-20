@@ -13,7 +13,7 @@
 /// The new ALTestFieldSafe(object, bool) overload and ALFind(NavText, bool)/ALFind(string, bool)
 /// overloads cover these patterns so CS1503 errors (NavText → DataError, bool → string) cannot occur.
 
-table 62100 "TFNvBl Record"
+table 50018 "TFNvBl Record"
 {
     DataClassification = CustomerContent;
 
@@ -31,7 +31,7 @@ table 62100 "TFNvBl Record"
     }
 }
 
-codeunit 62101 "TFNvBl Helper"
+codeunit 50226 "TFNvBl Helper"
 {
     // ── TestField(Field, TextVar) ────────────────────────────────────────────
 

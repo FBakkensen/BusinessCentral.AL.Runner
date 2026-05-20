@@ -1,4 +1,4 @@
-codeunit 53600 "Test Price Calc"
+codeunit 50475 "Test Price Calc"
 {
     Subtype = Test;
 

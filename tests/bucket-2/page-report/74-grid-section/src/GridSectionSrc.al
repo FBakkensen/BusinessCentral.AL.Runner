@@ -1,4 +1,4 @@
-table 59500 "GS Product"
+table 50102 "GS Product"
 {
     DataClassification = CustomerContent;
     fields
@@ -17,7 +17,7 @@ table 59500 "GS Product"
 /// Card page containing a grid section — a multi-column layout directive.
 /// Grid sections group fields into columns for display; they have no runtime
 /// effect in a unit-test context. This proves grid sections do not block compilation.
-page 59500 "GS Product Card"
+page 50050 "GS Product Card"
 {
     PageType = Card;
     SourceTable = "GS Product";
@@ -45,7 +45,7 @@ page 59500 "GS Product Card"
 
 /// Business logic helper — proves the compilation unit containing
 /// the page with grid sections compiles and executes logic correctly.
-codeunit 59500 "GS Product Helper"
+codeunit 50497 "GS Product Helper"
 {
     procedure CalcTotal(Price: Decimal; Quantity: Integer): Decimal
     begin

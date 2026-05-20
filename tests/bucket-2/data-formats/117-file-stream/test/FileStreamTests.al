@@ -1,4 +1,4 @@
-codeunit 50119 "File Stream Tests"
+codeunit 50027 "File Stream Tests"
 {
     Subtype = Test;
 

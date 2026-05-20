@@ -1,4 +1,4 @@
-codeunit 50842 "Order Calculator Test"
+codeunit 50302 "Order Calculator Test"
 {
     Subtype = Test;
 

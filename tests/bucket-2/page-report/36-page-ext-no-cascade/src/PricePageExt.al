@@ -1,4 +1,4 @@
-pageextension 53600 "Price Page Ext" extends "Price Page"
+pageextension 50005 "Price Page Ext" extends "Price Page"
 {
     layout
     {

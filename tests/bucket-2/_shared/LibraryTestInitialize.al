@@ -2,7 +2,7 @@
 // Provides integration event publishers for test initialization hooks.
 // In real BC, test codeunits subscribe to these events to set up test data.
 // In al-runner, the events fire normally through EventSubscriberRegistry.
-codeunit 132250 "Library - Test Initialize"
+codeunit 50004 "Library - Test Initialize"
 {
     trigger OnRun()
     begin

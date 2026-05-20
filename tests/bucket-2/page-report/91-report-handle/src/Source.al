@@ -1,4 +1,4 @@
-table 91000 "RH Test Data"
+table 50119 "RH Test Data"
 {
     fields
     {
@@ -9,7 +9,7 @@ table 91000 "RH Test Data"
     keys { key(PK; Id) { Clustered = true; } }
 }
 
-report 91000 "RH Test Report"
+report 50023 "RH Test Report"
 {
     dataset
     {
@@ -30,7 +30,7 @@ report 91000 "RH Test Report"
 }
 
 // Renumbered from 91001 to avoid collision in new bucket layout (#1385).
-codeunit 1091001 "RH Report Runner"
+codeunit 50537 "RH Report Runner"
 {
     procedure RunReportWithTableView(var Rec: Record "RH Test Data")
     var

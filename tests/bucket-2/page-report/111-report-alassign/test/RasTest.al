@@ -1,7 +1,7 @@
 /// Tests proving that Report := Report assignment compiles and runs correctly.
 /// Covers issue #1328: MockReportHandle was missing ALAssign(),
 /// causing CS1061 at Roslyn compile time.
-codeunit 307202 "RAS Tests"
+codeunit 50353 "RAS Tests"
 {
     Subtype = Test;
 

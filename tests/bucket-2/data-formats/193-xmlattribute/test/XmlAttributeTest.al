@@ -1,4 +1,4 @@
-codeunit 60191 "XAT Test"
+codeunit 50150 "XAT Test"
 {
     Subtype = Test;
 

@@ -1,6 +1,6 @@
 /// Helper codeunit that exercises List.RemoveRange so tests can call it
 /// without managing list state inline.
-codeunit 61100 "LRR Helper"
+codeunit 50068 "LRR Helper"
 {
     /// Build [1,2,3,4,5] and call RemoveRange(startIndex, count).
     /// Returns the resulting list so the test can assert its contents.

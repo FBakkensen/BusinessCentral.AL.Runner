@@ -1,4 +1,4 @@
-codeunit 59001 "Query Tests"
+codeunit 50532 "Query Tests"
 {
     Subtype = Test;
 

@@ -4,7 +4,7 @@
 /// Other types (XmlAttributeCollection, XmlNamespaceManager, XmlNameTable,
 /// XmlReadOptions, XmlWriteOptions, FilterPageBuilder) are not directly
 /// assignable to Variant in BC AL, so only the false case is provable.
-codeunit 60392 "VXT Src"
+codeunit 50177 "VXT Src"
 {
     // ── XmlDocumentType ───────────────────────────────────────────────────────
     // XmlDocumentType is an XmlNode subtype — Variant-compatible.

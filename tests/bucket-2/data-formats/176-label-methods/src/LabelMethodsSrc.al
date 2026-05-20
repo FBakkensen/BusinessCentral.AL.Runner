@@ -1,5 +1,5 @@
 /// Helper codeunit exercising string-manipulation dot-methods on Label values.
-codeunit 60010 "LBM Src"
+codeunit 50113 "LBM Src"
 {
     procedure LabelContains(substr: Text): Boolean
     var

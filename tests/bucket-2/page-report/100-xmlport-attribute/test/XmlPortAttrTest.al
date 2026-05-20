@@ -1,4 +1,4 @@
-codeunit 64001 "XPA Tests"
+codeunit 50347 "XPA Tests"
 {
     Subtype = Test;
 

@@ -1,4 +1,4 @@
-table 58800 "PEM Product"
+table 50099 "PEM Product"
 {
     DataClassification = CustomerContent;
     fields
@@ -13,7 +13,7 @@ table 58800 "PEM Product"
     }
 }
 
-page 58800 "PEM Product Card"
+page 50045 "PEM Product Card"
 {
     PageType = Card;
     SourceTable = "PEM Product";
@@ -29,7 +29,7 @@ page 58800 "PEM Product Card"
 }
 
 /// pageextension using addafter — adds a field after the Description field.
-pageextension 58800 "PEM Product Card After" extends "PEM Product Card"
+pageextension 50009 "PEM Product Card After" extends "PEM Product Card"
 {
     layout
     {
@@ -41,7 +41,7 @@ pageextension 58800 "PEM Product Card After" extends "PEM Product Card"
 }
 
 /// pageextension using addbefore — adds a field before the Description field.
-pageextension 58801 "PEM Product Card Before" extends "PEM Product Card"
+pageextension 50010 "PEM Product Card Before" extends "PEM Product Card"
 {
     layout
     {
@@ -55,7 +55,7 @@ pageextension 58801 "PEM Product Card Before" extends "PEM Product Card"
 /// A codeunit with business logic exercised by the tests.
 /// Proves that compilation succeeds even though the same compilation unit
 /// contains page extensions with addafter/addbefore modifications.
-codeunit 58800 "PEM Product Helper"
+codeunit 50487 "PEM Product Helper"
 {
     procedure CalcDiscountedPrice(Price: Decimal; DiscountPct: Decimal): Decimal
     begin

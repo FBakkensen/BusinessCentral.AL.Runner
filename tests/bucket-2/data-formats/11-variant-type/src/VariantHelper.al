@@ -1,4 +1,4 @@
-codeunit 50112 "Variant Helper"
+codeunit 50022 "Variant Helper"
 {
     procedure FormatAsText(V: Variant): Text
     begin

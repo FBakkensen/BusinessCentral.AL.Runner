@@ -2,7 +2,7 @@
 /// CurrReport.CreateTotals() is exercised via a report trigger.
 
 /// Minimal table backing the report dataset.
-table 140000 "CRT Table"
+table 50074 "CRT Table"
 {
     fields
     {
@@ -14,7 +14,7 @@ table 140000 "CRT Table"
 /// Report that proves CurrReport.CreateTotals() compiles.
 /// The if-false guard proves compilation without triggering BC emitter issues;
 /// the MockReportHandle stub handles it at runtime when customer code calls it.
-report 140000 "CRT Report"
+report 50016 "CRT Report"
 {
     dataset
     {
@@ -29,7 +29,7 @@ report 140000 "CRT Report"
 }
 
 /// Runs "CRT Report" to exercise CreateTotals.
-codeunit 140001 "CRT Source"
+codeunit 50437 "CRT Source"
 {
     procedure RunReport_NoThrow()
     var

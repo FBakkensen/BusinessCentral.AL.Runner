@@ -1,4 +1,4 @@
-codeunit 50858 "AFV Addfirst Views Test"
+codeunit 50522 "AFV Addfirst Views Test"
 {
     Subtype = Test;
 

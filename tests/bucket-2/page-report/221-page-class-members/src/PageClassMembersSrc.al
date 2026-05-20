@@ -5,7 +5,7 @@
 /// BC generates code that calls LookupMode/RunModal on the Page<N> class directly
 /// (via CurrPage => (Page<N>)this). Without injection these fail with CS1061.
 
-table 60490 "PCM Source"
+table 50061 "PCM Source"
 {
     fields
     {
@@ -17,7 +17,7 @@ table 60490 "PCM Source"
 /// A page that sets CurrPage.LookupMode in its OnOpenPage trigger.
 /// BC generates: _parent.CurrPage.LookupMode = true;
 /// where CurrPage returns (Page60490)this — so Page60490.LookupMode must exist.
-page 60490 "PCM Card"
+page 50016 "PCM Card"
 {
     PageType = Card;
     SourceTable = "PCM Source";
@@ -41,7 +41,7 @@ page 60490 "PCM Card"
 /// A second page that calls CurrPage.RunModal() in its trigger.
 /// BC generates: _parent.CurrPage.RunModal();
 /// where CurrPage returns (Page60491)this — so Page60491.RunModal() must exist.
-page 60491 "PCM RunModal"
+page 50017 "PCM RunModal"
 {
     PageType = Card;
     SourceTable = "PCM Source";
@@ -63,7 +63,7 @@ page 60491 "PCM RunModal"
 }
 
 /// Helper codeunit: returns true to confirm the pages compiled without CS1061.
-codeunit 60490 "PCM Src"
+codeunit 50404 "PCM Src"
 {
     /// Returns true to confirm the LookupMode page compiled.
     procedure LookupModePageCompiles(): Boolean

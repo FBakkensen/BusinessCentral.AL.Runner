@@ -1,5 +1,5 @@
 /// Exercises Variant Is* type-checking methods.
-codeunit 60340 "VIT Src"
+codeunit 50169 "VIT Src"
 {
     procedure IsIntegerCheck(v: Variant): Boolean
     begin

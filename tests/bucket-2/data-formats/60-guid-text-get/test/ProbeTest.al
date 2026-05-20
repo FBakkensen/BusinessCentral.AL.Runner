@@ -1,4 +1,4 @@
-codeunit 56602 "GRT Tests"
+codeunit 50270 "GRT Tests"
 {
     Subtype = Test;
     var

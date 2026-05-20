@@ -1,4 +1,4 @@
-codeunit 92002 "RPH Request Page Tests"
+codeunit 50544 "RPH Request Page Tests"
 {
     Subtype = Test;
 

@@ -1,5 +1,5 @@
 /// Helper codeunit that exercises InStream.EOS() detection.
-codeunit 84000 "InStream EOS Src"
+codeunit 50209 "InStream EOS Src"
 {
     procedure EmptyStreamIsEOS(): Boolean
     var
@@ -61,7 +61,7 @@ codeunit 84000 "InStream EOS Src"
     end;
 }
 
-table 84000 "IEos Data"
+table 50014 "IEos Data"
 {
     fields
     {

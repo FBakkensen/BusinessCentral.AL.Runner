@@ -1,4 +1,4 @@
-table 297001 "GetPos Bool Test Table"
+table 50019 "GetPos Bool Test Table"
 {
     DataClassification = ToBeClassified;
 

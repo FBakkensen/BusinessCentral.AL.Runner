@@ -1,5 +1,5 @@
 /// Table backing the base page used by the page extension in this suite.
-table 50836 "MBF Product"
+table 50111 "MBF Product"
 {
     DataClassification = CustomerContent;
     fields
@@ -16,7 +16,7 @@ table 50836 "MBF Product"
 
 /// Base page with multiple fields in the layout so the pageextension has
 /// something to reposition with movebefore.
-page 50836 "MBF Product Card"
+page 50059 "MBF Product Card"
 {
     PageType = Card;
     SourceTable = "MBF Product";
@@ -35,7 +35,7 @@ page 50836 "MBF Product Card"
 /// pageextension using movebefore in the layout area — moves PriceField before
 /// DescriptionField. movebefore is a layout reorder directive; it has no effect
 /// on runtime data but must not block compilation.
-pageextension 50836 "MBF Product Card Ext" extends "MBF Product Card"
+pageextension 50022 "MBF Product Card Ext" extends "MBF Product Card"
 {
     layout
     {
@@ -46,7 +46,7 @@ pageextension 50836 "MBF Product Card Ext" extends "MBF Product Card"
 /// Helper codeunit with business logic exercised by the tests.
 /// Proves that the compilation unit containing pageextensions with movebefore
 /// compiles and codeunits defined alongside remain callable.
-codeunit 50836 "MBF Product Helper"
+codeunit 50515 "MBF Product Helper"
 {
     procedure GetLabel(): Text
     begin

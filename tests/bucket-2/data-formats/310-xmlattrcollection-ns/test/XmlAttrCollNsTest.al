@@ -1,7 +1,7 @@
 /// Tests for namespace-qualified XmlAttributeCollection overloads (issue #1376):
 ///   Get(Text, XmlAttribute), Get(Text, Text, XmlAttribute),
 ///   Remove(XmlAttribute), Remove(Text, Text), Set(Text, Text, Text).
-codeunit 310001 "XACNS Test"
+codeunit 50245 "XACNS Test"
 {
     Subtype = Test;
 

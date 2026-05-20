@@ -1,4 +1,4 @@
-codeunit 60311 "XEX Test"
+codeunit 50166 "XEX Test"
 {
     Subtype = Test;
 

@@ -3,7 +3,7 @@
 // BC emits ALCompiler.NavIndirectValueToNavCodeunitHandle(variant), which the
 // rewriter must convert to (MockCodeunitHandle)(variant) — mirroring the treatment
 // of NavIndirectValueToINavRecordHandle.
-codeunit 233003 "VCU Tests"
+codeunit 50200 "VCU Tests"
 {
     Subtype = Test;
 

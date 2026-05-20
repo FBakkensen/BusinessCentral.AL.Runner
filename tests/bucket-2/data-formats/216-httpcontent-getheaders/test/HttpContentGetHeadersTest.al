@@ -1,4 +1,4 @@
-codeunit 60441 "HCGH Test"
+codeunit 50184 "HCGH Test"
 {
     Subtype = Test;
 

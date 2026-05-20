@@ -7,7 +7,7 @@
 ///     proves the BC-emitted NavIndirectValueToNavValue<NavRecordRef> path works.
 ///   GetNameViaRecordRef — reads a text field via FieldRef.Value and Format();
 ///     proves the canonical real-world trigger from the issue report.
-codeunit 97902 "NVI Test"
+codeunit 50180 "NVI Test"
 {
     Subtype = Test;
 

@@ -1,4 +1,4 @@
-codeunit 1316002 "FER Format Enum Record Test"
+codeunit 50259 "FER Format Enum Record Test"
 {
     Subtype = Test;
 

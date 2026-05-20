@@ -1,5 +1,5 @@
 /// Helper codeunit exercising XmlNamespaceManager — all 8 methods from issue #726.
-codeunit 92000 "XNM Src"
+codeunit 50088 "XNM Src"
 {
     // AddNamespace + LookupNamespace
     procedure AddAndLookup(prefix: Text; uri: Text): Text

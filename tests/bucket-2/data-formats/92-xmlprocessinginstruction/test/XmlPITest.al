@@ -1,4 +1,4 @@
-codeunit 107101 "XPI Tests"
+codeunit 50316 "XPI Tests"
 {
     Subtype = Test;
 

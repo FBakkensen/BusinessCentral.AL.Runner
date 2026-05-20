@@ -1,5 +1,5 @@
 /// Helper codeunit exercising the global AL math functions Abs, Power, Round.
-codeunit 60030 "MATH Src"
+codeunit 50115 "MATH Src"
 {
     procedure AbsDecimal(v: Decimal): Decimal
     begin

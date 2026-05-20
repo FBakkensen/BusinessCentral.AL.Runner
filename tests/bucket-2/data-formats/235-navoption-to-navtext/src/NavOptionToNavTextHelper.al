@@ -9,7 +9,7 @@
 ///   2. MockCodeunitHandle.ConvertArgInternal — NavOption passed as a NavText arg
 ///      to a reflected method call was not converted, and Convert.ChangeType failed.
 
-enum 235000 "NOT Color"
+enum 50000 "NOT Color"
 {
     Extensible = false;
 
@@ -19,7 +19,7 @@ enum 235000 "NOT Color"
     value(3; "Blue") { }
 }
 
-table 235000 "NOT Record"
+table 50013 "NOT Record"
 {
     DataClassification = ToBeClassified;
 
@@ -36,7 +36,7 @@ table 235000 "NOT Record"
     }
 }
 
-codeunit 235000 "NOT Helper"
+codeunit 50203 "NOT Helper"
 {
     /// <summary>
     /// Copies the Color enum field value to ColorText via FieldRef.

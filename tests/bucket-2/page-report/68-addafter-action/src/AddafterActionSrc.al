@@ -1,5 +1,5 @@
 /// Table backing the base page used by the page extension in this suite.
-table 50406 "AAA Product"
+table 50097 "AAA Product"
 {
     DataClassification = CustomerContent;
     fields
@@ -14,7 +14,7 @@ table 50406 "AAA Product"
 }
 
 /// Base page with a "New" action so the pageextension has something to addafter.
-page 50406 "AAA Product Card"
+page 50044 "AAA Product Card"
 {
     PageType = Card;
     SourceTable = "AAA Product";
@@ -36,7 +36,7 @@ page 50406 "AAA Product Card"
 
 /// pageextension using addafter in the actions area (single action inserted).
 /// This is the exact construct issue #406 says fails to compile.
-pageextension 50406 "AAA Product Card After" extends "AAA Product Card"
+pageextension 50007 "AAA Product Card After" extends "AAA Product Card"
 {
     actions
     {
@@ -59,7 +59,7 @@ pageextension 50406 "AAA Product Card After" extends "AAA Product Card"
 
 /// pageextension using addafter in the actions area with multiple actions inserted.
 /// Proves addafter with an action group (multiple action bodies) compiles.
-pageextension 50407 "AAA Product Card AfterMulti" extends "AAA Product Card"
+pageextension 50008 "AAA Product Card AfterMulti" extends "AAA Product Card"
 {
     actions
     {
@@ -88,7 +88,7 @@ pageextension 50407 "AAA Product Card AfterMulti" extends "AAA Product Card"
 /// Helper codeunit with business logic exercised by the tests.
 /// Proves that the compilation unit containing pageextensions with addafter
 /// in the actions area compiles and codeunits alongside remain callable.
-codeunit 50406 "AAA Product Helper"
+codeunit 50483 "AAA Product Helper"
 {
     procedure GetMessage(): Text
     begin

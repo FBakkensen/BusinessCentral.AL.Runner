@@ -9,7 +9,7 @@
 ///     directly assignable to Variant in BC AL, so the implementation always
 ///     returns false — which is correct. The false case proves it doesn't
 ///     incorrectly return true.
-codeunit 60393 "VXT Test"
+codeunit 50178 "VXT Test"
 {
     Subtype = Test;
 

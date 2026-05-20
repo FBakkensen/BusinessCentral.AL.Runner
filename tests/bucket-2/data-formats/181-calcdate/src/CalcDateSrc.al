@@ -1,5 +1,5 @@
 /// Helper codeunit exercising CalcDate() formula arithmetic.
-codeunit 60060 "CDF Src"
+codeunit 50121 "CDF Src"
 {
     procedure Calc(formula: Text; baseDate: Date): Date
     begin

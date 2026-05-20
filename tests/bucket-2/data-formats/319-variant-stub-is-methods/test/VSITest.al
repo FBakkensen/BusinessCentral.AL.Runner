@@ -8,7 +8,7 @@
 /// In all cases the observable contract is: IsX() returns false.
 /// The false case is the only provable case — there is no AL syntax to place
 /// these types inside a Variant on this runner. Closes #1401.
-codeunit 319002 "VSI Test"
+codeunit 50261 "VSI Test"
 {
     Subtype = Test;
 

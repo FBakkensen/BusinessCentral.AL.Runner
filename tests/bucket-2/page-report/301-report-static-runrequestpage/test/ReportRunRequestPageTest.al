@@ -1,5 +1,5 @@
 /// Tests for Report.RunRequestPage OOS — issue #1329.
-codeunit 307401 "RRP Test"
+codeunit 50449 "RRP Test"
 {
     Subtype = Test;
 

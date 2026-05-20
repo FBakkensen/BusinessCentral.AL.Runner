@@ -11,7 +11,7 @@
 ///
 /// GetVersion() is a pure-logic sentinel; tests call it to confirm the codeunit compiled,
 /// which proves the CS1503 error is gone.
-codeunit 62220 "InStream String Src"
+codeunit 50191 "InStream String Src"
 {
     /// Proof-of-compilation: XmlDocument.ReadFrom(InStream, var Document).
     /// BC emits NavXmlDocument.ALReadFrom(DataError, NavInStream, ByRef<NavXmlDocument>).

@@ -1,4 +1,4 @@
-table 304000 "NCIL Item"
+table 50021 "NCIL Item"
 {
     DataClassification = ToBeClassified;
 
@@ -14,7 +14,7 @@ table 304000 "NCIL Item"
     }
 }
 
-codeunit 304000 "NCIL Helper"
+codeunit 50233 "NCIL Helper"
 {
     /// <summary>
     /// Reproduces issue #1211: AL 'in' operator against a set of Code literals

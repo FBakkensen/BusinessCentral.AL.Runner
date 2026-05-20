@@ -1,4 +1,4 @@
-codeunit 305002 "FPB Assign Tests"
+codeunit 50451 "FPB Assign Tests"
 {
     Subtype = Test;
 

@@ -1,4 +1,4 @@
-table 92000 "RPH Test Data"
+table 50120 "RPH Test Data"
 {
     fields
     {
@@ -8,7 +8,7 @@ table 92000 "RPH Test Data"
     keys { key(PK; Id) { Clustered = true; } }
 }
 
-report 92000 "RPH Test Report"
+report 50024 "RPH Test Report"
 {
     dataset
     {
@@ -19,7 +19,7 @@ report 92000 "RPH Test Report"
 }
 
 // Renumbered from 92001 to avoid collision in new bucket layout (#1385).
-codeunit 1092001 "RPH Report Caller"
+codeunit 50543 "RPH Report Caller"
 {
     procedure CallRunRequestPage(): Text
     var

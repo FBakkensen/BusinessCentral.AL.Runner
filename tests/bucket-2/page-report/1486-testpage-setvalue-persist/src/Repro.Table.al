@@ -1,4 +1,4 @@
-table 500000 "Repro SetValue Tab"
+table 50056 "Repro SetValue Tab"
 {
     DataClassification = CustomerContent;
 

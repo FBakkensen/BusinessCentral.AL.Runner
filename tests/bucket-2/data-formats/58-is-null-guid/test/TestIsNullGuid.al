@@ -1,4 +1,4 @@
-codeunit 58500 "Test IsNullGuid"
+codeunit 50266 "Test IsNullGuid"
 {
     Subtype = Test;
 

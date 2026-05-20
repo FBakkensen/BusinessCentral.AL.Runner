@@ -1,5 +1,5 @@
 /// Helper codeunit exercising JsonObject methods: Add/Get/Contains/Keys/Remove/Replace/Clone/AsToken/Path and typed getters.
-codeunit 84300 "JOM Src"
+codeunit 50211 "JOM Src"
 {
     /// Add two properties and Get them back as a round-trip.
     procedure AddAndGet_Text(): Text

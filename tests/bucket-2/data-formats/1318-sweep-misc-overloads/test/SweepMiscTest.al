@@ -1,5 +1,5 @@
 /// Proving tests for miscellaneous not-tested overloads sweep (issue #1400).
-codeunit 1318001 "Sweep Misc Test"
+codeunit 50047 "Sweep Misc Test"
 {
     Subtype = Test;
 

@@ -1,5 +1,5 @@
 /// Table with a Media field used by the media-stream tests.
-table 303010 "MST Media Table"
+table 50039 "MST Media Table"
 {
     fields
     {
@@ -13,7 +13,7 @@ table 303010 "MST Media Table"
 }
 
 /// Helper blob table used to create real InStream / OutStream values.
-table 303011 "MST Blob Table"
+table 50040 "MST Blob Table"
 {
     fields
     {
@@ -24,7 +24,7 @@ table 303011 "MST Blob Table"
 }
 
 /// Helper codeunit that exercises Media.ImportStream and Media.ExportStream.
-codeunit 303012 "MST Helper"
+codeunit 50348 "MST Helper"
 {
     procedure ImportFromStream(var Rec: Record "MST Media Table"; var Source: InStream): Boolean
     begin

@@ -4,7 +4,7 @@
 ///   HttpHeaders.Add(name, SecretText)           — generates ALAdd(DataError, string, NavSecretText)
 ///   HttpHeaders.TryAddWithoutValidation(lit, st) — generates ALTryAddWithoutValidation(DataError, string, NavSecretText)
 ///   HttpContent.WriteFrom(SecretText)            — generates AlCompat.HttpContentLoadFrom(content, NavSecretText)
-codeunit 165001 "STH Src"
+codeunit 50224 "STH Src"
 {
     /// Add a SecretText header using HttpHeaders.Add.
     /// BC emits: headers.ALAdd(DataError, string, NavSecretText)

@@ -1,7 +1,7 @@
 /// Helper codeunit for CopyArray on fixed-length Text arrays.
 /// Regression for issue #1232: CS0411 type inference failure when element type
 /// is a fixed-length NavText subtype (e.g. Text[1024]).
-codeunit 99700 "CA Text Src"
+codeunit 50012 "CA Text Src"
 {
     /// CopyArray(Dest, Src, 1) on array[32] of Text[1024].
     procedure CopyTextArray(var Src: array[32] of Text[1024]; var Dest: array[32] of Text[1024])
@@ -18,7 +18,7 @@ codeunit 99700 "CA Text Src"
 
 /// Page with a global var of array[32] of Text[1024].
 /// Regression for issue #1232: CopyArray on page-level array var fails CS0411.
-page 99900 "CA Text Page"
+page 50000 "CA Text Page"
 {
     PageType = Card;
 

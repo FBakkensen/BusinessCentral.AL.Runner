@@ -1,5 +1,5 @@
 /// Table with a Code[20] field used for NavText→NavCode cast testing.
-table 98400 "NTC Table"
+table 50003 "NTC Table"
 {
     DataClassification = ToBeClassified;
 

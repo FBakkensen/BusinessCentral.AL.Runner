@@ -1,5 +1,5 @@
 /// Report that calls CurrReport.ObjectId(false) in OnPreReport (issue #1191).
-report 230001 "ROI Report"
+report 50011 "ROI Report"
 {
     UsageCategory = None;
 
@@ -24,7 +24,7 @@ report 230001 "ROI Report"
 }
 
 /// Helper codeunit — runs the report and retrieves the captured ObjectId.
-codeunit 230002 "ROI Helper"
+codeunit 50410 "ROI Helper"
 {
     procedure RunAndGetObjectId(): Text
     var

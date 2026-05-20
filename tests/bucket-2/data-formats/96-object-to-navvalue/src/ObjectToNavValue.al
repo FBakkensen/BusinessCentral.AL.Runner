@@ -1,4 +1,4 @@
-table 1260001 "Object NavValue Table"
+table 50034 "Object NavValue Table"
 {
     DataClassification = CustomerContent;
 
@@ -27,7 +27,7 @@ table 1260001 "Object NavValue Table"
     }
 }
 
-codeunit 1260001 "Object NavValue Helper"
+codeunit 50326 "Object NavValue Helper"
 {
     procedure GetViaVariantKey(var Rec: Record "Object NavValue Table"; KeyValue: Variant)
     begin

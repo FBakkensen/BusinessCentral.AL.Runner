@@ -1,5 +1,5 @@
 /// Exercises the static Report.* methods that are available across BC 26-28.
-codeunit 91000 "RS Src"
+codeunit 50533 "RS Src"
 {
     procedure CallRun(reportId: Integer)
     begin

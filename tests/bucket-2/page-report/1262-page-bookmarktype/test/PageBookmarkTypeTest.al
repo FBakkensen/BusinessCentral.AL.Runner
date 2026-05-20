@@ -1,7 +1,7 @@
 /// Tests that page classes compile with BookmarkType, CheckType, and SetRecord stubs.
 /// BC emits these members on Page<N> classes; without stubs the Roslyn compilation
 /// fails with CS1061 after the NavForm base class is stripped.
-codeunit 1262003 "BkmType Test"
+codeunit 50365 "BkmType Test"
 {
     Subtype = Test;
     var Assert: Codeunit Assert;

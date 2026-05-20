@@ -1,6 +1,6 @@
 /// Tests for the 2-arg AL form UploadIntoStream(Title, var InStream).
 /// Issue #1210 — rewriter/signature gap caused CS1503 at compile time.
-codeunit 121012 "UIS2 Test"
+codeunit 50031 "UIS2 Test"
 {
     Subtype = Test;
 

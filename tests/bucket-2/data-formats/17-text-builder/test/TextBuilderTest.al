@@ -1,4 +1,4 @@
-codeunit 50917 "Text Builder Tests"
+codeunit 50096 "Text Builder Tests"
 {
     Subtype = Test;
 

@@ -1,4 +1,4 @@
-codeunit 162001 "JSON Overloads Test"
+codeunit 50017 "JSON Overloads Test"
 {
     Subtype = Test;
 

@@ -1,5 +1,5 @@
 /// Helper codeunit exercising IsolatedStorage.SetEncrypted.
-codeunit 59995 "ISE Src"
+codeunit 50107 "ISE Src"
 {
     procedure StoreEncrypted2Arg(keyName: Text; value: Text)
     begin

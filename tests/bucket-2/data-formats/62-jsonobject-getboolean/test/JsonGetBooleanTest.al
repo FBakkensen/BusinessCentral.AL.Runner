@@ -1,4 +1,4 @@
-codeunit 81000 "Json GetBoolean Test"
+codeunit 50275 "Json GetBoolean Test"
 {
     Subtype = Test;
 

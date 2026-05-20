@@ -1,4 +1,4 @@
-codeunit 84401 "TRM Test"
+codeunit 50421 "TRM Test"
 {
     Subtype = Test;
 

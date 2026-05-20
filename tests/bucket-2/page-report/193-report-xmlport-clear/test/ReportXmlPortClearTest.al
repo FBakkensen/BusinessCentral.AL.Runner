@@ -1,7 +1,7 @@
 /// Tests proving that Clear(rep) and Clear(xp) compile and run without error.
 /// Covers issue #967: MockReportHandle and MockXmlPortHandle were missing Clear(),
 /// causing CS1061 at Roslyn compile time.
-codeunit 97711 "RXC Tests"
+codeunit 50396 "RXC Tests"
 {
     Subtype = Test;
 

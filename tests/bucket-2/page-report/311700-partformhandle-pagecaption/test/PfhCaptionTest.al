@@ -1,5 +1,5 @@
 /// Tests for MockPartFormHandle.PageCaption (issue #1440).
-codeunit 311702 "PFH Caption Tests"
+codeunit 50460 "PFH Caption Tests"
 {
     Subtype = Test;
 

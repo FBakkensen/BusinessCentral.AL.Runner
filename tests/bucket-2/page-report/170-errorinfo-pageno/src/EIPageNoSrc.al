@@ -1,5 +1,5 @@
 // Renumbered from 97000 to avoid collision in new bucket layout (#1385).
-codeunit 1097000 "EI PageNo Src"
+codeunit 50388 "EI PageNo Src"
 {
     procedure SetAndGet(): Integer
     var

@@ -4,7 +4,7 @@
 //   Object of type 'AlRunner.Runtime.MockRecordHandle' cannot be converted
 //   to type 'Microsoft.Dynamics.Nav.Runtime.ByRef<AlRunner.Runtime.MockVariant>'
 
-table 299001 "BVR Item"
+table 50001 "BVR Item"
 {
     fields
     {
@@ -18,7 +18,7 @@ table 299001 "BVR Item"
     }
 }
 
-codeunit 299001 "BVR Helper"
+codeunit 50008 "BVR Helper"
 {
     /// <summary>
     /// Accepts var Variant — BC emits ByRef&lt;MockVariant&gt; for this parameter.

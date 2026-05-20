@@ -1,4 +1,4 @@
-codeunit 56900 "Json Types Test"
+codeunit 50292 "Json Types Test"
 {
     Subtype = Test;
 
