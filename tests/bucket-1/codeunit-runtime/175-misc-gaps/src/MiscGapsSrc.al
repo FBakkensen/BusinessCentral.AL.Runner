@@ -1,5 +1,5 @@
 /// Helper codeunit exercising misc gaps — issue #776.
-codeunit 50130 "MG Src"
+codeunit 50138 "MG Src"
 {
     procedure GetJsonTokenPath(Token: JsonToken): Text
     begin

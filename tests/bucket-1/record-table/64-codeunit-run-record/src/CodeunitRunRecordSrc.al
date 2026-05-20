@@ -1,4 +1,4 @@
-table 57900 "CRR Order"
+table 50189 "CRR Order"
 {
     DataClassification = CustomerContent;
 
@@ -20,7 +20,7 @@ table 57900 "CRR Order"
 /// Proves that Codeunit.Run(ID, rec) passes the record and modifications
 /// are written back via Modify().
 /// </summary>
-codeunit 57901 "CRR Process Order"
+codeunit 50588 "CRR Process Order"
 {
     TableNo = "CRR Order";
 
@@ -36,7 +36,7 @@ codeunit 57901 "CRR Process Order"
 /// Codeunit with TableNo that raises an error — used to prove that
 /// Codeunit.Run returns false when an error occurs.
 /// </summary>
-codeunit 57902 "CRR Failing Order"
+codeunit 50589 "CRR Failing Order"
 {
     TableNo = "CRR Order";
 

@@ -1,4 +1,4 @@
-table 56243 "FF Order Line"
+table 50095 "FF Order Line"
 {
     fields
     {

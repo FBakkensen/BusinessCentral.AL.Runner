@@ -1,4 +1,4 @@
-codeunit 54200 "Test TransferFields"
+codeunit 50541 "Test TransferFields"
 {
     Subtype = Test;
 

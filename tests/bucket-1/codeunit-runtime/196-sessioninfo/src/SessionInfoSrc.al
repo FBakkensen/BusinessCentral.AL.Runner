@@ -1,7 +1,7 @@
 /// Exercises SessionInformation static methods — SqlRowsRead, SqlStatementsExecuted,
 /// AITokensUsed, Callstack. All are telemetry counters that return safe defaults
 /// in standalone mode (no real DB or AI backend).
-codeunit 50147 "SI Src"
+codeunit 50154 "SI Src"
 {
     procedure GetSqlRowsRead(): BigInteger
     begin

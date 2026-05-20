@@ -1,5 +1,5 @@
 /// Table for testing FieldRef.FieldError() with 0 args (issue #1428).
-table 1311001 "FieldRef FE0 Table"
+table 50102 "FieldRef FE0 Table"
 {
     DataClassification = SystemMetadata;
 
@@ -24,7 +24,7 @@ table 1311001 "FieldRef FE0 Table"
     }
 }
 
-codeunit 1311002 "FieldRef FE0 Helper"
+codeunit 50444 "FieldRef FE0 Helper"
 {
     /// <summary>
     /// Calls FieldRef.FieldError() with NO arguments via RecordRef/FieldRef

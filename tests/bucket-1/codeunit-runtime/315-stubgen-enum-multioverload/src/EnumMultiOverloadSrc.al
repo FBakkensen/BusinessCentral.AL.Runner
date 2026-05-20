@@ -22,7 +22,7 @@ enum 50003 "Multi OL Doc Type"
 
 /// Codeunit that deliberately overloads CreateHeader with (Enum, Code) and (Code, Code).
 /// In production use this would come from an auto-stubbed library package.
-codeunit 50245 "Multi OL Sales Lib"
+codeunit 50252 "Multi OL Sales Lib"
 {
     /// Enum-typed overload — call site emits NavOption for the second arg.
     procedure CreateHeader(var DocHeader: Record "Multi OL Doc Header"; DocType: Enum "Multi OL Doc Type"; CustomerNo: Code[20])

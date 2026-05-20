@@ -1,4 +1,4 @@
-codeunit 50274 "RR Links CurrPage Test"
+codeunit 50280 "RR Links CurrPage Test"
 {
     Subtype = Test;
 

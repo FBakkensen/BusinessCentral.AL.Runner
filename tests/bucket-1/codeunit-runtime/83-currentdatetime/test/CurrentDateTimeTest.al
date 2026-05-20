@@ -1,4 +1,4 @@
-codeunit 50357 "CDT Test"
+codeunit 50361 "CDT Test"
 {
     Subtype = Test;
 

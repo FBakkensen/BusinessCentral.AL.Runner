@@ -1,4 +1,4 @@
-codeunit 50255 "Greeting Service"
+codeunit 50261 "Greeting Service"
 {
     procedure MakeGreeting(Greeter: Interface "IGreeter"; Name: Text): Text
     begin

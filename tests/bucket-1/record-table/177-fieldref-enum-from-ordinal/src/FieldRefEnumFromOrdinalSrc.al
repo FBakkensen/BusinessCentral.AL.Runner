@@ -1,4 +1,4 @@
-enum 60020 "FREO Status"
+enum 50012 "FREO Status"
 {
     Extensible = true;
     value(0; Open) { Caption = 'Open'; }
@@ -6,7 +6,7 @@ enum 60020 "FREO Status"
     value(10; Closed) { Caption = 'Closed'; }
 }
 
-table 60020 "FREO Order"
+table 50111 "FREO Order"
 {
     DataClassification = CustomerContent;
     fields
@@ -23,7 +23,7 @@ table 60020 "FREO Order"
 /// Helper codeunit exercising
 /// FieldRef.GetEnumValueCaptionFromOrdinalValue / GetEnumValueNameFromOrdinalValue.
 /// These look up metadata by the enum's ORDINAL value, not by 1-based index.
-codeunit 60020 "FREO Src"
+codeunit 50489 "FREO Src"
 {
     procedure CaptionForOrdinal(ordinal: Integer): Text
     var

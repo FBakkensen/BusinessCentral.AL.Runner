@@ -1,4 +1,4 @@
-codeunit 50193 "CE Test"
+codeunit 50200 "CE Test"
 {
     Subtype = Test;
     var

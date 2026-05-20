@@ -13,7 +13,7 @@
 /// Note: These tests compile both callee overloads from source (not auto-stubbed),
 /// exercising the runtime dispatch layer. The C# test AutoStubEnumParamTests covers
 /// the actual stub generator path end-to-end when alc.exe is available.
-codeunit 50246 "Multi OL Enum Tests"
+codeunit 50253 "Multi OL Enum Tests"
 {
     Subtype = Test;
 

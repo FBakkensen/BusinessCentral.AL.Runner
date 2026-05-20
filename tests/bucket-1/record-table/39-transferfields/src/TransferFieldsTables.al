@@ -1,4 +1,4 @@
-table 54200 "TF Src"
+table 50146 "TF Src"
 {
     DataClassification = CustomerContent;
 
@@ -16,7 +16,7 @@ table 54200 "TF Src"
     }
 }
 
-table 54201 "TF Tgt"
+table 50147 "TF Tgt"
 {
     DataClassification = CustomerContent;
 

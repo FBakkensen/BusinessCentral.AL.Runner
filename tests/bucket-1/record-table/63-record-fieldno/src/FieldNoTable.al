@@ -1,4 +1,4 @@
-table 63000 "FN Test Table"
+table 50187 "FN Test Table"
 {
     fields
     {

@@ -1,4 +1,4 @@
-table 95100 "Rename Probe"
+table 50078 "Rename Probe"
 {
     fields
     {
@@ -9,7 +9,7 @@ table 95100 "Rename Probe"
     keys { key(PK; "Entry No.") { Clustered = true; } }
 }
 
-table 95101 "Rename Composite"
+table 50079 "Rename Composite"
 {
     fields
     {

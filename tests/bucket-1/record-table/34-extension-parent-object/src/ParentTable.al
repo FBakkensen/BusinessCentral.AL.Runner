@@ -1,4 +1,4 @@
-table 53400 "Parent Object Table"
+table 50141 "Parent Object Table"
 {
     DataClassification = CustomerContent;
 

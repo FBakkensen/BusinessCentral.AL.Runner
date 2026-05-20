@@ -1,4 +1,4 @@
-table 59400 "Fixed Section Test Table"
+table 50182 "Fixed Section Test Table"
 {
     DataClassification = ToBeClassified;
 
@@ -21,7 +21,7 @@ table 59400 "Fixed Section Test Table"
     }
 }
 
-page 59402 "Fixed Section Page"
+page 50013 "Fixed Section Page"
 {
     PageType = Card;
     SourceTable = "Fixed Section Test Table";

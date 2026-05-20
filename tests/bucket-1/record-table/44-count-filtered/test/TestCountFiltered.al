@@ -1,4 +1,4 @@
-codeunit 54700 "Test Count Filtered"
+codeunit 50550 "Test Count Filtered"
 {
     Subtype = Test;
 

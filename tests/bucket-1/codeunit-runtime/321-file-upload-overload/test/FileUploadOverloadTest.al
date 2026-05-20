@@ -3,7 +3,7 @@
 /// BC AL: File.Upload(DialogTitle, FromFolder, FilterText, FromFile, var ToFile)
 /// This browser-roundtrip upload variant is out-of-scope (§3.4 file-storage).
 /// All call sites must throw RunnerOutOfScopeException with api="NavFile.Upload".
-codeunit 50259 "File Upload Overload Test"
+codeunit 50265 "File Upload Overload Test"
 {
     Subtype = Test;
 

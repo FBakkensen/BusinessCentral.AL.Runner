@@ -1,6 +1,6 @@
 /// Source helpers for Dialog Clear() coverage (issue #964).
 /// Exercises Clear(dlg) — which the BC compiler lowers to MockDialog.Clear().
-codeunit 50143 "Dialog Clear Src"
+codeunit 50150 "Dialog Clear Src"
 {
     procedure OpenAndClear()
     var

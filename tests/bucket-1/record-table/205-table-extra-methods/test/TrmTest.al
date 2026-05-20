@@ -2,7 +2,7 @@
 /// ChangeCompany, GetAscending, GetBySystemId, LoadFields, ReadConsistency,
 /// ReadIsolation, SetLoadFields, SetBaseLoadFields, SetPermissionFilter,
 /// Truncate, Relation, Consistent, SecurityFiltering.
-codeunit 97702 "TRM Test"
+codeunit 50504 "TRM Test"
 {
     Subtype = Test;
 

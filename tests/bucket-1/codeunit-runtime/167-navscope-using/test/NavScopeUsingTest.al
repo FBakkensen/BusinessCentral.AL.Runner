@@ -1,4 +1,4 @@
-codeunit 50110 "NSU Test"
+codeunit 50118 "NSU Test"
 {
     Subtype = Test;
     var

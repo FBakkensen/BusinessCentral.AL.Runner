@@ -1,4 +1,4 @@
-table 56000 "FS Item"
+table 50173 "FS Item"
 {
     DataClassification = ToBeClassified;
 

@@ -56,7 +56,7 @@ reportextension 50001 "ADM Report Ext Multi" extends "ADM Base Report"
 
 /// Helper codeunit — proves the compilation unit containing reportextensions
 /// with add() in the dataset area compiles and codeunits alongside remain callable.
-codeunit 50086 "ADM Helper"
+codeunit 50094 "ADM Helper"
 {
     procedure GetLabel(): Text
     begin

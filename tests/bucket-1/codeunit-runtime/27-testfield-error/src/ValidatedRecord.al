@@ -21,7 +21,7 @@ table 50028 TestFieldTable
     }
 }
 
-codeunit 50190 TestFieldHelper
+codeunit 50197 TestFieldHelper
 {
     procedure ValidateRecord(var Rec: Record TestFieldTable)
     begin

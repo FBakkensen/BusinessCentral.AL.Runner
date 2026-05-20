@@ -1,4 +1,4 @@
-table 84100 "FROM Test Table"
+table 50199 "FROM Test Table"
 {
     fields
     {

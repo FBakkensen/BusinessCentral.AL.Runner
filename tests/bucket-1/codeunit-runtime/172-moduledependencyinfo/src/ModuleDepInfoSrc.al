@@ -1,5 +1,5 @@
 /// Helper codeunit exercising ModuleDependencyInfo — issue #759.
-codeunit 50126 "MDI Src"
+codeunit 50134 "MDI Src"
 {
     procedure GetDependencyId(Dep: ModuleDependencyInfo): Text
     begin

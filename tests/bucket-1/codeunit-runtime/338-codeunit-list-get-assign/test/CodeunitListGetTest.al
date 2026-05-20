@@ -1,4 +1,4 @@
-codeunit 50292 "CLG Test"
+codeunit 50298 "CLG Test"
 {
     Subtype = Test;
 

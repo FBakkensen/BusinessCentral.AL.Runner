@@ -1,4 +1,4 @@
-table 60460 "RFG Row"
+table 50121 "RFG Row"
 {
     fields
     {
@@ -8,7 +8,7 @@ table 60460 "RFG Row"
 }
 
 /// Exercises RecordRef.FilterGroup.
-codeunit 60460 "RFG Src"
+codeunit 50507 "RFG Src"
 {
     procedure FilterGroup_SetThenGet(group: Integer): Integer
     var

@@ -1,4 +1,4 @@
-table 97700 "TRM Table"
+table 50119 "TRM Table"
 {
     DataClassification = ToBeClassified;
 

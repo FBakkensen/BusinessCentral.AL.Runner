@@ -1,4 +1,4 @@
-codeunit 56881 "RF Find Tests"
+codeunit 50619 "RF Find Tests"
 {
     Subtype = Test;
     var

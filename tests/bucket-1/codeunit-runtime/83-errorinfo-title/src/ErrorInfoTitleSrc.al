@@ -1,5 +1,5 @@
 /// Helper codeunit exercising ErrorInfo.Title() get/set.
-codeunit 50358 "EIT Src"
+codeunit 50362 "EIT Src"
 {
     /// Sets Title and returns it (round-trip test).
     procedure SetAndGet(title: Text): Text

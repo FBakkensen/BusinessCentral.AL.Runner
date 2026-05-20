@@ -1,4 +1,4 @@
-table 305001 "Validate No Value Table"
+table 50208 "Validate No Value Table"
 {
     DataClassification = CustomerContent;
 

@@ -1,5 +1,5 @@
 /// Helper codeunit exercising Database.UserSecurityId.
-codeunit 59540 "USI Src"
+codeunit 50455 "USI Src"
 {
     procedure GetUserSecurityId(): Guid
     begin

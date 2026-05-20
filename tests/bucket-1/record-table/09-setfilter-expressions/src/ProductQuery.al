@@ -1,4 +1,4 @@
-codeunit 50109 "Product Query"
+codeunit 50388 "Product Query"
 {
     procedure CountByCategory(CategoryFilter: Text): Integer
     var

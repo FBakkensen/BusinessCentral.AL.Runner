@@ -3,7 +3,7 @@
 // AND calls BindSubscription(this), BC emits base.Parent.Bind() in the scope class.
 // Before the fix: AlScope.Parent returns null → runtime binding on null → exception.
 // After the fix: AlScope.Parent returns `this` → base.Parent.Bind() calls AlScope.Bind() (no-op).
-codeunit 50030 "BPB Tests"
+codeunit 50038 "BPB Tests"
 {
     Subtype = Test;
 

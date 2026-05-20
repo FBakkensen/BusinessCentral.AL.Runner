@@ -1,4 +1,4 @@
-codeunit 50370 "HTTP Tests"
+codeunit 50373 "HTTP Tests"
 {
     Subtype = Test;
     var

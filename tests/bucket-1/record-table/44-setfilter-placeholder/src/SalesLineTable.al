@@ -1,4 +1,4 @@
-table 54510 "SalesLine Stub"
+table 50155 "SalesLine Stub"
 {
     fields
     {

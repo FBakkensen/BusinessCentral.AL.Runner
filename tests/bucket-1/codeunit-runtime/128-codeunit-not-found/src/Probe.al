@@ -1,4 +1,4 @@
-codeunit 50073 "Missing CU Probe"
+codeunit 50081 "Missing CU Probe"
 {
     procedure CallMissingUserCodeunit()
     begin

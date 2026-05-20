@@ -1,5 +1,5 @@
 // Renumbered from 63001 to avoid collision in new bucket layout (#1385).
-codeunit 50025 "Test TestField Value"
+codeunit 50033 "Test TestField Value"
 {
     Subtype = Test;
 

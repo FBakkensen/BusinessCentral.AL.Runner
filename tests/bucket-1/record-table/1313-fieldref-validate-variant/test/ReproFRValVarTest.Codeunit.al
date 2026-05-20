@@ -1,4 +1,4 @@
-codeunit 1313101 "Repro FRValVar Test"
+codeunit 50446 "Repro FRValVar Test"
 {
     Subtype = Test;
 

@@ -1,4 +1,4 @@
-codeunit 54100 "Test Lookup Formula"
+codeunit 50540 "Test Lookup Formula"
 {
     Subtype = Test;
 

@@ -1,4 +1,4 @@
-table 80100 "OnRun Test Table"
+table 50087 "OnRun Test Table"
 {
     fields
     {

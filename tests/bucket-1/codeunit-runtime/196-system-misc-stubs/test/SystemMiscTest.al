@@ -1,6 +1,6 @@
 /// Tests for System misc stubs: Format (3-arg mask), GetUrl, GetDocumentUrl,
 /// CaptionClassTranslate, CanLoadType, CodeCoverage*, ImportStreamWithUrlAccess.
-codeunit 50150 "SystemMisc Test"
+codeunit 50157 "SystemMisc Test"
 {
     Subtype = Test;
 

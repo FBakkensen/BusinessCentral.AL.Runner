@@ -1,4 +1,4 @@
-codeunit 50077 "Item Processor"
+codeunit 50085 "Item Processor"
 {
     procedure SumQuantities(var StagingRec: Record "Item Staging"): Decimal
     var

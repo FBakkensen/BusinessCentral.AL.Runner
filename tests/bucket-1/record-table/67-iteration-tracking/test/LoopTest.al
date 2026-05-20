@@ -1,5 +1,5 @@
 // Renumbered from 50921 to avoid collision in new bucket layout (#1385).
-codeunit 1050921 "Loop Tests"
+codeunit 50595 "Loop Tests"
 {
     Subtype = Test;
 

@@ -1,4 +1,4 @@
-codeunit 56711 "RecRef Assign Test"
+codeunit 50602 "RecRef Assign Test"
 {
     Subtype = Test;
 

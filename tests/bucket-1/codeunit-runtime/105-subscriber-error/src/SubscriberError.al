@@ -2,7 +2,7 @@
 // When a subscriber throws an error, it should propagate to the caller.
 // The caller can catch it with asserterror.
 
-codeunit 50050 "SE Publisher"
+codeunit 50058 "SE Publisher"
 {
     [IntegrationEvent(false, false)]
     procedure OnProcess(Value: Integer)
@@ -15,7 +15,7 @@ codeunit 50050 "SE Publisher"
     end;
 }
 
-codeunit 50051 "SE ErrorSubscriber"
+codeunit 50059 "SE ErrorSubscriber"
 {
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"SE Publisher", OnProcess, '', true, true)]
     local procedure HandleProcess(Value: Integer)

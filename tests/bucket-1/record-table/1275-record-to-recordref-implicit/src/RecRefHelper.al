@@ -1,4 +1,4 @@
-codeunit 1275001 "RecRef Implicit Helper"
+codeunit 50438 "RecRef Implicit Helper"
 {
     procedure GetFieldCountFromRef(RecRef: RecordRef): Integer
     begin

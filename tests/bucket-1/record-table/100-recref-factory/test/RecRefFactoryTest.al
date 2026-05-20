@@ -1,4 +1,4 @@
-codeunit 304001 "RecRef Factory Test"
+codeunit 50397 "RecRef Factory Test"
 {
     Subtype = Test;
 

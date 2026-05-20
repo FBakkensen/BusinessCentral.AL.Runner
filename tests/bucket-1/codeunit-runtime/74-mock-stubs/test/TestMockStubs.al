@@ -1,4 +1,4 @@
-codeunit 50340 "Stub Methods Tests"
+codeunit 50346 "Stub Methods Tests"
 {
     Subtype = Test;
 

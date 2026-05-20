@@ -1,4 +1,4 @@
-codeunit 50062 "Util Helper"
+codeunit 50070 "Util Helper"
 {
     procedure GetClosingDate(d: Date): Date
     begin

@@ -1,4 +1,4 @@
-table 54500 "Lock Probe"
+table 50152 "Lock Probe"
 {
     DataClassification = CustomerContent;
 

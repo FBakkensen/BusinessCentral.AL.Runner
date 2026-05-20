@@ -1,4 +1,4 @@
-codeunit 50168 "Notification Gaps Helper"
+codeunit 50175 "Notification Gaps Helper"
 {
     procedure BuildScopedNotification(Msg: Text; Scp: NotificationScope): Notification
     var

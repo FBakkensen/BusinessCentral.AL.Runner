@@ -1,6 +1,6 @@
 // Supporting codeunits for testing StartSession overloads with company and record args.
 
-codeunit 50083 "StartSession Overloads Worker"
+codeunit 50091 "StartSession Overloads Worker"
 {
     trigger OnRun()
     begin
@@ -8,7 +8,7 @@ codeunit 50083 "StartSession Overloads Worker"
     end;
 }
 
-codeunit 50084 "StartSession Overloads Api"
+codeunit 50092 "StartSession Overloads Api"
 {
     procedure StartWithCompany(var SessionId: Integer): Boolean
     begin

@@ -1,4 +1,4 @@
-tableextension 52800 "Base Table Ext" extends "Base Table"
+tableextension 50003 "Base Table Ext" extends "Base Table"
 {
     fields
     {

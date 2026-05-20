@@ -1,4 +1,4 @@
-codeunit 50100 "SSN Test"
+codeunit 50108 "SSN Test"
 {
     Subtype = Test;
 

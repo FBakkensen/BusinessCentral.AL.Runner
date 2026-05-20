@@ -3,7 +3,7 @@
 ///   #1183 — File.Create() returns Boolean
 ///   #1187 — RecordRef.AddLink(Url, Description)
 ///   #1192 — RecordRef.GetView(UseNames)
-codeunit 50208 "OG Tests"
+codeunit 50215 "OG Tests"
 {
     Subtype = Test;
 

@@ -3,7 +3,7 @@
 /// on the generated Record class alongside Rec and xRec. When TryFireRecordTrigger
 /// calls GetUninitializedObject, only Rec/xRec are explicitly set — the global
 /// Helper field is null. The trigger body accesses Helper.PK which causes NullRef.
-table 100001 "UIF Source"
+table 50065 "UIF Source"
 {
     fields
     {
@@ -43,7 +43,7 @@ table 100001 "UIF Source"
 }
 
 /// Counter table used by the event subscriber.
-table 100002 "UIF Counter"
+table 50066 "UIF Counter"
 {
     fields
     {
@@ -56,7 +56,7 @@ table 100002 "UIF Counter"
 /// Codeunit with a codeunit-level global Record variable AND an event subscriber.
 /// InitializeComponent initializes GlobalCounter, so this case already works.
 /// This test proves it continues to work after the fix is applied.
-codeunit 100001 "UIF Subscriber"
+codeunit 50398 "UIF Subscriber"
 {
     var
         GlobalCounter: Record "UIF Counter";

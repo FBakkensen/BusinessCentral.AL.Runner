@@ -1,7 +1,7 @@
 /// Helper codeunit used by fail-on-stub tests.
 /// This codeunit is compiled from source (not auto-stubbed), so calling it
 /// must always succeed regardless of --fail-on-stub.
-codeunit 50252 "FOS Real Helper"
+codeunit 50258 "FOS Real Helper"
 {
     procedure GetValue(): Integer
     begin

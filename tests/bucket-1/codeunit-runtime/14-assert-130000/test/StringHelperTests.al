@@ -1,4 +1,4 @@
-codeunit 50082 "Assert 130000 Tests"
+codeunit 50090 "Assert 130000 Tests"
 {
     Subtype = Test;
 

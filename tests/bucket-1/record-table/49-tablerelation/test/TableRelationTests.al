@@ -1,4 +1,4 @@
-codeunit 55502 "TableRelation Tests"
+codeunit 50563 "TableRelation Tests"
 {
     Subtype = Test;
 

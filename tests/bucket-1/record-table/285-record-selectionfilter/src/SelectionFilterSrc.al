@@ -4,7 +4,7 @@
 /// that emit rec.ALSetSelectionFilter(filtered) in the generated C#.
 /// This suite tests the filter-copying behavior through a table procedure
 /// (Invoke dispatch path) and also verifies the marks-based selection behavior.
-table 133000 "SSF Table"
+table 50133 "SSF Table"
 {
     fields
     {
@@ -26,7 +26,7 @@ table 133000 "SSF Table"
     end;
 }
 
-codeunit 133001 "SSF Source"
+codeunit 50525 "SSF Source"
 {
     procedure InsertRecord(Id: Code[20]; Value: Integer)
     var

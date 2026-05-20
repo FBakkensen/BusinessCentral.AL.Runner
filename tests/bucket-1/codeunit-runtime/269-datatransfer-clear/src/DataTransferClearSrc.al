@@ -12,7 +12,7 @@ table 50027 "DTC Item"
     }
 }
 
-codeunit 50188 "DTC Src"
+codeunit 50195 "DTC Src"
 {
     procedure ClearAfterSetup_DoesNotThrow()
     var

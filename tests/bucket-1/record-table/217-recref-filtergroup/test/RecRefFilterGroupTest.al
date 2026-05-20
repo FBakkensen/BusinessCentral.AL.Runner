@@ -1,4 +1,4 @@
-codeunit 60461 "RFG Test"
+codeunit 50508 "RFG Test"
 {
     Subtype = Test;
 

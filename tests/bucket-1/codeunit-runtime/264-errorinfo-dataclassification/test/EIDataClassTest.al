@@ -1,4 +1,4 @@
-codeunit 50183 "EI DataClass Test"
+codeunit 50190 "EI DataClass Test"
 {
     Subtype = Test;
 

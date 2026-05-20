@@ -1,4 +1,4 @@
-table 53300 "Base Item Table"
+table 50140 "Base Item Table"
 {
     DataClassification = CustomerContent;
 

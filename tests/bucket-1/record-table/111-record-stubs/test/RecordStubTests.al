@@ -1,4 +1,4 @@
-codeunit 50811 "Record Stub Tests"
+codeunit 50417 "Record Stub Tests"
 {
     Subtype = Test;
 

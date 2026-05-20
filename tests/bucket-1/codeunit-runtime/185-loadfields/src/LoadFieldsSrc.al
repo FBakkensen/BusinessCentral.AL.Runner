@@ -27,7 +27,7 @@ table 50021 "LF Row"
 /// Helper codeunit exercising AddLoadFields (standalone no-op because all
 /// fields are always in memory). AreFieldsLoaded is exercised via the
 /// RecordRef path where AL 16.2 exposes ALAreFieldsLoaded.
-codeunit 50136 "LF Src"
+codeunit 50144 "LF Src"
 {
     procedure AddLoadFieldsDoesNotThrow(): Boolean
     var

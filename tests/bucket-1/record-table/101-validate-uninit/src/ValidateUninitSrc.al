@@ -2,7 +2,7 @@
 /// The OnValidate trigger reads a global Record variable. When
 /// TryFireOnValidateInType calls GetUninitializedObject, the global
 /// var's backing field is null unless InitializeUninitializedObject is called.
-table 100003 "Validate Uninit Table"
+table 50067 "Validate Uninit Table"
 {
     DataClassification = CustomerContent;
 
@@ -37,7 +37,7 @@ table 100003 "Validate Uninit Table"
         Helper: Record "Validate Helper Table";
 }
 
-table 100004 "Validate Helper Table"
+table 50068 "Validate Helper Table"
 {
     DataClassification = CustomerContent;
 

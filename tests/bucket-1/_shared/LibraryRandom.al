@@ -3,7 +3,7 @@
 // All methods use BC built-ins so they run natively inside al-runner.
 // Note: The OnBeforeTestRun/OnAfterTestRun event subscriber is omitted because
 // "CAL Test Runner Publisher" (codeunit 130451) is not available in al-runner.
-codeunit 130440 "Library - Random"
+codeunit 50004 "Library - Random"
 {
     SingleInstance = true;
 

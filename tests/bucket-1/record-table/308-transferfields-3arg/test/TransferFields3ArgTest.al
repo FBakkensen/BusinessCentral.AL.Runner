@@ -1,4 +1,4 @@
-codeunit 308301 "TransferFields 3-Arg Tests"
+codeunit 50531 "TransferFields 3-Arg Tests"
 {
     Subtype = Test;
 

@@ -1,4 +1,4 @@
-table 56630 "OI Probe Row"
+table 50184 "OI Probe Row"
 {
     fields
     {
@@ -13,7 +13,7 @@ table 56630 "OI Probe Row"
     end;
 }
 
-table 56631 "OI Counter"
+table 50185 "OI Counter"
 {
     fields
     {
@@ -23,7 +23,7 @@ table 56631 "OI Counter"
     keys { key(PK; PK) { Clustered = true; } }
 }
 
-table 56632 "OI With Side Effect"
+table 50186 "OI With Side Effect"
 {
     fields
     {

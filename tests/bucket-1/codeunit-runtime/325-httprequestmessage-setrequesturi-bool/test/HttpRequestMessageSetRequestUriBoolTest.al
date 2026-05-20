@@ -1,4 +1,4 @@
-codeunit 50266 "HRM SetRequestUri Bool Test"
+codeunit 50272 "HRM SetRequestUri Bool Test"
 {
     Subtype = Test;
 

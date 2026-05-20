@@ -1,4 +1,4 @@
-codeunit 56440 "RecRef Holder"
+codeunit 50548 "RecRef Holder"
 {
     procedure DeclareOnly(): Integer
     var

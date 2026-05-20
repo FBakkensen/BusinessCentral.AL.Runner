@@ -1,4 +1,4 @@
-codeunit 53400 "Test Parent Object"
+codeunit 50537 "Test Parent Object"
 {
     Subtype = Test;
 

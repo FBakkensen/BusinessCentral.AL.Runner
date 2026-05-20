@@ -44,7 +44,7 @@ table 50036 "NAD Demo Table"
 // A plain (non-Test) codeunit with a public Test* procedure — another
 // shape that caused false positives.
 // -------------------------------------------------------------------
-codeunit 50233 "NAD Helper"
+codeunit 50240 "NAD Helper"
 {
     /// <summary>
     /// A public helper procedure whose name starts with "Test".

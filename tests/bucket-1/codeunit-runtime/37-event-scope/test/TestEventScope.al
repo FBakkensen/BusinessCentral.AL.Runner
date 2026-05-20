@@ -1,4 +1,4 @@
-codeunit 50310 "Test Event Scope"
+codeunit 50316 "Test Event Scope"
 {
     Subtype = Test;
 

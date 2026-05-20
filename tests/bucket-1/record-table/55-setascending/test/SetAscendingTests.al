@@ -1,4 +1,4 @@
-codeunit 56301 "SetAscending Tests"
+codeunit 50572 "SetAscending Tests"
 {
     Subtype = Test;
 

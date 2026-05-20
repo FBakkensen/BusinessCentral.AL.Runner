@@ -1,4 +1,4 @@
-table 50140 "CNT Item"
+table 50104 "CNT Item"
 {
     DataClassification = CustomerContent;
     fields
@@ -14,7 +14,7 @@ table 50140 "CNT Item"
     }
 }
 
-codeunit 50140 "CNT Helper"
+codeunit 50447 "CNT Helper"
 {
     procedure InsertItems(n: Integer)
     var

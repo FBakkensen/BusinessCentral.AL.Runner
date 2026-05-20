@@ -1,4 +1,4 @@
-table 67000 "FV Test Table"
+table 50192 "FV Test Table"
 {
     fields
     {

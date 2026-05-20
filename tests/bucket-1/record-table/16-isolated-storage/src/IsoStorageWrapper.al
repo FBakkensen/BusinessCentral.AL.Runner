@@ -1,4 +1,4 @@
-codeunit 50116 "Iso Storage Wrapper"
+codeunit 50479 "Iso Storage Wrapper"
 {
     procedure SetValue(StorageKey: Text; StorageValue: Text)
     begin

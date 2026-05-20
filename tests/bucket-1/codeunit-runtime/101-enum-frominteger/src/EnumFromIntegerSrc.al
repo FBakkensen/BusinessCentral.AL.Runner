@@ -7,7 +7,7 @@ enum 50000 "EFI Status"
     value(2; Closed) { }
 }
 
-codeunit 50031 "EFI Converter"
+codeunit 50039 "EFI Converter"
 {
     procedure FromInt(I: Integer): Enum "EFI Status"
     begin

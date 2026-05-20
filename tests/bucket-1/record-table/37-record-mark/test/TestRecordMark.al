@@ -1,4 +1,4 @@
-codeunit 54000 "Test Record Mark"
+codeunit 50539 "Test Record Mark"
 {
     Subtype = Test;
 

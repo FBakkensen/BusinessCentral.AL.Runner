@@ -1,4 +1,4 @@
-codeunit 62000 "Test CurrentTransactionType"
+codeunit 50582 "Test CurrentTransactionType"
 {
     Subtype = Test;
 

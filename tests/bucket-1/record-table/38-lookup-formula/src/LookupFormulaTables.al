@@ -1,4 +1,4 @@
-table 54100 "LF Parent"
+table 50144 "LF Parent"
 {
     DataClassification = CustomerContent;
 
@@ -24,7 +24,7 @@ table 54100 "LF Parent"
     }
 }
 
-table 54101 "LF Child"
+table 50145 "LF Child"
 {
     DataClassification = CustomerContent;
 

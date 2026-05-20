@@ -1,4 +1,4 @@
-table 50101 "Sample Order Line"
+table 50058 "Sample Order Line"
 {
     DataClassification = ToBeClassified;
 

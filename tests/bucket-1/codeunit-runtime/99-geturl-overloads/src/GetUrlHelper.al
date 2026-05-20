@@ -1,4 +1,4 @@
-codeunit 50375 "GetUrl Helper"
+codeunit 50378 "GetUrl Helper"
 {
     procedure GetUrlOneArg(): Text
     begin

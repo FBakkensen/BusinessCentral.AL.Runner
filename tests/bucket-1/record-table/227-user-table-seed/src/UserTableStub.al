@@ -1,7 +1,7 @@
 /// Minimal stub for the BC system User table (ID 2000000120).
 /// The runner pre-seeds this table with the configured user so that
 /// AL code calling User.Get(UserSecurityId()) succeeds without errors.
-table 2000000120 "User"
+table 50123 "User"
 {
     DataClassification = EndUserIdentifiableInformation;
     fields

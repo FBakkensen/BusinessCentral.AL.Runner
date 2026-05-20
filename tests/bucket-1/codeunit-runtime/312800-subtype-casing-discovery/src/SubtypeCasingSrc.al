@@ -10,7 +10,7 @@
 /// The actual test codeunits (using camelCase and lowercase spellings) live in test/.
 /// </summary>
 
-codeunit 50235 "SCD Helper"
+codeunit 50242 "SCD Helper"
 {
     procedure Add(A: Integer; B: Integer): Integer
     begin

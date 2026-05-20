@@ -1,4 +1,4 @@
-codeunit 50052 "SE Tests"
+codeunit 50060 "SE Tests"
 {
     Subtype = Test;
     var

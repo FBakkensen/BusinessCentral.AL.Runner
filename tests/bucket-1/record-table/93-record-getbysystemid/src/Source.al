@@ -1,5 +1,5 @@
 // Renumbered from 93000 to avoid collision in new bucket layout (#1385).
-table 1093000 "GBS Test Record"
+table 50204 "GBS Test Record"
 {
     fields
     {
@@ -9,7 +9,7 @@ table 1093000 "GBS Test Record"
     keys { key(PK; Id) { Clustered = true; } }
 }
 
-codeunit 93001 "GBS Lookup Helper"
+codeunit 50622 "GBS Lookup Helper"
 {
     procedure InsertAndGetSystemId(Id: Integer; Name: Text[100]): Guid
     var

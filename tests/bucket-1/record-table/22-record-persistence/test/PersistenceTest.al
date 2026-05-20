@@ -1,4 +1,4 @@
-codeunit 50922 "Record Persistence Tests"
+codeunit 50510 "Record Persistence Tests"
 {
     Subtype = Test;
 

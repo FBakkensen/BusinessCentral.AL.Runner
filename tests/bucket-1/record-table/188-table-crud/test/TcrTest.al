@@ -1,6 +1,6 @@
 /// Tests for Table CRUD operations — issue #685.
 /// Covers: Insert, Get, Modify, Delete, Find, Reset, SetFilter, SetRange.
-codeunit 124001 "TCR Test"
+codeunit 50497 "TCR Test"
 {
     Subtype = Test;
 

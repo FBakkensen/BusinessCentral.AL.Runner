@@ -30,7 +30,7 @@ table 50010 "DT Target"
     }
 }
 
-codeunit 50065 "DataTransfer Helper"
+codeunit 50073 "DataTransfer Helper"
 {
     procedure CopyRowsLeavesTargetEmpty(): Boolean
     var

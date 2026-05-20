@@ -1,4 +1,4 @@
-codeunit 50318 "EO Status Tests"
+codeunit 50324 "EO Status Tests"
 {
     Subtype = Test;
 

@@ -1,4 +1,4 @@
-codeunit 50920 "Option Field Tests"
+codeunit 50500 "Option Field Tests"
 {
     Subtype = Test;
 

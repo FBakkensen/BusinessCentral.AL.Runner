@@ -1,4 +1,4 @@
-codeunit 302002 "Clear Methods Tests"
+codeunit 50391 "Clear Methods Tests"
 {
     Subtype = Test;
 

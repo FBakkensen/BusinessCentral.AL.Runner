@@ -1,4 +1,4 @@
-codeunit 112002 TableLinksTest
+codeunit 50633 TableLinksTest
 {
     Subtype = Test;
     var Assert: Codeunit Assert;

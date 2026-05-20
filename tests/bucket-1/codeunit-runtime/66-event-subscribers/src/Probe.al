@@ -9,7 +9,7 @@ table 50048 "ES Counter"
     keys { key(PK; PK) { Clustered = true; } }
 }
 
-codeunit 50331 "ES Publisher"
+codeunit 50337 "ES Publisher"
 {
     procedure DoIt()
     begin
@@ -28,7 +28,7 @@ codeunit 50331 "ES Publisher"
     end;
 }
 
-codeunit 50332 "ES Subscriber"
+codeunit 50338 "ES Subscriber"
 {
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"ES Publisher", 'OnBeforeDoIt', '', true, true)]
     local procedure HandleBefore()

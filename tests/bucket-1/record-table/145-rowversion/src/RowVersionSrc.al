@@ -1,5 +1,5 @@
 /// Helper codeunit exercising Database.LastUsedRowVersion / Database.MinimumActiveRowVersion.
-codeunit 59380 "RV Src"
+codeunit 50453 "RV Src"
 {
     procedure GetLastUsedRowVersion(): BigInteger
     begin

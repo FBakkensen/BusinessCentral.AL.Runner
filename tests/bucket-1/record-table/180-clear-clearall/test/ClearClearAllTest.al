@@ -1,4 +1,4 @@
-codeunit 60051 "CLR Test"
+codeunit 50494 "CLR Test"
 {
     Subtype = Test;
 

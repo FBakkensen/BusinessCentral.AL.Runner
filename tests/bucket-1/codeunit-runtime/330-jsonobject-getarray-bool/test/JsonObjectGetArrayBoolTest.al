@@ -1,4 +1,4 @@
-codeunit 50276 "JsonObject Bool Test"
+codeunit 50282 "JsonObject Bool Test"
 {
     Subtype = Test;
 

@@ -1,4 +1,4 @@
-codeunit 61201 "CLF CheckLicenseFile Test"
+codeunit 50464 "CLF CheckLicenseFile Test"
 {
     Subtype = Test;
 

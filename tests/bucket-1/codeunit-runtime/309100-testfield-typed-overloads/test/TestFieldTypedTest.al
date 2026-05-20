@@ -14,7 +14,7 @@
 ///   TestField(Field, Text)              — positive + negative
 ///   TestField(Field, Text, ErrorInfo)
 ///   TestField(Field, ErrorInfo)         — non-empty check with ErrorInfo
-codeunit 50217 "TFTO Test"
+codeunit 50224 "TFTO Test"
 {
     Subtype = Test;
 

@@ -5,7 +5,7 @@
 /// Dialog.Error and Dialog.Message are already covered by existing tests
 /// (MessageHandler/Assert.ExpectedError suites); this suite is specifically
 /// for the two less-common methods that were flagged as gaps.
-codeunit 50107 "DLGM Src"
+codeunit 50115 "DLGM Src"
 {
     procedure CallHideSubsequentDialogs(hide: Boolean)
     var

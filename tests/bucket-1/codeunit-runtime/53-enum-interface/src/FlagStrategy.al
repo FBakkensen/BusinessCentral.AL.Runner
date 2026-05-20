@@ -3,7 +3,7 @@ interface "EI Has Flag"
     procedure GetFlag(): Boolean
 }
 
-codeunit 50319 "EI True Flag Impl" implements "EI Has Flag"
+codeunit 50325 "EI True Flag Impl" implements "EI Has Flag"
 {
     procedure GetFlag(): Boolean
     begin
@@ -11,7 +11,7 @@ codeunit 50319 "EI True Flag Impl" implements "EI Has Flag"
     end;
 }
 
-codeunit 50320 "EI False Flag Impl" implements "EI Has Flag"
+codeunit 50326 "EI False Flag Impl" implements "EI Has Flag"
 {
     procedure GetFlag(): Boolean
     begin

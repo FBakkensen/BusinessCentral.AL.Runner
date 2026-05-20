@@ -1,5 +1,5 @@
 /// Helper codeunit exercising ProductName — issue #755.
-codeunit 50124 "TAPN Src"
+codeunit 50132 "TAPN Src"
 {
     // ProductName.Full() — must not throw
     procedure ProductNameFull(): Text

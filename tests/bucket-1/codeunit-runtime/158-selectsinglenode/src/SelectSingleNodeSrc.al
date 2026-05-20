@@ -1,7 +1,7 @@
 /// Helper codeunit exercising XmlDocument.SelectSingleNode / XmlElement.SelectSingleNode.
 /// Builds XmlElement programmatically (avoiding XmlDocument.ReadFrom which hits a
 /// separate rewriter gap, see #481).
-codeunit 50099 "SSN Src"
+codeunit 50107 "SSN Src"
 {
     /// Build an element tree:
     /// <root>

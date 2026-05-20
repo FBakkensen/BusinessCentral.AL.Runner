@@ -1,4 +1,4 @@
-table 56400 "Commit Test Table"
+table 50177 "Commit Test Table"
 {
     fields
     {

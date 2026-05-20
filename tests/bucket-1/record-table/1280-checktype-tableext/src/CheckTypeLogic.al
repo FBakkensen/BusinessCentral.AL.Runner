@@ -1,4 +1,4 @@
-codeunit 1280001 "CheckType Logic"
+codeunit 50440 "CheckType Logic"
 {
     /// <summary>
     /// Returns the discount amount when Line Discount % is non-zero.

@@ -1,4 +1,4 @@
-codeunit 60301 "RFE Test"
+codeunit 50502 "RFE Test"
 {
     Subtype = Test;
 

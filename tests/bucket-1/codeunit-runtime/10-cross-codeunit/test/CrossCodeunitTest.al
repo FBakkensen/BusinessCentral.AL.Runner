@@ -1,4 +1,4 @@
-codeunit 50013 "Cross Codeunit Tests"
+codeunit 50021 "Cross Codeunit Tests"
 {
     Subtype = Test;
 

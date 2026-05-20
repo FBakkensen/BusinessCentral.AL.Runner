@@ -1,4 +1,4 @@
-codeunit 61501 "IDT ImportData Test"
+codeunit 50472 "IDT ImportData Test"
 {
     Subtype = Test;
 

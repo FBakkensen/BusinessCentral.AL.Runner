@@ -1,4 +1,4 @@
-codeunit 109002 FieldRefMetaTest
+codeunit 50393 FieldRefMetaTest
 {
     Subtype = Test;
     var Assert: Codeunit Assert;

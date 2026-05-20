@@ -1,4 +1,4 @@
-table 305000 "FPB FieldNo Table"
+table 50207 "FPB FieldNo Table"
 {
     DataClassification = ToBeClassified;
 

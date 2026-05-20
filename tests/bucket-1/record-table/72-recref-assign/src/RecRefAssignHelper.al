@@ -1,4 +1,4 @@
-table 56710 "RecRef Assign Data"
+table 50194 "RecRef Assign Data"
 {
     DataClassification = CustomerContent;
 
@@ -14,7 +14,7 @@ table 56710 "RecRef Assign Data"
     }
 }
 
-codeunit 56710 "RecRef Assign Helper"
+codeunit 50601 "RecRef Assign Helper"
 {
     /// <summary>
     /// Opens a RecordRef, inserts a record, assigns it to another RecordRef,

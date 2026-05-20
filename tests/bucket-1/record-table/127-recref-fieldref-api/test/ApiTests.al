@@ -1,4 +1,4 @@
-codeunit 56271 "API Tests"
+codeunit 50437 "API Tests"
 {
     Subtype = Test;
     var

@@ -1,4 +1,4 @@
-codeunit 50020 "Loop Helper"
+codeunit 50594 "Loop Helper"
 {
     procedure SumRange(FromVal: Integer; ToVal: Integer): Integer
     var

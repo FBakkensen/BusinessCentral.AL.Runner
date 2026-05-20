@@ -4,7 +4,7 @@
 ///   AddNavigationAction(Caption: Text; Description: Text)
 /// Uses default-initialised ErrorInfo values — ErrorInfo.Create() hits a separate
 /// DLL-loading gap and is deliberately avoided here.
-codeunit 50178 "EINA Src"
+codeunit 50185 "EINA Src"
 {
     procedure AddNavigationAction_1Arg(caption: Text): Boolean
     var

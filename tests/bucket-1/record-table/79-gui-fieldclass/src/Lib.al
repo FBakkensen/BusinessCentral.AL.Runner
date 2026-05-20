@@ -1,4 +1,4 @@
-table 79100 "Test Table 79"
+table 50195 "Test Table 79"
 {
     fields
     {
@@ -8,7 +8,7 @@ table 79100 "Test Table 79"
     }
 }
 
-codeunit 79100 "Gui FieldClass Lib"
+codeunit 50603 "Gui FieldClass Lib"
 {
     /// Returns true when GUI is available (should be false in standalone runner).
     procedure IsGuiAvailable(): Boolean

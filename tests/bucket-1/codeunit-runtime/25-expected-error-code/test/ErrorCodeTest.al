@@ -1,4 +1,4 @@
-codeunit 50177 ErrorCodeTest
+codeunit 50184 ErrorCodeTest
 {
     Subtype = Test;
 

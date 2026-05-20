@@ -1,4 +1,4 @@
-codeunit 59771 "UTC Test"
+codeunit 50484 "UTC Test"
 {
     Subtype = Test;
 

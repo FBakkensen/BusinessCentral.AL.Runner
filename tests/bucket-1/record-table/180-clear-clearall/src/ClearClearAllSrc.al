@@ -1,4 +1,4 @@
-table 60050 "CLR Row"
+table 50113 "CLR Row"
 {
     fields
     {
@@ -9,7 +9,7 @@ table 60050 "CLR Row"
 }
 
 /// Helper codeunit exercising Clear() and ClearAll().
-codeunit 60050 "CLR Src"
+codeunit 50493 "CLR Src"
 {
     var
         GlobalText: Text;

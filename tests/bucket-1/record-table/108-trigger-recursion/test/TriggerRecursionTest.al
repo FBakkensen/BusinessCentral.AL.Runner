@@ -1,4 +1,4 @@
-codeunit 108002 "Trigger Recursion Test"
+codeunit 50413 "Trigger Recursion Test"
 {
     Subtype = Test;
 

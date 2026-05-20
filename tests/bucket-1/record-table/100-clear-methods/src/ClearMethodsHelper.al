@@ -1,6 +1,6 @@
 /// Simple table for Clear Methods tests — provides a record type with an
 /// integer field to exercise Clear(RecordArray[i]).
-table 302010 "CMH Record"
+table 50062 "CMH Record"
 {
     fields
     {
@@ -11,7 +11,7 @@ table 302010 "CMH Record"
     keys { key(PK; Id) { } }
 }
 
-codeunit 302001 "Clear Methods Helper"
+codeunit 50390 "Clear Methods Helper"
 {
     procedure GetOutStream(var OS: OutStream)
     var

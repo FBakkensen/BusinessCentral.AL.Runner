@@ -1,4 +1,4 @@
-codeunit 50294 "Variant Dict Test"
+codeunit 50300 "Variant Dict Test"
 {
     Subtype = Test;
 

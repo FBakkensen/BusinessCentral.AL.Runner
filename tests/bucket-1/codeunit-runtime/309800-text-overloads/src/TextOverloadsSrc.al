@@ -1,7 +1,7 @@
 /// Helper codeunit exercising the missing Text/Label/TextConst overloads:
 ///   IncStr(Text, BigInteger), MaxStrLen(Variant),
 ///   Split(Text), IndexOfAny(Text, Integer) on Text / Label / TextConst.
-codeunit 50218 "TextOvl Src"
+codeunit 50225 "TextOvl Src"
 {
     var
         LabelVal: Label 'one,two,three';

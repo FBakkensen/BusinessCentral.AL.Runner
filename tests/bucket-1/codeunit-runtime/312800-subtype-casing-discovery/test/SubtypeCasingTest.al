@@ -23,7 +23,7 @@
 // Test codeunit using camelCase spelling  (SubType = Test)
 // This is the exact spelling shown in Microsoft Learn docs.
 // -----------------------------------------------------------------
-codeunit 50236 "SCD CamelCase Tests"
+codeunit 50243 "SCD CamelCase Tests"
 {
     SubType = Test;
 
@@ -60,7 +60,7 @@ codeunit 50236 "SCD CamelCase Tests"
 // -----------------------------------------------------------------
 // Test codeunit using all-lowercase spelling  (subtype = test)
 // -----------------------------------------------------------------
-codeunit 50237 "SCD Lowercase Tests"
+codeunit 50244 "SCD Lowercase Tests"
 {
     subtype = test;
 

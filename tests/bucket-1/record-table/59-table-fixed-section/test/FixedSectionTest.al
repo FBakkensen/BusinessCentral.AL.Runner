@@ -1,4 +1,4 @@
-codeunit 59401 "Test Table Fixed Section"
+codeunit 50580 "Test Table Fixed Section"
 {
     Subtype = Test;
 

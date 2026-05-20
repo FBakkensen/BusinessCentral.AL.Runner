@@ -1,4 +1,4 @@
-table 50240 "SR Item"
+table 50127 "SR Item"
 {
     fields
     {

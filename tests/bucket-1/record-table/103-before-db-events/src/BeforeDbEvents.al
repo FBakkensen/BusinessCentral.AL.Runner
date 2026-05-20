@@ -2,7 +2,7 @@
 // These fire BEFORE the database operation and before the table trigger.
 // Uses deterministic PKs per event type to avoid SingleInstance dependency.
 
-table 59960 "BDE Source"
+table 50071 "BDE Source"
 {
     fields
     {
@@ -12,7 +12,7 @@ table 59960 "BDE Source"
     keys { key(PK; PK) { Clustered = true; } }
 }
 
-table 59961 "BDE EventLog"
+table 50072 "BDE EventLog"
 {
     fields
     {
@@ -24,7 +24,7 @@ table 59961 "BDE EventLog"
     keys { key(PK; PK) { Clustered = true; } }
 }
 
-codeunit 59960 "BDE Subscriber"
+codeunit 50404 "BDE Subscriber"
 {
     // Deterministic PKs: BeforeInsert=1, AfterInsert=2, BeforeModify=3,
     // AfterModify=4, BeforeDelete=5, AfterDelete=6

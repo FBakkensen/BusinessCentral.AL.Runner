@@ -3,7 +3,7 @@
 /// Each FilteredCount variant exercises a different argument type to ensure
 /// the ALSetRange overload resolution does not produce CS0121.
 /// </summary>
-codeunit 56870 "SR Probe"
+codeunit 50616 "SR Probe"
 {
     /// <summary>Count rows where field 1 (Integer) matches intValue.</summary>
     procedure FilteredCountByInt(IntValue: Integer): Integer

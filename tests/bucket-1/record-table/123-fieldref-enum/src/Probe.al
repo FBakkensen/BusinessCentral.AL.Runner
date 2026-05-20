@@ -1,4 +1,4 @@
-codeunit 56230 "FE Probe"
+codeunit 50430 "FE Probe"
 {
     procedure FieldRefIsEnum(TableId: Integer; FieldNo: Integer): Boolean
     var

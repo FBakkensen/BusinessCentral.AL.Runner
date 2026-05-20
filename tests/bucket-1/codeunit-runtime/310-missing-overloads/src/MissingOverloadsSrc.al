@@ -10,7 +10,7 @@ table 50035 "MOv Rec"
     keys { key(PK; Id) { Clustered = true; } }
 }
 
-page 50005 "MOv Card"
+page 50004 "MOv Card"
 {
     PageType = Card;
     SourceTable = "MOv Rec";
@@ -27,7 +27,7 @@ page 50005 "MOv Card"
 /// Source helpers for the missing-overloads gap tests (issue #1380).
 /// Tests Dialog.Error(Text,Joker), ErrorInfo.AddAction/AddNavigationAction 4-arg,
 /// FilterPageBuilder.AddField(Text,Joker,Text), and TestField.Lookup(RecordRef).
-codeunit 50223 "MOv Src"
+codeunit 50230 "MOv Src"
 {
     // ── Dialog.Error(Text, Joker) ────────────────────────────────────────────
 

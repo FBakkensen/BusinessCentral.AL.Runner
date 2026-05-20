@@ -1,5 +1,5 @@
 /// Minimal table needed as the SourceTable var parameter in DataFileInformation.
-table 61320 "DFI Source"
+table 50109 "DFI Source"
 {
     fields
     {
@@ -13,7 +13,7 @@ table 61320 "DFI Source"
 ///     var HasApplication: Boolean; var HasApplicationData: Boolean;
 ///     var HasGlobalData: Boolean; var TenantInformation: Text;
 ///     var CreationDateTime: DateTime; var SourceTable: Table)
-codeunit 61300 "DFI Helper"
+codeunit 50469 "DFI Helper"
 {
     procedure CallDataFileInformation(ShowDialog: Boolean)
     var

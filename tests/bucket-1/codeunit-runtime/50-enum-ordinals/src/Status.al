@@ -7,7 +7,7 @@ enum 50006 "EO Status"
     value(3; Archived) { }
 }
 
-codeunit 50317 "EO Inspector"
+codeunit 50323 "EO Inspector"
 {
     procedure CountOrdinals(): Integer
     var

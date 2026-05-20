@@ -1,5 +1,5 @@
 /// Helper codeunit exercising Database.UnregisterTableConnection.
-codeunit 59770 "UTC Src"
+codeunit 50483 "UTC Src"
 {
     procedure CallUnregister(ct: TableConnectionType; name: Text)
     begin

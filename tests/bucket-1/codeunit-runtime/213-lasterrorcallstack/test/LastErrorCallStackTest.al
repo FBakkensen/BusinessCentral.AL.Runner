@@ -1,4 +1,4 @@
-codeunit 50164 "LEC Test"
+codeunit 50171 "LEC Test"
 {
     Subtype = Test;
 

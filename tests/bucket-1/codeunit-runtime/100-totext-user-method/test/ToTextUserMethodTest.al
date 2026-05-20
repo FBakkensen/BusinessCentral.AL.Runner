@@ -1,7 +1,7 @@
 // Tests for issue #1528: user-defined ToText() method must not be rewritten
 // by the Roslyn rewriter's `.ToText() → AlCompat.Format()` rule.
 
-codeunit 50027 "ToText User Method Test"
+codeunit 50035 "ToText User Method Test"
 {
     Subtype = Test;
 

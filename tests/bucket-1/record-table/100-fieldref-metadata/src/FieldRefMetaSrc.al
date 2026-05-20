@@ -1,4 +1,4 @@
-table 109000 "FieldRef Meta Table"
+table 50063 "FieldRef Meta Table"
 {
     DataClassification = CustomerContent;
     Caption = 'Field Ref Meta Table';
@@ -19,7 +19,7 @@ table 109000 "FieldRef Meta Table"
     keys { key(PK; "Document No.") { Clustered = true; } }
 }
 
-tableextension 109003 "FieldRef Meta Table Ext" extends "FieldRef Meta Table"
+tableextension 50001 "FieldRef Meta Table Ext" extends "FieldRef Meta Table"
 {
     fields
     {
@@ -30,7 +30,7 @@ tableextension 109003 "FieldRef Meta Table Ext" extends "FieldRef Meta Table"
     }
 }
 
-codeunit 109001 FieldRefMetaSrc
+codeunit 50392 FieldRefMetaSrc
 {
     procedure GetFieldName(TableNo: Integer; FieldNo: Integer): Text
     var

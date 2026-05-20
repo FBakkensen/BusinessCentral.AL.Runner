@@ -12,7 +12,7 @@ table 50041 "IS Position Data"
     }
 }
 
-codeunit 50277 "InStream Position Src"
+codeunit 50283 "InStream Position Src"
 {
     procedure ReadFromPosition(): Text
     var

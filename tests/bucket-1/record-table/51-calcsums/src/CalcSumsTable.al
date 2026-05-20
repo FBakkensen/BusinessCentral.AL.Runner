@@ -1,4 +1,4 @@
-table 55800 "CalcSums Entry"
+table 50168 "CalcSums Entry"
 {
     DataClassification = ToBeClassified;
 

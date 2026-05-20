@@ -1,6 +1,6 @@
 /// Helper codeunit exercising Database.SerialNumber / Database.TenantId /
 /// Database.ServiceInstanceId — the identity built-ins listed in issue #478.
-codeunit 59550 "DBI Src"
+codeunit 50457 "DBI Src"
 {
     procedure GetSerialNumber(): Text
     begin

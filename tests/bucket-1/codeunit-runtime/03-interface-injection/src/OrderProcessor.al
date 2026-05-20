@@ -1,4 +1,4 @@
-codeunit 50004 "Order Processor"
+codeunit 50012 "Order Processor"
 {
     procedure ProcessOrder(ItemNo: Code[20]; Quantity: Integer; PricingSvc: Interface "IPricing Service"): Decimal
     var

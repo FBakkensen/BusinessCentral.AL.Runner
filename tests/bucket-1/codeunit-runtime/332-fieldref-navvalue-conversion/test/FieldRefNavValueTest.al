@@ -1,4 +1,4 @@
-codeunit 50280 "FieldRef NavValue Test"
+codeunit 50286 "FieldRef NavValue Test"
 {
     Subtype = Test;
 

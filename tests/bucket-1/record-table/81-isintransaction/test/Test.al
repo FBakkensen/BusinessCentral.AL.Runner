@@ -1,4 +1,4 @@
-codeunit 81000 "Test IsInWriteTransaction"
+codeunit 50607 "Test IsInWriteTransaction"
 {
     Subtype = Test;
 

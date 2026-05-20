@@ -1,6 +1,6 @@
 /// Tests for TestField on Integer fields inside table procedures (ALTestFieldNavValueSafe object overload).
 /// Reproduces CS1503 'object' → 'NavValue' from issue #1324.
-codeunit 50037 "TFO Test"
+codeunit 50045 "TFO Test"
 {
     Subtype = Test;
 

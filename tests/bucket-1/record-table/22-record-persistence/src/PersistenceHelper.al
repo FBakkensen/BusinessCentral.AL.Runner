@@ -1,4 +1,4 @@
-codeunit 50122 "Persistence Helper"
+codeunit 50509 "Persistence Helper"
 {
     procedure SetupData()
     var

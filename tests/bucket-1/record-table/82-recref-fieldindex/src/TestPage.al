@@ -1,4 +1,4 @@
-page 50400 "Test Item Card"
+page 50014 "Test Item Card"
 {
     PageType = Card;
     SourceTable = "Test Item";

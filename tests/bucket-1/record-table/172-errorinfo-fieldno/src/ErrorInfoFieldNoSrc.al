@@ -1,5 +1,5 @@
 /// Helper codeunit exercising ErrorInfo.FieldNo getter/setter.
-codeunit 59930 "EIF Src"
+codeunit 50485 "EIF Src"
 {
     procedure SetAndGet(fieldNo: Integer): Integer
     var

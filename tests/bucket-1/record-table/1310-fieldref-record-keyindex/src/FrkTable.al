@@ -1,6 +1,6 @@
 /// Table used by FieldRef.Record().KeyIndex tests.
 /// Two-field PK (Id, Code) so KeyRef.FieldCount = 2.
-table 1310001 "FRK Test Entry"
+table 50101 "FRK Test Entry"
 {
     fields
     {

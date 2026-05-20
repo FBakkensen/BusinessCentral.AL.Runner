@@ -1,4 +1,4 @@
-codeunit 52800 "Test Ext Fields"
+codeunit 50524 "Test Ext Fields"
 {
     Subtype = Test;
 

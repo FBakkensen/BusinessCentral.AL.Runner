@@ -1,4 +1,4 @@
-table 53000 "Mod All Table"
+table 50135 "Mod All Table"
 {
     DataClassification = CustomerContent;
 

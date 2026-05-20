@@ -1,7 +1,7 @@
 /// Tables and source for CalcFields FlowField tests (issue #864).
 
 // ── Child table — records linked to a parent ──────────────────────────────────
-table 116000 "CF Child"
+table 50130 "CF Child"
 {
     DataClassification = ToBeClassified;
 
@@ -15,7 +15,7 @@ table 116000 "CF Child"
 }
 
 // ── Parent table — FlowFields computed from CF Child ─────────────────────────
-table 116001 "CF Parent"
+table 50131 "CF Parent"
 {
     DataClassification = ToBeClassified;
 

@@ -10,7 +10,7 @@
 ///
 /// IsValidUrl() is a pure-logic helper with no HTTP variables; it is called by tests.
 /// </summary>
-codeunit 50369 "HTTP Probe"
+codeunit 50372 "HTTP Probe"
 {
     /// <summary>
     /// Method that declares HttpClient, HttpRequestMessage, HttpResponseMessage, and

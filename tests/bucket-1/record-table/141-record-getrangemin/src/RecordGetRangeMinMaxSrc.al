@@ -1,5 +1,5 @@
 /// Table used by the GetRangeMin / GetRangeMax proving tests.
-table 60000 "GRM Item"
+table 50105 "GRM Item"
 {
     DataClassification = CustomerContent;
     fields
@@ -16,7 +16,7 @@ table 60000 "GRM Item"
 
 /// Helper codeunit that wraps SetRange + GetRangeMin / GetRangeMax so the
 /// test can call them without constructing a Record inline.
-codeunit 60000 "GRM Helper"
+codeunit 50449 "GRM Helper"
 {
     /// Set an integer range filter on Quantity and return the lower bound.
     procedure GetMinQty(minQ: Integer; maxQ: Integer): Integer

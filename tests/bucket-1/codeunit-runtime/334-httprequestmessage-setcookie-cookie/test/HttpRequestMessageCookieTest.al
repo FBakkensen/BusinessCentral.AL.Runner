@@ -1,4 +1,4 @@
-codeunit 50284 "HRM Cookie Test"
+codeunit 50290 "HRM Cookie Test"
 {
     Subtype = Test;
 

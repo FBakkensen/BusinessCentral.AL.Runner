@@ -3,7 +3,7 @@
 ///   1. Positive    — Delete(true) fires the trigger (counter row created).
 ///   2. Negative    — Delete(false) skips the trigger; right-reason counter check.
 ///   3. Rec state   — trigger sees the correct Rec.Val before the row is gone.
-codeunit 100018 "ODT Tests"
+codeunit 50410 "ODT Tests"
 {
     Subtype = Test;
     var

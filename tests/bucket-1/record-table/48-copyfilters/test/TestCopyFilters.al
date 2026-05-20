@@ -1,4 +1,4 @@
-codeunit 55301 "Test CopyFilters"
+codeunit 50558 "Test CopyFilters"
 {
     Subtype = Test;
 

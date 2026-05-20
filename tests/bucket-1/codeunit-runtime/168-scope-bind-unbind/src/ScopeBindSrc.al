@@ -17,7 +17,7 @@ table 50019 "SBU Counter"
     }
 }
 
-codeunit 50115 "SBU Publisher"
+codeunit 50123 "SBU Publisher"
 {
     [IntegrationEvent(false, false)]
     procedure OnTrigger()
@@ -30,7 +30,7 @@ codeunit 50115 "SBU Publisher"
     end;
 }
 
-codeunit 50116 "SBU Manual Sub"
+codeunit 50124 "SBU Manual Sub"
 {
     EventSubscriberInstance = Manual;
 

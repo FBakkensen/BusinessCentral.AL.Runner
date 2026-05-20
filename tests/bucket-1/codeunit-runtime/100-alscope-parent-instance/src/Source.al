@@ -7,7 +7,7 @@
 // accessed with an instance reference."
 //
 // The fix: change AlScope.Parent from static to instance property.
-codeunit 50014 "Scope Parent Instance Src"
+codeunit 50022 "Scope Parent Instance Src"
 {
     var
         IsActivated: Boolean;

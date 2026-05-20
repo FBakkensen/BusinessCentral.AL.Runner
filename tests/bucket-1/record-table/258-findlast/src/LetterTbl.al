@@ -1,4 +1,4 @@
-table 50258 "FL Letter"
+table 50129 "FL Letter"
 {
     fields
     {

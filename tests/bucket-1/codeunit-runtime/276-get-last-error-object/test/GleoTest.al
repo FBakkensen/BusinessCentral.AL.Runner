@@ -1,7 +1,7 @@
 /// GetLastErrorObject tests (issue #853).
 /// Proves GetLastErrorObject() returns a Variant after an error and does not
 /// crash when there is no active error.
-codeunit 50194 "GLEO Test"
+codeunit 50201 "GLEO Test"
 {
     Subtype = Test;
     var Assert: Codeunit Assert;

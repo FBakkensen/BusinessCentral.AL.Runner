@@ -1,4 +1,4 @@
-codeunit 130000 Assert
+codeunit 50001 Assert
 {
 
     trigger OnRun()

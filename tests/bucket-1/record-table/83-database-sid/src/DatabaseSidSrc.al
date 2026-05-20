@@ -1,5 +1,5 @@
 /// Helper codeunit exercising Database.SID().
-codeunit 81400 "DS Src"
+codeunit 50611 "DS Src"
 {
     /// Returns the result of Database.SID().
     procedure GetSid(): Text

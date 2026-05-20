@@ -1,4 +1,4 @@
-codeunit 94002 "CFV Clear Field Tests"
+codeunit 50625 "CFV Clear Field Tests"
 {
     Subtype = Test;
 

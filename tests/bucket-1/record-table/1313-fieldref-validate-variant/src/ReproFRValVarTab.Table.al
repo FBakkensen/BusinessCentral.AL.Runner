@@ -1,4 +1,4 @@
-table 1313100 "Repro FRValVar Tab"
+table 50103 "Repro FRValVar Tab"
 {
     DataClassification = CustomerContent;
 

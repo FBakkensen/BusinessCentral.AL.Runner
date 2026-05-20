@@ -1,4 +1,4 @@
-table 66000 "Count Rows Test Table"
+table 50191 "Count Rows Test Table"
 {
     fields
     {

@@ -1,4 +1,4 @@
-codeunit 50127 "MDI Test"
+codeunit 50135 "MDI Test"
 {
     Subtype = Test;
 

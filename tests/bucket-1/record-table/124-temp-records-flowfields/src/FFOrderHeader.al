@@ -1,4 +1,4 @@
-table 56242 "FF Order Header"
+table 50094 "FF Order Header"
 {
     fields
     {

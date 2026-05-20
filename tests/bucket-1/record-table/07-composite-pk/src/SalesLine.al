@@ -1,4 +1,4 @@
-table 50107 "Test Document Line"
+table 50059 "Test Document Line"
 {
     DataClassification = ToBeClassified;
 

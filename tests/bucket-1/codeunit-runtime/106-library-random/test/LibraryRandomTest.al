@@ -1,4 +1,4 @@
-codeunit 50054 "Library Random Test"
+codeunit 50062 "Library Random Test"
 {
     Subtype = Test;
 

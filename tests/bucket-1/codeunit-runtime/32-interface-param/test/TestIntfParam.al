@@ -1,4 +1,4 @@
-codeunit 50257 "Test Interface Param"
+codeunit 50263 "Test Interface Param"
 {
     Subtype = Test;
 

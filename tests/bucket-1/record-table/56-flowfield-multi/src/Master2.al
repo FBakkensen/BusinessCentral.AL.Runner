@@ -1,4 +1,4 @@
-table 56560 "FFM Master"
+table 50178 "FFM Master"
 {
     fields
     {
@@ -13,7 +13,7 @@ table 56560 "FFM Master"
     keys { key(PK; Code1, Code2) { Clustered = true; } }
 }
 
-table 56561 "FFM Child"
+table 50179 "FFM Child"
 {
     fields
     {

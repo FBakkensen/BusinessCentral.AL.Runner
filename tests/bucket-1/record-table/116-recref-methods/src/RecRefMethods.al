@@ -1,4 +1,4 @@
-table 50116 "RecRef Method Table"
+table 50090 "RecRef Method Table"
 {
     fields
     {
@@ -13,7 +13,7 @@ table 50116 "RecRef Method Table"
     }
 }
 
-codeunit 50117 "RecRef Method Helper"
+codeunit 50424 "RecRef Method Helper"
 {
     procedure TestRename(): Boolean
     var

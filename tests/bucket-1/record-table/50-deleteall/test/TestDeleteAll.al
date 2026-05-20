@@ -1,4 +1,4 @@
-codeunit 55601 "Test Delete All"
+codeunit 50564 "Test Delete All"
 {
     Subtype = Test;
 

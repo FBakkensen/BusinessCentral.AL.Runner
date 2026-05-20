@@ -1,4 +1,4 @@
-codeunit 56260 "Metadata Probe"
+codeunit 50434 "Metadata Probe"
 {
     procedure GetFieldCaption(TableNo: Integer; FieldNo: Integer): Text
     var

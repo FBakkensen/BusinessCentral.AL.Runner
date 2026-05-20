@@ -1,4 +1,4 @@
-table 53500 "Val No Val Table"
+table 50142 "Val No Val Table"
 {
     DataClassification = CustomerContent;
 

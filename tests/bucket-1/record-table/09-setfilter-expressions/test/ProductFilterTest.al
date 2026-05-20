@@ -1,4 +1,4 @@
-codeunit 50909 "Product Filter Tests"
+codeunit 50389 "Product Filter Tests"
 {
     Subtype = Test;
 

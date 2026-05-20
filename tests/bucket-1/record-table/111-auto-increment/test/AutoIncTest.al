@@ -1,4 +1,4 @@
-codeunit 295002 "Auto Increment Test"
+codeunit 50416 "Auto Increment Test"
 {
     Subtype = Test;
 

@@ -1,4 +1,4 @@
-codeunit 50360 "EI Verbosity Src"
+codeunit 50364 "EI Verbosity Src"
 {
     procedure SetError_GetIsError(): Boolean
     var

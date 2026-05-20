@@ -1,4 +1,4 @@
-codeunit 50299 "HC Error Envelope Test"
+codeunit 50305 "HC Error Envelope Test"
 {
     Subtype = Test;
 

@@ -1,5 +1,5 @@
 // Renumbered from 61401 to avoid collision in new bucket layout (#1385).
-codeunit 1061401 "CCP CopyCompany Test"
+codeunit 50468 "CCP CopyCompany Test"
 {
     Subtype = Test;
 

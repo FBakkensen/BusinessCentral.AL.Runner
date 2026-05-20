@@ -1,4 +1,4 @@
-codeunit 50059 "MaxStrLen Test"
+codeunit 50067 "MaxStrLen Test"
 {
     Subtype = Test;
 

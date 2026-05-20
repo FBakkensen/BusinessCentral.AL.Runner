@@ -1,4 +1,4 @@
-codeunit 304000 "RecRef Factory Src"
+codeunit 50396 "RecRef Factory Src"
 {
     /// Uses an array of RecordRef variables, which causes the BC compiler
     /// to emit NavRecordRef.Factory (rewritten to MockRecordRef.Factory).

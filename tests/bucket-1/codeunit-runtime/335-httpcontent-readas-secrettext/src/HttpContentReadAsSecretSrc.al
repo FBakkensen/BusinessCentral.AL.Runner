@@ -1,4 +1,4 @@
-codeunit 50285 "HC ReadAs Secret Src"
+codeunit 50291 "HC ReadAs Secret Src"
 {
     procedure ReadAsSecretRoundTrip(body: Text): Text
     var

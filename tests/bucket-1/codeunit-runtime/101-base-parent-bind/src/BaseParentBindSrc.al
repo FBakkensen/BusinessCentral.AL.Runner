@@ -14,7 +14,7 @@
 // Fix: AlScope.Parent must return `this` instead of null, so base.Parent.Bind()
 // calls AlScope.Bind() (the no-op stub) rather than dereferencing null.
 
-codeunit 50028 "BPB Subscriber"
+codeunit 50036 "BPB Subscriber"
 {
     EventSubscriberInstance = Manual;
 
@@ -49,7 +49,7 @@ codeunit 50028 "BPB Subscriber"
     end;
 }
 
-codeunit 50029 "BPB Publisher"
+codeunit 50037 "BPB Publisher"
 {
     [IntegrationEvent(false, false)]
     procedure OnFire()

@@ -1,4 +1,4 @@
-table 1218000 "CKI Table"
+table 50092 "CKI Table"
 {
     fields
     {

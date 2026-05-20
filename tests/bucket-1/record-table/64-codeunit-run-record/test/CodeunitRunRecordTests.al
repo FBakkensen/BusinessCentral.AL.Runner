@@ -1,4 +1,4 @@
-codeunit 57903 "CRR Codeunit Run Tests"
+codeunit 50590 "CRR Codeunit Run Tests"
 {
     Subtype = Test;
 

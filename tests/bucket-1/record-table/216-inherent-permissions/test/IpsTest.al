@@ -9,7 +9,7 @@
 /// Test strategy:
 ///   Echo — round-trips a Text value; proves the codeunit body executes.
 ///   Add — arithmeti; proves the inner-scope method survives the rewrite.
-codeunit 97906 "IPS Test"
+codeunit 50506 "IPS Test"
 {
     Subtype = Test;
 

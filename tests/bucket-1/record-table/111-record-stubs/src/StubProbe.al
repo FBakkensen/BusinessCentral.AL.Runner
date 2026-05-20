@@ -1,4 +1,4 @@
-table 50112 "Stub Probe"
+table 50086 "Stub Probe"
 {
     DataClassification = ToBeClassified;
 

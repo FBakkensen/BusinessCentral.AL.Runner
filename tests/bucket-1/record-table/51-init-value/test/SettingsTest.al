@@ -1,4 +1,4 @@
-codeunit 50511 "IV Settings Tests"
+codeunit 50566 "IV Settings Tests"
 {
     Subtype = Test;
 

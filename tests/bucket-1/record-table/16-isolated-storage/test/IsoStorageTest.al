@@ -1,4 +1,4 @@
-codeunit 50916 "Iso Storage Tests"
+codeunit 50480 "Iso Storage Tests"
 {
     Subtype = Test;
 

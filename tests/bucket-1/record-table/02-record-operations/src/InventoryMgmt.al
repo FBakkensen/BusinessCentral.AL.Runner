@@ -1,4 +1,4 @@
-codeunit 50101 "Inventory Management"
+codeunit 50382 "Inventory Management"
 {
     procedure AddStock(ItemNo: Code[20]; Qty: Integer)
     var

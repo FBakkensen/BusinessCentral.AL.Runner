@@ -1,4 +1,4 @@
-codeunit 50112 "VCA Test"
+codeunit 50120 "VCA Test"
 {
     Subtype = Test;
 

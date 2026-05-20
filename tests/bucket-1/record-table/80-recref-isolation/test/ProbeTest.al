@@ -1,4 +1,4 @@
-codeunit 56810 "Isolation Probe Test"
+codeunit 50606 "Isolation Probe Test"
 {
     Subtype = Test;
 

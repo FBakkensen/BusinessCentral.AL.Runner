@@ -1,4 +1,4 @@
-table 54600 "HF Probe"
+table 50153 "HF Probe"
 {
     DataClassification = CustomerContent;
 

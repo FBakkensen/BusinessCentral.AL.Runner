@@ -1,4 +1,4 @@
-table 55600 "Delete All Table"
+table 50167 "Delete All Table"
 {
     fields
     {

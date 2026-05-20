@@ -1,4 +1,4 @@
-table 100010 "Case Validate Table"
+table 50075 "Case Validate Table"
 {
     DataClassification = CustomerContent;
 
@@ -36,7 +36,7 @@ table 100010 "Case Validate Table"
 }
 
 /// Helper codeunit to test the case statement without going through trigger dispatch
-codeunit 100012 "Case Helper"
+codeunit 50408 "Case Helper"
 {
     procedure GetPosition(RateCode: Text): Integer
     begin

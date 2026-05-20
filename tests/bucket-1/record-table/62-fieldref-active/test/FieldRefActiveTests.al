@@ -1,4 +1,4 @@
-codeunit 57802 "FA FieldRef Active Tests"
+codeunit 50584 "FA FieldRef Active Tests"
 {
     Subtype = Test;
 

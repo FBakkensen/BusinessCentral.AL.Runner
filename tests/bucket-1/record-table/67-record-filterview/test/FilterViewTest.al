@@ -1,4 +1,4 @@
-codeunit 67001 "Filter View Test"
+codeunit 50596 "Filter View Test"
 {
     Subtype = Test;
 

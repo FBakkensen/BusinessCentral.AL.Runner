@@ -1,6 +1,6 @@
 /// Helper codeunit exercising Database.GetDefaultTableConnection.
 /// Signature per the AL compiler: `GetDefaultTableConnection(ConnectionType: TableConnectionType): Text`.
-codeunit 59670 "GDTC Src"
+codeunit 50473 "GDTC Src"
 {
     procedure GetDefault(ct: TableConnectionType): Text
     begin

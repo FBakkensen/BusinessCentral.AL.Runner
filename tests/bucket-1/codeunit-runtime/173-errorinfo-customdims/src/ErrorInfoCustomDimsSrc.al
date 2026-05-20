@@ -1,5 +1,5 @@
 /// Helper codeunit exercising ErrorInfo.CustomDimensions getter/setter.
-codeunit 50128 "EICD Src"
+codeunit 50136 "EICD Src"
 {
     procedure SetAndGetCount(): Integer
     var

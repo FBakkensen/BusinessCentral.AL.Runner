@@ -2,7 +2,7 @@
 /// accessors + RequestSessionUpdate. Standalone semantics: settings
 /// hold in-memory defaults; RequestSessionUpdate is a no-op (no
 /// service-tier session to refresh).
-codeunit 50145 "SST Src"
+codeunit 50152 "SST Src"
 {
     procedure Init_DoesNotThrow(): Boolean
     var

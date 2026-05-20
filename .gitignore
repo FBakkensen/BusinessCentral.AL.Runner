@@ -6,6 +6,8 @@ obj/
 # `dotnet run --project spike/v2/Runner` and is regenerated on every run.
 # The committed snapshot lives at spike/v2/Runner/v2-classification.json.
 /v2-classification.json
+# Also ignore per-bucket classification artifacts written when running against tests/bucket-*/.
+tests/**/v2-classification.json
 
 # Visual Studio / Rider
 .vs/

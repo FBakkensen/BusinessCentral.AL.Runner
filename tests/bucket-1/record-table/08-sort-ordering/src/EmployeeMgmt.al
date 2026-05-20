@@ -1,4 +1,4 @@
-codeunit 50108 "Employee Management"
+codeunit 50386 "Employee Management"
 {
     procedure GetHighestPaidName(): Text[100]
     var

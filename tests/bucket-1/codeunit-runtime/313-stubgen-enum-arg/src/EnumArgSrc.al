@@ -21,7 +21,7 @@ enum 50002 "Enum Arg Status"
 
 /// Simulates the codeunit whose methods have Enum/Option-typed parameters.
 /// In production use this would come from a missing library package (auto-stubbed).
-codeunit 50238 "Enum Arg Helper"
+codeunit 50245 "Enum Arg Helper"
 {
     /// Method with a named Enum parameter — the canonical #1419 failure pattern.
     /// Returns the ordinal of the passed enum value so the test can assert a

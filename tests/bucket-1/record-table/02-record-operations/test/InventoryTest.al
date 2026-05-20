@@ -1,4 +1,4 @@
-codeunit 50901 "Inventory Management Tests"
+codeunit 50383 "Inventory Management Tests"
 {
     Subtype = Test;
 

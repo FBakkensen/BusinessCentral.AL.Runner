@@ -1,4 +1,4 @@
-codeunit 63001 "FieldNo Test"
+codeunit 50586 "FieldNo Test"
 {
     Subtype = Test;
 

@@ -7,7 +7,7 @@
 /// The tests here are written to work under --test-isolation method:
 /// each test sets up its own state and verifies it correctly.
 
-codeunit 50167 "CI Isolation Tests"
+codeunit 50174 "CI Isolation Tests"
 {
     Subtype = Test;
 

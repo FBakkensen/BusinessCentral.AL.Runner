@@ -1,4 +1,4 @@
-codeunit 61001 "DAK AlterKey Test"
+codeunit 50460 "DAK AlterKey Test"
 {
     Subtype = Test;
 

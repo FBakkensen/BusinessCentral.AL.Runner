@@ -1,7 +1,7 @@
 /// CalcFields FlowField tests (issue #864).
 /// Proves that CalcFields correctly evaluates Sum, Count, and Exist
 /// FlowField formulas against in-memory child records.
-codeunit 116002 "CF Test"
+codeunit 50522 "CF Test"
 {
     Subtype = Test;
     var Assert: Codeunit Assert;

@@ -2,7 +2,7 @@
 // When IncludeSender is true, the subscriber receives the publishing codeunit instance
 // as its first parameter, enabling it to read/write publisher state.
 
-codeunit 50039 "SP Publisher"
+codeunit 50047 "SP Publisher"
 {
     var
         InternalState: Integer;
@@ -34,7 +34,7 @@ codeunit 50039 "SP Publisher"
     end;
 }
 
-codeunit 50040 "SP Subscriber"
+codeunit 50048 "SP Subscriber"
 {
     SingleInstance = true;
     var
@@ -53,7 +53,7 @@ codeunit 50040 "SP Subscriber"
 }
 
 // Second publisher using BusinessEvent(IncludeSender=true)
-codeunit 50041 "SP BizPublisher"
+codeunit 50049 "SP BizPublisher"
 {
     var
         OrderNo: Integer;
@@ -75,7 +75,7 @@ codeunit 50041 "SP BizPublisher"
     end;
 }
 
-codeunit 50042 "SP BizSubscriber"
+codeunit 50050 "SP BizSubscriber"
 {
     SingleInstance = true;
     var
@@ -93,7 +93,7 @@ codeunit 50042 "SP BizSubscriber"
 }
 
 // Third publisher: IncludeSender=true with var params (mixed pattern)
-codeunit 50043 "SP MixedPublisher"
+codeunit 50051 "SP MixedPublisher"
 {
     var
         Tag: Text[50];
@@ -127,7 +127,7 @@ codeunit 50043 "SP MixedPublisher"
     end;
 }
 
-codeunit 50044 "SP MixedSubscriber"
+codeunit 50052 "SP MixedSubscriber"
 {
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"SP MixedPublisher", OnBeforeValidate, '', true, true)]
     local procedure HandleBeforeValidate(sender: Codeunit "SP MixedPublisher"; var Value: Integer; var IsHandled: Boolean)
@@ -141,7 +141,7 @@ codeunit 50044 "SP MixedSubscriber"
 }
 
 // Fourth publisher: IncludeSender=false as control (should still work)
-codeunit 50045 "SP NoSender Publisher"
+codeunit 50053 "SP NoSender Publisher"
 {
     [IntegrationEvent(false, false)]
     procedure OnSimpleEvent(Value: Integer)
@@ -154,7 +154,7 @@ codeunit 50045 "SP NoSender Publisher"
     end;
 }
 
-codeunit 50046 "SP NoSender Subscriber"
+codeunit 50054 "SP NoSender Subscriber"
 {
     SingleInstance = true;
     var

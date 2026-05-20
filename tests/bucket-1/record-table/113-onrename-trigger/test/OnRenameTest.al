@@ -6,7 +6,7 @@
 ///   1. Positive        — Rename fires the trigger; TriggerRan is true at new PK.
 ///   2. New-PK visible  — counter is keyed by the new PK, proving Rec.PK = new value.
 ///   3. Field values    — trigger stores Rec.Val; verifies non-PK fields are readable.
-codeunit 100021 "ORT Tests"
+codeunit 50423 "ORT Tests"
 {
     Subtype = Test;
     var

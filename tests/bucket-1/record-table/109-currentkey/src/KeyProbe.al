@@ -1,5 +1,5 @@
 // Renumbered from 50109 to avoid collision in new bucket layout (#1385).
-table 1050109 "Key Probe"
+table 50082 "Key Probe"
 {
     DataClassification = ToBeClassified;
 

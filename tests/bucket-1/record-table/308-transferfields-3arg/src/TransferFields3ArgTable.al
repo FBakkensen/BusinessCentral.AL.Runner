@@ -1,4 +1,4 @@
-table 308300 "TF3Arg Record"
+table 50137 "TF3Arg Record"
 {
     DataClassification = ToBeClassified;
 

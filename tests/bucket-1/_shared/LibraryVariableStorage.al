@@ -1,6 +1,6 @@
 // Stub for BC's Library - Variable Storage codeunit (ID 131004).
 // At runtime, MockCodeunitHandle routes codeunit 131004 calls to MockVariableStorage.
-codeunit 131004 "Library - Variable Storage"
+codeunit 50007 "Library - Variable Storage"
 {
     procedure Enqueue(Value: Variant)
     begin

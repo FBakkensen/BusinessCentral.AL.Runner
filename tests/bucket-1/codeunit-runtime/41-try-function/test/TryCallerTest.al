@@ -1,4 +1,4 @@
-codeunit 50312 "Try Caller Tests"
+codeunit 50318 "Try Caller Tests"
 {
     Subtype = Test;
 

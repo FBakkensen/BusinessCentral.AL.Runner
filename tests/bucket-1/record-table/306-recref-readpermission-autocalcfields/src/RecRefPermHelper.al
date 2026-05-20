@@ -1,4 +1,4 @@
-table 306020 "RecRef Perm Table"
+table 50136 "RecRef Perm Table"
 {
     fields
     {
@@ -13,7 +13,7 @@ table 306020 "RecRef Perm Table"
     }
 }
 
-codeunit 306021 "RecRef Perm Helper"
+codeunit 50529 "RecRef Perm Helper"
 {
     procedure TestReadPermission(): Boolean
     var

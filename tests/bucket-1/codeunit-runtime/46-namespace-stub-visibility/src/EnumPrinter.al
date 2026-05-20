@@ -13,7 +13,7 @@ enum 50005 "Print Option"
     value(2; Final) { Caption = 'Final'; }
 }
 
-codeunit 50313 "Print Option Helper"
+codeunit 50319 "Print Option Helper"
 {
     procedure GetDefault(): Enum "Print Option"
     var

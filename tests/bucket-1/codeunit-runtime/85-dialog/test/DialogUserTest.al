@@ -1,5 +1,5 @@
 // Renumbered from 85001 to avoid collision in new bucket layout (#1385).
-codeunit 50363 DialogUserTest
+codeunit 50367 DialogUserTest
 {
     Subtype = Test;
 

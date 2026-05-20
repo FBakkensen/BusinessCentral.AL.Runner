@@ -1,4 +1,4 @@
-codeunit 116001 "DB Stubs Test"
+codeunit 50401 "DB Stubs Test"
 {
     Subtype = Test;
 

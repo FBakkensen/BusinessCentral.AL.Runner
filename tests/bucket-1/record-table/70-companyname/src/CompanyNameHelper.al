@@ -1,4 +1,4 @@
-codeunit 56690 "Company Name Helper"
+codeunit 50599 "Company Name Helper"
 {
     procedure GetCompanyName(): Text
     begin

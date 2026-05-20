@@ -1,4 +1,4 @@
-codeunit 66001 "Record Count Test"
+codeunit 50593 "Record Count Test"
 {
     Subtype = Test;
 

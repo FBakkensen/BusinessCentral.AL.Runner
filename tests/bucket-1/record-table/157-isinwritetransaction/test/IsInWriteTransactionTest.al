@@ -1,4 +1,4 @@
-codeunit 61701 "IWT Tests"
+codeunit 50478 "IWT Tests"
 {
     Subtype = Test;
 

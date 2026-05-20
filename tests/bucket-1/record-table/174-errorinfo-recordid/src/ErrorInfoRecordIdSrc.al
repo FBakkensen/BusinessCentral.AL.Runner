@@ -7,7 +7,7 @@
 /// works (returns the default RecordId on a fresh ErrorInfo); this suite
 /// covers that slice. Filing a follow-up would cover the setter once the
 /// session-dependency can be lifted.
-codeunit 59990 "EIR Src"
+codeunit 50487 "EIR Src"
 {
     procedure FreshRecordId_TableNo(): Integer
     var

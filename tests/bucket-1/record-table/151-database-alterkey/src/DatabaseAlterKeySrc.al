@@ -1,5 +1,5 @@
 /// Minimal table so we can open a RecordRef and extract a KeyRef.
-table 61000 "DAK Item"
+table 50106 "DAK Item"
 {
     DataClassification = CustomerContent;
     fields
@@ -14,7 +14,7 @@ table 61000 "DAK Item"
 }
 
 /// Helper codeunit that wraps Database.AlterKey(KeyRef, Boolean).
-codeunit 61000 "DAK Helper"
+codeunit 50459 "DAK Helper"
 {
     /// Call Database.AlterKey(primaryKeyRef, clustered) — must be a no-op stub.
     procedure CallAlterKeyOnPK(clustered: Boolean)

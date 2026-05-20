@@ -1,5 +1,5 @@
 /// Helper codeunit exercising ErrorInfo.Create, Message, ErrorType — issue #215.
-codeunit 50141 "EIM Src"
+codeunit 50148 "EIM Src"
 {
     procedure CreateWithMessage(Msg: Text): ErrorInfo
     begin

@@ -9,7 +9,7 @@ table 50052 "Form Stub Data"
     keys { key(PK; Id) { Clustered = true; } }
 }
 
-page 50011 "Form Stub Page"
+page 50010 "Form Stub Page"
 {
     PageType = Card;
     SourceTable = "Form Stub Data";
@@ -36,7 +36,7 @@ page 50011 "Form Stub Page"
     }
 }
 
-codeunit 50347 "Form Stub Logic"
+codeunit 50351 "Form Stub Logic"
 {
     /// Exercises Page variable stubs (SetTableView, LookupMode, Editable, PageCaption, Clear, GetRecord)
     procedure ExercisePageStubs()

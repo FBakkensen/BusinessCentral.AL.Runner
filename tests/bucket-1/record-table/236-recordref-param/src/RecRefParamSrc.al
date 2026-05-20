@@ -8,7 +8,7 @@
 // compilation where MockRecordHandle (from rec.Target rewrite) is incompatible
 // with the NavRecord parameter of the real ALCompiler.ToRecordRef.
 
-table 237000 "RecRef Param Table"
+table 50126 "RecRef Param Table"
 {
     fields
     {

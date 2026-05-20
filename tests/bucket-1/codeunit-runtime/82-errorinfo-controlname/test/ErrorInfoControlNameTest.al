@@ -1,4 +1,4 @@
-codeunit 50353 "EICN Tests"
+codeunit 50357 "EICN Tests"
 {
     Subtype = Test;
 

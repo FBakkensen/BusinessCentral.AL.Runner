@@ -1,4 +1,4 @@
-codeunit 50309 "Event Publisher"
+codeunit 50315 "Event Publisher"
 {
     [IntegrationEvent(false, false)]
     procedure OnBeforeCalc(var Amount: Decimal)

@@ -1,4 +1,4 @@
-codeunit 50010 "Audit Log Tests"
+codeunit 50018 "Audit Log Tests"
 {
     Subtype = Test;
 

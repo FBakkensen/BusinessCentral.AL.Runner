@@ -1,7 +1,7 @@
 /// Source table with an OnDelete trigger.
 /// The trigger inserts a counter row (PK=Rec.PK, Hits=Rec.Val) so tests can
 /// prove the trigger fired even though the source row no longer exists post-delete.
-table 100016 "ODT Source"
+table 50076 "ODT Source"
 {
     fields
     {
@@ -24,7 +24,7 @@ table 100016 "ODT Source"
 }
 
 /// Counter table shared by the OnDelete trigger tests.
-table 100017 "ODT Counter"
+table 50077 "ODT Counter"
 {
     fields
     {

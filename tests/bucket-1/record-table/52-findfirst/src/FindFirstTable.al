@@ -1,4 +1,4 @@
-table 55900 "FF Letter"
+table 50171 "FF Letter"
 {
     DataClassification = ToBeClassified;
 

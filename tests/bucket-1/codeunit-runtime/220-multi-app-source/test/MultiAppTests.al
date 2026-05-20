@@ -1,4 +1,4 @@
-codeunit 50166 "Multi App Tests"
+codeunit 50173 "Multi App Tests"
 {
     Subtype = Test;
     var

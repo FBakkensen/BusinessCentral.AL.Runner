@@ -1,4 +1,4 @@
-codeunit 100005 "Validate Uninit Test"
+codeunit 50402 "Validate Uninit Test"
 {
     Subtype = Test;
 

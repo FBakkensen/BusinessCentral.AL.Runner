@@ -1,7 +1,7 @@
 /// Tests that the runner pre-seeds the User system table (2000000120)
 /// with a record matching the configured user, so AL code that calls
 /// User.Get(UserSecurityId()) succeeds without "record not found" errors.
-codeunit 227001 "User Table Seed Tests"
+codeunit 50511 "User Table Seed Tests"
 {
     Subtype = Test;
 

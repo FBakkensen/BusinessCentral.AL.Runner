@@ -18,7 +18,7 @@ table 50016 "SMC Event Log"
     keys { key(PK; PK) { Clustered = true; } }
 }
 
-codeunit 50103 "SMC Publisher"
+codeunit 50111 "SMC Publisher"
 {
     [IntegrationEvent(false, false)]
     procedure OnAfterCalculate(Input: Integer; Result: Integer)
@@ -35,7 +35,7 @@ codeunit 50103 "SMC Publisher"
     end;
 }
 
-codeunit 50104 "SMC Subscriber"
+codeunit 50112 "SMC Subscriber"
 {
     // Normal subscriber to a publisher that IS in the slice — must fire at runtime.
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"SMC Publisher", 'OnAfterCalculate', '', true, true)]
@@ -58,7 +58,7 @@ codeunit 50104 "SMC Subscriber"
     end;
 }
 
-codeunit 50105 "SMC Log Helper"
+codeunit 50113 "SMC Log Helper"
 {
     procedure Reset()
     var

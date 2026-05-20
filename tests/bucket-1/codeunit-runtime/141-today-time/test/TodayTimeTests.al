@@ -1,4 +1,4 @@
-codeunit 50089 "TT Today Time Tests"
+codeunit 50097 "TT Today Time Tests"
 {
     Subtype = Test;
 

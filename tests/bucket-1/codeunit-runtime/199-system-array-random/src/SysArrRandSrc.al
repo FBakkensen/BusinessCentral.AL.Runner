@@ -1,6 +1,6 @@
 /// Helper codeunit for System built-ins:
 /// CompressArray, CopyArray, CopyStream, CreateGuid, Random, Randomize.
-codeunit 50151 "SAR Src"
+codeunit 50158 "SAR Src"
 {
     // ── CompressArray ─────────────────────────────────────────────────────────
 

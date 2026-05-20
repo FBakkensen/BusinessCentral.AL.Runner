@@ -1,4 +1,4 @@
-codeunit 116000 "DB Stubs Src"
+codeunit 50400 "DB Stubs Src"
 {
     procedure GetSessionId(): Integer
     begin

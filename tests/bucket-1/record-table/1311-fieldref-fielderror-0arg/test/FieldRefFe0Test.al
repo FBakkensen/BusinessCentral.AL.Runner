@@ -1,5 +1,5 @@
 /// Tests for FieldRef.FieldError() 0-arg overload — issue #1428.
-codeunit 1311001 "FieldRef FE0 Tests"
+codeunit 50445 "FieldRef FE0 Tests"
 {
     Subtype = Test;
 

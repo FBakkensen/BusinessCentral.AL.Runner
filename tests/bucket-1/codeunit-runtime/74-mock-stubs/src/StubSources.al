@@ -9,7 +9,7 @@ table 50050 "Stub Test Table"
     keys { key(PK; Id) { Clustered = true; } }
 }
 
-page 50010 "Stub Test Card"
+page 50009 "Stub Test Card"
 {
     PageType = Card;
     SourceTable = "Stub Test Table";
@@ -24,7 +24,7 @@ page 50010 "Stub Test Card"
     }
 }
 
-codeunit 50339 "Stub Logic"
+codeunit 50345 "Stub Logic"
 {
     procedure UseRecRefLoadFieldsAndName()
     var

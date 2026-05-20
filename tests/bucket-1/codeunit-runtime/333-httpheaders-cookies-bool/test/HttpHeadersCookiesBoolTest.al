@@ -1,4 +1,4 @@
-codeunit 50282 "HH Cookie Bool Test"
+codeunit 50288 "HH Cookie Bool Test"
 {
     Subtype = Test;
 

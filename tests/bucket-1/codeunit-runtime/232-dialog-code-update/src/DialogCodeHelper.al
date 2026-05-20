@@ -14,7 +14,7 @@ table 50026 "DCU Item"
     }
 }
 
-codeunit 50174 "DCU Helper"
+codeunit 50181 "DCU Helper"
 {
     /// <summary>
     /// Uses Dialog.Update with a Code field value.

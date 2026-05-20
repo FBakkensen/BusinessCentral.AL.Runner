@@ -1,4 +1,4 @@
-codeunit 52900 "Test Record Id"
+codeunit 50527 "Test Record Id"
 {
     Subtype = Test;
 

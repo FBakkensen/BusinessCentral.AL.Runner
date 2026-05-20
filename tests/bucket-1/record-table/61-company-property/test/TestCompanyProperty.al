@@ -1,4 +1,4 @@
-codeunit 61401 "Test CompanyProperty"
+codeunit 50581 "Test CompanyProperty"
 {
     Subtype = Test;
 

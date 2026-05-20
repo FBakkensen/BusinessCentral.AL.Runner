@@ -1,7 +1,7 @@
 // Stub for BC's "Any" codeunit (ID 130500) from System.TestLibraries.Utilities.
 // Provides pseudo-random test data generation. Methods use BC built-ins (Random,
 // CreateGuid, CalcDate) so they run natively inside al-runner without special routing.
-codeunit 130500 "Any"
+codeunit 50003 "Any"
 {
     var
         Seed: Integer;

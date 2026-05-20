@@ -1,5 +1,5 @@
 /// In-suite table used by the table-metadata-stubs test.
-table 107000 "TMI Record"
+table 50114 "TMI Record"
 {
     Caption = 'TMI Record';
 
@@ -16,7 +16,7 @@ table 107000 "TMI Record"
 }
 
 /// Helper codeunit exercising Table record metadata and introspection methods.
-codeunit 107000 "TMI Src"
+codeunit 50495 "TMI Src"
 {
     // ── FieldCaption ────────────────────────────────────────────────────────────
 

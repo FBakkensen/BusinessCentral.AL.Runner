@@ -1,4 +1,4 @@
-table 94000 "CFV Test Record"
+table 50205 "CFV Test Record"
 {
     fields
     {
@@ -9,7 +9,7 @@ table 94000 "CFV Test Record"
     keys { key(PK; Id) { Clustered = true; } }
 }
 
-codeunit 94001 "CFV Clear Helper"
+codeunit 50624 "CFV Clear Helper"
 {
     procedure SetAndClearName(var Rec: Record "CFV Test Record"; Value: Text[100])
     begin

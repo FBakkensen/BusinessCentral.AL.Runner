@@ -1,4 +1,4 @@
-codeunit 50264 "HC UseDefaultNetwork Bool Test"
+codeunit 50270 "HC UseDefaultNetwork Bool Test"
 {
     Subtype = Test;
 

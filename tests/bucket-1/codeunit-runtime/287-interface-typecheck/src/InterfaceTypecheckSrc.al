@@ -12,7 +12,7 @@ interface ITC_Extended
     procedure GetExtra(): Integer;
 }
 
-codeunit 50197 "ITC BaseOnly" implements ITC_Base
+codeunit 50204 "ITC BaseOnly" implements ITC_Base
 {
     procedure GetValue(): Integer
     begin
@@ -20,7 +20,7 @@ codeunit 50197 "ITC BaseOnly" implements ITC_Base
     end;
 }
 
-codeunit 50198 "ITC Extended" implements ITC_Base, ITC_Extended
+codeunit 50205 "ITC Extended" implements ITC_Base, ITC_Extended
 {
     procedure GetValue(): Integer
     begin
@@ -33,7 +33,7 @@ codeunit 50198 "ITC Extended" implements ITC_Base, ITC_Extended
     end;
 }
 
-codeunit 50199 "ITC Source"
+codeunit 50206 "ITC Source"
 {
     /// Returns true if v also implements ITC_Extended (AL `is` operator).
     procedure IsExtended(v: Interface ITC_Base): Boolean

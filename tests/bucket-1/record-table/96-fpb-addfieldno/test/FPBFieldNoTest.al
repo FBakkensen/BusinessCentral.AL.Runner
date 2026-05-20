@@ -1,4 +1,4 @@
-codeunit 305001 "FPB FieldNo Test"
+codeunit 50628 "FPB FieldNo Test"
 {
     Subtype = Test;
 

@@ -1,4 +1,4 @@
-codeunit 1218002 "CKI Tests"
+codeunit 50429 "CKI Tests"
 {
     Subtype = Test;
 

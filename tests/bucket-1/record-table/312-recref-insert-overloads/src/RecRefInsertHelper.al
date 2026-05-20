@@ -1,5 +1,5 @@
 /// Table and helper for RecordRef.Insert(Boolean) and Insert(Boolean, Boolean) overload tests.
-table 312001 "RecRef Insert Row"
+table 50139 "RecRef Insert Row"
 {
     DataClassification = CustomerContent;
     fields
@@ -19,7 +19,7 @@ table 312001 "RecRef Insert Row"
 }
 
 /// Helper codeunit wrapping RecordRef.Insert overloads so AL compiles each form explicitly.
-codeunit 312002 "RecRef Insert Helper"
+codeunit 50534 "RecRef Insert Helper"
 {
     /// RecordRef.Insert(Boolean) — 1-arg form; runTrigger controls whether OnInsert fires.
     procedure InsertViaRecRefBool(Id: Integer; RunTrigger: Boolean)

@@ -1,4 +1,4 @@
-table 54900 "CountSF Probe"
+table 50158 "CountSF Probe"
 {
     DataClassification = CustomerContent;
 

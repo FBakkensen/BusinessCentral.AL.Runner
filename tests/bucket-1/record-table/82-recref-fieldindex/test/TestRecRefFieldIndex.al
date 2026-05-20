@@ -1,4 +1,4 @@
-codeunit 50401 "Test RecRef FieldIndex"
+codeunit 50610 "Test RecRef FieldIndex"
 {
     Subtype = Test;
 

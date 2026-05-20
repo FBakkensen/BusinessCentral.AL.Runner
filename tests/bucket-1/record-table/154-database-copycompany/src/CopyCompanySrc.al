@@ -1,6 +1,6 @@
 /// Helper codeunit that wraps Database.CopyCompany so the test can
 /// exercise it without calling it inline.
-codeunit 61400 "CCP Helper"
+codeunit 50467 "CCP Helper"
 {
     /// Call Database.CopyCompany(sourceCompany, destinationCompany) — must be a no-op stub
     /// in standalone mode (no multi-company data store).

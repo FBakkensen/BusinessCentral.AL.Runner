@@ -1,5 +1,5 @@
 // Renumbered from 50121 to avoid collision in new bucket layout (#1385).
-codeunit 1050121 "FieldRef SetTable Tests"
+codeunit 50427 "FieldRef SetTable Tests"
 {
     Subtype = Test;
 

@@ -1,4 +1,4 @@
-table 56260 "Metadata Test Item"
+table 50097 "Metadata Test Item"
 {
     Caption = 'Test Item';
 

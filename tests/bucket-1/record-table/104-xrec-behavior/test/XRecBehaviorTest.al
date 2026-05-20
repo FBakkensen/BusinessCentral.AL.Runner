@@ -1,4 +1,4 @@
-codeunit 59966 "XR Tests"
+codeunit 50407 "XR Tests"
 {
     Subtype = Test;
     var

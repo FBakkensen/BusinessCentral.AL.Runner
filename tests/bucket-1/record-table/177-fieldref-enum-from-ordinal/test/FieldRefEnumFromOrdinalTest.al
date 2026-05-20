@@ -1,4 +1,4 @@
-codeunit 60021 "FREO Test"
+codeunit 50490 "FREO Test"
 {
     Subtype = Test;
 

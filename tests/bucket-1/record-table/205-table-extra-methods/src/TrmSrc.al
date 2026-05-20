@@ -2,7 +2,7 @@
 /// ChangeCompany, GetAscending, GetBySystemId, LoadFields, ReadConsistency,
 /// ReadIsolation, SetLoadFields, SetBaseLoadFields, SetPermissionFilter,
 /// Truncate, Relation, Consistent, SecurityFiltering.
-codeunit 97701 "TRM Src"
+codeunit 50503 "TRM Src"
 {
     // ── GetAscending ──────────────────────────────────────────────────────────
 

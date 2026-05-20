@@ -1,7 +1,7 @@
 /// Tests that GetUninitializedObject instances used for event subscriber dispatch
 /// and record trigger firing have their null reference-type fields initialized,
 /// preventing NullReferenceException in subscriber/trigger bodies.
-codeunit 100002 "UIF Tests"
+codeunit 50399 "UIF Tests"
 {
     Subtype = Test;
     var

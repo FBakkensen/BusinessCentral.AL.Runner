@@ -1,6 +1,6 @@
 /// Helper codeunit exercising NavApp.IsInstalling(), NavApp.IsUnlicensed(), NavApp.IsEntitled().
 /// In standalone mode: IsInstalling → false, IsUnlicensed → false, IsEntitled → true.
-codeunit 50364 "NAS Src"
+codeunit 50368 "NAS Src"
 {
     procedure GetIsInstalling(): Boolean
     begin

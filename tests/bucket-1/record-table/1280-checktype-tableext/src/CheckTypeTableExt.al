@@ -1,4 +1,4 @@
-tableextension 1280001 "CheckType Table Ext" extends "CheckType Base Table"
+tableextension 50002 "CheckType Table Ext" extends "CheckType Base Table"
 {
     fields
     {

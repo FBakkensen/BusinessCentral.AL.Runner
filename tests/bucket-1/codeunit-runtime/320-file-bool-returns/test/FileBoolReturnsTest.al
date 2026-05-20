@@ -3,7 +3,7 @@
 /// BC's File.Open and File.Erase return Boolean so they can be called in
 /// boolean contexts: if not f.Open('x') then Error(...).
 /// MockFile must match that signature; void-returning methods fail CS0023.
-codeunit 50258 "File Bool Returns Test"
+codeunit 50264 "File Bool Returns Test"
 {
     Subtype = Test;
 

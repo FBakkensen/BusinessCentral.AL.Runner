@@ -3,7 +3,7 @@
 /// procedure that receives its operands as var Decimal params.  The BC
 /// transpiler wraps these as ByRef<Decimal18>, and the runner must correctly
 /// unwrap them before passing to the assertion.
-codeunit 50231 "Assert ByRef Helper"
+codeunit 50238 "Assert ByRef Helper"
 {
     /// Call Assert.AreEqual with two values received as var Decimal parameters.
     /// Mirrors the pattern from issue #1433:

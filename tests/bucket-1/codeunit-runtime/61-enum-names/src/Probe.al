@@ -6,7 +6,7 @@ enum 50010 "EN Stage"
     value(2; Published) { }
 }
 
-codeunit 50327 "EN Probe"
+codeunit 50333 "EN Probe"
 {
     procedure NamesCount(): Integer
     var

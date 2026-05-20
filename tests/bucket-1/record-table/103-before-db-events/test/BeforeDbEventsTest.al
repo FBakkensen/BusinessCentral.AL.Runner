@@ -1,4 +1,4 @@
-codeunit 59962 "BDE Tests"
+codeunit 50405 "BDE Tests"
 {
     Subtype = Test;
     var

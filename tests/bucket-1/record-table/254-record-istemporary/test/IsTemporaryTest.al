@@ -1,4 +1,4 @@
-codeunit 50254 "IsTemporary Tests"
+codeunit 50518 "IsTemporary Tests"
 {
     Subtype = Test;
 

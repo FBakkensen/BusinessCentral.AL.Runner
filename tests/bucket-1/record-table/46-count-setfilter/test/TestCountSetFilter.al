@@ -1,4 +1,4 @@
-codeunit 54900 "Test Count SetFilter"
+codeunit 50556 "Test Count SetFilter"
 {
     Subtype = Test;
 

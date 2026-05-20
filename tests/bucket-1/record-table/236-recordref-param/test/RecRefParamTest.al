@@ -4,7 +4,7 @@
 // rewriter must convert it to MockRecordRef.FromHandle(handle) so MockRecordHandle
 // is not passed where NavRecord was expected.
 
-codeunit 237001 "RecRef Param Tests"
+codeunit 50516 "RecRef Param Tests"
 {
     Subtype = Test;
 

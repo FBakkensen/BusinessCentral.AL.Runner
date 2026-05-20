@@ -1,4 +1,4 @@
-tableextension 53400 "Parent Table Ext" extends "Parent Object Table"
+tableextension 50005 "Parent Table Ext" extends "Parent Object Table"
 {
     fields
     {

@@ -1,4 +1,4 @@
-codeunit 59591 "CUP Test"
+codeunit 50462 "CUP Test"
 {
     Subtype = Test;
 

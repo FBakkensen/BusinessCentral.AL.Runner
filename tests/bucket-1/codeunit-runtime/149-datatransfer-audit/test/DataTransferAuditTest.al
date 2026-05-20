@@ -1,4 +1,4 @@
-codeunit 50091 "DTA Test"
+codeunit 50099 "DTA Test"
 {
     Subtype = Test;
 

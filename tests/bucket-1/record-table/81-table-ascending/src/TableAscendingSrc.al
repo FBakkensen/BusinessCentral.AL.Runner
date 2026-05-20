@@ -1,5 +1,5 @@
 /// Helper table and codeunit for Table.Ascending get/set tests.
-table 81100 "TA Item"
+table 50197 "TA Item"
 {
     fields
     {
@@ -13,7 +13,7 @@ table 81100 "TA Item"
     }
 }
 
-codeunit 81101 "TA Helper"
+codeunit 50608 "TA Helper"
 {
     /// Returns the current Ascending() direction (no-arg getter).
     procedure GetAscending(): Boolean

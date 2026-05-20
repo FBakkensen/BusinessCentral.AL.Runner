@@ -1,4 +1,4 @@
-codeunit 1264002 "Test FieldError AutoFormat"
+codeunit 50626 "Test FieldError AutoFormat"
 {
     Subtype = Test;
 

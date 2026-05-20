@@ -1,4 +1,4 @@
-codeunit 50359 "EIT Test"
+codeunit 50363 "EIT Test"
 {
     Subtype = Test;
 

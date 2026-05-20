@@ -1,4 +1,4 @@
-codeunit 50809 "CurrentKey Tests"
+codeunit 50414 "CurrentKey Tests"
 {
     Subtype = Test;
 

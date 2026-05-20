@@ -1,6 +1,6 @@
 // Tests for Library - Utility (codeunit 131003) stub.
 // Exercises GenerateGUID, GenerateRandomCode, GenerateRandomCode20, and GenerateRandomText.
-codeunit 50206 "Library - Utility Test"
+codeunit 50213 "Library - Utility Test"
 {
     Subtype = Test;
 

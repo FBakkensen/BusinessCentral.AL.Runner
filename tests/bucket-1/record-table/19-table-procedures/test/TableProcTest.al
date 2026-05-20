@@ -1,4 +1,4 @@
-codeunit 50919 "Table Procedure Tests"
+codeunit 50498 "Table Procedure Tests"
 {
     Subtype = Test;
 

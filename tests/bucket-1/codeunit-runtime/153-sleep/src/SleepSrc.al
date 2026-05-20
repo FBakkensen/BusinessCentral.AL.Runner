@@ -1,6 +1,6 @@
 /// Helper codeunit that calls Sleep() — the AL built-in that pauses execution.
 /// In the runner, Sleep must be a no-op so tests run without actually blocking.
-codeunit 50097 "SLP Helper"
+codeunit 50105 "SLP Helper"
 {
     procedure DoSleep(ms: Integer)
     begin

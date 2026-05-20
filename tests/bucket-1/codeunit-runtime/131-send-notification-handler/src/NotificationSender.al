@@ -1,4 +1,4 @@
-codeunit 50079 "Notification Sender"
+codeunit 50087 "Notification Sender"
 {
     procedure SendSimple(Msg: Text)
     var

@@ -1,4 +1,4 @@
-codeunit 133002 "SSF Test"
+codeunit 50526 "SSF Test"
 {
     Subtype = Test;
     var

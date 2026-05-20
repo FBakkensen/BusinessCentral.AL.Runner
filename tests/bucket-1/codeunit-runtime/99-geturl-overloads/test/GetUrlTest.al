@@ -1,4 +1,4 @@
-codeunit 50376 "GetUrl Overload Tests"
+codeunit 50379 "GetUrl Overload Tests"
 {
     Subtype = Test;
 

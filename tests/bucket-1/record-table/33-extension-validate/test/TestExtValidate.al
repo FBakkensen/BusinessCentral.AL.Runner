@@ -1,4 +1,4 @@
-codeunit 53300 "Test Ext Validate"
+codeunit 50536 "Test Ext Validate"
 {
     Subtype = Test;
 

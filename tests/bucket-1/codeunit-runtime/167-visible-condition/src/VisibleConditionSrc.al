@@ -57,7 +57,7 @@ page 50002 "VCA Item Card"
 
 /// Helper codeunit — proves the compilation unit containing a page with
 /// conditional Visible attributes compiles and codeunits remain callable.
-codeunit 50111 "VCA Helper"
+codeunit 50119 "VCA Helper"
 {
     procedure GetLabel(): Text
     begin

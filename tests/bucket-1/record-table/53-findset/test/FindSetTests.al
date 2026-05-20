@@ -1,4 +1,4 @@
-codeunit 56001 "FindSet Tests"
+codeunit 50570 "FindSet Tests"
 {
     Subtype = Test;
 

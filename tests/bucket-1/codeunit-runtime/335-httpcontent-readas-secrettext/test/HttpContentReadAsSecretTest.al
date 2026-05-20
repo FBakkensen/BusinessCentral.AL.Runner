@@ -1,4 +1,4 @@
-codeunit 50286 "HC ReadAs Secret Test"
+codeunit 50292 "HC ReadAs Secret Test"
 {
     Subtype = Test;
 

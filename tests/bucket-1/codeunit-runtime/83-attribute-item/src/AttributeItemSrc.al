@@ -47,7 +47,7 @@ tableextension 50000 "AI Test Record Ext" extends "AI Test Record"
 }
 
 /// Codeunit that exercises the table with attribute-annotated fields.
-codeunit 50354 "AI Attribute Item Lib"
+codeunit 50358 "AI Attribute Item Lib"
 {
     procedure InsertRecord(Id: Integer; Name: Text[100]): Boolean
     var

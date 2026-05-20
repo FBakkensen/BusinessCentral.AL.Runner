@@ -1,4 +1,4 @@
-codeunit 54500 "Test LockTable"
+codeunit 50546 "Test LockTable"
 {
     Subtype = Test;
 

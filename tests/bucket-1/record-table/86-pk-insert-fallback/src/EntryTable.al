@@ -2,7 +2,7 @@
 // In BC, field 1 is implicitly the primary key in this case.
 // al-runner must enforce PK uniqueness even when the key is not
 // explicitly declared (falling back to field 1).
-table 56700 "No Key Table"
+table 50200 "No Key Table"
 {
     fields
     {

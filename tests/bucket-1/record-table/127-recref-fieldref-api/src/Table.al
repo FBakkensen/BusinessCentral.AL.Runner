@@ -1,4 +1,4 @@
-table 56270 "API Test Entry"
+table 50098 "API Test Entry"
 {
     fields
     {

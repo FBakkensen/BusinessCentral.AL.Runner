@@ -4,7 +4,7 @@
 /// to  KeyRef.ALAssign(FldRef.ALKeyIndex(compilationTarget, 1)).
 /// MockFieldRef must therefore expose ALKeyIndex delegating to its owning
 /// MockRecordRef.
-codeunit 1310003 "FRK Tests"
+codeunit 50443 "FRK Tests"
 {
     Subtype = Test;
 

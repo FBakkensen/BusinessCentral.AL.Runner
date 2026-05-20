@@ -1,4 +1,4 @@
-table 63001 "Pos Test Table"
+table 50188 "Pos Test Table"
 {
     DataClassification = ToBeClassified;
 

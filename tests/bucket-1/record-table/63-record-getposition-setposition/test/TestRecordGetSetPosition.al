@@ -1,4 +1,4 @@
-codeunit 63401 "Test Record GetPosition"
+codeunit 50587 "Test Record GetPosition"
 {
     Subtype = Test;
 

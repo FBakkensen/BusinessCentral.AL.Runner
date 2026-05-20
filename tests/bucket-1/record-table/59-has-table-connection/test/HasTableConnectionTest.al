@@ -1,4 +1,4 @@
-codeunit 59000 "Has Table Connection Test"
+codeunit 50579 "Has Table Connection Test"
 {
     Subtype = Test;
 

@@ -1,4 +1,4 @@
-codeunit 56261 "Metadata Tests"
+codeunit 50435 "Metadata Tests"
 {
     Subtype = Test;
     var

@@ -2,7 +2,7 @@
 /// Two paths are tested:
 ///   (a) External codeunit calling via "var Rec: Record" parameter — generates rec.Method()
 ///   (b) Table methods calling bare RecordId()/CurrentCompany() — generates _parent.ALMethod on Record class
-codeunit 307801 "RRC Src"
+codeunit 50394 "RRC Src"
 {
     // ── RecordId via var parameter (external call) ────────────────────────────
 

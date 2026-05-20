@@ -8,7 +8,7 @@ table 50049 "Modal Test Data"
     keys { key(PK; Id) { Clustered = true; } }
 }
 
-page 50009 "Modal Edit Page"
+page 50008 "Modal Edit Page"
 {
     PageType = Card;
     SourceTable = "Modal Test Data";
@@ -22,7 +22,7 @@ page 50009 "Modal Edit Page"
     }
 }
 
-codeunit 50337 "Modal Opener"
+codeunit 50343 "Modal Opener"
 {
     procedure OpenModalAndGetResult(): Action
     var

@@ -1,4 +1,4 @@
-enum 56230 "FE Color"
+enum 50011 "FE Color"
 {
     Extensible = true;
     value(0; " ") { }

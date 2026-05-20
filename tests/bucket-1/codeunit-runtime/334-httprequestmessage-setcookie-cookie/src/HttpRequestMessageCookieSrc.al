@@ -1,4 +1,4 @@
-codeunit 50283 "HRM Cookie Src"
+codeunit 50289 "HRM Cookie Src"
 {
     procedure SetCookieObjectReturnsTrue(): Boolean
     var

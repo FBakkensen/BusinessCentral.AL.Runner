@@ -1,4 +1,4 @@
-codeunit 56880 "RF Find Probe"
+codeunit 50618 "RF Find Probe"
 {
     procedure FindRecordViaRecRef(TableId: Integer): Boolean
     var

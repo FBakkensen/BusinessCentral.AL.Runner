@@ -1,4 +1,4 @@
-table 1264001 "Field Error AutoFormat"
+table 50206 "Field Error AutoFormat"
 {
     DataClassification = CustomerContent;
 

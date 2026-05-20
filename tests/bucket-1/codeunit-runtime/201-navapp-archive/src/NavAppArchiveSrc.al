@@ -2,7 +2,7 @@
 /// GetArchiveVersion, LoadPackageData, RestoreArchiveData, DeleteArchiveData.
 /// GetArchiveRecordRef and GetResource require types (RecordRef/InStream)
 /// that are complex to test here; separate follow-up.
-codeunit 50155 "NAR Src"
+codeunit 50162 "NAR Src"
 {
     procedure GetArchiveVersion(): Text
     begin

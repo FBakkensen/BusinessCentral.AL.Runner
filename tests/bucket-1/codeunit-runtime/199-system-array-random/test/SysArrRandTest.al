@@ -1,6 +1,6 @@
 /// Tests for System built-ins: CompressArray, CopyArray,
 /// CreateGuid, Random, Randomize.
-codeunit 50152 "SAR Test"
+codeunit 50159 "SAR Test"
 {
     Subtype = Test;
 

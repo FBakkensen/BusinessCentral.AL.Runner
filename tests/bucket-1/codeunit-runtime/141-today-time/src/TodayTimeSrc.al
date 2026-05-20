@@ -1,5 +1,5 @@
 /// Helper codeunit exercising the Today and Time built-ins.
-codeunit 50088 "TT Helper"
+codeunit 50096 "TT Helper"
 {
     procedure GetToday(): Date
     begin

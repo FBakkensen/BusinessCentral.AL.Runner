@@ -1,4 +1,4 @@
-codeunit 50108 "DLGM Test"
+codeunit 50116 "DLGM Test"
 {
     Subtype = Test;
 

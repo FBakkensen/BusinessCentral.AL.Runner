@@ -1,5 +1,5 @@
 /// Helper codeunit exercising ErrorInfo.Callstack().
-codeunit 50113 "EIC Src"
+codeunit 50121 "EIC Src"
 {
     procedure GetCallstack(ei: ErrorInfo): Text
     begin

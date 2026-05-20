@@ -1,4 +1,4 @@
-codeunit 60001 "GRM GetRangeMinMax Test"
+codeunit 50450 "GRM GetRangeMinMax Test"
 {
     Subtype = Test;
 

@@ -1,4 +1,4 @@
-codeunit 50118 "Validate Helper"
+codeunit 50491 "Validate Helper"
 {
     procedure CreateEntry(EntryNo: Integer; Name: Text[100]; Qty: Integer; Price: Decimal)
     var

@@ -1,4 +1,4 @@
-table 1280001 "CheckType Base Table"
+table 50100 "CheckType Base Table"
 {
     DataClassification = CustomerContent;
 

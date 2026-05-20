@@ -13,7 +13,7 @@ enum 50009 "EI Color"
     }
 }
 
-codeunit 50325 "EI Enum Converter"
+codeunit 50331 "EI Enum Converter"
 {
     procedure ToInteger(C: Enum "EI Color"): Integer
     begin

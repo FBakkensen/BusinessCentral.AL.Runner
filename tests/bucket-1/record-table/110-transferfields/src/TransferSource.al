@@ -1,4 +1,4 @@
-table 50110 "Transfer Source"
+table 50083 "Transfer Source"
 {
     DataClassification = ToBeClassified;
 

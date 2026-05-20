@@ -1,4 +1,4 @@
-codeunit 50117 "SBU Test"
+codeunit 50125 "SBU Test"
 {
     Subtype = Test;
     var

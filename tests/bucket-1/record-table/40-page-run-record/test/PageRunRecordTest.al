@@ -1,5 +1,5 @@
 // Renumbered from 56401 to avoid collision in new bucket layout (#1385).
-codeunit 1056401 "PRR Page Run Tests"
+codeunit 50543 "PRR Page Run Tests"
 {
     Subtype = Test;
 

@@ -1,4 +1,4 @@
-table 93000 "RRS Table"
+table 50203 "RRS Table"
 {
     fields
     {

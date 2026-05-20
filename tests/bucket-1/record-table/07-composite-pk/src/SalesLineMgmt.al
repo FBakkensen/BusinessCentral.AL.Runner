@@ -1,4 +1,4 @@
-codeunit 50107 "Document Line Management"
+codeunit 50384 "Document Line Management"
 {
     procedure UpdateAmount(DocNo: Code[20]; LineNo: Integer)
     var

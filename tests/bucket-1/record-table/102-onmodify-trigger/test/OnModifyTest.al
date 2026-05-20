@@ -3,7 +3,7 @@
 ///   1. Positive    — Modify(true) fires the trigger (counter row created).
 ///   2. Negative    — Modify(false) skips the trigger; right-reason counter check.
 ///   3. Rec state   — trigger sees the correct (updated) Rec.Val at modify time.
-codeunit 100015 "OMT Tests"
+codeunit 50403 "OMT Tests"
 {
     Subtype = Test;
     var

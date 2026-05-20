@@ -1,4 +1,4 @@
-table 54300 "FC Three"
+table 50149 "FC Three"
 {
     DataClassification = CustomerContent;
 
@@ -15,7 +15,7 @@ table 54300 "FC Three"
     }
 }
 
-table 54301 "FC Five"
+table 50150 "FC Five"
 {
     DataClassification = CustomerContent;
 

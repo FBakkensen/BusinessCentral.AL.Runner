@@ -1,4 +1,4 @@
-codeunit 50075 "Inv Ext Caller"
+codeunit 50083 "Inv Ext Caller"
 {
     /// <summary>
     /// Calls a method defined in a page extension via a Page variable.

@@ -1,7 +1,7 @@
 /// Tests for MockNotification.Default static member (issue #1189).
 /// A global 'var N: Notification' in a codeunit generates MockNotification.Default
 /// for the field initializer — this must compile and evaluate to a blank notification.
-codeunit 50171 "ND Tests"
+codeunit 50178 "ND Tests"
 {
     Subtype = Test;
 

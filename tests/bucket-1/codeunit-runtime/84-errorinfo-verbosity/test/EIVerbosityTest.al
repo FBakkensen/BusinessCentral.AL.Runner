@@ -1,4 +1,4 @@
-codeunit 50361 "EI Verbosity Tests"
+codeunit 50365 "EI Verbosity Tests"
 {
     Subtype = Test;
 

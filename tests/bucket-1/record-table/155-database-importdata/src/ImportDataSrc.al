@@ -1,6 +1,6 @@
 /// Helper codeunit that wraps Database.ImportData so the test can
 /// exercise it without calling it inline.
-codeunit 61500 "IDT Helper"
+codeunit 50471 "IDT Helper"
 {
     /// Call Database.ImportData(showDialog, path, create) — must be a no-op stub
     /// in standalone mode (no external file I/O).

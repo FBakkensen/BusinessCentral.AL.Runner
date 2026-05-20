@@ -1,4 +1,4 @@
-codeunit 59931 "EIF Test"
+codeunit 50486 "EIF Test"
 {
     Subtype = Test;
 

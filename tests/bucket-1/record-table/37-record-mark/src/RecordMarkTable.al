@@ -1,4 +1,4 @@
-table 54000 "Record Mark Table"
+table 50143 "Record Mark Table"
 {
     DataClassification = CustomerContent;
 

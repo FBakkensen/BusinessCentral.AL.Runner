@@ -2,7 +2,7 @@
 ///
 /// BC emits NavSecretText where MockHttpClient mock methods expect NavText.
 /// Overloads accepting NavSecretText must exist in the mock.
-codeunit 50262 "STN Test"
+codeunit 50268 "STN Test"
 {
     Subtype = Test;
 

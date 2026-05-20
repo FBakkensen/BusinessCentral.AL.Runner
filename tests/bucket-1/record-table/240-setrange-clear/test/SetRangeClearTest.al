@@ -1,4 +1,4 @@
-codeunit 50240 "SetRange Clear Tests"
+codeunit 50517 "SetRange Clear Tests"
 {
     Subtype = Test;
 

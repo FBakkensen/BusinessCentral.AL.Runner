@@ -1,4 +1,4 @@
-codeunit 80900 "OnRun Record Tests"
+codeunit 50422 "OnRun Record Tests"
 {
     Subtype = Test;
 

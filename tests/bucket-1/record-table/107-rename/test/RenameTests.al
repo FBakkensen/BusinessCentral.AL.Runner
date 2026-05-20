@@ -1,4 +1,4 @@
-codeunit 95102 "Rename Tests"
+codeunit 50411 "Rename Tests"
 {
     Subtype = Test;
 

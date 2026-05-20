@@ -1,4 +1,4 @@
-table 1275001 "Implicit Conv Table"
+table 50099 "Implicit Conv Table"
 {
     fields
     {

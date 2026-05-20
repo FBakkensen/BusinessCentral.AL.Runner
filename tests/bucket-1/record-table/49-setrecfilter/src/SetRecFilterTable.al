@@ -1,5 +1,5 @@
 // Single-field PK table for SetRecFilter tests
-table 55700 "SRF Single Table"
+table 50163 "SRF Single Table"
 {
     DataClassification = ToBeClassified;
 
@@ -25,7 +25,7 @@ table 55700 "SRF Single Table"
 }
 
 // Composite-PK table for SetRecFilter tests
-table 55701 "SRF Composite Table"
+table 50164 "SRF Composite Table"
 {
     DataClassification = ToBeClassified;
 

@@ -33,7 +33,7 @@ enum 50001 "NullOpt Status"
     value(2; Closed)  { }
 }
 
-codeunit 50204 "NullOpt Helper"
+codeunit 50211 "NullOpt Helper"
 {
     /// Read the Status field from a record that was inserted with Init()
     /// only (no explicit Status assignment). The NavOption backing the

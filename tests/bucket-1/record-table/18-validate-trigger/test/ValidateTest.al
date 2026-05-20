@@ -1,4 +1,4 @@
-codeunit 50918 "Validate Trigger Tests"
+codeunit 50492 "Validate Trigger Tests"
 {
     Subtype = Test;
 

@@ -1,4 +1,4 @@
-table 55200 "Record Get Table"
+table 50161 "Record Get Table"
 {
     DataClassification = CustomerContent;
 
@@ -15,7 +15,7 @@ table 55200 "Record Get Table"
     }
 }
 
-table 55210 "Record Get Composite"
+table 50162 "Record Get Composite"
 {
     DataClassification = CustomerContent;
 

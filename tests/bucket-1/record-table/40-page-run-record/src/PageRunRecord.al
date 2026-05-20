@@ -1,5 +1,5 @@
 // Renumbered from 56400 to avoid collision in new bucket layout (#1385).
-table 1056400 "PRR Item"
+table 50148 "PRR Item"
 {
     fields
     {
@@ -12,13 +12,13 @@ table 1056400 "PRR Item"
     }
 }
 
-page 56400 "PRR Item List"
+page 50012 "PRR Item List"
 {
     PageType = List;
     SourceTable = "PRR Item";
 }
 
-codeunit 56400 "PRR Caller"
+codeunit 50542 "PRR Caller"
 {
     procedure ShowItem(var Item: Record "PRR Item"): Integer
     begin

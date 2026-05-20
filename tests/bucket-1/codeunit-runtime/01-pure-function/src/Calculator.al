@@ -1,4 +1,4 @@
-codeunit 50002 "Discount Calculator"
+codeunit 50010 "Discount Calculator"
 {
     procedure ApplyDiscount(OriginalPrice: Decimal; DiscountPercent: Decimal): Decimal
     begin

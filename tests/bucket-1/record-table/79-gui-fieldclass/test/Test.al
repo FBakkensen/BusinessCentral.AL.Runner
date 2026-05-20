@@ -1,4 +1,4 @@
-codeunit 79101 "Gui FieldClass Test"
+codeunit 50604 "Gui FieldClass Test"
 {
     Subtype = Test;
 

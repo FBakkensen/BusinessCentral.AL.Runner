@@ -1,4 +1,4 @@
-codeunit 50021 "EBT5 Tests"
+codeunit 50029 "EBT5 Tests"
 {
     Subtype = Test;
 

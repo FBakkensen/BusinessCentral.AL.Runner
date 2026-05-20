@@ -1,4 +1,4 @@
-codeunit 54300 "Test RecordRef FieldCount"
+codeunit 50544 "Test RecordRef FieldCount"
 {
     Subtype = Test;
 

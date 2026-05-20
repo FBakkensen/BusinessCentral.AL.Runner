@@ -1,4 +1,4 @@
-table 56640 "RR Mem Row"
+table 50190 "RR Mem Row"
 {
     fields
     {
@@ -8,7 +8,7 @@ table 56640 "RR Mem Row"
     keys { key(PK; Id) { Clustered = true; } }
 }
 
-codeunit 56640 "RR Mem Probe"
+codeunit 50591 "RR Mem Probe"
 {
     procedure HasRows(TableId: Integer): Boolean
     var

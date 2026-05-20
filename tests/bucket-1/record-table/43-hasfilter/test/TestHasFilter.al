@@ -1,4 +1,4 @@
-codeunit 54600 "Test HasFilter"
+codeunit 50547 "Test HasFilter"
 {
     Subtype = Test;
 

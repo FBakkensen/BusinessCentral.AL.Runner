@@ -1,4 +1,4 @@
-table 307800 "RRC Table"
+table 50064 "RRC Table"
 {
     DataClassification = ToBeClassified;
 

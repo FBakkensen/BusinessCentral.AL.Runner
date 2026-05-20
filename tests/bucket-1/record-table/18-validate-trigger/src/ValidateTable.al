@@ -1,4 +1,4 @@
-table 50118 "Validate Demo"
+table 50112 "Validate Demo"
 {
     DataClassification = ToBeClassified;
 

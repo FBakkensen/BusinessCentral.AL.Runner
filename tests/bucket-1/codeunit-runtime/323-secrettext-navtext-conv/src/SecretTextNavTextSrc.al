@@ -3,7 +3,7 @@
 /// These procedures exercise patterns where BC emits NavSecretText where
 /// MockHttpClient methods expect NavText. The rewriter passes NavSecretText;
 /// overloads accepting NavSecretText must exist in the mock.
-codeunit 50261 "STN Src"
+codeunit 50267 "STN Src"
 {
     /// UseWindowsAuthentication called with SecretText variables.
     /// BC emits: client.ALUseWindowsAuthentication(DataError, NavSecretText, NavSecretText)

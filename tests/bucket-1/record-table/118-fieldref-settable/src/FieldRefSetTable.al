@@ -1,5 +1,5 @@
 // Renumbered from 50120 to avoid collision in new bucket layout (#1385).
-table 1050120 "FieldRef Test Table"
+table 50091 "FieldRef Test Table"
 {
     DataClassification = CustomerContent;
 
@@ -19,7 +19,7 @@ table 1050120 "FieldRef Test Table"
 // exercises RecRef/FieldRef interaction to prove the types compile
 // and the data round-trips correctly via SetTable.
 // Renumbered from 50120 to avoid collision in new bucket layout (#1385).
-codeunit 1050120 "FieldRef SetTable Helper"
+codeunit 50426 "FieldRef SetTable Helper"
 {
     procedure SetTableCopiesData(var EntryNo: Integer; var Desc: Text[100])
     var

@@ -1,4 +1,4 @@
-codeunit 93002 "GBS GetBySystemId Tests"
+codeunit 50623 "GBS GetBySystemId Tests"
 {
     Subtype = Test;
 

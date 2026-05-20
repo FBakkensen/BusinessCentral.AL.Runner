@@ -1,4 +1,4 @@
-table 50057 "Misc Stubs Table"
+table 50056 "Misc Stubs Table"
 {
     DataClassification = CustomerContent;
     fields
@@ -8,7 +8,7 @@ table 50057 "Misc Stubs Table"
     keys { key(PK; Id) { Clustered = true; } }
 }
 
-codeunit 50377 MiscStubsSrc
+codeunit 50380 MiscStubsSrc
 {
     procedure DoXmlNodeIsDocumentType(Node: XmlNode): Boolean
     begin

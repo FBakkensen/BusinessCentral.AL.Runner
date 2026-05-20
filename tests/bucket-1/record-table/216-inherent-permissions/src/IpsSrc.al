@@ -4,7 +4,7 @@
 /// Permissions property is present in newer BC versions.  The RoslynRewriter must strip
 /// that member because AlScope does not expose a virtual InherentPermissionsList to
 /// override (CS0115 otherwise).
-codeunit 97905 "IPS Src"
+codeunit 50505 "IPS Src"
 {
     Permissions = tabledata "IPS Table" = R;
 
@@ -20,7 +20,7 @@ codeunit 97905 "IPS Src"
 }
 
 /// Minimal table for Permissions reference.
-table 97904 "IPS Table"
+table 50120 "IPS Table"
 {
     fields
     {

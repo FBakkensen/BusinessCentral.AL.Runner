@@ -41,12 +41,12 @@ pageextension 50000 "EBT5 Page Ext" extends "EBT5 Page"
 }
 
 // ── Worker codeunit (just needs to exist) ────────────────────────────────────
-codeunit 50019 "EBT5 Worker"
+codeunit 50027 "EBT5 Worker"
 {
 }
 
 // ── Helper accessible from the test codeunit ─────────────────────────────────
-codeunit 50020 "EBT5 Helper"
+codeunit 50028 "EBT5 Helper"
 {
     procedure AllOverloadsCompile(): Boolean
     begin

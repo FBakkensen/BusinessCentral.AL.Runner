@@ -1,7 +1,7 @@
 // Stub for BC's "Library - Utility" codeunit (ID 131003) from Test-TestLibraries.
 // Provides common test utility methods for AL tests.
 // All methods use BC built-ins so they run natively inside al-runner.
-codeunit 131003 "Library - Utility"
+codeunit 50006 "Library - Utility"
 {
     trigger OnRun()
     begin

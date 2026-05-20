@@ -7,7 +7,7 @@ namespace MySales.Tests;
 
 using MySales.Document;
 
-codeunit 50314 "Print Option Tests"
+codeunit 50320 "Print Option Tests"
 {
     Subtype = Test;
 

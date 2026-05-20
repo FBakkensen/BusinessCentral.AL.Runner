@@ -11,7 +11,7 @@ table 50042 "FieldRef Conv Table"
     }
 }
 
-codeunit 50279 "FieldRef NavValue Src"
+codeunit 50285 "FieldRef NavValue Src"
 {
     procedure StrSubstNo_WithFieldRef(): Text
     var

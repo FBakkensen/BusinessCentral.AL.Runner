@@ -1,4 +1,4 @@
-codeunit 50133 "SEU Test"
+codeunit 50141 "SEU Test"
 {
     Subtype = Test;
 

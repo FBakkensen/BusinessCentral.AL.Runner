@@ -1,4 +1,4 @@
-codeunit 56641 "RR Mem Tests"
+codeunit 50592 "RR Mem Tests"
 {
     Subtype = Test;
     var

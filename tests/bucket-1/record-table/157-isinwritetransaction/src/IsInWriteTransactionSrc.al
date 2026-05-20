@@ -1,6 +1,6 @@
 /// Helper codeunit that wraps IsInWriteTransaction() so the test codeunit
 /// can call it and verify the standalone runner always returns false.
-codeunit 61700 "IWT Helper"
+codeunit 50477 "IWT Helper"
 {
     procedure GetIsInWriteTransaction(): Boolean
     begin
@@ -15,7 +15,7 @@ codeunit 61700 "IWT Helper"
 }
 
 /// Minimal table used to test IsInWriteTransaction after a record insert.
-table 61720 "IWT Dummy"
+table 50110 "IWT Dummy"
 {
     fields
     {

@@ -1,4 +1,4 @@
-table 56241 "Temp Test Item"
+table 50096 "Temp Test Item"
 {
     fields
     {

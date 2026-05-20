@@ -10,7 +10,7 @@ table 50029 "OGap Table"
     keys { key(PK; "No.") { Clustered = true; } }
 }
 
-codeunit 50195 "OGap Source"
+codeunit 50202 "OGap Source"
 {
     // ── FindSet 2-arg (ForUpdate, ForceNewQuery) ─────────────────────────────
     // BC 26+ emits ALFindSet(DataError, bool, bool) for FindSet(ForUpdate, ForceNewQuery).

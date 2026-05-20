@@ -1,4 +1,4 @@
-codeunit 50011 "Math Helper"
+codeunit 50019 "Math Helper"
 {
     procedure Square(X: Integer): Integer
     begin

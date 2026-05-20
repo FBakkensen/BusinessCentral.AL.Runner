@@ -1,4 +1,4 @@
-table 56800 "Isolation Probe"
+table 50196 "Isolation Probe"
 {
     DataClassification = CustomerContent;
 
@@ -16,7 +16,7 @@ table 56800 "Isolation Probe"
 }
 
 // Renumbered from 56800 to avoid collision in new bucket layout (#1385).
-codeunit 1056800 "Isolation Probe"
+codeunit 50605 "Isolation Probe"
 {
     procedure SetRecordReadIsolation()
     var

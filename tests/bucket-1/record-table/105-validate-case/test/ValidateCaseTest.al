@@ -1,4 +1,4 @@
-codeunit 100011 "Case Validate Test"
+codeunit 50409 "Case Validate Test"
 {
     Subtype = Test;
 

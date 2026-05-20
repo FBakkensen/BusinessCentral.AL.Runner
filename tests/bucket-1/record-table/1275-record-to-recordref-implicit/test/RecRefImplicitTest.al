@@ -4,7 +4,7 @@
 // ALCompiler.ToRecordRef wrapper. Adding an implicit conversion operator on
 // MockRecordRef ensures all such code paths are handled.
 
-codeunit 1275002 "RecRef Implicit Tests"
+codeunit 50439 "RecRef Implicit Tests"
 {
     Subtype = Test;
 

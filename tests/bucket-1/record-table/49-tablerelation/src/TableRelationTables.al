@@ -1,5 +1,5 @@
 /// Parent table — the target of TableRelation references below
-table 55500 "TR Parent"
+table 50165 "TR Parent"
 {
     DataClassification = ToBeClassified;
 
@@ -25,7 +25,7 @@ table 55500 "TR Parent"
 }
 
 /// Child table — uses TableRelation to reference TR Parent
-table 55501 "TR Child"
+table 50166 "TR Child"
 {
     DataClassification = ToBeClassified;
 

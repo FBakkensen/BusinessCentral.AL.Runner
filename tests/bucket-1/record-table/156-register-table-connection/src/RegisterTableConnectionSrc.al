@@ -1,6 +1,6 @@
 /// Helper codeunit exercising Database.RegisterTableConnection.
 /// Signature per the AL compiler: `RegisterTableConnection(TableConnectionType, Name: Text, Connection: Text)`.
-codeunit 59680 "RTC Src"
+codeunit 50475 "RTC Src"
 {
     procedure CallRegister(ct: TableConnectionType; name: Text; conn: Text)
     begin

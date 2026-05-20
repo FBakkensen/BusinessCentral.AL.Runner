@@ -2,7 +2,7 @@
 /// After Rename, Rec holds the new PK values and xRec holds the old ones.
 /// The trigger inserts a counter row keyed by the new PK (Rec.PK) with
 /// Hits = Rec.Val, so tests can verify the trigger fired and saw correct state.
-table 100019 "ORT Source"
+table 50088 "ORT Source"
 {
     fields
     {
@@ -28,7 +28,7 @@ table 100019 "ORT Source"
 }
 
 /// Counter table shared by the OnRename trigger tests.
-table 100020 "ORT Counter"
+table 50089 "ORT Counter"
 {
     fields
     {

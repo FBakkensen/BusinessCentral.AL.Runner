@@ -1,5 +1,5 @@
 /// Helper codeunit exercising Database.SetDefaultTableConnection.
-codeunit 59730 "SDTC Src"
+codeunit 50481 "SDTC Src"
 {
     procedure CallSet(ct: TableConnectionType; name: Text)
     begin

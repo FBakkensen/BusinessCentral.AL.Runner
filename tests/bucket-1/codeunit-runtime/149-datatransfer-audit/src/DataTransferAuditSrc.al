@@ -16,7 +16,7 @@ table 50015 "DTA Item"
 
 /// Helper codeunit exercising DataTransfer.UpdateAuditFields — the property
 /// issue #475 says is not stubbed.
-codeunit 50090 "DTA Src"
+codeunit 50098 "DTA Src"
 {
     procedure GetUpdateAuditFieldsDefault(): Boolean
     var

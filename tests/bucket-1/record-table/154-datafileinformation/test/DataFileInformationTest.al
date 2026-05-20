@@ -1,4 +1,4 @@
-codeunit 61301 "DFI Tests"
+codeunit 50470 "DFI Tests"
 {
     Subtype = Test;
 

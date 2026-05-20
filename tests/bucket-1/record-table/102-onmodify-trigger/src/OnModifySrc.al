@@ -1,7 +1,7 @@
 /// Source table with an OnModify trigger.
 /// The trigger inserts a counter row (PK=Rec.PK, Hits=Rec.Val) so tests can
 /// prove the trigger fired and read the updated field values from Rec.
-table 100013 "OMT Source"
+table 50069 "OMT Source"
 {
     fields
     {
@@ -24,7 +24,7 @@ table 100013 "OMT Source"
 }
 
 /// Counter table shared by the OnModify trigger tests.
-table 100014 "OMT Counter"
+table 50070 "OMT Counter"
 {
     fields
     {

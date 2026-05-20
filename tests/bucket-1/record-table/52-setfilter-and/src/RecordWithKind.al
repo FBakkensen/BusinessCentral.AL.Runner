@@ -1,4 +1,4 @@
-table 50520 "RWK Row"
+table 50172 "RWK Row"
 {
     fields
     {

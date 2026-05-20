@@ -1,5 +1,5 @@
 /// Minimal table used by table-CRUD test suite — issue #685.
-table 124000 "TCR Item"
+table 50115 "TCR Item"
 {
     DataClassification = SystemMetadata;
     fields

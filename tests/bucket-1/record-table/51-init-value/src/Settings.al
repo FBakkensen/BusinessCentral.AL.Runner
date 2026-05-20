@@ -1,4 +1,4 @@
-enum 50510 "IV Mode"
+enum 50014 "IV Mode"
 {
     value(0; " ") { }
     value(1; Daily) { }
@@ -6,7 +6,7 @@ enum 50510 "IV Mode"
     value(3; Off) { }
 }
 
-table 50510 "IV Settings"
+table 50169 "IV Settings"
 {
     fields
     {

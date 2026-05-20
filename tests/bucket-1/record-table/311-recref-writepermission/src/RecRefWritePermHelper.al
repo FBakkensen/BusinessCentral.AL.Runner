@@ -1,4 +1,4 @@
-table 311001 "RecRef WritePerm Table"
+table 50138 "RecRef WritePerm Table"
 {
     fields
     {
@@ -12,7 +12,7 @@ table 311001 "RecRef WritePerm Table"
     }
 }
 
-codeunit 311002 "RecRef WritePerm Helper"
+codeunit 50532 "RecRef WritePerm Helper"
 {
     procedure TestWritePermission(): Boolean
     var

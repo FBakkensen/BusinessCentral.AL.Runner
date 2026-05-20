@@ -1,4 +1,4 @@
-codeunit 305000 "FPB FieldNo Src"
+codeunit 50627 "FPB FieldNo Src"
 {
     /// AddFieldNo with name, table name, and field number.
     /// This matches the telemetry pattern: AddFieldNo(TableName(), FieldNo("..."))

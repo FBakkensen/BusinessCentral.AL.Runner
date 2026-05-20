@@ -1,4 +1,4 @@
-table 60300 "RFE Row"
+table 50118 "RFE Row"
 {
     fields
     {
@@ -9,7 +9,7 @@ table 60300 "RFE Row"
 }
 
 /// Exercises RecordRef.FieldExist and RecordRef.RecordLevelLocking.
-codeunit 60300 "RFE Src"
+codeunit 50501 "RFE Src"
 {
     procedure FieldExist_ByNo(tableNo: Integer; fieldNo: Integer): Boolean
     var

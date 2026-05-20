@@ -1,4 +1,4 @@
-table 295001 "Auto Inc Entry"
+table 50085 "Auto Inc Entry"
 {
     fields
     {

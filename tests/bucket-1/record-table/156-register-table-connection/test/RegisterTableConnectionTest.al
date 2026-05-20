@@ -1,4 +1,4 @@
-codeunit 59681 "RTC Test"
+codeunit 50476 "RTC Test"
 {
     Subtype = Test;
 

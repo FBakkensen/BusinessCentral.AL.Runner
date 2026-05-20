@@ -1,4 +1,4 @@
-codeunit 56270 "API Probe"
+codeunit 50436 "API Probe"
 {
     /// <summary>
     /// Helper codeunit to exercise RecordRef/FieldRef/KeyRef API methods.

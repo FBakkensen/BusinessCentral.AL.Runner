@@ -1,5 +1,5 @@
 // Renumbered from 50400 to avoid collision in new bucket layout (#1385).
-table 1050400 "Test Item"
+table 50198 "Test Item"
 {
     DataClassification = ToBeClassified;
 

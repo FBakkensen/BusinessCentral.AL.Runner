@@ -1,4 +1,4 @@
-codeunit 50300 "Record Code Unwrap Helper"
+codeunit 50306 "Record Code Unwrap Helper"
 {
     procedure TakeCode(InputCode: Code[20]): Code[20]
     begin

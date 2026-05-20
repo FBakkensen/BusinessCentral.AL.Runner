@@ -1,4 +1,4 @@
-codeunit 305003 "Validate No Value Test"
+codeunit 50629 "Validate No Value Test"
 {
     Subtype = Test;
 

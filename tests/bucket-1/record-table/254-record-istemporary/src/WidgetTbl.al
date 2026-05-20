@@ -1,4 +1,4 @@
-table 50254 "IsTemp Widget"
+table 50128 "IsTemp Widget"
 {
     fields
     {

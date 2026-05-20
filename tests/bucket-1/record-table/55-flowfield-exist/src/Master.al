@@ -1,4 +1,4 @@
-table 56550 "FF Master"
+table 50174 "FF Master"
 {
     fields
     {
@@ -12,7 +12,7 @@ table 56550 "FF Master"
     keys { key(PK; Id) { Clustered = true; } }
 }
 
-table 56551 "FF Child"
+table 50175 "FF Child"
 {
     fields
     {

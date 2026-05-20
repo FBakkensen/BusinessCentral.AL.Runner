@@ -1,4 +1,4 @@
-table 57800 "FA Test"
+table 50183 "FA Test"
 {
     DataClassification = CustomerContent;
 
@@ -17,7 +17,7 @@ table 57800 "FA Test"
     }
 }
 
-codeunit 57801 "FA Helper"
+codeunit 50583 "FA Helper"
 {
     procedure IsFieldActiveByNo(RecRef: RecordRef; FieldNo: Integer): Boolean
     var

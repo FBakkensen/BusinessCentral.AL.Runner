@@ -1,5 +1,5 @@
 /// Tests for ErrorInfo.Create, Message, ErrorType — issue #215.
-codeunit 50142 "EIM Test"
+codeunit 50149 "EIM Test"
 {
     Subtype = Test;
 

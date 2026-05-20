@@ -1,4 +1,4 @@
-codeunit 56691 "Company Name Test"
+codeunit 50600 "Company Name Test"
 {
     Subtype = Test;
 

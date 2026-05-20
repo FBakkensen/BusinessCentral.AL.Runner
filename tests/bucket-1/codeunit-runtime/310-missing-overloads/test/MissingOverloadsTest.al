@@ -4,7 +4,7 @@
 ///   ErrorInfo.AddNavigationAction (Text, Text)
 ///   FilterPageBuilder.AddField (Text, Joker, Text)
 ///   TestField.Lookup (RecordRef)
-codeunit 50224 "MOv Test"
+codeunit 50231 "MOv Test"
 {
     Subtype = Test;
 

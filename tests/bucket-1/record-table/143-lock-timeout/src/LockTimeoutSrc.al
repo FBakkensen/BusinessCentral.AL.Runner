@@ -1,5 +1,5 @@
 /// Helper codeunit exercising Database.LockTimeout / Database.LockTimeoutDuration.
-codeunit 59360 "LT Src"
+codeunit 50451 "LT Src"
 {
     procedure GetLockTimeout(): Boolean
     begin

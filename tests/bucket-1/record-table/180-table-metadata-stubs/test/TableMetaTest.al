@@ -1,4 +1,4 @@
-codeunit 107001 "TMI Test"
+codeunit 50496 "TMI Test"
 {
     Subtype = Test;
 

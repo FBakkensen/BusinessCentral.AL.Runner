@@ -1,5 +1,5 @@
 // Renumbered from 85000 to avoid collision in new bucket layout (#1385).
-codeunit 50362 DialogUser
+codeunit 50366 DialogUser
 {
     procedure ProcessWithDialog(ItemCount: Integer): Integer
     var

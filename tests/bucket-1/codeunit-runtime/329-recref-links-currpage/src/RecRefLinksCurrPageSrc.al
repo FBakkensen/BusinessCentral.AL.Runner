@@ -11,7 +11,7 @@ table 50040 "RR Link Table"
     }
 }
 
-page 50006 "RR Child Page"
+page 50005 "RR Child Page"
 {
     PageType = ListPart;
     SourceTable = "RR Link Table";
@@ -28,7 +28,7 @@ page 50006 "RR Child Page"
     }
 }
 
-page 50007 "RR Parent Page"
+page 50006 "RR Parent Page"
 {
     PageType = Card;
     SourceTable = "RR Link Table";
@@ -59,7 +59,7 @@ page 50007 "RR Parent Page"
     end;
 }
 
-codeunit 50273 "RR Links CurrPage Src"
+codeunit 50279 "RR Links CurrPage Src"
 {
     procedure RecordRefHasLinksAfterAdd(): Boolean
     var

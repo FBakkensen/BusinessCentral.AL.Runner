@@ -1,4 +1,4 @@
-tableextension 53300 "Item Extension" extends "Base Item Table"
+tableextension 50004 "Item Extension" extends "Base Item Table"
 {
     fields
     {

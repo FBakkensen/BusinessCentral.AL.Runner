@@ -1,4 +1,4 @@
-codeunit 50267 "HC GetHeaders Bool Src"
+codeunit 50273 "HC GetHeaders Bool Src"
 {
     /// <summary>
     /// Exercises HttpContent.GetHeaders() in a boolean context.

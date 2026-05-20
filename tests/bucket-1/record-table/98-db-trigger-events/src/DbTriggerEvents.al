@@ -1,4 +1,4 @@
-table 59801 "DTE Source"
+table 50209 "DTE Source"
 {
     fields
     {
@@ -8,7 +8,7 @@ table 59801 "DTE Source"
     keys { key(PK; PK) { Clustered = true; } }
 }
 
-table 59802 "DTE Counter"
+table 50210 "DTE Counter"
 {
     fields
     {
@@ -20,7 +20,7 @@ table 59802 "DTE Counter"
     keys { key(PK; PK) { Clustered = true; } }
 }
 
-codeunit 59801 "DTE Subscriber"
+codeunit 50630 "DTE Subscriber"
 {
     [EventSubscriber(ObjectType::Table, Database::"DTE Source", OnAfterInsertEvent, '', true, true)]
     local procedure OnAfterInsert(var Rec: Record "DTE Source")

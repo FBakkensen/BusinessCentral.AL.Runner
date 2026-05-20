@@ -1,4 +1,4 @@
-codeunit 50098 "SLP Tests"
+codeunit 50106 "SLP Tests"
 {
     Subtype = Test;
 

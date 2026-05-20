@@ -1,4 +1,4 @@
-codeunit 50265 "HRM SetRequestUri Bool Src"
+codeunit 50271 "HRM SetRequestUri Bool Src"
 {
     /// <summary>
     /// Exercises SetRequestUri() in a boolean context.

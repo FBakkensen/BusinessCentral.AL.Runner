@@ -1,4 +1,4 @@
-codeunit 50336 "ILV Interface Local Var Tests"
+codeunit 50342 "ILV Interface Local Var Tests"
 {
     Subtype = Test;
 

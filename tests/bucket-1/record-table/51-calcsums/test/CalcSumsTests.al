@@ -1,4 +1,4 @@
-codeunit 55801 "CalcSums Tests"
+codeunit 50565 "CalcSums Tests"
 {
     Subtype = Test;
 

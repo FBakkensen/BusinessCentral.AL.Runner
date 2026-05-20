@@ -7,7 +7,7 @@
 /// Covers both directions:
 ///   Positive — equal values → assertion passes.
 ///   Negative — unequal values → assertion fires the expected error.
-codeunit 50232 "Assert ByRef Coercion Tests"
+codeunit 50239 "Assert ByRef Coercion Tests"
 {
     Subtype = Test;
 

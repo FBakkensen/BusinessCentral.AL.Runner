@@ -1,4 +1,4 @@
-table 60100 FieldErrorTable
+table 50124 FieldErrorTable
 {
     DataClassification = SystemMetadata;
 
@@ -22,7 +22,7 @@ table 60100 FieldErrorTable
     }
 }
 
-codeunit 60100 FieldErrorHelper
+codeunit 50512 FieldErrorHelper
 {
     procedure RaiseFieldErrorNoMessage(var Rec: Record FieldErrorTable)
     begin

@@ -1,4 +1,4 @@
-table 56880 "RF Find Item"
+table 50202 "RF Find Item"
 {
     fields
     {

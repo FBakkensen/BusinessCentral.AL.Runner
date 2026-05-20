@@ -4,7 +4,7 @@
 // This test suite documents and verifies that behavior.
 // Uses deterministic PKs: BeforeModify=1, AfterModify=2
 
-table 59965 "XR Source"
+table 50073 "XR Source"
 {
     fields
     {
@@ -15,7 +15,7 @@ table 59965 "XR Source"
     keys { key(PK; PK) { Clustered = true; } }
 }
 
-table 59966 "XR EventLog"
+table 50074 "XR EventLog"
 {
     fields
     {
@@ -29,7 +29,7 @@ table 59966 "XR EventLog"
     keys { key(PK; PK) { Clustered = true; } }
 }
 
-codeunit 59965 "XR Subscriber"
+codeunit 50406 "XR Subscriber"
 {
     [EventSubscriber(ObjectType::Table, Database::"XR Source", OnBeforeModifyEvent, '', true, true)]
     local procedure HandleBeforeModify(var Rec: Record "XR Source"; var xRec: Record "XR Source")

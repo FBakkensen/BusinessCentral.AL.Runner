@@ -1,4 +1,4 @@
-table 56230 "FE Test Item"
+table 50093 "FE Test Item"
 {
     fields
     {

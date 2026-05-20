@@ -68,7 +68,7 @@ table 50001 "Customer Balance"
     // subscribers are not supported. See the test codeunit for details.
 }
 
-codeunit 50009 "Balance Manager"
+codeunit 50017 "Balance Manager"
 {
     procedure UpdateBalance(CustomerNo: Code[20]; NewBalance: Decimal)
     var

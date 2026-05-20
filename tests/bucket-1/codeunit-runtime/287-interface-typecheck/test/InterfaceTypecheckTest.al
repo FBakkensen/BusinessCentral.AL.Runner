@@ -1,4 +1,4 @@
-codeunit 50200 "ITC Test"
+codeunit 50207 "ITC Test"
 {
     Subtype = Test;
     var

@@ -16,7 +16,7 @@ table 50047 "VCond Item"
 
 /// Page that uses conditional Visible on several fields.
 /// Tests that expressions (variable, record field comparison) compile correctly.
-page 50008 "VCond Item Page"
+page 50007 "VCond Item Page"
 {
     PageType = Card;
     SourceTable = "VCond Item";

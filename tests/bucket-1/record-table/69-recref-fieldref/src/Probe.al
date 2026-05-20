@@ -1,4 +1,4 @@
-codeunit 56680 "RF Probe"
+codeunit 50597 "RF Probe"
 {
     procedure GetFieldValue(TableId: Integer; FieldNo: Integer): Text
     var

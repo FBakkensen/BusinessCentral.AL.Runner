@@ -1,4 +1,4 @@
-codeunit 1280002 "Test CheckType"
+codeunit 50441 "Test CheckType"
 {
     Subtype = Test;
 

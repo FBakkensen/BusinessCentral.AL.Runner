@@ -13,7 +13,7 @@ table 50053 "Session Work Item"
 }
 
 // Renumbered from 50900 to avoid collision in new bucket layout (#1385).
-codeunit 50349 "Session Api"
+codeunit 50353 "Session Api"
 {
     procedure TryStartSession(): Boolean
     var
@@ -50,7 +50,7 @@ codeunit 50349 "Session Api"
 }
 
 // Renumbered from 50902 to avoid collision in new bucket layout (#1385).
-codeunit 50350 "Session Worker"
+codeunit 50354 "Session Worker"
 {
     trigger OnRun()
     begin

@@ -1,4 +1,4 @@
-codeunit 50293 "Variant Dict Src"
+codeunit 50299 "Variant Dict Src"
 {
     procedure GetDictFromVariant(reference: Variant): Dictionary of [Text, Integer]
     var
