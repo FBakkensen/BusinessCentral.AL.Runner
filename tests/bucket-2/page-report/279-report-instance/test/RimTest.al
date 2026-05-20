@@ -196,15 +196,13 @@ codeunit 126002 "RIM Test"
     end;
 
     [Test]
-    procedure RunRequestPage_ReturnsText()
+    procedure RunRequestPage_OutOfScope()
     var
         Src: Codeunit "RIM Source";
-        Result: Text;
     begin
-        // Positive: RunRequestPage() returns a Text value without error.
-        Result := Src.RunRequestPage_ReturnsText();
-        // Returns empty string or placeholder XML — just must not throw
-        Assert.IsTrue(true, 'RunRequestPage must not throw');
+        // OOS: RunRequestPage fires request-page UI — throws in standalone mode.
+        asserterror Src.RunRequestPage_ReturnsText();
+        Assert.ExpectedError('out-of-scope: NavReport.RunRequestPage');
     end;
 
     // ── SetTableView ──────────────────────────────────────────────────────────

@@ -72,11 +72,12 @@ codeunit 91001 "RS Tests"
     end;
 
     [Test]
-    procedure Report_RunRequestPage_ReturnsEmpty()
+    procedure Report_RunRequestPage_OutOfScope()
     begin
-        // [GIVEN] A report id with no registered RequestPageHandler
+        // [GIVEN] A report id
         // [WHEN]  Report.RunRequestPage(id) is called
-        // [THEN]  Returns empty string (no UI in standalone mode)
-        Assert.AreEqual('', Src.GetRunRequestPage(99999), 'RunRequestPage should return empty string');
+        // [THEN]  Throws OOS — request-page UI rendering is out-of-scope
+        asserterror Src.GetRunRequestPage(99999);
+        Assert.ExpectedError('out-of-scope: NavReport.RunRequestPage');
     end;
 }

@@ -32,10 +32,10 @@ codeunit 1091002 "RH Report Handle Tests"
         Runner: Codeunit "RH Report Runner";
     begin
         // [GIVEN] A report variable and no registered handler
-        // [WHEN] RunRequestPage is called without a handler
-        // [THEN] It should throw a descriptive error
+        // [WHEN] RunRequestPage is called
+        // [THEN] Throws OOS — request-page UI rendering is out-of-scope
         asserterror Runner.RunRequestPageAndGetResult();
-        Assert.ExpectedError('No RequestPageHandler registered');
+        Assert.ExpectedError('out-of-scope: NavReport.RunRequestPage');
     end;
 
     [Test]

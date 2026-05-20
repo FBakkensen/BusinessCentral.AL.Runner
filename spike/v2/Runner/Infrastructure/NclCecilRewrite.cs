@@ -83,6 +83,26 @@ public static class NclCecilRewrite
             throw new InvalidOperationException("SaveAsAsync method not found in NavReport — Ncl shape changed; do not commit");
         Console.Error.WriteLine($"[Cecil] Rewrote {saveAsRewroteCount} SaveAsAsync overload(s) → throw OOS");
 
+        // NavReport.RunRequestPageAsync → throw OOS (request-page UI is out-of-scope)
+        int runRequestPageRewroteCount = 0;
+        foreach (var method in navReportType.Methods.Where(mm => mm.Name == "RunRequestPageAsync").ToList())
+        {
+            Console.Error.WriteLine($"[Cecil] Rewriting {method.FullName}");
+            var body = method.Body;
+            body.Instructions.Clear();
+            body.Variables.Clear();
+            body.ExceptionHandlers.Clear();
+            var il = body.GetILProcessor();
+            il.Append(il.Create(OpCodes.Ldstr, "out-of-scope: NavReport.RunRequestPage — request-page-ui — see docs/scope.md#report-rendering"));
+            il.Append(il.Create(OpCodes.Newobj, oosCtor));
+            il.Append(il.Create(OpCodes.Throw));
+            body.MaxStackSize = 1;
+            runRequestPageRewroteCount++;
+        }
+        if (runRequestPageRewroteCount == 0)
+            throw new InvalidOperationException("RunRequestPageAsync method not found in NavReport — Ncl shape changed; do not commit");
+        Console.Error.WriteLine($"[Cecil] Rewrote {runRequestPageRewroteCount} RunRequestPageAsync overload(s) → throw OOS");
+
         // NavForm.GetMasterPage → return null/default (R2R-trapped; Cecil-rewrite is the only path)
         var navFormType = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.NavForm");
         if (navFormType == null)

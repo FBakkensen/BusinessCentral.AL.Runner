@@ -7396,14 +7396,31 @@ Report.RunModal (Text, Boolean, Boolean, Table):
     - tests/bucket-2/page-report/309700-report-text-name-overloads
   notes: MockReportHandle.StaticRunModal(string, bool, bool) and StaticRunModal(string, bool, bool, object) — no-op in standalone mode. Fixes #1377.
 
+Report.RunRequestPage (Integer):
+  layer: runtime-api
+  category: Report
+  status: out-of-scope
+  tests:
+    - tests/bucket-2/page-report/90-report-static
+    - tests/bucket-2/page-report/301-report-static-runrequestpage
+    - tests/bucket-2/page-report/91-report-handle
+  notes: >
+    Request-page UI rendering is out-of-scope. NavReport.RunRequestPageAsync is Cecil-rewritten
+    (NclCecilRewrite.cs) to throw InvalidOperationException("out-of-scope: NavReport.RunRequestPage
+    — request-page-ui — see docs/scope.md#report-rendering"). Tests converted from value-asserting
+    to asserterror + Assert.ExpectedError shape.
+
 Report.RunRequestPage (Integer, Text):
   layer: runtime-api
   category: Report
-  status: covered
+  status: out-of-scope
   tests:
-    - tests/bucket-2/page-report/309700-report-text-name-overloads
     - tests/bucket-2/page-report/301-report-static-runrequestpage
-  notes: MockReportHandle.StaticRunRequestPage(int, string) — returns empty string in standalone mode. Fixes #1377.
+  notes: >
+    Request-page UI rendering is out-of-scope. NavReport.RunRequestPageAsync is Cecil-rewritten
+    (NclCecilRewrite.cs) to throw InvalidOperationException("out-of-scope: NavReport.RunRequestPage
+    — request-page-ui — see docs/scope.md#report-rendering"). Tests converted from value-asserting
+    to asserterror + Assert.ExpectedError shape.
 
 Report.SaveAs (Integer, Text, ReportFormat, OutStream):
   layer: runtime-api
@@ -7653,11 +7670,32 @@ ReportInstance.RunModal ():
   status: covered
   notes: MockReportHandle.RunModal() executes full report lifecycle.
 
+ReportInstance.RunRequestPage ():
+  layer: runtime-api
+  category: ReportInstance
+  status: out-of-scope
+  tests:
+    - tests/bucket-2/page-report/308-report-instance-runrequestpage
+    - tests/bucket-2/page-report/279-report-instance
+    - tests/bucket-2/page-report/91-report-handle
+    - tests/bucket-2/page-report/92-request-page-handler
+  notes: >
+    Request-page UI rendering is out-of-scope. NavReport.RunRequestPageAsync is Cecil-rewritten
+    (NclCecilRewrite.cs) to throw InvalidOperationException("out-of-scope: NavReport.RunRequestPage
+    — request-page-ui — see docs/scope.md#report-rendering"). Tests converted to asserterror shape.
+
 ReportInstance.RunRequestPage (Text):
   layer: runtime-api
   category: ReportInstance
-  status: covered
-  notes: MockReportHandle.RunRequestPage() returns placeholder text.
+  status: out-of-scope
+  tests:
+    - tests/bucket-2/page-report/308-report-instance-runrequestpage
+    - tests/bucket-2/page-report/92-request-page-handler
+  notes: >
+    Request-page UI rendering is out-of-scope. NavReport.RunRequestPageAsync is Cecil-rewritten
+    (NclCecilRewrite.cs) to throw InvalidOperationException("out-of-scope: NavReport.RunRequestPage
+    — request-page-ui — see docs/scope.md#report-rendering"). Tests converted from value-asserting
+    to asserterror + Assert.ExpectedError shape.
 
 ReportInstance.SaveAs (Text, ReportFormat, OutStream, RecordRef):
   layer: runtime-api

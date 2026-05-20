@@ -6,24 +6,14 @@ codeunit 92002 "RPH Request Page Tests"
         Assert: Codeunit Assert;
 
     [Test]
-    [HandlerFunctions('ReqPageHandler')]
-    procedure RunRequestPageInvokesHandler()
+    procedure RunRequestPageInvokesHandler_OutOfScope()
     var
         Caller: Codeunit "RPH Report Caller";
-        Result: Text;
     begin
-        // [GIVEN] A RequestPageHandler is registered
-        // [WHEN] RunRequestPage is called
-        Result := Caller.CallRunRequestPage();
-
-        // [THEN] The handler is invoked and a result string is returned
-        Assert.AreNotEqual('', Result, 'RunRequestPage should return a non-empty result');
-    end;
-
-    [RequestPageHandler]
-    procedure ReqPageHandler(var RequestPage: TestRequestPage "RPH Test Report")
-    begin
-        // Handler accepts the request page
+        // [GIVEN] RunRequestPage is called
+        // [THEN] Throws OOS — request-page UI rendering is out-of-scope
+        asserterror Caller.CallRunRequestPage();
+        Assert.ExpectedError('out-of-scope: NavReport.RunRequestPage');
     end;
 
     [Test]
@@ -33,8 +23,8 @@ codeunit 92002 "RPH Request Page Tests"
     begin
         // [GIVEN] No handler registered
         // [WHEN] RunRequestPage is called without a handler
-        // [THEN] It should throw an error (handler is required)
+        // [THEN] Throws OOS — request-page UI rendering is out-of-scope
         asserterror Caller.CallRunRequestPage();
-        Assert.ExpectedError('No RequestPageHandler registered');
+        Assert.ExpectedError('out-of-scope: NavReport.RunRequestPage');
     end;
 }
