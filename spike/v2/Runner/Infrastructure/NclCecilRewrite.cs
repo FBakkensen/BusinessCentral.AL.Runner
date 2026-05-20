@@ -6,6 +6,7 @@
 using System;
 using System.IO;
 using System.Reflection;
+using System.Security.Cryptography;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 
@@ -13,6 +14,9 @@ namespace AlRunnerV2.Infrastructure;
 
 public static class NclCecilRewrite
 {
+    private const int CACHE_VERSION = 1;
+
+
     /// <summary>
     /// Reads Ncl.dll bytes, rewrites IsEventSubscribed body to return true,
     /// strips R2R header, returns modified bytes ready for Assembly.Load.
@@ -400,6 +404,9 @@ public static class NclCecilRewrite
     /// Rewrites Ncl from the BC artifacts dir and writes the result to the runner's
     /// bin path (overwriting the build-time copy). Runs BEFORE the CLR's TPA probe
     /// resolves Ncl, so when CLR loads Ncl by name it gets our rewritten bytes.
+    /// Results are cached in $HOME/.cache/al-runner/ncl-cecil/ keyed by a SHA256 of
+    /// the source Ncl bytes, runner assembly mtime, and CACHE_VERSION. Set
+    /// AL_RUNNER_NCL_CACHE=0 to force a fresh rewrite without reading or writing cache.
     /// </summary>
     public static void RewriteInPlace(string srcDir, string binNclPath)
     {
@@ -410,10 +417,57 @@ public static class NclCecilRewrite
             Console.Error.WriteLine("[Cecil] WARNING: Ncl already loaded before in-place rewrite — no effect");
             return;
         }
+
         var nclSrc = Path.Combine(srcDir, "Microsoft.Dynamics.Nav.Ncl.dll");
+
+        if (Environment.GetEnvironmentVariable("AL_RUNNER_NCL_CACHE") == "0")
+        {
+            Console.Error.WriteLine("[Cecil] Cecil cache DISABLED via AL_RUNNER_NCL_CACHE=0");
+            var bytes = RewriteNcl(nclSrc);
+            File.WriteAllBytes(binNclPath, bytes);
+            Console.Error.WriteLine($"[Cecil] Wrote rewritten Ncl to {binNclPath} ({bytes.Length} bytes)");
+            return;
+        }
+
+        var cacheKey = ComputeCacheKey(nclSrc);
+        var shortKey = cacheKey[..8];
+
+        var cacheDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            ".cache", "al-runner", "ncl-cecil");
+        Directory.CreateDirectory(cacheDir);
+        var cachePath = Path.Combine(cacheDir, $"{cacheKey}.dll");
+
+        if (File.Exists(cachePath))
+        {
+            Console.Error.WriteLine($"[Cecil] Cecil cache HIT (key={shortKey})");
+            File.Copy(cachePath, binNclPath, overwrite: true);
+            Console.Error.WriteLine($"[Cecil] Copied cached Ncl to {binNclPath}");
+            return;
+        }
+
+        Console.Error.WriteLine($"[Cecil] Cecil cache MISS — rewrote and cached (key={shortKey})");
         var modifiedBytes = RewriteNcl(nclSrc);
         File.WriteAllBytes(binNclPath, modifiedBytes);
         Console.Error.WriteLine($"[Cecil] Wrote rewritten Ncl to {binNclPath} ({modifiedBytes.Length} bytes)");
+
+        // Write to cache atomically via temp-file-then-rename so concurrent runners
+        // never read a partially-written cache entry.
+        var tempPath = cachePath + ".tmp." + Guid.NewGuid().ToString("N");
+        File.WriteAllBytes(tempPath, modifiedBytes);
+        File.Move(tempPath, cachePath, overwrite: true);
+        Console.Error.WriteLine($"[Cecil] Saved to cache ({modifiedBytes.Length} bytes)");
+    }
+
+    private static string ComputeCacheKey(string nclPath)
+    {
+        var nclBytes = File.ReadAllBytes(nclPath);
+        var runnerMtimeTicks = File.GetLastWriteTimeUtc(typeof(NclCecilRewrite).Assembly.Location).Ticks;
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        hash.AppendData(nclBytes);
+        hash.AppendData(BitConverter.GetBytes(runnerMtimeTicks));
+        hash.AppendData(BitConverter.GetBytes(CACHE_VERSION));
+        return Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant();
     }
 
     public static void VerifyRewriteLanded()
