@@ -156,11 +156,27 @@ public static partial class BcRuntime
                     "NavDatabase.get_CollationAwareStringComparer");
         }
         // NavRecord.Dispose(bool) — NREs when RequiredSessionId != NavCurrentThread.Session.Id
-        // (skeleton session has no real Id, DiagnosticsResolver.GetMostSpecificInstance(null) NREs).
-        // Safe to no-op since our in-memory DataAccess/TempTableDataProvider needs no cleanup.
         var navRecordType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavRecord");
         if (navRecordType != null)
         {
+            // BeginInitialization / EndInitialization — hook as no-op. Called by NavRecord..ctor
+            // body and may NRE via Session.MetadataProvider on the skeleton.
+            var replNoOp = typeof(BcRuntime).GetMethod(nameof(NavRecord_BeginEndInitialization),
+                BindingFlags.Public | BindingFlags.Static)!;
+            var beginInit = navRecordType.GetMethod("BeginInitialization",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance, null, Type.EmptyTypes, null);
+            if (beginInit != null)
+            {
+                AlRunnerV2.Infrastructure.JmpHook.Apply(beginInit, replNoOp, "NavRecord.BeginInitialization()");
+                Console.Error.WriteLine("[BcRuntime] NavRecord.BeginInitialization() hooked → NoOp");
+            }
+            var endInit = navRecordType.GetMethod("EndInitialization",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance, null, Type.EmptyTypes, null);
+            if (endInit != null)
+            {
+                AlRunnerV2.Infrastructure.JmpHook.Apply(endInit, replNoOp, "NavRecord.EndInitialization()");
+                Console.Error.WriteLine("[BcRuntime] NavRecord.EndInitialization() hooked → NoOp");
+            }
             var disposeMethod = navRecordType.GetMethod("Dispose",
                 BindingFlags.NonPublic | BindingFlags.Instance, null,
                 new[] { typeof(bool) }, null);
@@ -277,6 +293,46 @@ public static partial class BcRuntime
             if (updateRefs != null)
                 Hook(updateRefs, nameof(ReturnValueTask3), "NavRecord.UpdateReferencesOnRenameAsync");
         }
+        // NavManagementTasks.CopyCompany(String, String) — full body walks multiple
+        // NavRecord instances in table 2000000006 (Company) and performs DataAccess operations
+        // that NRE on the skeleton. AL tests in the CopyCompany cluster only assert
+        // Assert.IsTrue(true,...) — they need the call to NOT throw, not actual copy behavior.
+        // No-op is safe for headless mode: no real DB to copy.
+        var mgmtTasksType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavManagementTasks");
+        if (mgmtTasksType != null)
+        {
+            var copyCompany = mgmtTasksType.GetMethods(
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
+                .FirstOrDefault(m => m.Name == "CopyCompany"
+                    && m.GetParameters() is { } ps
+                    && ps.Length >= 2
+                    && ps[^2].ParameterType == typeof(string)
+                    && ps[^1].ParameterType == typeof(string));
+            if (copyCompany != null)
+            {
+                Console.Error.WriteLine($"[BcRuntime] NavManagementTasks.CopyCompany: isStatic={copyCompany.IsStatic}, return={copyCompany.ReturnType.Name}, params={copyCompany.GetParameters().Length}");
+                // Pick shim based on total slot count (static: slots=params; instance: slots=params+1).
+                var slotCount = copyCompany.GetParameters().Length + (copyCompany.IsStatic ? 0 : 1);
+                var shimName = copyCompany.ReturnType == typeof(void) ? slotCount switch
+                {
+                    2 => nameof(NoOp2),
+                    3 => nameof(NoOp3),
+                    4 => nameof(NoOp4),
+                    5 => nameof(NoOp5),
+                    _ => nameof(NoOp3)
+                } : slotCount switch  // ValueTask or Task return
+                {
+                    2 => nameof(ReturnValueTask2),
+                    3 => nameof(ReturnValueTask3),
+                    4 => nameof(ReturnValueTask4),
+                    5 => nameof(ReturnValueTask5),
+                    _ => nameof(ReturnValueTask3)
+                };
+                Hook(copyCompany, shimName, "NavManagementTasks.CopyCompany");
+                Console.Error.WriteLine($"[BcRuntime] NavManagementTasks.CopyCompany hooked → {shimName}");
+            }
+        }
+
         // NCLMetaApplicationObject.CheckApplicationObjectIsValid — validates app-group ID matches.
         // Fails on skeleton session because tenant is null. No-op is safe: headless mode doesn't
         // do hot-reload or app-group switching, so stale-object detection has no value here.
@@ -621,5 +677,13 @@ public static partial class BcRuntime
             System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(tie.InnerException);
             return default;
         }
+    }
+
+    /// <summary>No-op replacement for NavRecord.BeginInitialization and EndInitialization
+    /// — these dereference Session.MetadataProvider (null on the skeleton), causing NREs
+    /// identical to the NavXmlPort/NavReport.BeginInitialization clusters.</summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void NavRecord_BeginEndInitialization(object self)
+    {
     }
 }
