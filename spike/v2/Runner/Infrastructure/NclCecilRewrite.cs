@@ -14,7 +14,7 @@ namespace AlRunnerV2.Infrastructure;
 
 public static class NclCecilRewrite
 {
-    private const int CACHE_VERSION = 4;
+    private const int CACHE_VERSION = 5;
 
 
     /// <summary>
@@ -517,6 +517,43 @@ public static class NclCecilRewrite
         else
         {
             Console.Error.WriteLine("[Cecil] WARNING: NavDialog not found in Ncl");
+        }
+
+        // ── Universal codeunit-event subscriber dispatch ──────────────────────────────────
+        // Per feedback_event_dispatch_must_be_universal.md, codeunit IntegrationEvent /
+        // BusinessEvent dispatch must cover events fired from ANY loaded DLL — MS BaseApp,
+        // SystemApp, ISV apps, our test bundles. NavMethodScope.OnRunEventAsync is BC's
+        // universal entry point: every publisher (regardless of which DLL it lives in) calls
+        // through it. Replacing its body routes ALL codeunit-event dispatch through our
+        // own implementation, which uses the same publisher-scope reflection model BC uses.
+        //
+        // Publisher early-exit (`if (γeventScope == null && !recorder) return`) is bypassed
+        // by EventSubscriberPatches.SeedCodeunitEventScopeSentinels populating γeventScope
+        // with a structurally-valid sentinel NavEventScope (lockObject + empty subs array).
+        // Table triggers fire via NavTableTriggerEventHandler — a different code path —
+        // and are unaffected.
+        var navMethodScopeType = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.NavMethodScope")
+            ?? throw new InvalidOperationException("NavMethodScope type not found in Ncl.dll — shape changed");
+        var onRunEventAsyncMethod = navMethodScopeType.Methods
+            .FirstOrDefault(m => m.Name == "OnRunEventAsync" && m.Parameters.Count == 0)
+            ?? throw new InvalidOperationException("NavMethodScope.OnRunEventAsync() not found — Ncl shape changed");
+        {
+            var dispatcherMethod = typeof(AlRunnerV2.BcRuntime).GetMethod(
+                nameof(AlRunnerV2.BcRuntime.CodeunitEventDispatch_OnRunEventAsync),
+                BindingFlags.Public | BindingFlags.Static)
+                ?? throw new InvalidOperationException("BcRuntime.CodeunitEventDispatch_OnRunEventAsync not found");
+            var dispatcherRef = asm.MainModule.ImportReference(dispatcherMethod);
+
+            var body = onRunEventAsyncMethod.Body;
+            body.Instructions.Clear();
+            body.Variables.Clear();
+            body.ExceptionHandlers.Clear();
+            var il = body.GetILProcessor();
+            il.Append(il.Create(OpCodes.Ldarg_0));
+            il.Append(il.Create(OpCodes.Call, dispatcherRef));
+            il.Append(il.Create(OpCodes.Ret));
+            body.MaxStackSize = 1;
+            Console.Error.WriteLine($"[Cecil] Rewrote NavMethodScope.OnRunEventAsync → CodeunitEventDispatcher");
         }
 
         var outStream = new MemoryStream();

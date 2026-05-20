@@ -33,6 +33,7 @@ namespace AlRunnerV2.Patches;
 public static class EventSubscriberPatches
 {
     private readonly record struct Key(int PublisherId, int EventTypeOrdinal);
+    private readonly record struct CodeunitEventKey(int PublisherCodeunitId, string EventMethodName);
 
     private sealed record SubscriberHandle(
         Type CodeunitType,
@@ -44,6 +45,20 @@ public static class EventSubscriberPatches
 
     private static readonly object _lock = new();
     private static readonly Dictionary<Key, List<SubscriberHandle>> _byKey = new();
+    private static readonly Dictionary<CodeunitEventKey, List<MethodInfo>> _byCodeunitKey = new();
+
+    /// <summary>
+    /// Look up codeunit-event subscribers registered for a (publisherCodeunitId, eventMethodName).
+    /// Called by CodeunitEventDispatcher at runtime from the Cecil-rewritten OnRunEventAsync.
+    /// </summary>
+    public static IReadOnlyList<MethodInfo>? GetCodeunitSubscribers(int publisherCodeunitId, string eventMethodName)
+    {
+        EnsureRegistryFresh();
+        lock (_lock)
+        {
+            return _byCodeunitKey.TryGetValue(new CodeunitEventKey(publisherCodeunitId, eventMethodName), out var l) ? l : null;
+        }
+    }
     private static readonly HashSet<MethodInfo> _injectedSubscriberMethods = new();
     private static int _lastScannedCount = 0;
     private static bool _registered = false;
@@ -129,6 +144,93 @@ public static class EventSubscriberPatches
     {
         if (_publisherLookup == null) return;
         DoInject(_publisherLookup);
+        SeedCodeunitEventScopeSentinels();
+    }
+
+    private static readonly HashSet<Type> _seededScopeTypes = new();
+    private static readonly Dictionary<int, Type?> _codeunitTypeCache = new();
+    private static object? _sentinelNavEventScope;
+
+    /// <summary>
+    /// For each (publisherCodeunitId, eventMethodName) with subscribers, find the publisher's
+    /// <c>Codeunit&lt;N&gt;+&lt;EventName&gt;_Scope</c> and seed its static <c>γeventScope</c>
+    /// field with a structurally-valid sentinel <see cref="NavEventScope"/>. The sentinel has
+    /// a non-null <c>lockObject</c> and an empty (not null) <c>registeredSubscriptions</c> array
+    /// — JIT-inlined code in BC's machinery can read both safely without crashing.
+    ///
+    /// Bypasses the AL publisher's early-exit
+    /// <c>if (γeventScope == null &amp;&amp; !recorder) return</c> without forcing the recorder
+    /// (which has widespread cascading side effects we cannot satisfy on the skeleton runtime).
+    /// </summary>
+    private static void SeedCodeunitEventScopeSentinels()
+    {
+        if (_byCodeunitKey.Count == 0) return;
+        if (_tNavEventScope == null || _tNavEventSubscription == null) return;
+
+        if (_sentinelNavEventScope == null)
+        {
+            try
+            {
+                _sentinelNavEventScope = System.Runtime.CompilerServices.RuntimeHelpers
+                    .GetUninitializedObject(_tNavEventScope);
+                var fLock = _tNavEventScope.GetField("lockObject",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+                if (fLock != null) FieldPoke.SetInstance(fLock, _sentinelNavEventScope, new object());
+                // Empty array (not null) — BC's HasSubscribers reads .Length safely; any
+                // JIT-inlined Length read also returns 0 without segfaulting on a null array.
+                var emptySubs = Array.CreateInstance(_tNavEventSubscription, 0);
+                if (_fRegisteredSubscriptions != null)
+                    FieldPoke.SetInstance(_fRegisteredSubscriptions, _sentinelNavEventScope, emptySubs);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"[Subscribers] sentinel NavEventScope build failed: {ex.GetType().Name}: {ex.Message}");
+                return;
+            }
+        }
+
+        int seeded = 0, missing = 0;
+        bool diagLogged = false;
+        lock (_lock)
+        {
+            foreach (var key in _byCodeunitKey.Keys)
+            {
+                var cuType = FindCodeunitClrType(key.PublisherCodeunitId);
+                if (cuType == null) { missing++; if (!diagLogged) { diagLogged = true; Console.Error.WriteLine($"[Subscribers] seed-miss: Codeunit{key.PublisherCodeunitId} type not found"); } continue; }
+                var scopeType = cuType.GetNestedTypes(BindingFlags.Public | BindingFlags.NonPublic)
+                    .FirstOrDefault(t => t.Name == key.EventMethodName + "_Scope");
+                if (scopeType == null) { missing++; continue; }
+                if (_seededScopeTypes.Contains(scopeType)) continue;
+                // Match the Greek-gamma field by suffix — the IL gamma codepoint differs from
+                // a C# source-literal "γ" so GetField("γeventScope") returns null. EndsWith works.
+                var fld = scopeType.GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static)
+                    .FirstOrDefault(f => f.Name.EndsWith("eventScope", StringComparison.Ordinal) && f.FieldType == _tNavEventScope);
+                if (fld == null) { missing++; continue; }
+                try { fld.SetValue(null, _sentinelNavEventScope); _seededScopeTypes.Add(scopeType); seeded++; }
+                catch (Exception ex) { Console.Error.WriteLine($"[Subscribers] failed seed on {scopeType.FullName}: {ex.Message}"); missing++; }
+            }
+        }
+        if (seeded > 0)
+            Console.Error.WriteLine($"[Subscribers] γeventScope seeded: seeded={seeded} missing={missing} total-keys={_byCodeunitKey.Count}");
+    }
+
+    private static Type? FindCodeunitClrType(int codeunitId)
+    {
+        if (_codeunitTypeCache.TryGetValue(codeunitId, out var cached)) return cached;
+        var name = "Codeunit" + codeunitId;
+        Type? found = null;
+        foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            var n = asm.GetName().Name ?? "";
+            if (n.StartsWith("System.") || n.StartsWith("Microsoft.Extensions.")
+                || n == "netstandard" || n == "mscorlib"
+                || n == "AlRunnerV2" || n == "Runner"
+                || n.StartsWith("Microsoft.CodeAnalysis")) continue;
+            try { var t = asm.GetType("Microsoft.Dynamics.Nav.BusinessApplication." + name); if (t != null) { found = t; break; } }
+            catch { }
+        }
+        _codeunitTypeCache[codeunitId] = found;
+        return found;
     }
 
     private static void DoInject(Func<int, object?> getNclMetaTable)
@@ -276,17 +378,27 @@ public static class EventSubscriberPatches
                         if (!TryReadAttribute(attr, out int publisherObjType,
                                               out int publisherId, out string methodName))
                         { Console.Error.WriteLine($"[Subscribers] could not read attr on {t.Name}.{m.Name}"); continue; }
-                        // Only Table publishers handled by this path (ObjectType.Table == 1).
-                        if (publisherObjType != 1) continue;
-                        int ord = ResolveEventOrdinalFromName(methodName);
-                        if (ord == 0) continue;
-                        var key = new Key(publisherId, ord);
-                        if (!_byKey.TryGetValue(key, out var lst))
-                            _byKey[key] = lst = new List<SubscriberHandle>();
-                        if (lst.Any(h => h.Method == m)) continue;
-                        lst.Add(new SubscriberHandle(t, codeunitId, m, publisherId, ord,
-                            $"{t.Name}.{m.Name} → Table {publisherId}/{methodName}"));
-                        added++;
+                        if (publisherObjType == 1) // Table → existing trigger path
+                        {
+                            int ord = ResolveEventOrdinalFromName(methodName);
+                            if (ord == 0) continue;
+                            var key = new Key(publisherId, ord);
+                            if (!_byKey.TryGetValue(key, out var lst))
+                                _byKey[key] = lst = new List<SubscriberHandle>();
+                            if (lst.Any(h => h.Method == m)) continue;
+                            lst.Add(new SubscriberHandle(t, codeunitId, m, publisherId, ord,
+                                $"{t.Name}.{m.Name} → Table {publisherId}/{methodName}"));
+                            added++;
+                        }
+                        else if (publisherObjType == 5) // Codeunit → new universal dispatch path
+                        {
+                            var ckey = new CodeunitEventKey(publisherId, methodName);
+                            if (!_byCodeunitKey.TryGetValue(ckey, out var clst))
+                                _byCodeunitKey[ckey] = clst = new List<MethodInfo>();
+                            if (clst.Contains(m)) continue;
+                            clst.Add(m);
+                            added++;
+                        }
                     }
                 }
             }

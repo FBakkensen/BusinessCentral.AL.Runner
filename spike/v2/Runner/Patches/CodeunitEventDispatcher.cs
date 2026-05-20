@@ -1,0 +1,180 @@
+// CodeunitEventDispatcher — runtime-layer replacement for BC's NavEventScope dispatch
+// for codeunit-published IntegrationEvent / BusinessEvent.
+//
+// Wired via Cecil rewrite of NavMethodScope.OnRunEventAsync → call our dispatcher.
+// Publishers reach that path because EventSubscriberPatches.SeedEventScopeSentinels()
+// populates γeventScope with a structurally-valid sentinel NavEventScope on every
+// publisher's <EventName>_Scope class.
+//
+// Per feedback_event_dispatch_must_be_universal.md, this is the ONLY architecture that
+// covers events fired from any loaded DLL (MS BaseApp, SystemApp, ISV, our test bundles).
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using AlRunnerV2.Patches;
+
+namespace AlRunnerV2;
+
+public static partial class BcRuntime
+{
+    private static int _dispatchCount;
+    private static int _dispatchFiredCount;
+
+    /// <summary>
+    /// Entry point called from the Cecil-rewritten NavMethodScope.OnRunEventAsync.
+    /// Returns default ValueTask — synchronous execution model.
+    /// </summary>
+    private static bool _firstEntryLogged;
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static System.Threading.Tasks.ValueTask CodeunitEventDispatch_OnRunEventAsync(object publisherScope)
+    {
+        if (!_firstEntryLogged) { _firstEntryLogged = true; Console.Error.WriteLine($"[Dispatch] entry-method first hit"); }
+        if (Environment.GetEnvironmentVariable("AL_RUNNER_DISPATCHER_OFF") == "1")
+            return default;
+        try { DispatchCore(publisherScope); }
+        catch (Exception ex)
+        {
+            var inner = ex is TargetInvocationException tie ? tie.InnerException ?? ex : ex;
+            throw inner;
+        }
+        return default;
+    }
+
+    private static bool _firstDispatchLogged;
+    private static bool _firstFireLogged;
+
+    private static void DispatchCore(object publisherScope)
+    {
+        if (publisherScope == null) return;
+        var scopeType = publisherScope.GetType();
+        Interlocked.Increment(ref _dispatchCount);
+        if (!_firstDispatchLogged) { _firstDispatchLogged = true; Console.Error.WriteLine($"[Dispatch] first call: scope={scopeType.FullName}"); }
+
+        // Decode publisher codeunit id + event method name from scope type name.
+        //   Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50041+OnDoCalc_Scope
+        var declType = scopeType.DeclaringType;
+        if (declType == null) return;
+        var declName = declType.Name;
+        if (!declName.StartsWith("Codeunit", StringComparison.Ordinal)) return;
+        if (!int.TryParse(declName.AsSpan("Codeunit".Length), out int codeunitId)) return;
+        var scopeName = scopeType.Name;
+        int us = scopeName.IndexOf('_');
+        if (us < 0) return;
+        string eventMethodName = scopeName.Substring(0, us);
+
+        var subs = EventSubscriberPatches.GetCodeunitSubscribers(codeunitId, eventMethodName);
+        if (subs == null || subs.Count == 0) return;
+        Interlocked.Increment(ref _dispatchFiredCount);
+        if (!_firstFireLogged) { _firstFireLogged = true; Console.Error.WriteLine($"[Dispatch] first FIRE: {declName}.{eventMethodName} → {subs.Count} subs"); }
+
+        // Publisher application object (NavCodeunit) — for NavCodeunitHandle.Target lookup of subscriber instances.
+        var navMethodScopeType = AppDomain.CurrentDomain.GetAssemblies()
+            .First(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Ncl")
+            .GetType("Microsoft.Dynamics.Nav.Runtime.NavMethodScope")!;
+        var pubObj = navMethodScopeType.GetProperty("ApplicationObject", BindingFlags.Public | BindingFlags.Instance)?
+            .GetValue(publisherScope);
+        if (pubObj == null) return;
+
+        foreach (var sub in subs)
+        {
+            try { InvokeOneSubscriber(publisherScope, scopeType, pubObj, sub); }
+            catch (TargetInvocationException tie) { throw tie.InnerException ?? tie; }
+        }
+    }
+
+    /// <summary>
+    /// Is this parameter the "Sender" param of an IncludeSender=true event subscriber? AL emits
+    /// it as a positional first parameter whose type is <c>NavCodeunitHandle</c> (or a typed
+    /// codeunit-handle subclass) and whose name is "Sender" (case-insensitive).
+    /// </summary>
+    private static bool IsSenderParameter(ParameterInfo p, int paramIndex)
+    {
+        if (paramIndex != 0) return false;
+        // AL emits sender as Codeunit50047 (the publisher CLR type) — the bundle's typed handle.
+        // The runtime type ancestry traces back to NavCodeunitHandle.
+        var t = p.ParameterType;
+        while (t != null && t != typeof(object))
+        {
+            if (t.Name == "NavCodeunitHandle" || t.Name.StartsWith("Codeunit", StringComparison.Ordinal)) return true;
+            t = t.BaseType;
+        }
+        return false;
+    }
+
+    private static Type? _tNavCodeunitHandle;
+    private static ConstructorInfo? _ciNavCodeunitHandleByIdInt;
+    private static ConstructorInfo? _ciNavCodeunitHandleByInstance;
+    private static PropertyInfo? _pNavCodeunitHandle_Target;
+
+    private static void InvokeOneSubscriber(object publisherScope, Type scopeType, object treeObj, MethodInfo subscriberMethod)
+    {
+        EnsureCodeunitHandleReflection();
+
+        var subscriberClrType = subscriberMethod.DeclaringType!;
+        int subscriberCodeunitId = ExtractCodeunitIdFromTypeName(subscriberClrType);
+        if (subscriberCodeunitId == 0) return;
+
+        var handle = _ciNavCodeunitHandleByIdInt!.Invoke(new object?[] { treeObj, subscriberCodeunitId });
+        var subscriberInstance = _pNavCodeunitHandle_Target!.GetValue(handle);
+        if (subscriberInstance == null) return;
+
+        // Match subscriber parameters by name to publisher-scope instance fields.
+        // Case-insensitive — AL emit lowercases C# fields, but ParameterInfo.Name preserves AL casing.
+        // Special case: leading "Sender" parameter on IncludeSender=true subscriber receives a
+        // NavCodeunitHandle wrapping the publisher (not the raw codeunit instance).
+        int publisherCodeunitId = ExtractCodeunitIdFromTypeName(treeObj.GetType());
+        var parms = subscriberMethod.GetParameters();
+        var args = new object?[parms.Length];
+        for (int i = 0; i < parms.Length; i++)
+        {
+            var p = parms[i];
+            if (IsSenderParameter(p, i))
+            {
+                // Use the (ITreeObject, NavCodeunit) ctor to wrap the EXISTING publisher
+                // instance — the (ITreeObject, int) ctor would create a fresh instance via
+                // the codeunit registry, losing any publisher-side state the subscriber needs.
+                args[i] = _ciNavCodeunitHandleByInstance != null
+                    ? _ciNavCodeunitHandleByInstance.Invoke(new object?[] { treeObj, treeObj })
+                    : _ciNavCodeunitHandleByIdInt!.Invoke(new object?[] { treeObj, publisherCodeunitId });
+                continue;
+            }
+            var fld = scopeType.GetField(p.Name!,
+                BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+            args[i] = fld?.GetValue(publisherScope);
+        }
+        subscriberMethod.Invoke(subscriberInstance, args);
+    }
+
+    private static int ExtractCodeunitIdFromTypeName(Type t)
+    {
+        var n = t.Name;
+        if (!n.StartsWith("Codeunit", StringComparison.Ordinal)) return 0;
+        return int.TryParse(n.AsSpan("Codeunit".Length), out int id) ? id : 0;
+    }
+
+    private static void EnsureCodeunitHandleReflection()
+    {
+        if (_tNavCodeunitHandle != null) return;
+        var nclAsm = AppDomain.CurrentDomain.GetAssemblies()
+            .First(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Ncl");
+        _tNavCodeunitHandle = nclAsm.GetType("Microsoft.Dynamics.Nav.Runtime.NavCodeunitHandle")!;
+        var navCodeunitType = nclAsm.GetType("Microsoft.Dynamics.Nav.Runtime.NavCodeunit")!;
+        foreach (var c in _tNavCodeunitHandle.GetConstructors(
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
+        {
+            var ps = c.GetParameters();
+            if (ps.Length != 2) continue;
+            if (ps[1].ParameterType == typeof(int)) _ciNavCodeunitHandleByIdInt = c;
+            else if (ps[1].ParameterType == navCodeunitType) _ciNavCodeunitHandleByInstance = c;
+        }
+        var t = _tNavCodeunitHandle;
+        while (t != null)
+        {
+            var p = t.GetProperty("Target", BindingFlags.Public | BindingFlags.Instance);
+            if (p != null) { _pNavCodeunitHandle_Target = p; break; }
+            t = t.BaseType;
+        }
+    }
+
+    public static int CodeunitEventDispatchCount => _dispatchCount;
+    public static int CodeunitEventFiredCount => _dispatchFiredCount;
+}
