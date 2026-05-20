@@ -16,8 +16,17 @@ namespace AlRunnerV2.Patches;
 
 public static partial class RecordPatches
 {
+    // Positive-result cache: maps tableId → CLR Type for "Record<id>" subclasses of NavRecord.
+    // The uncached form walks every loaded assembly's full type table on every call
+    // (NavRecordHandle_CreateTarget fires it for every record handle materialization), which
+    // dominated the profile on bucket-1 bundled (~72% inclusive). We cache only HITS — a
+    // negative result can later become positive once the test assembly loads, so misses fall
+    // through to the scan every time.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<int, Type> _recordTypeCache = new();
+
     private static Type? FindRecordType(int id)
     {
+        if (_recordTypeCache.TryGetValue(id, out var cached)) return cached;
         var name = $"Record{id}";
         foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
         {
@@ -25,7 +34,11 @@ public static partial class RecordPatches
             {
                 var t = Array.Find(asm.GetTypes(),
                     x => x.Name == name && typeof(NavRecord).IsAssignableFrom(x));
-                if (t != null) return t;
+                if (t != null)
+                {
+                    _recordTypeCache[id] = t;
+                    return t;
+                }
             }
             catch { }
         }
