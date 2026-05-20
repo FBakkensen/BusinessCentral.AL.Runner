@@ -1872,6 +1872,11 @@ public static partial class BcRuntime
         //   Previously crashed with 14-byte overwrite corrupting MOV R10.
         //   Cell-patch leaves MOV R10 intact → should not crash.
         ApplyInstallIndirectSpike(navNcl);
+
+        // NavMediaSet — PAGE-REPORT-CLUSTERS §4: in-memory backing for ALInsert/ALRemove/
+        // get_ALCount/ALItem/ALImport/ALExport. All real implementations reach the DB/Session
+        // tier; ConditionalWeakTable<self, List<Guid>> store gives a functional in-memory set.
+        ApplyNavMediaSetPatches(navNcl);
     }
 
     // ── InstallIndirect spike implementation ────────────────────────────────────────────────
@@ -1934,6 +1939,131 @@ public static partial class BcRuntime
         }
 
         Console.Error.WriteLine("[IndirectSpike] === END ApplyInstallIndirectSpike ===");
+    }
+
+    // ── NavMediaSet patches — PAGE-REPORT-CLUSTERS §4 ───────────────────────────────────────
+
+    private static void ApplyNavMediaSetPatches(Assembly navNcl)
+    {
+        var navMediaSetType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavMediaSet");
+        if (navMediaSetType == null)
+        {
+            Console.Error.WriteLine("[BcRuntime] NavMediaSet NOT FOUND — skipping MediaSet hooks");
+            return;
+        }
+
+        var patchType = typeof(AlRunnerV2.Patches.MediaSetPatches);
+        int hooked = 0;
+
+        // ALInsert(DataError errorLevel, Guid mediaId) → bool
+        var alInsert = navMediaSetType.GetMethod("ALInsert",
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+        if (alInsert != null)
+        {
+            var repl = patchType.GetMethod(nameof(AlRunnerV2.Patches.MediaSetPatches.NavMediaSet_ALInsert),
+                BindingFlags.Public | BindingFlags.Static)!;
+            JmpHook.Apply(alInsert, repl, "NavMediaSet.ALInsert");
+            hooked++;
+        }
+
+        // ALRemove(DataError errorLevel, Guid mediaId) → bool
+        var alRemove = navMediaSetType.GetMethod("ALRemove",
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+        if (alRemove != null)
+        {
+            var repl = patchType.GetMethod(nameof(AlRunnerV2.Patches.MediaSetPatches.NavMediaSet_ALRemove),
+                BindingFlags.Public | BindingFlags.Static)!;
+            JmpHook.Apply(alRemove, repl, "NavMediaSet.ALRemove");
+            hooked++;
+        }
+
+        // get_ALCount() → int  (property getter)
+        var alCountGetter = navMediaSetType.GetProperty("ALCount",
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)?.GetGetMethod(true);
+        if (alCountGetter != null)
+        {
+            var repl = patchType.GetMethod(nameof(AlRunnerV2.Patches.MediaSetPatches.NavMediaSet_get_ALCount),
+                BindingFlags.Public | BindingFlags.Static)!;
+            JmpHook.Apply(alCountGetter, repl, "NavMediaSet.get_ALCount");
+            hooked++;
+        }
+
+        // ALItem(int index) → Guid
+        var alItem = navMediaSetType.GetMethod("ALItem",
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+        if (alItem != null)
+        {
+            var repl = patchType.GetMethod(nameof(AlRunnerV2.Patches.MediaSetPatches.NavMediaSet_ALItem),
+                BindingFlags.Public | BindingFlags.Static)!;
+            JmpHook.Apply(alItem, repl, "NavMediaSet.ALItem");
+            hooked++;
+        }
+
+        // ALImport overloads — hook the two file-based overloads (ImportFile AL surface)
+        foreach (var m in navMediaSetType.GetMethods(
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+            .Where(m2 => m2.Name == "ALImport"))
+        {
+            var ps = m.GetParameters();
+            // Only hook the file-based overloads (second param is string fileName)
+            if (ps.Length >= 3 && ps[1].ParameterType == typeof(string))
+            {
+                var replName = ps.Length == 3
+                    ? nameof(AlRunnerV2.Patches.MediaSetPatches.NavMediaSet_ALImport_File2)
+                    : nameof(AlRunnerV2.Patches.MediaSetPatches.NavMediaSet_ALImport_File3);
+                var repl = patchType.GetMethod(replName, BindingFlags.Public | BindingFlags.Static);
+                if (repl != null)
+                {
+                    JmpHook.Apply(m, repl, $"NavMediaSet.ALImport/file{ps.Length - 1}");
+                    hooked++;
+                }
+            }
+        }
+
+        // ALExport(DataError, string fileBaseName) → int
+        var alExport = navMediaSetType.GetMethod("ALExport",
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+        if (alExport != null)
+        {
+            var repl = patchType.GetMethod(nameof(AlRunnerV2.Patches.MediaSetPatches.NavMediaSet_ALExport),
+                BindingFlags.Public | BindingFlags.Static)!;
+            JmpHook.Apply(alExport, repl, "NavMediaSet.ALExport");
+            hooked++;
+        }
+
+        Console.Error.WriteLine($"[BcRuntime] NavMediaSet: {hooked} methods hooked");
+
+        // Hook get_ALMediaId — declared on NavMediaValueBase but may be overridden in NavMediaSet.
+        // Try both the derived type and base type so JmpHook patches the actual vtable slot called.
+        var baseTypeForMediaId = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavMediaValueBase")
+                       ?? navMediaSetType.BaseType;
+        var replMediaId = patchType.GetMethod(nameof(AlRunnerV2.Patches.MediaSetPatches.NavMediaSet_get_ALMediaId),
+            BindingFlags.Public | BindingFlags.Static)!;
+        // Prefer hooking on NavMediaSet (finds override or inherited via virtual dispatch).
+        var alMediaIdDerived = navMediaSetType.GetProperty("ALMediaId",
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+            ?.GetGetMethod(nonPublic: true)
+            ?? navMediaSetType.GetMethod("get_ALMediaId",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        if (alMediaIdDerived != null)
+        {
+            JmpHook.Apply(alMediaIdDerived, replMediaId, "NavMediaSet.get_ALMediaId(derived)");
+            Console.Error.WriteLine("[BcRuntime] NavMediaSet: get_ALMediaId hooked (derived slot)");
+        }
+        // Also hook base class declaration so any base-dispatched calls are covered.
+        if (baseTypeForMediaId != null)
+        {
+            var alMediaIdBase = baseTypeForMediaId.GetProperty("ALMediaId",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+                ?.GetGetMethod(nonPublic: true)
+                ?? baseTypeForMediaId.GetMethod("get_ALMediaId",
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+            if (alMediaIdBase != null && alMediaIdBase != alMediaIdDerived)
+            {
+                JmpHook.Apply(alMediaIdBase, replMediaId, "NavMediaValueBase.get_ALMediaId(base)");
+                Console.Error.WriteLine("[BcRuntime] NavMediaSet: get_ALMediaId hooked (base slot)");
+            }
+        }
     }
 
     private static void HookProperty(Type t, string propName, bool isStatic, string replacementName)

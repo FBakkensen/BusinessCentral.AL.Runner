@@ -186,6 +186,29 @@ public static class NclCecilRewrite
             throw new InvalidOperationException("GetAutoFormatStringAsync method not found in NavForm — Ncl shape changed; do not commit");
         Console.Error.WriteLine($"[Cecil] Rewrote {getAutoFormatRewroteCount} GetAutoFormatStringAsync overload(s) → return default ValueTask");
 
+        // NavMediaValueBase.get_ALMediaId → mark NoInlining so JmpHook can intercept the
+        // property getter at runtime (without NoInlining, the JIT inlines the trivial body
+        // `return Key.Value` into every call site, bypassing our entry-point hook).
+        var navMediaValueBaseType = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.NavMediaValueBase");
+        if (navMediaValueBaseType != null)
+        {
+            var alMediaIdGetter = navMediaValueBaseType.Methods
+                .FirstOrDefault(m => m.Name == "get_ALMediaId");
+            if (alMediaIdGetter != null)
+            {
+                alMediaIdGetter.ImplAttributes |= Mono.Cecil.MethodImplAttributes.NoInlining;
+                Console.Error.WriteLine($"[Cecil] Marked NavMediaValueBase.get_ALMediaId NoInlining");
+            }
+            else
+            {
+                Console.Error.WriteLine($"[Cecil] WARNING: get_ALMediaId not found on NavMediaValueBase");
+            }
+        }
+        else
+        {
+            Console.Error.WriteLine($"[Cecil] WARNING: NavMediaValueBase not found in Ncl");
+        }
+
         var outStream = new MemoryStream();
         asm.Write(outStream);
         var modifiedBytes = outStream.ToArray();
