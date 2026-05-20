@@ -1158,6 +1158,13 @@ xmlport_element:
   tests:
     - tests/bucket-2/page-report/84-xmlport
 
+xmlport_run_static:
+  layer: runtime
+  category: xmlport
+  status: covered
+  tests:
+    - tests/bucket-2/page-report/163-xmlport-run
+
 # ── enum ────────────────────────────────────────────────────────
 
 enum_value_declaration:

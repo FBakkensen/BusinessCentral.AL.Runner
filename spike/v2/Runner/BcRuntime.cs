@@ -1306,6 +1306,38 @@ public static partial class BcRuntime
             if (runXmlPortMethod != null)
                 Hook(runXmlPortMethod, nameof(NavXmlPort_RunXmlPort), "NavXmlPort.RunXmlPort()");
 
+            // XMLPORT.RUN(id [, reqPage [, import [, record]]]) in AL compiles to static
+            // NavXmlPort.Run(int, ...) overloads. Without these hooks, BC tries to look up the
+            // XmlPort in NCLMetadata → ThrowMetaApplicationObjectNotFound for every test-assembly
+            // XmlPort. Hook all four overloads as no-ops.
+            {
+                int staticRunHooked = 0;
+                var sr1 = navXmlPortType.GetMethod("Run",
+                    BindingFlags.Public | BindingFlags.Static, null,
+                    new[] { typeof(int) }, null);
+                if (sr1 != null) { Hook(sr1, nameof(NavXmlPort_StaticRun1), "NavXmlPort.Run(int)"); staticRunHooked++; }
+
+                var sr2 = navXmlPortType.GetMethod("Run",
+                    BindingFlags.Public | BindingFlags.Static, null,
+                    new[] { typeof(int), typeof(bool) }, null);
+                if (sr2 != null) { Hook(sr2, nameof(NavXmlPort_StaticRun2), "NavXmlPort.Run(int,bool)"); staticRunHooked++; }
+
+                var sr3 = navXmlPortType.GetMethod("Run",
+                    BindingFlags.Public | BindingFlags.Static, null,
+                    new[] { typeof(int), typeof(bool), typeof(bool) }, null);
+                if (sr3 != null) { Hook(sr3, nameof(NavXmlPort_StaticRun3), "NavXmlPort.Run(int,bool,bool)"); staticRunHooked++; }
+
+                if (xmlPortNavRecordType != null)
+                {
+                    var sr4 = navXmlPortType.GetMethod("Run",
+                        BindingFlags.Public | BindingFlags.Static, null,
+                        new[] { typeof(int), typeof(bool), typeof(bool), xmlPortNavRecordType }, null);
+                    if (sr4 != null) { Hook(sr4, nameof(NavXmlPort_StaticRun4), "NavXmlPort.Run(int,bool,bool,NavRecord)"); staticRunHooked++; }
+                }
+
+                Console.Error.WriteLine($"[BcRuntime] NavXmlPort.Run static overloads: {staticRunHooked} hooked");
+            }
+
             if (xmlPortNavRecordType != null)
             {
                 var setTableViewMethod = navXmlPortType.GetMethod("SetTableView",

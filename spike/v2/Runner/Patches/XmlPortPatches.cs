@@ -125,6 +125,45 @@ public static partial class BcRuntime
     // ──────────────────────────────────────────────────────────────────
 
     // ──────────────────────────────────────────────────────────────────
+    // NavXmlPort static Run — XMLPORT.RUN(id), XMLPORT.RUN(id, reqPage),
+    // XMLPORT.RUN(id, reqPage, import), XMLPORT.RUN(id, reqPage, import, rec)
+    // in AL compile to these static overloads. In standalone mode there is no
+    // service tier and no interactive request page, so all four overloads are
+    // safe no-ops. Without these hooks, BCruntime calls
+    // NCLMetadata.GetMetaXmlPortById(id) → ThrowMetaApplicationObjectNotFound
+    // for any XmlPort not registered in NCLMetadata (i.e. every test-assembly
+    // XmlPort).
+    // ──────────────────────────────────────────────────────────────────
+
+    /// <summary>NavXmlPort.Run(int xmlPortId) — no-op; standalone mode has no request page or I/O target.</summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void NavXmlPort_StaticRun1(int xmlPortId)
+    {
+        Console.Error.WriteLine($"[BcRuntime] NavXmlPort.Run({xmlPortId}) → no-op (static Run hook)");
+    }
+
+    /// <summary>NavXmlPort.Run(int xmlPortId, bool requestWindow) — no-op.</summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void NavXmlPort_StaticRun2(int xmlPortId, bool requestWindow)
+    {
+        Console.Error.WriteLine($"[BcRuntime] NavXmlPort.Run({xmlPortId}, {requestWindow}) → no-op (static Run hook)");
+    }
+
+    /// <summary>NavXmlPort.Run(int xmlPortId, bool requestWindow, bool import) — no-op.</summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void NavXmlPort_StaticRun3(int xmlPortId, bool requestWindow, bool import)
+    {
+        Console.Error.WriteLine($"[BcRuntime] NavXmlPort.Run({xmlPortId}, {requestWindow}, {import}) → no-op (static Run hook)");
+    }
+
+    /// <summary>NavXmlPort.Run(int xmlPortId, bool requestWindow, bool import, NavRecord record) — no-op.</summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void NavXmlPort_StaticRun4(int xmlPortId, bool requestWindow, bool import, object record)
+    {
+        Console.Error.WriteLine($"[BcRuntime] NavXmlPort.Run({xmlPortId}, {requestWindow}, {import}, record) → no-op (static Run hook)");
+    }
+
+    // ──────────────────────────────────────────────────────────────────
     // NavXmlPort static Export/Import — XMLPORT.EXPORT(id, stream) and
     // XMLPORT.IMPORT(id, stream) in AL compile to these static overloads.
     // In-memory XmlPort serialization is in scope eventually (scope.md §4
