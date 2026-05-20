@@ -250,6 +250,12 @@ public static class EventSubscriberPatches
                 foreach (var t in types)
                 {
                     if (t == null) continue;
+                    // Only AL codeunits can host [NavEventSubscriberAttribute] methods. The emitted
+                    // test assembly contains thousands of generated types (Record<N>, Table<N>,
+                    // Page<N>, Enum<N>, ...) that are guaranteed to have no subscribers — walking
+                    // their methods + reading custom attributes on each was the bulk of the cost
+                    // (this scan was ~35% inclusive in the bucket-1 bundled profile).
+                    if (!t.Name.StartsWith("Codeunit", StringComparison.Ordinal)) continue;
                     MethodInfo[] methods;
                     try { methods = t.GetMethods(BindingFlags.Public | BindingFlags.NonPublic
                                                   | BindingFlags.Instance | BindingFlags.Static); }
