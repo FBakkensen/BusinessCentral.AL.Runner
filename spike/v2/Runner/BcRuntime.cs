@@ -1128,6 +1128,33 @@ public static partial class BcRuntime
             Console.Error.WriteLine($"[BcRuntime] NavForm.RunModalAsync: {runModalHooked} overloads hooked");
         }
 
+        // NavFilterPageBuilder.RunModalAsync — PAGE-REPORT-CLUSTERS §3. Hook the one
+        // instance overload RunModalAsync(ITreeObject) to return Action.Ok without
+        // touching skeleton ITreeObject/Tree/Session state.
+        var navFilterPageBuilderType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavFilterPageBuilder");
+        if (navFilterPageBuilderType != null)
+        {
+            int filterRunModalHooked = 0;
+            foreach (var m in navFilterPageBuilderType.GetMethods(
+                BindingFlags.Public | BindingFlags.NonPublic |
+                BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly)
+                .Where(m2 => m2.Name == "RunModalAsync"))
+            {
+                var ps = m.GetParameters();
+                var repl = typeof(FormPatches).GetMethod(
+                    nameof(FormPatches.NavFilterPageBuilder_RunModalAsync),
+                    BindingFlags.Public | BindingFlags.Static);
+                if (repl == null)
+                {
+                    Console.Error.WriteLine($"[BcRuntime] NavFilterPageBuilder.RunModalAsync repl not found");
+                    continue;
+                }
+                Hook(m, repl, $"NavFilterPageBuilder.RunModalAsync/inst/{ps.Length}p");
+                filterRunModalHooked++;
+            }
+            Console.Error.WriteLine($"[BcRuntime] NavFilterPageBuilder.RunModalAsync: {filterRunModalHooked} overloads hooked");
+        }
+
         // NavReportHandle.CreateTarget — §P, same shape as NavFormHandle. The default
         // implementation `NCLMetadata.GetMetaReportById(id, true).CreateObjectInstance(this)`
         // works after the §P cache populator (so the GetMetaReportById no longer NREs),

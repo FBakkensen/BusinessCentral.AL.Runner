@@ -118,4 +118,23 @@ public static class FormPatches
         Console.Error.WriteLine("[NavForm.RunModalAsync] hooked → returning Action.Ok (1)");
         return ValueTask.FromResult(FormResult.OK);
     }
+
+    // ──────────────────────────────────────────────────────────────────
+    // NavFilterPageBuilder.RunModalAsync — FilterPageBuilder.RunModal() → Action.Ok
+    // (PAGE-REPORT-CLUSTERS §3)
+    //
+    // NavFilterPageBuilder declares one RunModalAsync overload:
+    //   Instance (1): RunModalAsync(ITreeObject parent)
+    //
+    // Replacement returns FormResult.OK (1) immediately without touching skeleton
+    // ITreeObject/Tree/Session state. Probe log confirms hook fires.
+    // ──────────────────────────────────────────────────────────────────
+
+    /// <summary>NavFilterPageBuilder.RunModalAsync(ITreeObject) — instance, 1 param.</summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static ValueTask<FormResult> NavFilterPageBuilder_RunModalAsync(object self, object parent)
+    {
+        Console.Error.WriteLine("[NavFilterPageBuilder.RunModalAsync] hooked → returning Action.Ok (1)");
+        return ValueTask.FromResult(FormResult.OK);
+    }
 }
