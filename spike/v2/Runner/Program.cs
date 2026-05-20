@@ -57,6 +57,17 @@ for (int i = 0; i < args.Length; i++)
 if (alCacheDir != null) Directory.CreateDirectory(alCacheDir);
 Console.WriteLine($"AlRunner v2 — running {bundles.Count} bundle(s)");
 
+// Cecil-rewrite Ncl.dll IN-PLACE on the bin path BEFORE CoreCLR's TPA probe
+// resolves it. Must run BEFORE any reference to BcRuntime (whose field metadata
+// triggers Ncl load on class init). Allowed surface per
+// .claude/rules/precompiled-dll-respect.md — Ncl is runtime engine, not BaseApp.
+{
+    var srcDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+        ".local/share/al-runner/artifacts/27.5.46862.48827");
+    var binNcl = Path.Combine(AppContext.BaseDirectory, "Microsoft.Dynamics.Nav.Ncl.dll");
+    AlRunnerV2.Infrastructure.NclCecilRewrite.RewriteInPlace(srcDir, binNcl);
+}
+
 var packageCacheDirs = packageCacheArgs.Count > 0
     ? packageCacheArgs.Where(Directory.Exists).ToList()
     : DefaultPackageCacheDirs().ToList();
