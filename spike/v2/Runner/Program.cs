@@ -19,10 +19,21 @@ using AlRunnerV2;
 if (args.Length == 0)
 {
     Console.Error.WriteLine(
-        "Usage: Runner [--out PATH] [--package-cache PATH ...] [--per-suite] <bundle-dir>...\n" +
-        "       Runner --precompile <input.app> --out <output.dll>");
+        "Usage: Runner [--out PATH] [--package-cache PATH ...] [--per-suite]\n" +
+        "              [--verbose] [--show-pass] <bundle-dir>...\n" +
+        "       Runner --precompile <input.app> --out <output.dll>\n" +
+        "\n" +
+        "  --verbose      Show internal [Component] diagnostic logs.\n" +
+        "                 Equivalent to env AL_RUNNER_VERBOSE=1.\n" +
+        "  --show-pass    Include PASS lines in per-test output\n" +
+        "                 (default: only FAIL/ERROR are printed per test).");
     return 2;
 }
+
+// Output filters must be installed BEFORE any other code prints to Console.
+// Reads AL_RUNNER_VERBOSE env var by default; --verbose flag overrides below.
+AlRunnerV2.Log.Install();
+bool showPass = Environment.GetEnvironmentVariable("AL_RUNNER_SHOW_PASS") == "1";
 
 // ── --precompile subcommand ────────────────────────────────────────────────
 if (args[0] == "--precompile")
@@ -52,6 +63,8 @@ for (int i = 0; i < args.Length; i++)
     if (args[i] == "--per-suite") { bundledMode = false; continue; }
     if (args[i] == "--bundled") { bundledMode = true; continue; }
     if (args[i] == "--cache" && i + 1 < args.Length) { alCacheDir = args[++i]; continue; }
+    if (args[i] == "--verbose") { AlRunnerV2.Log.Verbose = true; continue; }
+    if (args[i] == "--show-pass") { showPass = true; continue; }
     bundles.Add(args[i]);
 }
 if (alCacheDir != null) Directory.CreateDirectory(alCacheDir);
@@ -426,6 +439,8 @@ foreach (var bundle in bundles)
         bundleEmit, bundleComp, bundleRun));
 }
 
+Reporter.PrintPerTest(results, Console.Out, showPass);
+Reporter.PrintFailureClassification(results, Console.Out);
 Reporter.PrintSummary(results, Console.Out);
 Reporter.WriteClassification(results, outPath);
 Console.WriteLine($"Classification → {outPath}");
