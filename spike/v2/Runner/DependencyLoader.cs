@@ -137,7 +137,7 @@ public sealed class DependencyLoader
         }
 
         IReadOnlyList<EmittedSource> emitted;
-        try { emitted = _compiler.Emit(new[] { tempDir }, m.Name); }
+        try { emitted = _compiler.Emit(new[] { tempDir }, m.Name).Sources; }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"[deps] compile-on-the-fly EMIT-FAIL: {m.Name}: {ex.Message.Split('\n')[0]}");

@@ -37,6 +37,13 @@ namespace AlRunnerV2;
 
 public sealed record EmittedSource(string Name, string Code);
 
+/// <summary>
+/// Output of <see cref="BcCompiler.Emit"/>: emitted C# sources plus any AL-level
+/// diagnostics (parse errors, declaration errors, emit-result errors) formatted
+/// alc-style: <c>path(line,col): error ALXXXX: message</c>.
+/// </summary>
+public sealed record BcEmitOutput(IReadOnlyList<EmittedSource> Sources, IReadOnlyList<string> Diagnostics);
+
 public sealed class BcCompiler
 {
     /// <summary>
@@ -126,7 +133,7 @@ public sealed class BcCompiler
         }
     }
 
-    public IReadOnlyList<EmittedSource> Emit(IEnumerable<string> alFolders, string moduleName)
+    public BcEmitOutput Emit(IEnumerable<string> alFolders, string moduleName)
     {
         var dirs = alFolders.Where(Directory.Exists).Distinct().ToList();
         if (dirs.Count == 0)
@@ -270,7 +277,28 @@ public sealed class BcCompiler
                 Console.Error.WriteLine($"    {d.Id} @ {d.Location}: {d.GetMessage().Split('\n', 2)[0]}");
         }
 
-        return outputter.Captured;
+        // Collect AL-level diagnostics for Program.cs to surface at the compile
+        // boundary — formatted alc-style so they read like `alc.exe` output.
+        var alDiags = new List<string>();
+        var allParseErrs = trees
+            .SelectMany(t => t.GetDiagnostics())
+            .Where(d => d.Severity == NavDiag.DiagnosticSeverity.Error)
+            .ToList();
+        var allDeclErrs = compilation.GetDeclarationDiagnostics()
+            .Where(d => d.Severity == NavDiag.DiagnosticSeverity.Error)
+            .ToList();
+        foreach (var d in allParseErrs)
+            alDiags.Add($"{d.Location}: error {d.Id}: {d.GetMessage().Split('\n', 2)[0]}");
+        foreach (var d in allDeclErrs)
+            alDiags.Add($"{d.Location}: error {d.Id}: {d.GetMessage().Split('\n', 2)[0]}");
+        if (emitResult != null && !emitResult.Success)
+        {
+            foreach (var d in emitResult.Diagnostics
+                .Where(d => d.Severity == NavDiag.DiagnosticSeverity.Error))
+                alDiags.Add($"{d.Location}: error {d.Id}: {d.GetMessage().Split('\n', 2)[0]}");
+        }
+
+        return new BcEmitOutput(outputter.Captured, alDiags);
     }
 
     /// <summary>

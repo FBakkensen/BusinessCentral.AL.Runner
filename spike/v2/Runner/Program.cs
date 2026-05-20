@@ -209,16 +209,62 @@ foreach (var bundle in bundles)
         {
             if (alCacheDir != null) Console.Error.WriteLine($"  [cache] MISS key={cacheKey} — running Emit+Compile");
             var et = System.Diagnostics.Stopwatch.StartNew();
-            IReadOnlyList<EmittedSource> sources;
-            try { sources = emitter.Emit(allPaths, moduleName); }
+            IReadOnlyList<EmittedSource> sources = Array.Empty<EmittedSource>();
+            IReadOnlyList<string> alDiagnostics = Array.Empty<string>();
+            // Emit-phase timeout: default 120 s, override via AL_RUNNER_EMIT_TIMEOUT_SEC.
+            // Note: Task.Run thread continues in background after timeout — acceptable for a CLI tool.
+            int emitTimeoutSec = int.TryParse(
+                Environment.GetEnvironmentVariable("AL_RUNNER_EMIT_TIMEOUT_SEC"), out var ts) ? ts : 120;
+            var emitTask = Task.Run(() => emitter.Emit(allPaths, moduleName));
+            try
+            {
+                if (!emitTask.Wait(TimeSpan.FromSeconds(emitTimeoutSec)))
+                {
+                    Console.Error.WriteLine(
+                        $"<bundled>: EMIT-TIMEOUT after {emitTimeoutSec}s on {allPaths.Count} AL paths");
+                    Console.Error.WriteLine(
+                        "Hint: increase AL_RUNNER_EMIT_TIMEOUT_SEC or quarantine the offending suite under tests/excluded/.");
+                    bundleErrors.Add($"<bundled>: EMIT-TIMEOUT after {emitTimeoutSec}s");
+                }
+                else
+                {
+                    var emitOutput = emitTask.Result;
+                    sources = emitOutput.Sources;
+                    alDiagnostics = emitOutput.Diagnostics;
+                }
+            }
+            catch (AggregateException aggEx) when (emitTask.IsFaulted)
+            {
+                var flat = aggEx.Flatten();
+                var rootEx = flat.InnerExceptions[0];
+                Console.Error.WriteLine($"<bundled>: EMIT-FAIL — {rootEx.GetType().Name}: {rootEx.Message}");
+                if (rootEx.StackTrace is { } st) Console.Error.WriteLine(st);
+                if (flat.InnerExceptions.Count > 1)
+                    foreach (var inner in flat.InnerExceptions.Skip(1))
+                        Console.Error.WriteLine($"  → {inner.GetType().Name}: {inner.Message}");
+                bundleErrors.Add($"<bundled>: EMIT-FAIL: {rootEx.Message.Split('\n')[0]}");
+            }
             catch (Exception ex)
             {
-                et.Stop(); bundleEmit += et.Elapsed;
+                Console.Error.WriteLine($"<bundled>: EMIT-FAIL — {ex.GetType().Name}: {ex.Message}");
+                if (ex.StackTrace is { } st) Console.Error.WriteLine(st);
                 bundleErrors.Add($"<bundled>: EMIT-FAIL: {ex.Message.Split('\n')[0]}");
-                sources = Array.Empty<EmittedSource>();
             }
-            et.Stop(); bundleEmit += et.Elapsed;
+            finally
+            {
+                et.Stop();
+                bundleEmit += et.Elapsed;
+            }
 
+            if (sources.Count == 0 && alDiagnostics.Count > 0)
+            {
+                // Emit produced zero sources — BC's compiler swallowed exceptions internally.
+                // Surface AL diagnostics (parse/declaration errors) so the failure is visible.
+                Console.Error.WriteLine($"<bundled>: EMIT-ZERO — 0 sources emitted, {alDiagnostics.Count} AL error(s):");
+                foreach (var d in alDiagnostics)
+                    Console.Error.WriteLine($"  {d}");
+                bundleErrors.Add($"<bundled>: EMIT-ZERO ({alDiagnostics.Count} AL error(s))");
+            }
             if (sources.Count > 0)
             {
                 var ct = System.Diagnostics.Stopwatch.StartNew();
@@ -226,6 +272,15 @@ foreach (var bundle in bundles)
                 ct.Stop(); bundleComp += ct.Elapsed;
                 if (!compile.Success)
                 {
+                    Console.Error.WriteLine($"<bundled>: COMPILE-FAIL — {compile.Errors.Count} error(s):");
+                    foreach (var err in compile.Errors)
+                        Console.Error.WriteLine($"  {err}");
+                    if (alDiagnostics.Count > 0)
+                    {
+                        Console.Error.WriteLine($"<bundled>: AL diagnostics from emit ({alDiagnostics.Count}):");
+                        foreach (var d in alDiagnostics)
+                            Console.Error.WriteLine($"  {d}");
+                    }
                     bundleErrors.Add($"<bundled>: COMPILE-FAIL ({compile.Errors.Count}): {compile.Errors.FirstOrDefault()?.Split('\n')[0]}");
                 }
                 else
@@ -291,10 +346,18 @@ foreach (var bundle in bundles)
 
             var et = System.Diagnostics.Stopwatch.StartNew();
             IReadOnlyList<EmittedSource> sources;
-            try { sources = emitter.Emit(suitePaths, $"V2_{Path.GetFileName(suite)}"); }
+            IReadOnlyList<string> suiteAlDiagnostics = Array.Empty<string>();
+            try
+            {
+                var emitOutput = emitter.Emit(suitePaths, $"V2_{Path.GetFileName(suite)}");
+                sources = emitOutput.Sources;
+                suiteAlDiagnostics = emitOutput.Diagnostics;
+            }
             catch (Exception ex)
             {
                 et.Stop(); bundleEmit += et.Elapsed;
+                Console.Error.WriteLine($"{suiteName}: EMIT-FAIL — {ex.GetType().Name}: {ex.Message}");
+                if (ex.StackTrace is { } st) Console.Error.WriteLine(st);
                 bundleErrors.Add($"{suiteName}: EMIT-FAIL: {ex.Message.Split('\n')[0]}");
                 continue;
             }
@@ -305,6 +368,15 @@ foreach (var bundle in bundles)
             ct.Stop(); bundleComp += ct.Elapsed;
             if (!compile.Success)
             {
+                Console.Error.WriteLine($"{suiteName}: COMPILE-FAIL — {compile.Errors.Count} error(s):");
+                foreach (var err in compile.Errors)
+                    Console.Error.WriteLine($"  {err}");
+                if (suiteAlDiagnostics.Count > 0)
+                {
+                    Console.Error.WriteLine($"{suiteName}: AL diagnostics ({suiteAlDiagnostics.Count}):");
+                    foreach (var d in suiteAlDiagnostics)
+                        Console.Error.WriteLine($"  {d}");
+                }
                 bundleErrors.Add($"{suiteName}: COMPILE-FAIL ({compile.Errors.Count}): {compile.Errors.FirstOrDefault()?.Split('\n')[0]}");
                 continue;
             }
@@ -399,7 +471,7 @@ static int RunPrecompile(string[] subArgs)
     foreach (var (name, src) in alSources)
         File.WriteAllText(Path.Combine(tempDir, Sanitize(name)), src);
 
-    var emitted = compiler.Emit(new[] { tempDir }, manifest.Name);
+    var emitted = compiler.Emit(new[] { tempDir }, manifest.Name).Sources;
     if (emitted.Count == 0)
     {
         Console.Error.WriteLine($"--precompile: 0 sources emitted from {manifest.Name} (BC silent zero-output sentinel?)");
