@@ -154,6 +154,58 @@ public static class NclCecilRewrite
             throw new InvalidOperationException("GetMasterPage method not found in NavForm — Ncl shape changed; do not commit");
         Console.Error.WriteLine($"[Cecil] Rewrote {getMasterPageRewroteCount} GetMasterPage overload(s) → return null/default");
 
+        // NavForm.RequiresExecutePermissionCheck(MasterPage) → return false
+        // GetMasterPage() now returns null/default, so its callers pass null into this method,
+        // which then NREs when it dereferences the parameter. Since this is a permission-guard
+        // inside InitializeFromMetadata, returning false (= no extra permission check needed)
+        // is the safe stub behaviour for the runner environment (R2R-trapped; Cecil is only path).
+        int requiresExecPermCheckRewroteCount = 0;
+        foreach (var method in navFormType.Methods
+            .Where(mm => mm.Name == "RequiresExecutePermissionCheck").ToList())
+        {
+            Console.Error.WriteLine($"[Cecil] Rewriting {method.FullName} → return false");
+            var body = method.Body;
+            body.Instructions.Clear();
+            body.Variables.Clear();
+            body.ExceptionHandlers.Clear();
+            var il = body.GetILProcessor();
+            il.Append(il.Create(OpCodes.Ldc_I4_0));
+            il.Append(il.Create(OpCodes.Ret));
+            body.MaxStackSize = 1;
+            requiresExecPermCheckRewroteCount++;
+        }
+        if (requiresExecPermCheckRewroteCount == 0)
+            throw new InvalidOperationException("RequiresExecutePermissionCheck method not found in NavForm — Ncl shape changed; do not commit");
+        Console.Error.WriteLine($"[Cecil] Rewrote {requiresExecPermCheckRewroteCount} RequiresExecutePermissionCheck overload(s) → return false");
+
+        // NavForm.InitializeFromMetadata() → prepend null-guard on this.masterPage field.
+        // The method reads this.masterPage at ~15 separate IL sites. When masterPage is null
+        // (because no BC metadata is available in the runner), each site NREs in a cascade.
+        // Adding an early-return when masterPage==null lets the form proceed without
+        // metadata-dependent initialisation. Passing tests that have a non-null masterPage
+        // field are unaffected — they fall through to the original code normally.
+        var initFromMetadataMethod = navFormType.Methods
+            .FirstOrDefault(mm => mm.Name == "InitializeFromMetadata" && mm.Parameters.Count == 0)
+            ?? throw new InvalidOperationException("InitializeFromMetadata() not found in NavForm — Ncl shape changed; do not commit");
+        var masterPageField = navFormType.Fields
+            .FirstOrDefault(f => f.Name == "masterPage")
+            ?? throw new InvalidOperationException("masterPage field not found in NavForm — Ncl shape changed; do not commit");
+        {
+            var body = initFromMetadataMethod.Body;
+            var il = body.GetILProcessor();
+            var firstOriginalInstr = body.Instructions[0];
+            // Prepend: if (this.masterPage == null) return;
+            var ldarg0 = il.Create(OpCodes.Ldarg_0);
+            var ldfld  = il.Create(OpCodes.Ldfld, asm.MainModule.ImportReference(masterPageField));
+            var brtrue = il.Create(OpCodes.Brtrue_S, firstOriginalInstr);
+            var ret    = il.Create(OpCodes.Ret);
+            il.InsertBefore(firstOriginalInstr, ldarg0);
+            il.InsertBefore(firstOriginalInstr, ldfld);
+            il.InsertBefore(firstOriginalInstr, brtrue);
+            il.InsertBefore(firstOriginalInstr, ret);
+        }
+        Console.Error.WriteLine("[Cecil] Prepended masterPage null-guard to NavForm.InitializeFromMetadata → early return when masterPage is null");
+
         // NavForm.GetAutoFormatStringAsync → return default/empty (R2R-trapped; cluster #2 in CORPUS-CLASSIFICATION-2026-05-19-FINAL.md)
         int getAutoFormatRewroteCount = 0;
         foreach (var method in navFormType.Methods.Where(mm => mm.Name == "GetAutoFormatStringAsync").ToList())
