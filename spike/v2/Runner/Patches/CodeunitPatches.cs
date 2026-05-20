@@ -76,39 +76,42 @@ public static partial class BcRuntime
         return (Microsoft.Dynamics.Nav.Runtime.NavCodeunit)ctor.Invoke(new object[] { self });
     }
 
-    // Cache: test-page ID → generated TestPage Type.
-    private static readonly ConcurrentDictionary<int, Type?> _testPageTypeCache = new();
+    // Cache: NavTestPage type (same type for all IDs; resolved once).
+    private static Type? _navTestPageType;
 
     /// <summary>
     /// Replacement for NavTestPageHandle.CreateTarget().
-    /// Same shape as NavCodeunitHandle_CreateTarget — bypass NavGlobal.NCLMetadata
-    /// by scanning the loaded test assembly for `TestPage{ID}` and constructing
-    /// via the 1-arg ITreeObject ctor.
+    /// Creates a real NavTestPage via the internal 3-arg ctor (ITreeObject, ApplicationObjectId,
+    /// ITestPage), passing a MockITestPage that satisfies all field/action/filter queries.
+    /// Cecil IL rewrites in NclCecilRewrite neutralise the Open() path that would otherwise
+    /// call TestExecution.ClientSession.CreatePage, making this mock sufficient.
     /// </summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static object NavTestPageHandle_CreateTarget(object self)
     {
-        // self is NavTestPageHandle. ObjectId.ObjectNumber via reflection so we don't
-        // need a using import for the type (it lives in the same Runtime namespace).
         var objIdProp = self.GetType().GetProperty("ObjectId",
             BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
         var objId = objIdProp!.GetValue(self)!;
-        var idProp = objId.GetType().GetProperty("ObjectNumber",
-            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-        int id = (int)idProp!.GetValue(objId)!;
 
-        var pageType = _testPageTypeCache.GetOrAdd(id, FindTestPageType);
-        if (pageType == null)
-            throw new InvalidOperationException(
-                $"TestPage handle target Page{id} is not present in the test assembly or any loaded dependency.");
-        var ctor = pageType.GetConstructors()
-            .FirstOrDefault(c => c.GetParameters().Length == 1 &&
-                typeof(Microsoft.Dynamics.Nav.Runtime.ITreeObject)
-                    .IsAssignableFrom(c.GetParameters()[0].ParameterType));
+        // Resolve NavTestPage type from the Ncl assembly (same type regardless of page ID).
+        _navTestPageType ??= self.GetType().Assembly
+            .GetType("Microsoft.Dynamics.Nav.Runtime.NavTestPage")
+            ?? AppDomain.CurrentDomain.GetAssemblies()
+                .Select(a => a.GetType("Microsoft.Dynamics.Nav.Runtime.NavTestPage"))
+                .FirstOrDefault(t => t != null)
+            ?? throw new InvalidOperationException(
+                "NavTestPage type not found in any loaded assembly — cannot create TestPage target");
+
+        // Find the internal 3-arg ctor: NavTestPage(ITreeObject, ApplicationObjectId, ITestPage)
+        var ctor = _navTestPageType
+            .GetConstructors(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            .FirstOrDefault(c => c.GetParameters().Length == 3);
         if (ctor == null)
             throw new InvalidOperationException(
-                $"Page{id} has no single-arg ITreeObject constructor (TestPage handle path)");
-        return ctor.Invoke(new object[] { self });
+                "NavTestPage has no 3-arg constructor — Ncl shape changed");
+
+        var mock = new MockITestPage();
+        return ctor.Invoke(new object[] { self, objId, mock });
     }
 
     // Cache: form ID → generated Form Type.

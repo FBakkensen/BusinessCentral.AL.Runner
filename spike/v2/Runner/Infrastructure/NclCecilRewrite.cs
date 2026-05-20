@@ -14,7 +14,7 @@ namespace AlRunnerV2.Infrastructure;
 
 public static class NclCecilRewrite
 {
-    private const int CACHE_VERSION = 1;
+    private const int CACHE_VERSION = 4;
 
 
     /// <summary>
@@ -261,6 +261,220 @@ public static class NclCecilRewrite
         if (getAutoFormatRewroteCount == 0)
             throw new InvalidOperationException("GetAutoFormatStringAsync method not found in NavForm — Ncl shape changed; do not commit");
         Console.Error.WriteLine($"[Cecil] Rewrote {getAutoFormatRewroteCount} GetAutoFormatStringAsync overload(s) → return default ValueTask");
+
+        // NavTestPageBase.get_ServerForm() → return RuntimeHelpers.GetUninitializedObject(NavForm) when serverform is null.
+        //
+        // Root cause of the 115-test GetAutoFormatStringAsync cluster: the existing rewrite makes the
+        // BODY of NavForm.GetAutoFormatStringAsync safe, but NavTestPageBase.get_ServerForm() still
+        // returns null in the runner (Session.Company.GetRegisteredForm returns null — no BC service
+        // tier). BC-generated code then does null.GetAutoFormatStringAsync(…) via callvirt, and the
+        // CLR NREs at the dispatch site BEFORE the rewritten body executes.
+        //
+        // Fix: rewrite get_ServerForm() so that when serverform==null it creates an uninitialised
+        // NavForm via RuntimeHelpers.GetUninitializedObject and caches it in the field. The
+        // uninitialised object has valid type metadata (vtable dispatch works) and the rewritten
+        // GetAutoFormatStringAsync body never dereferences `this`, so the call is safe.
+        var navTestPageBaseType = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.NavTestPageBase")
+            ?? throw new InvalidOperationException("NavTestPageBase type not found in Ncl.dll — Ncl shape changed; do not commit");
+        var serverformField = navTestPageBaseType.Fields
+            .FirstOrDefault(f => f.Name == "serverform")
+            ?? throw new InvalidOperationException("serverform field not found on NavTestPageBase — Ncl shape changed; do not commit");
+        var getServerFormMethod = navTestPageBaseType.Methods
+            .FirstOrDefault(m => m.Name == "get_ServerForm" && m.Parameters.Count == 0)
+            ?? throw new InvalidOperationException("get_ServerForm() not found on NavTestPageBase — Ncl shape changed; do not commit");
+
+        var getTypeFromHandleMethodInfo = typeof(Type)
+            .GetMethod("GetTypeFromHandle", new[] { typeof(RuntimeTypeHandle) })
+            ?? throw new InvalidOperationException("Type.GetTypeFromHandle not found via reflection");
+        var getUninitMethodInfo = typeof(System.Runtime.CompilerServices.RuntimeHelpers)
+            .GetMethod("GetUninitializedObject", new[] { typeof(Type) })
+            ?? throw new InvalidOperationException("RuntimeHelpers.GetUninitializedObject not found via reflection");
+
+        var getTypeFromHandleRef = asm.MainModule.ImportReference(getTypeFromHandleMethodInfo);
+        var getUninitRef          = asm.MainModule.ImportReference(getUninitMethodInfo);
+        var navFormTypeRef         = asm.MainModule.ImportReference(navFormType);
+        var serverformFieldRef     = asm.MainModule.ImportReference(serverformField);
+
+        {
+            var body = getServerFormMethod.Body;
+            body.Instructions.Clear();
+            body.Variables.Clear();
+            body.ExceptionHandlers.Clear();
+            var il = body.GetILProcessor();
+
+            //   ldarg.0
+            //   ldfld serverform
+            //   dup
+            //   brtrue.s RETURN          ; already set — return it
+            //   pop
+            //   ldarg.0                  ; this (for stfld)
+            //   ldtoken NavForm
+            //   call Type.GetTypeFromHandle
+            //   call RuntimeHelpers.GetUninitializedObject
+            //   castclass NavForm
+            //   stfld serverform
+            //   ldarg.0
+            //   ldfld serverform
+            // RETURN:
+            //   ret
+
+            var retInstr   = il.Create(OpCodes.Ret);
+
+            il.Append(il.Create(OpCodes.Ldarg_0));
+            il.Append(il.Create(OpCodes.Ldfld,  serverformFieldRef));
+            il.Append(il.Create(OpCodes.Dup));
+            il.Append(il.Create(OpCodes.Brtrue_S, retInstr));   // non-null → return it
+            il.Append(il.Create(OpCodes.Pop));
+            il.Append(il.Create(OpCodes.Ldarg_0));              // this (for stfld)
+            il.Append(il.Create(OpCodes.Ldtoken,  navFormTypeRef));
+            il.Append(il.Create(OpCodes.Call,     getTypeFromHandleRef));
+            il.Append(il.Create(OpCodes.Call,     getUninitRef));
+            il.Append(il.Create(OpCodes.Castclass, navFormTypeRef));
+            il.Append(il.Create(OpCodes.Stfld,   serverformFieldRef));
+            il.Append(il.Create(OpCodes.Ldarg_0));
+            il.Append(il.Create(OpCodes.Ldfld,   serverformFieldRef));
+            il.Append(retInstr);
+
+            body.MaxStackSize = 2;
+        }
+        Console.Error.WriteLine("[Cecil] Rewrote NavTestPageBase.get_ServerForm → return RuntimeHelpers.GetUninitializedObject(NavForm) when null");
+
+        // ── NavTestPage / NavTestPageBase vtable-dispatch cluster fix ─────────────────────────
+        //
+        // Root cause (115-test cluster): NavTestPageHandle_CreateTarget (JmpHook in BcRuntime)
+        // used to return a Page{id} : NavForm instead of a NavTestPage.  Storing a NavForm
+        // subtype in a NavTestPage-typed field bypasses CLR type-safety; callvirt on the
+        // wrong vtable then resolves GetField() → GetAutoFormatStringAsync() because they sit
+        // at the same slot index in the two inheritance hierarchies.
+        //
+        // Fix (C# side): NavTestPageHandle_CreateTarget now returns a real NavTestPage via
+        // its internal 3-arg ctor, passing a MockITestPage.  The Cecil side neutralises three
+        // additional barriers that would crash in the runner without a live BC service tier:
+        //
+        //  1. NavTestPageBase.InternalClear sets testPage=null; remove that 3-instruction
+        //     sequence so the MockITestPage reference is preserved across ALOpenNew/Edit/View.
+        //
+        //  2. NavTestPage.Open(ViewMode) calls NavCurrentThread.Session.TestExecution
+        //       .ClientSession.CreatePage(...) — no TestExecution exists in the runner.
+        //     Rewrite to delegate only to NavTestPageBase.Open (which calls InternalClear).
+        //
+        //  3. CheckPageOpened throws NavTestPageNotOpenedException when testPage.IsOpened()
+        //     returns false.  MockITestPage.IsOpened()=false (so the "already open" guard in
+        //     NavTestPageBase.Open passes), but that means CheckPageOpened would throw too.
+        //     Rewrite CheckPageOpened to be a no-op: the mock is always usable.
+        //
+        //  4. GetField / GetAction / GetDataItem / GetPart / GetBuiltInAction / FindBuiltInAction
+        //     pass the raw ITest* result through TestClientProxy<T>.Proxy() which tries to
+        //     load Microsoft.Dynamics.Nav.Client.TestPageClient — not present in the runner.
+        //     Remove the Proxy call from each method; the raw mock interface value works fine.
+
+        var navTestPageType = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.NavTestPage")
+            ?? throw new InvalidOperationException("NavTestPage not found in Ncl.dll");
+
+        // 1. InternalClear — remove `ldarg.0 / ldnull / stfld testPage` (first 3 instructions).
+        {
+            var method = navTestPageBaseType.Methods
+                .FirstOrDefault(m => m.Name == "InternalClear" && m.Parameters.Count == 0)
+                ?? throw new InvalidOperationException("InternalClear not found on NavTestPageBase");
+            var body = method.Body;
+            var il   = body.GetILProcessor();
+            // First 3 instructions: ldarg.0, ldnull, stfld testPage
+            // Verify before removing to guard against shape changes.
+            if (body.Instructions.Count >= 3 &&
+                body.Instructions[0].OpCode == OpCodes.Ldarg_0 &&
+                body.Instructions[1].OpCode == OpCodes.Ldnull &&
+                body.Instructions[2].OpCode == OpCodes.Stfld)
+            {
+                il.Remove(body.Instructions[2]);
+                il.Remove(body.Instructions[1]);
+                il.Remove(body.Instructions[0]);
+                Console.Error.WriteLine("[Cecil] Removed testPage=null from NavTestPageBase.InternalClear");
+            }
+            else
+            {
+                Console.Error.WriteLine("[Cecil] WARNING: InternalClear shape unexpected — skipping testPage=null removal");
+            }
+        }
+
+        // 2. NavTestPage.Open(ViewMode) — replace body with: ldarg.0; ldarg.1; call NavTestPageBase.Open; ret
+        {
+            var openMethod = navTestPageType.Methods
+                .FirstOrDefault(m => m.Name == "Open" && m.Parameters.Count == 1)
+                ?? throw new InvalidOperationException("NavTestPage.Open(ViewMode) not found");
+            var baseOpenMethod = navTestPageBaseType.Methods
+                .FirstOrDefault(m => m.Name == "Open" && m.Parameters.Count == 1)
+                ?? throw new InvalidOperationException("NavTestPageBase.Open(ViewMode) not found");
+
+            var body = openMethod.Body;
+            body.Instructions.Clear();
+            body.Variables.Clear();
+            body.ExceptionHandlers.Clear();
+            var il = body.GetILProcessor();
+            il.Append(il.Create(OpCodes.Ldarg_0));
+            il.Append(il.Create(OpCodes.Ldarg_1));
+            il.Append(il.Create(OpCodes.Call, asm.MainModule.ImportReference(baseOpenMethod)));
+            il.Append(il.Create(OpCodes.Ret));
+            body.MaxStackSize = 2;
+            Console.Error.WriteLine("[Cecil] Rewrote NavTestPage.Open → call NavTestPageBase.Open; ret  (skip ClientSession.CreatePage)");
+        }
+
+        // 3. CheckPageOpened — replace body with `ret` (no-op).
+        {
+            var method = navTestPageBaseType.Methods
+                .FirstOrDefault(m => m.Name == "CheckPageOpened" && m.Parameters.Count == 0)
+                ?? throw new InvalidOperationException("CheckPageOpened not found on NavTestPageBase");
+            var body = method.Body;
+            body.Instructions.Clear();
+            body.Variables.Clear();
+            body.ExceptionHandlers.Clear();
+            var il = body.GetILProcessor();
+            il.Append(il.Create(OpCodes.Ret));
+            body.MaxStackSize = 0;
+            Console.Error.WriteLine("[Cecil] Rewrote NavTestPageBase.CheckPageOpened → no-op (ret)");
+        }
+
+        // 4. Remove TestClientProxy<T>.Proxy(T) call from all NavTestPageBase methods that use it.
+        //    Removing the call leaves the raw ITest* value on the stack in the right place.
+        {
+            var methodsToFix = new[] { "GetField", "GetAction", "GetDataItem", "GetPart", "GetBuiltInAction", "FindBuiltInAction" };
+            int removedCount = 0;
+            foreach (var methodName in methodsToFix)
+            {
+                foreach (var method in navTestPageBaseType.Methods
+                    .Where(m => m.Name == methodName && m.HasBody))
+                {
+                    var il = method.Body.GetILProcessor();
+                    var proxyCalls = method.Body.Instructions
+                        .Where(i => i.OpCode == OpCodes.Call &&
+                               i.Operand is MethodReference mr &&
+                               mr.Name == "Proxy" &&
+                               mr.DeclaringType.Name.StartsWith("TestClientProxy"))
+                        .ToList();
+                    foreach (var instr in proxyCalls)
+                    {
+                        il.Remove(instr);
+                        removedCount++;
+                    }
+                }
+            }
+            Console.Error.WriteLine($"[Cecil] Removed {removedCount} TestClientProxy.Proxy call(s) from NavTestPageBase");
+        }
+
+        // 5. NavTestPageBase.LoadMetadata() — replace body with `ldnull; ret`.
+        //    LoadMetadata calls NavGlobal.MetadataProvider.GetPageDefinition() which crashes
+        //    (MetadataProvider is null in runner).  We return null; NavTestPageBase.ctor stores
+        //    the result in metaPage which is then unused via our other rewrites.
+        {
+            var loadMetadata = navTestPageBaseType.Methods
+                .FirstOrDefault(m => m.Name == "LoadMetadata" && m.Parameters.Count == 0)
+                ?? throw new InvalidOperationException("LoadMetadata not found on NavTestPageBase");
+            var il = loadMetadata.Body.GetILProcessor();
+            loadMetadata.Body.Instructions.Clear();
+            il.Emit(OpCodes.Ldnull);
+            il.Emit(OpCodes.Ret);
+            Console.Error.WriteLine("[Cecil] Rewrote NavTestPageBase.LoadMetadata → return null (skip MetadataProvider)");
+        }
+
 
         // NavMediaValueBase.get_ALMediaId → mark NoInlining so JmpHook can intercept the
         // property getter at runtime (without NoInlining, the JIT inlines the trivial body
