@@ -1440,7 +1440,167 @@ public static partial class BcRuntime
             }
         }
 
-        // NavXmlPortHandle.CreateTarget — same pattern as NavFormHandle/NavReportHandle.
+        // ── Cluster batch: small NREs around session/db skeleton ─────────────
+        // Each hooked method below either reaches NavCurrentThread.Session.*,
+        // NavGlobal.Database / Tenant, the DataAccessSource provider chain, or
+        // notification/dialog infrastructure that the headless runner does not
+        // have. Faithful no-op / sentinel-value replacements per docs/scope.md:
+        // AL code must continue past the call; tests that verify real side
+        // effects (file info, table connection strings, lock-timeout
+        // enforcement, password change, task scheduling, dialog drawing) are
+        // out of scope.
+        if (alDbType != null)
+        {
+            // ALDatabase.get_ALSerialNumber — reaches session.License (null on skeleton).
+            var alSerialGetter = alDbType.GetMethod("get_ALSerialNumber",
+                BindingFlags.Public | BindingFlags.Static);
+            if (alSerialGetter != null)
+                Hook(alSerialGetter, nameof(ReturnEmptyString_0Args), "ALDatabase.get_ALSerialNumber");
+
+            // ALDatabase.ALChangeUserPassword — both the void(2-arg) terminal and
+            // the bool(3-arg) DataError wrapper that delegates to it. Real body
+            // hits PermissionManagement / NavTenant.Database NRE chains.
+            foreach (var m in alDbType.GetMethods(BindingFlags.Public | BindingFlags.Static))
+            {
+                if (m.Name != "ALChangeUserPassword") continue;
+                var ps = m.GetParameters().Length;
+                if (ps == 2 && m.ReturnType == typeof(void))
+                    Hook(m, nameof(NoOp2), "ALDatabase.ALChangeUserPassword(2)");
+                else if (ps == 3 && m.ReturnType == typeof(bool))
+                    Hook(m, nameof(ReturnTrue_ThreeArgs), "ALDatabase.ALChangeUserPassword(3)");
+            }
+
+            // ALDatabase.ALSetUserPassword — same as ALChangeUserPassword.
+            // SessionHasSuperOrSecurityPermissionsForUser NREs on skeleton session.
+            foreach (var m in alDbType.GetMethods(BindingFlags.Public | BindingFlags.Static))
+            {
+                if (m.Name != "ALSetUserPassword") continue;
+                var ps = m.GetParameters().Length;
+                if (ps == 2 && m.ReturnType == typeof(void))
+                    Hook(m, nameof(NoOp2), "ALDatabase.ALSetUserPassword(2)");
+                else if (ps == 3 && m.ReturnType == typeof(bool))
+                    Hook(m, nameof(ReturnTrue_ThreeArgs), "ALDatabase.ALSetUserPassword(3)");
+            }
+
+            // ALDatabase.ALDataFileInformation — 10-arg bool. Real body reads the
+            // ServerUserSettings dataFileInfo XML; not present in headless mode.
+            var alDataFile = alDbType.GetMethod("ALDataFileInformation",
+                BindingFlags.Public | BindingFlags.Static);
+            if (alDataFile != null && alDataFile.GetParameters().Length == 10)
+                Hook(alDataFile, nameof(ReturnFalse_10Args), "ALDatabase.ALDataFileInformation");
+
+            // ALDatabase.ALGetDefaultTableConnection — returns "" (no connections registered).
+            var alGetDefConn = alDbType.GetMethod("ALGetDefaultTableConnection",
+                BindingFlags.Public | BindingFlags.Static);
+            if (alGetDefConn != null)
+                Hook(alGetDefConn, nameof(ReturnEmptyString_OneArg), "ALDatabase.ALGetDefaultTableConnection");
+
+            // ALDatabase.{get,set}_ALLockTimeout / {get,set}_ALLockTimeoutDuration —
+            // each calls DataAccessSource.CreateTenantDataProvider() → SqlTableDataProvider
+            // ctor which NREs on session.Database. No SQL backend in headless mode;
+            // make these property pairs trivial.
+            var lockTOSet = alDbType.GetMethod("set_ALLockTimeout",
+                BindingFlags.Public | BindingFlags.Static);
+            if (lockTOSet != null) Hook(lockTOSet, nameof(NoOp_OneArg), "ALDatabase.set_ALLockTimeout");
+            var lockTOGet = alDbType.GetMethod("get_ALLockTimeout",
+                BindingFlags.Public | BindingFlags.Static);
+            if (lockTOGet != null) Hook(lockTOGet, nameof(ReturnFalse_0Args), "ALDatabase.get_ALLockTimeout");
+            var lockTODurSet = alDbType.GetMethod("set_ALLockTimeoutDuration",
+                BindingFlags.Public | BindingFlags.Static);
+            if (lockTODurSet != null) Hook(lockTODurSet, nameof(NoOp_OneArg), "ALDatabase.set_ALLockTimeoutDuration");
+            var lockTODurGet = alDbType.GetMethod("get_ALLockTimeoutDuration",
+                BindingFlags.Public | BindingFlags.Static);
+            if (lockTODurGet != null) Hook(lockTODurGet, nameof(ReturnZero_0Args), "ALDatabase.get_ALLockTimeoutDuration");
+        }
+
+        // ALTaskScheduler.CanCreateTask(NavSession) — checks permissions via the
+        // session that is null on skeleton. Returning true lets the task-scheduler
+        // calls proceed; ALCreateTaskAsync still NREs further in but the immediate
+        // CanCreateTask cluster is drained.
+        var alTaskSchedType_b = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.ALTaskScheduler");
+        if (alTaskSchedType_b != null)
+        {
+            var canCreate = alTaskSchedType_b.GetMethod("CanCreateTask",
+                BindingFlags.NonPublic | BindingFlags.Static);
+            if (canCreate != null)
+                Hook(canCreate, nameof(ReturnTrue_OneArg), "ALTaskScheduler.CanCreateTask");
+        }
+
+        // NavDialog.ALClose() / ALUpdateAsync(int, NavValue) — dialog is never
+        // really opened in headless mode; ALClose NREs on dialogClient. Pure
+        // no-ops let progress-dialog tests complete.
+        var navDialogType_b = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavDialog");
+        if (navDialogType_b != null)
+        {
+            var alClose = navDialogType_b.GetMethod("ALClose",
+                BindingFlags.Public | BindingFlags.Instance, null, Type.EmptyTypes, null);
+            if (alClose != null)
+                Hook(alClose, nameof(NoOp_OneArg), "NavDialog.ALClose");
+
+            foreach (var m in navDialogType_b.GetMethods(
+                         BindingFlags.Public | BindingFlags.Instance))
+            {
+                if (m.Name != "ALUpdateAsync") continue;
+                var ps = m.GetParameters().Length;
+                // slot count = 1 (this) + ps
+                var name = (1 + ps) switch
+                {
+                    2 => nameof(ReturnValueTask2),
+                    3 => nameof(ReturnValueTask3),
+                    _ => null,
+                };
+                if (name != null)
+                    Hook(m, name, $"NavDialog.ALUpdateAsync({ps})");
+            }
+        }
+
+        // NavForm.ObjectID(bool useCaption) — instance string getter. Real body
+        // reaches into MetaForm metadata; for fake/temp forms it NREs.
+        var navFormType_b = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavForm");
+        if (navFormType_b != null)
+        {
+            var objectId = navFormType_b.GetMethod("ObjectID",
+                BindingFlags.Public | BindingFlags.Instance, null, new[] { typeof(bool) }, null);
+            if (objectId != null)
+                Hook(objectId, nameof(ReturnEmptyString_TwoArgs), "NavForm.ObjectID(bool)");
+        }
+
+        // NavRecord.ValidateTruncateSupport(NavRecord) — checks DataAccessSource
+        // capability flag; safe no-op since the TruncateAsync hook in
+        // ALDatabase block already covers the actual table truncation gap.
+        var navRecordType_b = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavRecord");
+        if (navRecordType_b != null)
+        {
+            var validateTrunc = navRecordType_b.GetMethod("ValidateTruncateSupport",
+                BindingFlags.NonPublic | BindingFlags.Static);
+            if (validateTrunc != null)
+                Hook(validateTrunc, nameof(NoOp_OneArg), "NavRecord.ValidateTruncateSupport");
+        }
+
+        // PermissionManagement.SessionHasSuperOrSecurityPermissionsForUser —
+        // headless mode has no user permission graph; treat every session as
+        // permitted. Reached via ALSetUserPassword (also hooked above).
+        var permMgmtType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.PermissionManagement");
+        if (permMgmtType != null)
+        {
+            var sessHas = permMgmtType.GetMethod("SessionHasSuperOrSecurityPermissionsForUser",
+                BindingFlags.Public | BindingFlags.Static);
+            if (sessHas != null)
+                Hook(sessHas, nameof(ReturnTrue_TwoArgs),
+                    "PermissionManagement.SessionHasSuperOrSecurityPermissionsForUser");
+        }
+
+        // RecordImplementation.SetSecurityFiltering — instance void setter that
+        // reaches DataAccess providers; AL code only observes that the call did
+        // not throw.
+        var recImplType_b = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.RecordImplementation");
+        if (recImplType_b != null)
+        {
+            var setSec = recImplType_b.GetMethod("SetSecurityFiltering",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            if (setSec != null)
+                Hook(setSec, nameof(NoOp2), "RecordImplementation.SetSecurityFiltering");
+        }
         // GetMetaXmlPortById throws ThrowMetaApplicationObjectNotFound for any XmlPort not
         // compiled by NCLCodeLoader; our cache has skeleton entries but CreateObjectInstance
         // NREs on the null delegate. Hook to construct XmlPort{ID} directly from the assembly.

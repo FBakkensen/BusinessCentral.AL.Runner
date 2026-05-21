@@ -26,6 +26,19 @@ public static partial class BcRuntime
     [MethodImpl(MethodImplOptions.NoInlining)] public static bool ReturnFalse_0Args() => false;
     [MethodImpl(MethodImplOptions.NoInlining)] public static bool ReturnFalse_1Arg(object? a) => false;
     [MethodImpl(MethodImplOptions.NoInlining)] public static bool ReturnFalse_2Args(object? a, object? b) => false;
+    [MethodImpl(MethodImplOptions.NoInlining)] public static bool ReturnFalse_10Args(
+        object? a, object? b, object? c, object? d, object? e,
+        object? f, object? g, object? h, object? i, object? j) => false;
+
+    [MethodImpl(MethodImplOptions.NoInlining)] public static bool ReturnTrue_OneArg(object? a) => true;
+    [MethodImpl(MethodImplOptions.NoInlining)] public static bool ReturnTrue_TwoArgs(object? a, object? b) => true;
+    [MethodImpl(MethodImplOptions.NoInlining)] public static bool ReturnTrue_ThreeArgs(object? a, object? b, object? c) => true;
+
+    [MethodImpl(MethodImplOptions.NoInlining)] public static string ReturnEmptyString_0Args() => string.Empty;
+    [MethodImpl(MethodImplOptions.NoInlining)] public static string ReturnEmptyString_OneArg(object? a) => string.Empty;
+    [MethodImpl(MethodImplOptions.NoInlining)] public static string ReturnEmptyString_TwoArgs(object? a, object? b) => string.Empty;
+
+    [MethodImpl(MethodImplOptions.NoInlining)] public static int ReturnZero_0Args() => 0;
 
     [MethodImpl(MethodImplOptions.NoInlining)] public static System.Threading.Tasks.ValueTask ReturnValueTask2(object? a, object? b) => default;
     [MethodImpl(MethodImplOptions.NoInlining)] public static System.Threading.Tasks.ValueTask ReturnValueTask3(object? a, object? b, object? c) => default;
