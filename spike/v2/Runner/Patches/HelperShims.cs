@@ -70,6 +70,14 @@ public static partial class BcRuntime
     public static Microsoft.Dynamics.Nav.Runtime.NavBigInteger ReturnNavBigIntegerZero_0Args()
         => Microsoft.Dynamics.Nav.Runtime.NavBigInteger.Default;
 
+    // ALNavApp.ALListResources — returns the package's bundled resource list.
+    // The headless runner has no Diagnostics/AppMetadataRetriever, and the real
+    // body itself returns an empty NavList<NavText> when metadata is missing.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static Microsoft.Dynamics.Nav.Runtime.NavList<Microsoft.Dynamics.Nav.Runtime.NavText>
+        ReturnEmptyNavTextList_2Args(object? a, object? b)
+        => Microsoft.Dynamics.Nav.Runtime.NavList<Microsoft.Dynamics.Nav.Runtime.NavText>.Default;
+
     [MethodImpl(MethodImplOptions.NoInlining)] public static System.Threading.Tasks.ValueTask ReturnValueTask2(object? a, object? b) => default;
     [MethodImpl(MethodImplOptions.NoInlining)] public static System.Threading.Tasks.ValueTask ReturnValueTask3(object? a, object? b, object? c) => default;
     [MethodImpl(MethodImplOptions.NoInlining)] public static System.Threading.Tasks.ValueTask ReturnValueTask4(object? a, object? b, object? c, object? d) => default;

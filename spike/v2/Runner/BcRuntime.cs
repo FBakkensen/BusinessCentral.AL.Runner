@@ -1672,6 +1672,35 @@ public static partial class BcRuntime
                     Hook(m, nameof(ReturnValueTaskGuid_8Args), "ALTaskScheduler.ALCreateTaskAsync");
             }
         }
+
+        // SessionTransactionExtensions.SetRecordConsistent / SetRecordInconsistent
+        // — extension methods on NavSession that reach DataAccessSource (null on
+        // the skeleton). AL semantics: these mark a record's consistency state
+        // for a transaction; with no transaction backend, marking is a no-op.
+        var sessTxExt = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.SessionTransactionExtensions");
+        if (sessTxExt != null)
+        {
+            foreach (var m in sessTxExt.GetMethods(BindingFlags.Public | BindingFlags.Static))
+            {
+                if (m.Name != "SetRecordConsistent" && m.Name != "SetRecordInconsistent") continue;
+                if (m.GetParameters().Length == 2)
+                    Hook(m, nameof(NoOp2), "SessionTransactionExtensions." + m.Name);
+            }
+        }
+
+        // ALNavApp.ALListResources — needs OwningApp metadata which the
+        // headless runner has none of. Real body itself returns an empty list
+        // when metadata is absent (its 3 fall-through paths do exactly that),
+        // so an empty NavList<NavText> is the faithful answer.
+        var alNavAppType_b = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.ALNavApp");
+        if (alNavAppType_b != null)
+        {
+            var listResources = alNavAppType_b.GetMethod("ALListResources",
+                BindingFlags.Public | BindingFlags.Static);
+            if (listResources != null && listResources.GetParameters().Length == 2)
+                Hook(listResources, nameof(ReturnEmptyNavTextList_2Args),
+                    "ALNavApp.ALListResources");
+        }
         // GetMetaXmlPortById throws ThrowMetaApplicationObjectNotFound for any XmlPort not
         // compiled by NCLCodeLoader; our cache has skeleton entries but CreateObjectInstance
         // NREs on the null delegate. Hook to construct XmlPort{ID} directly from the assembly.
