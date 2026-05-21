@@ -65,7 +65,16 @@ public static partial class BcRuntime
         int id = self.ObjectId.ObjectNumber;
         var codeunitType = _codeunitTypeCache.GetOrAdd(id, FindCodeunitType);
         if (codeunitType == null)
+        {
+            // System range (1-9999) and test-toolkit range (130000-139999) are
+            // treated as no-ops when missing — the runner contract advertised
+            // by tests/bucket-1/codeunit-runtime/128-codeunit-not-found is
+            // that calling such a codeunit must succeed silently. Outside
+            // those ranges we still throw with a helpful diagnostic.
+            if ((id >= 1 && id <= 9999) || (id >= 130000 && id <= 139999))
+                return new NoOpCodeunit(self, id);
             throw new InvalidOperationException(BuildMissingCodeunitMessage(id));
+        }
         var ctor = codeunitType.GetConstructors()
             .FirstOrDefault(c => c.GetParameters().Length == 1 &&
                 typeof(Microsoft.Dynamics.Nav.Runtime.ITreeObject)
@@ -536,4 +545,18 @@ public static partial class BcRuntime
         }
         return null;
     }
+}
+
+/// <summary>
+/// No-op NavCodeunit subclass returned by NavCodeunitHandle_CreateTarget when an
+/// AL caller invokes a codeunit in the system range (1-9999) or test-toolkit range
+/// (130000-139999) that is not present in the test assembly. RunAsync (via the
+/// hooked NavCodeunit_DoRunAsync) reflects for an OnRun method; this class has
+/// none, so the call returns successfully without doing anything. This honors the
+/// runner contract documented in tests/bucket-1/codeunit-runtime/128-codeunit-not-found.
+/// </summary>
+public sealed class NoOpCodeunit : Microsoft.Dynamics.Nav.Runtime.NavCodeunit
+{
+    public NoOpCodeunit(Microsoft.Dynamics.Nav.Runtime.ITreeObject parent, int objectId)
+        : base(parent, objectId) { }
 }
