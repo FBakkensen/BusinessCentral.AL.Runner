@@ -14,7 +14,7 @@ namespace AlRunnerV2.Infrastructure;
 
 public static class NclCecilRewrite
 {
-    private const int CACHE_VERSION = 24;
+    private const int CACHE_VERSION = 25;
 
 
     /// <summary>
@@ -1394,6 +1394,48 @@ public static class NclCecilRewrite
             // — our prepended IL is OUTSIDE the protected region, so a plain `ret` is
             // legal there. (Verified by Cecil writing+rereading the body.)
             Console.Error.WriteLine("[Cecil] Prepended null-registeredReports guard to NavCompany.UnregisterReport → ret early in skeleton mode");
+        }
+
+        // ── NCLMetadata.GetSnapshotOfAllObjects ───────────────────────────────────
+        // Real impl reads `lock(allObjectIdsSnapshotSyncRoot)` then builds a snapshot
+        // from the BC System App resource (BuildNewSnapshotListForBaseObjectsFromSystemAppResource).
+        // In skeleton mode `allObjectIdsSnapshotSyncRoot` is null (NCLMetadata is created via
+        // GetUninitializedObject in MetadataPatches), and we don't have the BC SA resource —
+        // so the lock NREs. Replace the whole body with `return new SortedList<...>()`.
+        // Callers (IsTableNameAmbigous → NavRecordIdFormatter.TryGetTableName, …) handle
+        // an empty snapshot cleanly via TryGetValue==false. This is faithful for the
+        // skeleton runtime: there are no system-app objects to be ambiguous with.
+        {
+            var nclMetaType = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.NCLMetadata")
+                ?? throw new InvalidOperationException("NCLMetadata type not found");
+            var getSnap = nclMetaType.Methods.FirstOrDefault(m =>
+                m.Name == "GetSnapshotOfAllObjects" && m.Parameters.Count == 1)
+                ?? throw new InvalidOperationException("NCLMetadata.GetSnapshotOfAllObjects(int) not found");
+
+            // ReturnType is SortedList<ObjectType, SortedList<int, AllObjectSnapshotEntry>>
+            // — already a fully-bound GenericInstanceType in this assembly. Build a
+            // MethodReference for its parameterless ctor with DeclaringType = return type.
+            var returnType = getSnap.ReturnType;
+            if (returnType is not Mono.Cecil.GenericInstanceType retGit
+                || !retGit.ElementType.FullName.StartsWith("System.Collections.Generic.SortedList`2"))
+            {
+                throw new InvalidOperationException(
+                    $"NCLMetadata.GetSnapshotOfAllObjects return shape changed (got {returnType.FullName}) — do not commit");
+            }
+            var sortedListCtor = new MethodReference(".ctor", asm.MainModule.TypeSystem.Void, retGit)
+            {
+                HasThis = true,
+            };
+
+            var body = getSnap.Body;
+            body.Instructions.Clear();
+            body.Variables.Clear();
+            body.ExceptionHandlers.Clear();
+            var il = body.GetILProcessor();
+            il.Append(il.Create(OpCodes.Newobj, sortedListCtor));
+            il.Append(il.Create(OpCodes.Ret));
+            body.MaxStackSize = 1;
+            Console.Error.WriteLine("[Cecil] Replaced NCLMetadata.GetSnapshotOfAllObjects body → new SortedList<...>() (empty) in skeleton mode");
         }
 
         var outStream = new MemoryStream();
