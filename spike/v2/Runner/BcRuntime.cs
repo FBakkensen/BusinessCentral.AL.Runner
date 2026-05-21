@@ -1337,6 +1337,17 @@ public static partial class BcRuntime
             }
 
             Console.Error.WriteLine($"[BcRuntime] NavReport.RunModal static overloads: {staticRunModalHooked} hooked");
+
+            // Instance Run() / RunModal() — 0 arg, void. Cecil left these as `ret`
+            // placeholders; JmpHook dispatches the call to NavReportSync.SyncRun(this).
+            var instanceRun = navReportType.GetMethod("Run",
+                BindingFlags.Public | BindingFlags.Instance, null, Type.EmptyTypes, null);
+            if (instanceRun != null)
+                Hook(instanceRun, nameof(NavReport_InstanceRun), "NavReport.Run()");
+            var instanceRunModal = navReportType.GetMethod("RunModal",
+                BindingFlags.Public | BindingFlags.Instance, null, Type.EmptyTypes, null);
+            if (instanceRunModal != null)
+                Hook(instanceRunModal, nameof(NavReport_InstanceRunModal), "NavReport.RunModal()");
         }
 
         // ALDatabase.ALSid — BC's real getter walks NavCurrentThread.Session.Identity

@@ -24,6 +24,28 @@ public static partial class BcRuntime
         "construct the report as an AL variable and call instance Run() instead)";
 
     // ──────────────────────────────────────────────────────────────────
+    // NavReport.Run / RunModal instance (0-arg, void) — execute lifecycle
+    // ──────────────────────────────────────────────────────────────────
+    // The Cecil rewrite in NclCecilRewrite.cs leaves the instance Run() / RunModal()
+    // bodies as a `ret` placeholder. At runtime, BcRuntime wires a JmpHook here so
+    // the call instead dispatches to NavReportSync.SyncRun(this), which reflectively
+    // invokes OnInitReport / OnPreReport / DataItem Pre+Post / OnPostReport on the
+    // same NavReport instance the AL code constructed. Managed→managed call —
+    // avoids a cross-assembly metadata reference inside the rewritten Ncl.dll.
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void NavReport_InstanceRun(object self)
+    {
+        NavReportSync.SyncRun(self);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void NavReport_InstanceRunModal(object self)
+    {
+        NavReportSync.SyncRun(self);
+    }
+
+    // ──────────────────────────────────────────────────────────────────
     // NavReport.Run static overloads — throw OOS (no silent no-ops)
     // ──────────────────────────────────────────────────────────────────
 
