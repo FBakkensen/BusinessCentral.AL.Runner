@@ -374,6 +374,86 @@ public static partial class BcRuntime
         });
     }
 
+    // Cache: query ID → generated NavQuery Type.
+    private static readonly ConcurrentDictionary<int, Type?> _queryTypeCache = new();
+
+    /// <summary>
+    /// Replacement for NavQueryHandle.CreateTarget(). Same shape as
+    /// NavReportHandle/NavFormHandle: bypass NavGlobal.NCLMetadata.GetMetaQueryById +
+    /// NCLMetaQuery.CreateObjectInstance (which NREs on a skeleton meta because
+    /// ApplicationObjectConstructor returns null), and construct Query{ID} directly
+    /// from the loaded test assembly.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static object NavQueryHandle_CreateTarget(object self)
+    {
+        var objIdProp = self.GetType().GetProperty("ObjectId",
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        var objId = objIdProp!.GetValue(self)!;
+        var idProp = objId.GetType().GetProperty("ObjectNumber",
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        int id = (int)idProp!.GetValue(objId)!;
+
+        var queryType = _queryTypeCache.GetOrAdd(id, FindQueryType);
+        if (queryType == null)
+            throw new InvalidOperationException(
+                $"Query{id} is not present in the test assembly or any loaded dependency.");
+
+        // Try ctor signatures matching NavQuery's three protected constructors:
+        //   (ITreeObject parent)                          — AL-emitted convenience
+        //   (ITreeObject parent, SecurityFiltering, NCLMetaQuery)
+        //   (ITreeObject parent, int objectId, SecurityFiltering)
+        var ctors = queryType.GetConstructors(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+
+        var oneArg = ctors.FirstOrDefault(c => c.GetParameters().Length == 1 &&
+            typeof(Microsoft.Dynamics.Nav.Runtime.ITreeObject)
+                .IsAssignableFrom(c.GetParameters()[0].ParameterType));
+        if (oneArg != null) return oneArg.Invoke(new object[] { self });
+
+        var twoArg = ctors.FirstOrDefault(c => c.GetParameters().Length == 2 &&
+            typeof(Microsoft.Dynamics.Nav.Runtime.ITreeObject)
+                .IsAssignableFrom(c.GetParameters()[0].ParameterType));
+        if (twoArg != null) return twoArg.Invoke(new object?[] { self, null });
+
+        // NOTE: 3-arg ctors (ITreeObject, SecurityFiltering, NCLMetaQuery) require a
+        // populated NCLMetaQuery whose .MetaQuery is non-null (NavQuery..ctor calls
+        // ValidateColumns on it). Until we either Cecil-rewrite NavQuery..ctor or
+        // build a sufficiently-populated NCLMetaQuery skeleton, fall through to the
+        // explicit error so this path remains observable.
+        throw new InvalidOperationException(
+            $"Query{id} has no (ITreeObject) or (ITreeObject, ...) constructor");
+    }
+
+    private static Type? FindQueryType(int id)
+    {
+        var navNcl = AppDomain.CurrentDomain.GetAssemblies()
+            .FirstOrDefault(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Ncl");
+        Type? queryBase = navNcl?.GetType("Microsoft.Dynamics.Nav.Runtime.NavQuery");
+        var name = $"Query{id}";
+        if (_currentTestAssembly != null)
+        {
+            try
+            {
+                var t = Array.Find(_currentTestAssembly.GetTypes(),
+                    x => x.Name == name && (queryBase == null || queryBase.IsAssignableFrom(x)));
+                if (t != null) return t;
+            }
+            catch { }
+        }
+        foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            if (asm == _currentTestAssembly) continue;
+            try
+            {
+                var t = Array.Find(asm.GetTypes(),
+                    x => x.Name == name && (queryBase == null || queryBase.IsAssignableFrom(x)));
+                if (t != null) return t;
+            }
+            catch { }
+        }
+        return null;
+    }
+
     private static Type? FindReportType(int id)
     {
         var navNcl = AppDomain.CurrentDomain.GetAssemblies()

@@ -1253,6 +1253,19 @@ public static partial class BcRuntime
                 Hook(createTarget, nameof(NavReportHandle_CreateTarget), "NavReportHandle.CreateTarget");
         }
 
+        // NavQueryHandle.CreateTarget — same shape as NavReportHandle. The default
+        // calls NCLMetaQuery.CreateObjectInstance which NREs on null
+        // ApplicationObjectConstructor for our skeleton meta. Replace with direct
+        // construction of `Query{ID}` from the test assembly.
+        var queryHandleType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavQueryHandle");
+        if (queryHandleType != null)
+        {
+            var createTarget = queryHandleType.GetMethod("CreateTarget",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            if (createTarget != null)
+                Hook(createTarget, nameof(NavQueryHandle_CreateTarget), "NavQueryHandle.CreateTarget");
+        }
+
         // REPORT.RUN(id [, reqPage [, sysPrinter [, record]]]) in AL compiles to static
         // NavReport.Run(int, ...) overloads; REPORT.RUNMODAL(...) to NavReport.RunModal(...).
         // Without hooks BC calls NCLMetadata.GetMetaReportById → ThrowMetaApplicationObjectNotFound.
