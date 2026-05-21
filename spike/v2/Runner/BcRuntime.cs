@@ -1413,6 +1413,33 @@ public static partial class BcRuntime
                 Hook(alUnregister, nameof(NoOp2), "ALDatabase.ALUnregisterTableConnection");
         }
 
+        // ALSystemOperatingSystem.GetUrlCore — real body reaches into ALSession,
+        // NavEnvironment.Instance.Tenants, and NavCurrentThread.Session.Tenant.Id —
+        // all of which NRE on the skeleton session. AL `GetUrl(...)` callers expect a
+        // non-empty URL string; we return a stub URL. Faithful per docs/scope.md:
+        // tests that parse / verify real tenant/endpoint URLs are out of scope.
+        // ALSystemOperatingSystem url methods — GetUrlCore reaches into ALSession,
+        // NavEnvironment.Instance.Tenants, and NavCurrentThread.Session.Tenant.Id —
+        // all of which NRE on the skeleton session. Real URL generation is out of
+        // scope (no service-tier endpoint manager). Tests assert only that the
+        // returned string is non-empty; hook returns a stub URL.
+        // Hook ALGetUrl / ALGetUrlInternal / GetUrlCore layers because R2R-baking
+        // can inline frames and bypass a hook at one specific level (see
+        // ALServiceInstanceID note above).
+        var alSysOsType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.ALSystemOperatingSystem");
+        if (alSysOsType != null)
+        {
+            foreach (var m in alSysOsType.GetMethods(
+                         BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static))
+            {
+                if (m.Name != "GetUrlCore" && m.Name != "ALGetUrlInternal" &&
+                    m.Name != "ALGetUrl") continue;
+                if (m.GetParameters().Length != 7) continue;
+                Hook(m, nameof(ALSystemOperatingSystem_GetUrlCore),
+                    $"ALSystemOperatingSystem.{m.Name}");
+            }
+        }
+
         // NavXmlPortHandle.CreateTarget — same pattern as NavFormHandle/NavReportHandle.
         // GetMetaXmlPortById throws ThrowMetaApplicationObjectNotFound for any XmlPort not
         // compiled by NCLCodeLoader; our cache has skeleton entries but CreateObjectInstance

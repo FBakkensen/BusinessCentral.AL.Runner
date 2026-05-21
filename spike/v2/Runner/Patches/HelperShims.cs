@@ -33,6 +33,21 @@ public static partial class BcRuntime
 
     [MethodImpl(MethodImplOptions.NoInlining)] public static object? ReturnNull_OneArg(object a) => null;
     [MethodImpl(MethodImplOptions.NoInlining)] public static int ReturnZero_OneArg(object? a) => 0;
+
+    /// <summary>
+    /// Replacement for <c>ALSystemOperatingSystem.GetUrlCore</c>. The real body reaches
+    /// into <c>ALSession.ALCurrentClientType</c>, <c>NavEnvironment.Instance.Tenants</c>,
+    /// and <c>NavCurrentThread.Session.Tenant.Id</c> — all of which NRE on the skeleton
+    /// session. Returns a stub URL so AL tests that only verify non-empty result pass.
+    /// Real URL generation is out of scope (requires a service-tier endpoint manager).
+    /// NavClientType / NavObjectType are int-backed enums; declared here as int to match
+    /// the native ABI slot layout JmpHook patches.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static string ALSystemOperatingSystem_GetUrlCore(
+        int clientType, string company, int objectType, int objectId,
+        object record, bool useFilter, string layout)
+        => "https://stub.example.com/";
     [MethodImpl(MethodImplOptions.NoInlining)] public static object? GetSkeletonCompanyReplacement(object self) => _skeletonCompany;
 
     /// <summary>
