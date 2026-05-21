@@ -14,7 +14,7 @@ namespace AlRunnerV2.Infrastructure;
 
 public static class NclCecilRewrite
 {
-    private const int CACHE_VERSION = 20;
+    private const int CACHE_VERSION = 24;
 
 
     /// <summary>
@@ -1332,6 +1332,68 @@ public static class NclCecilRewrite
             il.InsertBefore(origFirst, il.Create(OpCodes.Newobj, ctorRef));
             il.InsertBefore(origFirst, il.Create(OpCodes.Ret));
             Console.Error.WriteLine($"[Cecil] Prepended null/empty-Items guard to FilterFieldDictionary.AndNegatedFilters → return copy of self");
+        }
+
+        // ─── NavCompany.UnregisterReport — null-guard registeredReports ───────────
+        // The skeleton NavCompany is allocated via GetUninitializedObject and never
+        // runs its ctor, so `registeredReports` (Dictionary<Guid, NavReportHandle>) is
+        // null. AL Report tests call into a real `NavReport.Dispose(true)` cleanup path
+        // → NavCompany.UnregisterReport → `lock (registeredReports)` → ANE on null.
+        //
+        // The method has two existing finally handlers that run `Monitor.Exit` and
+        // `value?.Dispose()`. The cleanest rewrite is to prepend an early-return BEFORE
+        // any of the lock state is set up: after the report-null check (IL_000e), if
+        // `this.registeredReports == null`, just `ret`. value is still null at that
+        // point, so the original Dispose chain has nothing to leak; no Monitor was
+        // entered, so the Exit finally has nothing to release.
+        //
+        // Sync void method, no fake — we're not pretending the report was unregistered;
+        // we're acknowledging that no report-registry exists in skeleton mode.
+        {
+            var navCompanyType = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.NavCompany")
+                ?? throw new InvalidOperationException("NavCompany type not found");
+            var unregReport = navCompanyType.Methods.FirstOrDefault(m =>
+                m.Name == "UnregisterReport" && m.Parameters.Count == 1)
+                ?? throw new InvalidOperationException("NavCompany.UnregisterReport not found");
+            var registeredReportsField = navCompanyType.Fields.FirstOrDefault(f => f.Name == "registeredReports")
+                ?? throw new InvalidOperationException("NavCompany.registeredReports field not found");
+
+            var instrs = unregReport.Body.Instructions;
+            // Expected shape (probe-verified): instr[0..4] = "if (report==null) throw ANE",
+            // instr[5] = first instr of real body (ldarg.1 → get_ExecutionGuid).
+            // Anchor on instr[5] so Insertion offsets fix up correctly without disturbing
+            // the existing exception handlers' try/handler ranges.
+            if (instrs.Count < 6
+                || instrs[0].OpCode != OpCodes.Ldarg_1
+                || instrs[4].OpCode != OpCodes.Throw
+                || instrs[5].OpCode != OpCodes.Ldarg_1)
+            {
+                throw new InvalidOperationException(
+                    "NavCompany.UnregisterReport IL shape changed — expected report-null-check followed by ldarg.1");
+            }
+            var anchor = instrs[5]; // first instr of "real body" — also the first try-protected instr in handler #2.
+            var il = unregReport.Body.GetILProcessor();
+            //   ldarg.0
+            //   ldfld registeredReports
+            //   brtrue.s anchor
+            //   ret
+            var ldarg0 = il.Create(OpCodes.Ldarg_0);
+            il.InsertBefore(anchor, ldarg0);
+            il.InsertBefore(anchor, il.Create(OpCodes.Ldfld, registeredReportsField));
+            il.InsertBefore(anchor, il.Create(OpCodes.Brtrue_S, anchor));
+            il.InsertBefore(anchor, il.Create(OpCodes.Ret));
+            // The original report-null check at instrs[0..4] ends with `brtrue.s instrs[5]`
+            // (skip-throw-when-report-non-null). That branch jumps to `anchor`, which would
+            // BYPASS our prefix when report != null. Retarget it to land on our prefix
+            // instead, so the field-null guard runs on every call.
+            instrs[1].Operand = ldarg0;
+            // The two existing finally handlers protect try-ranges that begin AT `anchor`
+            // (handler #2 TryStart = ldarg.0 at IL_0017, which is `anchor`). Cecil's
+            // Insertion model keeps handler TryStart bound to the same Instruction object,
+            // so after writing+OptimizeMacros the handler still starts at the same point
+            // — our prepended IL is OUTSIDE the protected region, so a plain `ret` is
+            // legal there. (Verified by Cecil writing+rereading the body.)
+            Console.Error.WriteLine("[Cecil] Prepended null-registeredReports guard to NavCompany.UnregisterReport → ret early in skeleton mode");
         }
 
         var outStream = new MemoryStream();
