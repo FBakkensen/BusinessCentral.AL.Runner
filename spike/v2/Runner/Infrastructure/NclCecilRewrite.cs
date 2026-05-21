@@ -14,7 +14,7 @@ namespace AlRunnerV2.Infrastructure;
 
 public static class NclCecilRewrite
 {
-    private const int CACHE_VERSION = 7;
+    private const int CACHE_VERSION = 8;
 
 
     /// <summary>
@@ -634,6 +634,92 @@ public static class NclCecilRewrite
                     il.Append(il.Create(OpCodes.Ret));
                     body.MaxStackSize = 1;
                     Console.Error.WriteLine($"[Cecil] Rewrote ALDatabase.{m.Name} → return false");
+                }
+            }
+        }
+
+        // ALTaskScheduler.ALCreateTaskAsync — async ValueTask<Guid>; real impl
+        // depends on a background scheduler (NavCurrentThread.Session.TaskScheduler)
+        // that doesn't exist in the runner. Test contract
+        // (tests/bucket-1/codeunit-runtime/122-unstubbed-types) is "CreateTask
+        // returns a Guid; subsequent CancelTask returns true". Cecil rewrites the
+        // async wrapper to a synchronous ValueTask.FromResult(Guid.Empty); the
+        // CancelTask family already no-ops via existing patches.
+        {
+            var alTaskSchedulerType = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.ALTaskScheduler");
+            if (alTaskSchedulerType != null)
+            {
+                var fromResultGuid = typeof(System.Threading.Tasks.ValueTask)
+                    .GetMethods()
+                    .First(m => m.Name == "FromResult" && m.IsGenericMethod && m.GetParameters().Length == 1)
+                    .MakeGenericMethod(typeof(Guid));
+                var fromResultGuidRef = asm.MainModule.ImportReference(fromResultGuid);
+                foreach (var m in alTaskSchedulerType.Methods.Where(x => x.Name == "ALCreateTaskAsync"))
+                {
+                    var body = m.Body;
+                    body.Instructions.Clear();
+                    body.Variables.Clear();
+                    body.ExceptionHandlers.Clear();
+                    var il = body.GetILProcessor();
+                    var guidLocal = new VariableDefinition(asm.MainModule.ImportReference(typeof(Guid)));
+                    body.Variables.Add(guidLocal);
+                    body.InitLocals = true;
+                    il.Append(il.Create(OpCodes.Ldloca_S, guidLocal));
+                    il.Append(il.Create(OpCodes.Initobj, asm.MainModule.ImportReference(typeof(Guid))));
+                    il.Append(il.Create(OpCodes.Ldloc, guidLocal));
+                    il.Append(il.Create(OpCodes.Call, fromResultGuidRef));
+                    il.Append(il.Create(OpCodes.Ret));
+                    body.MaxStackSize = 1;
+                    Console.Error.WriteLine($"[Cecil] Rewrote ALTaskScheduler.{m.Name} → return ValueTask.FromResult(Guid.Empty)");
+                }
+            }
+        }
+
+        // ALNavApp.ALGetResourceAsTextAsync — async Task<NavText>; real impl
+        // requires the .app package being mounted (no service tier here). Test
+        // contract (tests/bucket-1/codeunit-runtime/267-navapp-resources):
+        // missing resource → empty NavText, no throw. Cecil rewrites the body
+        // to Task.FromResult<NavText>(NavText.Empty).
+        {
+            var alNavAppType = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.ALNavApp");
+            if (alNavAppType != null)
+            {
+                var navTextType = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Types.NavText")
+                    ?? asm.MainModule.GetTypes().FirstOrDefault(t => t.Name == "NavText");
+                if (navTextType != null)
+                {
+                    var navTextEmptyGetter = navTextType.Properties
+                        .FirstOrDefault(p => p.Name == "Empty")?.GetMethod;
+                    foreach (var m in alNavAppType.Methods.Where(x => x.Name == "ALGetResourceAsTextAsync"))
+                    {
+                        if (!m.ReturnType.FullName.StartsWith("System.Threading.Tasks.Task`1<"))
+                            continue;
+                        var body = m.Body;
+                        body.Instructions.Clear();
+                        body.Variables.Clear();
+                        body.ExceptionHandlers.Clear();
+                        var il = body.GetILProcessor();
+                        var fromResultMi = typeof(System.Threading.Tasks.Task)
+                            .GetMethods()
+                            .First(x => x.Name == "FromResult" && x.IsGenericMethod && x.GetParameters().Length == 1);
+                        // Build closed FromResult<NavText> by referencing the Cecil type via a TypeReference.
+                        var fromResultGenericRef = new GenericInstanceMethod(
+                            asm.MainModule.ImportReference(fromResultMi));
+                        fromResultGenericRef.GenericArguments.Add(navTextType);
+                        if (navTextEmptyGetter != null)
+                        {
+                            il.Append(il.Create(OpCodes.Call, navTextEmptyGetter));
+                        }
+                        else
+                        {
+                            // Fallback: ldnull (Task.FromResult<NavText>(null))
+                            il.Append(il.Create(OpCodes.Ldnull));
+                        }
+                        il.Append(il.Create(OpCodes.Call, fromResultGenericRef));
+                        il.Append(il.Create(OpCodes.Ret));
+                        body.MaxStackSize = 1;
+                        Console.Error.WriteLine($"[Cecil] Rewrote ALNavApp.{m.Name} → return Task.FromResult(NavText.Empty)");
+                    }
                 }
             }
         }
