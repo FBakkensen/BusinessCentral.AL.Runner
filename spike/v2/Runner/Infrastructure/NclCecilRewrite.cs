@@ -14,7 +14,7 @@ namespace AlRunnerV2.Infrastructure;
 
 public static class NclCecilRewrite
 {
-    private const int CACHE_VERSION = 17;
+    private const int CACHE_VERSION = 19;
 
 
     /// <summary>
@@ -1183,6 +1183,84 @@ public static class NclCecilRewrite
             if (rewroteCopyArray != 1)
                 throw new InvalidOperationException($"ALSystemArray.ALCopyArray<T>(5-arg): expected exactly 1 rewrite, got {rewroteCopyArray} — Ncl shape changed; do not commit");
             Console.Error.WriteLine($"[Cecil] Relaxed ALCopyArray<T> length check to dest.Length>=length ({rewroteCopyArray} method)");
+        }
+
+        // ─── ALCompiler.NavIndirectValueToNavValue<T>: accept NavBoolean / NavInteger inner for string T ───
+        //
+        // Variant<Boolean> → Text and Variant<Integer> → Text both go through this generic
+        // dispatcher. The first branch handles `T : NavStringValue subclass | NavByte | NavChar`
+        // AND inner is NavStringValue / NclType == NavByte (2) / NavChar (13) / NavGuid (23),
+        // calling `value.ToString()` and re-wrapping. NavBoolean (1) and NavInteger (3) are
+        // missing — BC's NavIndirectValue.ToString() returns the localized "Yes"/"No" / decimal
+        // string, which is exactly what AL `Format(Variant)` produces and what the failing
+        // tests (Codeunit50229 BoolVariantToText_* / IntVariantToText_*) assert.
+        //
+        // Surgical IL: after the existing NavChar-equality check (`callvirt get_NclType;
+        // ldc.i4.s 13; beq.s SUCCESS`), prepend two extra checks that also branch to SUCCESS
+        // when NclType == 1 or NclType == 3. The NavGuid check that follows remains intact.
+        {
+            var alCompiler = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.ALCompiler");
+            if (alCompiler == null)
+                throw new InvalidOperationException("ALCompiler type not found — Ncl shape changed");
+            int rewroteI2N = 0;
+            foreach (var m in alCompiler.Methods)
+            {
+                if (m.Name != "NavIndirectValueToNavValue" || !m.HasGenericParameters || m.Parameters.Count != 2) continue;
+                var body = m.Body;
+                var instrs = body.Instructions;
+                // Find: callvirt get_NclType; ldc.i4.s 13; beq.s SUCCESS  (NavChar branch).
+                int navCharBeqIdx = -1;
+                for (int i = 2; i < instrs.Count; i++)
+                {
+                    var ldc = instrs[i - 1];
+                    var beq = instrs[i];
+                    if (beq.OpCode != OpCodes.Beq_S && beq.OpCode != OpCodes.Beq) continue;
+                    if (ldc.OpCode != OpCodes.Ldc_I4_S || !(ldc.Operand is sbyte sb) || sb != 13) continue;
+                    var prev = instrs[i - 2];
+                    if (prev.OpCode != OpCodes.Callvirt) continue;
+                    if (!(prev.Operand is MethodReference mref) || mref.Name != "get_NclType") continue;
+                    navCharBeqIdx = i;
+                    break;
+                }
+                if (navCharBeqIdx < 0)
+                    throw new InvalidOperationException("NavIndirectValueToNavValue<T>: NavChar (NclType==13) check not found — Ncl shape changed; do not commit");
+                var navCharBeq = instrs[navCharBeqIdx];
+                var successTarget = (Instruction)navCharBeq.Operand;
+                // Find the get_InnerValue and get_NclType MethodReferences from the existing pattern (instrs[i-3]/[i-2] roughly).
+                // Walk back: ldarg.0 → callvirt get_InnerValue → callvirt get_NclType → ldc.i4.s 13 → beq.s.
+                if (navCharBeqIdx < 4)
+                    throw new InvalidOperationException("NavChar pattern too short — Ncl shape changed");
+                var ldarg0 = instrs[navCharBeqIdx - 4];
+                var getInnerValue = instrs[navCharBeqIdx - 3];
+                var getNclType = instrs[navCharBeqIdx - 2];
+                if (ldarg0.OpCode != OpCodes.Ldarg_0 || getInnerValue.OpCode != OpCodes.Callvirt || getNclType.OpCode != OpCodes.Callvirt)
+                    throw new InvalidOperationException("NavChar pattern shape unexpected — Ncl shape changed");
+                var getInnerValueRef = (MethodReference)getInnerValue.Operand;
+                var getNclTypeRef = (MethodReference)getNclType.Operand;
+
+                var il = body.GetILProcessor();
+                // Insert AFTER navCharBeq (i.e., before the next instruction): NavBoolean and
+                // NavInteger checks. NavByte (2)/NavChar (13)/NavGuid (23) are already handled
+                // by the original code; AL Variant<Bool>→Text and Variant<Int>→Text reach this
+                // dispatcher (Codeunit50229) and need the same ToString fast-path.
+                var anchor = instrs[navCharBeqIdx + 1];
+                // NavBoolean (NclType=1)
+                il.InsertBefore(anchor, il.Create(OpCodes.Ldarg_0));
+                il.InsertBefore(anchor, il.Create(OpCodes.Callvirt, getInnerValueRef));
+                il.InsertBefore(anchor, il.Create(OpCodes.Callvirt, getNclTypeRef));
+                il.InsertBefore(anchor, il.Create(OpCodes.Ldc_I4_1));
+                il.InsertBefore(anchor, il.Create(OpCodes.Beq, successTarget));
+                // NavInteger (NclType=3)
+                il.InsertBefore(anchor, il.Create(OpCodes.Ldarg_0));
+                il.InsertBefore(anchor, il.Create(OpCodes.Callvirt, getInnerValueRef));
+                il.InsertBefore(anchor, il.Create(OpCodes.Callvirt, getNclTypeRef));
+                il.InsertBefore(anchor, il.Create(OpCodes.Ldc_I4_3));
+                il.InsertBefore(anchor, il.Create(OpCodes.Beq, successTarget));
+                rewroteI2N++;
+            }
+            if (rewroteI2N != 1)
+                throw new InvalidOperationException($"ALCompiler.NavIndirectValueToNavValue<T>(2-arg): expected exactly 1 rewrite, got {rewroteI2N} — Ncl shape changed; do not commit");
+            Console.Error.WriteLine($"[Cecil] Added NavBoolean/NavInteger inner→string fast-path to NavIndirectValueToNavValue<T> ({rewroteI2N} method)");
         }
 
         var outStream = new MemoryStream();
