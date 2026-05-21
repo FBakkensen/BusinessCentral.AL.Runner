@@ -14,7 +14,7 @@ namespace AlRunnerV2.Infrastructure;
 
 public static class NclCecilRewrite
 {
-    private const int CACHE_VERSION = 31;
+    private const int CACHE_VERSION = 33;
 
 
     /// <summary>
@@ -1880,14 +1880,37 @@ public static class NclCecilRewrite
             }
         }
 
-        // Rewrite NavReport sync wrappers + DataItemIterator.SetTableView for null-safe
-        // standalone execution. The underlying RunReportAsync is async (forbidden to rewrite),
-        // so we short-circuit at the sync entry points instead.
+        // NavReport sync wrappers + DataItemIterator.SetTableView.
+        //
+        // RunReportAsync is async ValueTask (forbidden to Cecil-rewrite — see checkpoint 002),
+        // so we replace the sync wrapper bodies before they enter the async path:
+        //
+        //   Run / RunModal (all overloads, void return)
+        //     → call NavReportSync.SyncRun(this) (or this static helper resolves the instance for
+        //       static overloads); ret. The helper invokes OnPreReport / per-DataItem Pre+Post /
+        //       OnPostReport reflectively against the same NavReport instance.
+        //
+        //   SaveAsPdf / SaveAsHtml / SaveAsExcel / SaveAsWord / SaveAsDocx (sync, bool return)
+        //     → throw NavNCLDialogException("out-of-scope: NavReport.<name>") — layout rendering
+        //       requires a service tier the runner does not have. Tests rewrite these as
+        //       `asserterror` + `Assert.ExpectedError('out-of-scope: NavReport.SaveAs')`.
+        //
+        //   RunRequestPage (any sync overload, string return)
+        //     → throw NavNCLDialogException("out-of-scope: NavReport.RunRequestPage") —
+        //       request-page UI rendering requires a service tier.
+        //
+        //   DataItemIterator.SetTableView(NavRecord)
+        //     → null-guard `SafeSourceTable` (null on skeleton instances) and record
+        //       SetTableViewUsed = true. Filter is not yet applied to the source — TODO.
         {
             var navReportT = asm.MainModule.Types
                 .FirstOrDefault(t => t.FullName == "Microsoft.Dynamics.Nav.Runtime.NavReport");
             var ioeCtor = asm.MainModule.ImportReference(
                 typeof(InvalidOperationException).GetConstructor(new[] { typeof(string) })!);
+            // NavNCLDialogException is the AL Error() carrier; ctor takes (PrivacyClassification, string).
+            // Resolving cross-assembly type refs here is brittle (Diagnostic enum lives in
+            // Microsoft.Dynamics.Nav.Diagnostic.dll) — InvalidOperationException is caught by AL
+            // `asserterror` just as well (verified on the NavQuery suite). Use it.
             int reportRewrites = 0;
             if (navReportT != null)
             {
@@ -1895,7 +1918,13 @@ public static class NclCecilRewrite
                 {
                     if (!method.HasBody) continue;
                     var ps = method.Parameters;
-                    // Run / RunModal (instance void + static void) — sync over async. No-op for standalone.
+
+                    // Instance / static Run() / RunModal() — void. We leave the body as a `ret`
+                    // placeholder. At runtime, a JmpHook on the instance Run() / RunModal()
+                    // re-routes the call into NavReportSync.SyncRun (managed→managed, avoids
+                    // a cross-assembly metadata reference inside Ncl.dll). Static overloads
+                    // are handled by separate JmpHooks in ReportPatches.cs that throw OOS
+                    // (in-process construction from id not yet wired).
                     if ((method.Name == "Run" || method.Name == "RunModal")
                         && method.ReturnType.FullName == "System.Void")
                     {
@@ -1908,7 +1937,7 @@ public static class NclCecilRewrite
                         body.MaxStackSize = 0;
                         reportRewrites++;
                     }
-                    // RunRequestPage (any sync overload returning string) — throw OOS.
+                    // RunRequestPage (any sync overload returning string) → throw OOS.
                     else if (method.Name == "RunRequestPage"
                         && method.ReturnType.FullName == "System.String")
                     {
@@ -1924,8 +1953,8 @@ public static class NclCecilRewrite
                         body.MaxStackSize = 1;
                         reportRewrites++;
                     }
-                    // SaveAsPdf / SaveAsHtml / SaveAsExcel / SaveAsWord / SaveAsDocx (sync, returning bool)
-                    // → return true (no-op success). Tests use if-not-guard pattern expecting success.
+                    // SaveAsPdf / SaveAsHtml / SaveAsExcel / SaveAsWord / SaveAsDocx (sync, bool)
+                    // → throw OOS. Layout rendering requires a service tier.
                     else if (method.Name.StartsWith("SaveAs")
                         && method.ReturnType.FullName == "System.Boolean")
                     {
@@ -1934,14 +1963,17 @@ public static class NclCecilRewrite
                         body.ExceptionHandlers.Clear();
                         body.Variables.Clear();
                         var il = body.GetILProcessor();
-                        il.Append(il.Create(OpCodes.Ldc_I4_1));
-                        il.Append(il.Create(OpCodes.Ret));
+                        il.Append(il.Create(OpCodes.Ldstr,
+                            "out-of-scope: NavReport." + method.Name +
+                            " (layout rendering requires service tier)"));
+                        il.Append(il.Create(OpCodes.Newobj, ioeCtor));
+                        il.Append(il.Create(OpCodes.Throw));
                         body.MaxStackSize = 1;
                         reportRewrites++;
                     }
                 }
             }
-            // DataItemIterator.SetTableView(NavRecord) — make null-safe (no-op set of flag).
+            // DataItemIterator.SetTableView(NavRecord) — null-guard for skeleton instances.
             var diiT = asm.MainModule.Types
                 .FirstOrDefault(t => t.FullName == "Microsoft.Dynamics.Nav.Runtime.DataItemIterator");
             if (diiT != null)
@@ -1961,7 +1993,6 @@ public static class NclCecilRewrite
                         body.ExceptionHandlers.Clear();
                         body.Variables.Clear();
                         var il = body.GetILProcessor();
-                        // if (record != null) SetTableViewUsed = true; return;
                         if (setTableViewUsed != null)
                         {
                             il.Append(il.Create(OpCodes.Ldarg_0));
@@ -1974,7 +2005,7 @@ public static class NclCecilRewrite
                     }
                 }
             }
-            Console.Error.WriteLine($"[Cecil] Rewrote {reportRewrites} NavReport/DataItemIterator method(s) (Run, RunModal, RunRequestPage×2, SetTableView)");
+            Console.Error.WriteLine($"[Cecil] Rewrote {reportRewrites} NavReport/DataItemIterator method(s) (Run/RunModal→SyncRun; SaveAs*/RunRequestPage→OOS-throw; SetTableView→null-safe)");
         }
 
         var outStream = new MemoryStream();

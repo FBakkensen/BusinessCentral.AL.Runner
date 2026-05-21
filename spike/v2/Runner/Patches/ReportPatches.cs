@@ -1,86 +1,87 @@
-// ReportPatches — static no-op replacements for NavReport.Run and NavReport.RunModal.
+// ReportPatches — static NavReport.Run / NavReport.RunModal replacements.
 //
 // REPORT.RUN(id [, reqPage [, sysPrinter [, record]]]) in AL compiles to static
 // NavReport.Run(int, ...) overloads, and REPORT.RUNMODAL(...) to NavReport.RunModal(...).
 // Without hooks these call NCLMetadata.GetMetaReportById → ThrowMetaApplicationObjectNotFound
-// for every test-assembly report.  All Run/RunModal overloads are void; OnRun trigger
-// execution and rendering are both OOS in standalone mode.  Silent no-op is honest.
+// for every test-assembly report.
 //
-// Mirror of XmlPortPatches.cs static-Run block (commit 473be259).
+// Policy: in-process construction of a NavReport from an id is not yet wired (would need
+// a sync analogue of NavReportHandle.CreateTarget driven by reportId). Until it lands,
+// the static Run / RunModal overloads throw an AL-observable InvalidOperationException
+// with the "out-of-scope:" prefix. Tests wrap these calls in `asserterror` +
+// `Assert.ExpectedError('out-of-scope: static NavReport.Run')`. No silent no-ops.
 using System.Runtime.CompilerServices;
 
 namespace AlRunnerV2;
 
 public static partial class BcRuntime
 {
+    private const string StaticRunOosPrefix =
+        "out-of-scope: static NavReport.Run (in-process construction from reportId not yet wired; " +
+        "construct the report as an AL variable and call instance Run() instead)";
+    private const string StaticRunModalOosPrefix =
+        "out-of-scope: static NavReport.RunModal (in-process construction from reportId not yet wired; " +
+        "construct the report as an AL variable and call instance Run() instead)";
+
     // ──────────────────────────────────────────────────────────────────
-    // NavReport.Run static overloads — no-ops
+    // NavReport.Run static overloads — throw OOS (no silent no-ops)
     // ──────────────────────────────────────────────────────────────────
 
-    /// <summary>NavReport.Run(int reportId) — no-op.</summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static void NavReport_StaticRun1(int reportId)
     {
-        Console.Error.WriteLine($"[BcRuntime] NavReport.Run({reportId}) → no-op (static Run hook)");
+        throw new InvalidOperationException($"{StaticRunOosPrefix} [reportId={reportId}]");
     }
 
-    /// <summary>NavReport.Run(int reportId, bool requestWindow) — no-op.</summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static void NavReport_StaticRun2(int reportId, bool requestWindow)
     {
-        Console.Error.WriteLine($"[BcRuntime] NavReport.Run({reportId}, {requestWindow}) → no-op (static Run hook)");
+        throw new InvalidOperationException($"{StaticRunOosPrefix} [reportId={reportId}]");
     }
 
-    /// <summary>NavReport.Run(ReportRunOptions) — no-op.</summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static void NavReport_StaticRunOpts(object reportRunOptions)
     {
-        Console.Error.WriteLine("[BcRuntime] NavReport.Run(ReportRunOptions) → no-op (static Run hook)");
+        throw new InvalidOperationException(StaticRunOosPrefix);
     }
 
-    /// <summary>NavReport.Run(int reportId, bool requestWindow, bool systemPrinter) — no-op.</summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static void NavReport_StaticRun3(int reportId, bool requestWindow, bool systemPrinter)
     {
-        Console.Error.WriteLine($"[BcRuntime] NavReport.Run({reportId}, {requestWindow}, {systemPrinter}) → no-op (static Run hook)");
+        throw new InvalidOperationException($"{StaticRunOosPrefix} [reportId={reportId}]");
     }
 
-    /// <summary>NavReport.Run(int reportId, bool requestWindow, bool systemPrinter, NavRecord record) — no-op.</summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static void NavReport_StaticRun4(int reportId, bool requestWindow, bool systemPrinter, object record)
     {
-        Console.Error.WriteLine($"[BcRuntime] NavReport.Run({reportId}, {requestWindow}, {systemPrinter}, record) → no-op (static Run hook)");
+        throw new InvalidOperationException($"{StaticRunOosPrefix} [reportId={reportId}]");
     }
 
     // ──────────────────────────────────────────────────────────────────
-    // NavReport.RunModal static overloads — no-ops
+    // NavReport.RunModal static overloads — throw OOS
     // ──────────────────────────────────────────────────────────────────
 
-    /// <summary>NavReport.RunModal(int reportId) — no-op.</summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static void NavReport_StaticRunModal1(int reportId)
     {
-        Console.Error.WriteLine($"[BcRuntime] NavReport.RunModal({reportId}) → no-op (static RunModal hook)");
+        throw new InvalidOperationException($"{StaticRunModalOosPrefix} [reportId={reportId}]");
     }
 
-    /// <summary>NavReport.RunModal(int reportId, bool requestWindow) — no-op.</summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static void NavReport_StaticRunModal2(int reportId, bool requestWindow)
     {
-        Console.Error.WriteLine($"[BcRuntime] NavReport.RunModal({reportId}, {requestWindow}) → no-op (static RunModal hook)");
+        throw new InvalidOperationException($"{StaticRunModalOosPrefix} [reportId={reportId}]");
     }
 
-    /// <summary>NavReport.RunModal(int reportId, bool requestWindow, bool systemPrinter) — no-op.</summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static void NavReport_StaticRunModal3(int reportId, bool requestWindow, bool systemPrinter)
     {
-        Console.Error.WriteLine($"[BcRuntime] NavReport.RunModal({reportId}, {requestWindow}, {systemPrinter}) → no-op (static RunModal hook)");
+        throw new InvalidOperationException($"{StaticRunModalOosPrefix} [reportId={reportId}]");
     }
 
-    /// <summary>NavReport.RunModal(int reportId, bool requestWindow, bool systemPrinter, NavRecord record) — no-op.</summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static void NavReport_StaticRunModal4(int reportId, bool requestWindow, bool systemPrinter, object record)
     {
-        Console.Error.WriteLine($"[BcRuntime] NavReport.RunModal({reportId}, {requestWindow}, {systemPrinter}, record) → no-op (static RunModal hook)");
+        throw new InvalidOperationException($"{StaticRunModalOosPrefix} [reportId={reportId}]");
     }
 }
