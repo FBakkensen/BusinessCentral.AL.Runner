@@ -26,9 +26,26 @@ public static partial class BcRuntime
     [MethodImpl(MethodImplOptions.NoInlining)] public static bool ReturnFalse_0Args() => false;
     [MethodImpl(MethodImplOptions.NoInlining)] public static bool ReturnFalse_1Arg(object? a) => false;
     [MethodImpl(MethodImplOptions.NoInlining)] public static bool ReturnFalse_2Args(object? a, object? b) => false;
+    [MethodImpl(MethodImplOptions.NoInlining)] public static bool ReturnFalse_4Args(object? a, object? b, object? c, object? d) => false;
+    [MethodImpl(MethodImplOptions.NoInlining)] public static bool ReturnFalse_7Args(
+        object? a, object? b, object? c, object? d, object? e, object? f, object? g) => false;
+    [MethodImpl(MethodImplOptions.NoInlining)] public static bool ReturnFalse_8Args(
+        object? a, object? b, object? c, object? d, object? e, object? f, object? g, object? h) => false;
     [MethodImpl(MethodImplOptions.NoInlining)] public static bool ReturnFalse_10Args(
         object? a, object? b, object? c, object? d, object? e,
         object? f, object? g, object? h, object? i, object? j) => false;
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static System.Threading.Tasks.ValueTask<bool> ReturnValueTaskTrue_2Args(object? a, object? b)
+        => new System.Threading.Tasks.ValueTask<bool>(true);
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static System.Threading.Tasks.ValueTask<bool> ReturnValueTaskTrue_3Args(object? a, object? b, object? c)
+        => new System.Threading.Tasks.ValueTask<bool>(true);
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static System.Threading.Tasks.ValueTask<System.Guid> ReturnValueTaskGuid_8Args(
+        object? a, object? b, object? c, object? d, object? e, object? f, object? g, object? h)
+        => new System.Threading.Tasks.ValueTask<System.Guid>(System.Guid.NewGuid());
 
     [MethodImpl(MethodImplOptions.NoInlining)] public static bool ReturnTrue_OneArg(object? a) => true;
     [MethodImpl(MethodImplOptions.NoInlining)] public static bool ReturnTrue_TwoArgs(object? a, object? b) => true;

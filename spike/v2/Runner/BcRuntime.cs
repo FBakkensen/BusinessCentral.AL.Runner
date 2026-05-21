@@ -1601,6 +1601,54 @@ public static partial class BcRuntime
             if (setSec != null)
                 Hook(setSec, nameof(NoOp2), "RecordImplementation.SetSecurityFiltering");
         }
+
+        // ── DataProvider / ALDatabase additional drain ──────────────────────
+        // DataProvider.TruncateAsync — base virtual that throws "not supported".
+        // The runner has no SQL backend, so AL Record.TRUNCATE / ALTRUNCATE
+        // becomes a no-op (AL semantics: "remove all rows" — there are none).
+        var dataProviderType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.DataProvider");
+        if (dataProviderType != null)
+        {
+            var truncAsync = dataProviderType.GetMethod("TruncateAsync",
+                BindingFlags.Public | BindingFlags.Instance);
+            if (truncAsync != null && truncAsync.GetParameters().Length == 4)
+                Hook(truncAsync, nameof(ReturnValueTask5), "DataProvider.TruncateAsync");
+        }
+
+        if (alDbType != null)
+        {
+            // ALDatabase.ALImportData(DataError, bool, ByRef<NavText>, bool, bool, NavRecord, bool)
+            // — 7 args returning bool. Real body reaches into Database.ImportData
+            // which needs a real backup file; tests only verify the call signature.
+            foreach (var m in alDbType.GetMethods(BindingFlags.Public | BindingFlags.Static))
+            {
+                if (m.Name != "ALImportData") continue;
+                if (m.GetParameters().Length == 7)
+                    Hook(m, nameof(ReturnFalse_7Args), "ALDatabase.ALImportData");
+            }
+
+            // ALDatabase.ALAlterKeyAsync(NavSession, NavKeyRef, bool) — async
+            // ValueTask wrapper around key-alteration; no metadata mutation in
+            // headless runner. Hook to a default completed ValueTask.
+            var alAlterKey = alDbType.GetMethod("ALAlterKeyAsync",
+                BindingFlags.Public | BindingFlags.Static);
+            if (alAlterKey != null && alAlterKey.GetParameters().Length == 3)
+                Hook(alAlterKey, nameof(ReturnValueTask3), "ALDatabase.ALAlterKeyAsync");
+        }
+
+        // ALTaskScheduler.ALCreateTaskAsync — 8-arg ValueTask<Guid> static. Hook
+        // to return a fresh Guid; AL test code typically only verifies the
+        // returned id is non-zero or stores it for later cancellation.
+        if (alTaskSchedType_b != null)
+        {
+            foreach (var m in alTaskSchedType_b.GetMethods(
+                         BindingFlags.Public | BindingFlags.Static))
+            {
+                if (m.Name != "ALCreateTaskAsync") continue;
+                if (m.GetParameters().Length == 8)
+                    Hook(m, nameof(ReturnValueTaskGuid_8Args), "ALTaskScheduler.ALCreateTaskAsync");
+            }
+        }
         // GetMetaXmlPortById throws ThrowMetaApplicationObjectNotFound for any XmlPort not
         // compiled by NCLCodeLoader; our cache has skeleton entries but CreateObjectInstance
         // NREs on the null delegate. Hook to construct XmlPort{ID} directly from the assembly.
