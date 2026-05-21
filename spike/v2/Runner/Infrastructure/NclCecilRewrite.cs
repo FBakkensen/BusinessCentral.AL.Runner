@@ -14,7 +14,7 @@ namespace AlRunnerV2.Infrastructure;
 
 public static class NclCecilRewrite
 {
-    private const int CACHE_VERSION = 14;
+    private const int CACHE_VERSION = 16;
 
 
     /// <summary>
@@ -942,6 +942,97 @@ public static class NclCecilRewrite
                 ReplaceWithStaticHelper("MoveLinksAsync", nameof(AlRunnerV2.BcRuntime.RecordLink_MoveLinksAsync), 2);
                 ReplaceWithStaticHelper("TableHasLinks", nameof(AlRunnerV2.BcRuntime.RecordLink_TableHasLinks), 3);
             }
+        }
+
+        // ─── NavReport.get_Language / get_FormatRegion → return sentinel when fields uninitialized ───
+        //
+        // ReportLocalLanguageScope ctor (Microsoft.Dynamics.Nav.Runtime.Report.
+        // ReportLocalLanguageScope) calls `UpdateLanguage(reportInstance.Language,
+        // reportInstance.FormatRegion)`. Inside UpdateLanguage:
+        //   num  = newApplicationLanguage != -1 && newApplicationLanguage != Session.LocalLanguage
+        //   flag = !IsNullOrWhiteSpace(formatRegion) && Session.FormatSettings...
+        // Each branch dereferences Session.LocalLanguage / Session.FormatSettings iff its first
+        // conjunct is true. The runner's _skeletonSession (planted on every
+        // NavApplicationObjectBase via ApplicationObjectBasePatches) is itself partly
+        // initialized — Session.LocalLanguage/FormatSettings NREs.
+        //
+        // Test-style report instances (Report50023 / Report50004) are built via
+        // GetUninitializedObject, so DataItemIterator's field initializers
+        //     private int    localLanguage     = -1;
+        //     private string LocalFormatRegion = string.Empty;
+        // are skipped → localLanguage=0 and LocalFormatRegion=null. The setter for Language
+        // explicitly rejects 0 (line 169157), so 0 unambiguously means "uninitialized".
+        // Likewise null LocalFormatRegion can only come from the initializer being skipped.
+        //
+        // Fix: when localLanguage==0, get_Language returns -1 (drives num=false in
+        // UpdateLanguage so the Session.LocalLanguage deref is skipped). When
+        // LocalFormatRegion==null, get_FormatRegion returns "" (drives flag=false so the
+        // Session.FormatSettings deref is skipped). For initialized reports the original
+        // logic runs unchanged.
+        //
+        // Sync, value-type / string return → Cecil-safe.
+        {
+            var navReportTypeForLang = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.NavReport")
+                ?? throw new InvalidOperationException("NavReport type not found in Ncl.dll — Ncl shape changed");
+
+            // Locate localLanguage / LocalFormatRegion fields by walking the inheritance chain
+            // (defined on DataItemIterator).
+            FieldDefinition? FindField(string name)
+            {
+                for (var t = (TypeDefinition?)navReportTypeForLang; t != null; t = t.BaseType?.Resolve())
+                {
+                    var f = t.Fields.FirstOrDefault(x => x.Name == name);
+                    if (f != null) return f;
+                }
+                return null;
+            }
+            var localLangField = FindField("localLanguage")
+                ?? throw new InvalidOperationException("localLanguage field not found — Ncl shape changed");
+            var localFormatField = FindField("LocalFormatRegion")
+                ?? throw new InvalidOperationException("LocalFormatRegion field not found — Ncl shape changed");
+
+            void PrependFieldUninitGuard(string getterName, string returnTypeFullName,
+                                          FieldDefinition guardField, OpCode loadFieldOp,
+                                          OpCode compareOp, Instruction defaultLoad)
+            {
+                MethodDefinition? getter = null;
+                for (var t = (TypeDefinition?)navReportTypeForLang; t != null; t = t.BaseType?.Resolve())
+                {
+                    getter = t.Methods.FirstOrDefault(m => m.Name == getterName && m.Parameters.Count == 0);
+                    if (getter != null) break;
+                }
+                if (getter == null)
+                    throw new InvalidOperationException($"NavReport.{getterName}() not found on inheritance chain — Ncl shape changed");
+                if (getter.ReturnType.FullName != returnTypeFullName)
+                    throw new InvalidOperationException($"NavReport.{getterName}() return type is {getter.ReturnType.FullName}, expected {returnTypeFullName}");
+
+                var body = getter.Body;
+                var il = body.GetILProcessor();
+                var first = body.Instructions[0];
+                var fieldRef = getter.Module.ImportReference(guardField);
+                // ldarg.0; ldfld field; <compareOp branches to first if NOT uninit>; <defaultLoad>; ret
+                il.InsertBefore(first, il.Create(OpCodes.Ldarg_0));
+                il.InsertBefore(first, il.Create(loadFieldOp, fieldRef));
+                il.InsertBefore(first, il.Create(compareOp, first));
+                il.InsertBefore(first, defaultLoad);
+                il.InsertBefore(first, il.Create(OpCodes.Ret));
+                Console.Error.WriteLine($"[Cecil] Prepended {guardField.Name}-uninit guard to NavReport.{getterName}");
+            }
+
+            // get_Language: if (localLanguage == 0) return -1; else <original>
+            // IL: ldarg.0; ldfld localLanguage; brtrue first; ldc.i4.m1; ret
+            //   (brtrue = jump to original if localLanguage != 0)
+            PrependFieldUninitGuard("get_Language", "System.Int32",
+                localLangField, OpCodes.Ldfld, OpCodes.Brtrue,
+                Instruction.Create(OpCodes.Ldc_I4_M1));
+
+            // get_FormatRegion: if (LocalFormatRegion == null) return ""; else <original>
+            // IL: ldarg.0; ldfld LocalFormatRegion; brtrue first; ldsfld string.Empty; ret
+            //   (brtrue = jump to original if LocalFormatRegion != null)
+            var stringEmptyField = asm.MainModule.ImportReference(typeof(string).GetField(nameof(string.Empty))!);
+            PrependFieldUninitGuard("get_FormatRegion", "System.String",
+                localFormatField, OpCodes.Ldfld, OpCodes.Brtrue,
+                Instruction.Create(OpCodes.Ldsfld, stringEmptyField));
         }
 
         // ─── NavSession.GetDefaultRoundPrecision → return NavDecimalHelper.FallbackRoundPrecision() ───
