@@ -14,7 +14,7 @@ namespace AlRunnerV2.Infrastructure;
 
 public static class NclCecilRewrite
 {
-    private const int CACHE_VERSION = 19;
+    private const int CACHE_VERSION = 20;
 
 
     /// <summary>
@@ -1261,6 +1261,77 @@ public static class NclCecilRewrite
             if (rewroteI2N != 1)
                 throw new InvalidOperationException($"ALCompiler.NavIndirectValueToNavValue<T>(2-arg): expected exactly 1 rewrite, got {rewroteI2N} — Ncl shape changed; do not commit");
             Console.Error.WriteLine($"[Cecil] Added NavBoolean/NavInteger inner→string fast-path to NavIndirectValueToNavValue<T> ({rewroteI2N} method)");
+        }
+
+        // ─── FilterFieldDictionary.AndNegatedFilters: null/empty-Items guard ───
+        //
+        // FlowFieldsHelper.CalcFieldsFromNonVirtualTablesAsync calls
+        // `tableState.FiltersAndMarks.Filters.AndNegatedFilters(securityFilters)`. Under
+        // the runner, securityFilters is built from a skeleton/un-initialised path where
+        // the base KeyValueSortedDictionary's `Items` array is null — the foreach at
+        // IL_0060 (`ldlen` on a null array) NREs.
+        //
+        // Real BC always has Items non-null (constructor populates it). When the negation
+        // set is empty, the loop body never runs and the method returns
+        // `new FilterFieldDictionary(this.ToDictionary(), false)` — a fresh copy of `this`.
+        // We guard that exact case: if `filtersToNegate == null` or `filtersToNegate.Items
+        // == null`, take the same return path immediately. Otherwise fall through to the
+        // original IL.
+        //
+        // This is a sync method on a sync field on a non-async caller branch — safe to
+        // Cecil-rewrite. The async ValueTask outer chain (CalcFieldsAsync) is untouched.
+        {
+            var ffd = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.FilterFieldDictionary");
+            if (ffd == null)
+                throw new InvalidOperationException("FilterFieldDictionary type not found — Ncl shape changed");
+            var andNeg = ffd.Methods.FirstOrDefault(m => m.Name == "AndNegatedFilters" && m.Parameters.Count == 1);
+            if (andNeg == null)
+                throw new InvalidOperationException("AndNegatedFilters not found — Ncl shape changed");
+            var body = andNeg.Body;
+            var instrs = body.Instructions;
+
+            // Resolve referenced members from the existing IL so we don't have to import
+            // generic instantiations by hand:
+            //   instrs[1] = call ToDictionary (Dictionary<INavFieldMetadata, FilterExpression>)
+            //   instrs[4] = callvirt get_Items
+            //   instrs[47] = newobj FilterFieldDictionary..ctor(Dict, bool)
+            if (!(instrs[1].Operand is MethodReference toDictRef) || toDictRef.Name != "ToDictionary")
+                throw new InvalidOperationException("AndNegatedFilters: ToDictionary call not at expected position — Ncl shape changed");
+            if (!(instrs[4].Operand is MethodReference getItemsRef) || getItemsRef.Name != "get_Items")
+                throw new InvalidOperationException("AndNegatedFilters: get_Items call not at expected position — Ncl shape changed");
+            MethodReference ctorRef = null;
+            foreach (var ins in instrs)
+            {
+                if (ins.OpCode == OpCodes.Newobj && ins.Operand is MethodReference mr
+                    && mr.DeclaringType.FullName == "Microsoft.Dynamics.Nav.Runtime.FilterFieldDictionary"
+                    && mr.Name == ".ctor" && mr.Parameters.Count == 2)
+                {
+                    ctorRef = mr;
+                    break;
+                }
+            }
+            if (ctorRef == null)
+                throw new InvalidOperationException("AndNegatedFilters: 2-arg .ctor newobj not found — Ncl shape changed");
+
+            var il = body.GetILProcessor();
+            var origFirst = instrs[0];
+            // Prepend:
+            //   ldarg.1; brfalse SHORT
+            //   ldarg.1; callvirt get_Items; brtrue origFirst
+            //   SHORT: ldarg.0; call ToDictionary; ldc.i4.0; newobj .ctor; ret
+            //   <origFirst …>
+            var shortStart = il.Create(OpCodes.Ldarg_0);                 // SHORT label = first instr of short-circuit body
+            il.InsertBefore(origFirst, il.Create(OpCodes.Ldarg_1));
+            il.InsertBefore(origFirst, il.Create(OpCodes.Brfalse, shortStart));
+            il.InsertBefore(origFirst, il.Create(OpCodes.Ldarg_1));
+            il.InsertBefore(origFirst, il.Create(OpCodes.Callvirt, getItemsRef));
+            il.InsertBefore(origFirst, il.Create(OpCodes.Brtrue, origFirst));
+            il.InsertBefore(origFirst, shortStart);                       // ldarg.0
+            il.InsertBefore(origFirst, il.Create(OpCodes.Call, toDictRef));
+            il.InsertBefore(origFirst, il.Create(OpCodes.Ldc_I4_0));
+            il.InsertBefore(origFirst, il.Create(OpCodes.Newobj, ctorRef));
+            il.InsertBefore(origFirst, il.Create(OpCodes.Ret));
+            Console.Error.WriteLine($"[Cecil] Prepended null/empty-Items guard to FilterFieldDictionary.AndNegatedFilters → return copy of self");
         }
 
         var outStream = new MemoryStream();
