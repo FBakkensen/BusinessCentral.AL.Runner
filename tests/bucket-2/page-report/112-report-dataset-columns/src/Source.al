@@ -3,6 +3,7 @@
 // and produce a stub class that doesn't crash at emit time.
 report 50003 "TestReportWithColumns"
 {
+    ProcessingOnly = true;
     DefaultLayout = RDLC;
     dataset
     {

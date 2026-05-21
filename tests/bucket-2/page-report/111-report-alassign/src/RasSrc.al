@@ -1,6 +1,7 @@
 /// Minimal report stub for Report.ALAssign coverage (issue #1328).
 report 50002 "RAS Report"
 {
+    ProcessingOnly = true;
     dataset { }
 }
 

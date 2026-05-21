@@ -12,6 +12,7 @@ table 50078 "RR4 Table"
 /// Report that accepts RR4 Table as a data item.
 report 50017 "RR4 Report"
 {
+    ProcessingOnly = true;
     dataset
     {
         dataitem(DataLine; "RR4 Table")

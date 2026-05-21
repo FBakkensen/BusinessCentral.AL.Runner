@@ -2,6 +2,7 @@
 /// The data items expose filters that tests can set and verify via GetDataItem().
 report 50022 "TRP GDI Report"
 {
+    ProcessingOnly = true;
     Caption = 'TRP GDI Report';
     dataset
     {

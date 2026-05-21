@@ -1,5 +1,6 @@
 report 50004 "Report With Labels"
 {
+    ProcessingOnly = true;
     dataset
     {
     }

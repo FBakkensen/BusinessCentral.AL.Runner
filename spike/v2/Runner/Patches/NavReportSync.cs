@@ -52,6 +52,10 @@ public static class NavReportSync
     private static MethodInfo? _onPreReport;       // NavReport.OnPreReport()  (protected virtual)
     private static MethodInfo? _onPostReport;      // NavReport.OnPostReport() (protected virtual)
     private static MethodInfo? _onInitReport;      // NavReport.OnInitReport() (protected virtual)
+    private static PropertyInfo? _objectIdProp;    // NavApplicationObjectBase.ObjectId : ApplicationObjectId
+    private static PropertyInfo? _objectNumberProp;// ApplicationObjectId.ObjectNumber : int
+    private static MethodInfo? _rdlcLayoutMethod;  // NavReport.RDLCLayout(DataError, int, NavInStream)
+    private static Type? _dataErrorType;           // Microsoft.Dynamics.Nav.Types.DataError
 
     // Stub-Metadata path (called from Cecil-rewritten NavReport.BeginInitialization).
     private static Type? _metaReportType;          // Microsoft.Dynamics.Nav.Types.MetaReport
@@ -123,6 +127,8 @@ public static class NavReportSync
     /// </summary>
     public static void SyncRun(object navReport)
     {
+        if (Environment.GetEnvironmentVariable("AL_RUNNER_DIAG_IC") == "1")
+            Console.Error.WriteLine($"[NavReportSync] SyncRun entry: type={navReport?.GetType().FullName}");
         if (navReport == null) return;
 
         var t = navReport.GetType();
@@ -157,6 +163,114 @@ public static class NavReportSync
         InvokeVirtual(_onPreReport, navReport);
         InvokeDataItems(navReport);
         InvokeVirtual(_onPostReport, navReport);
+
+        // Strict AL semantics: when the AL source declares `ProcessingOnly =
+        // false` (the AL default), Run() must attempt rendering after the
+        // lifecycle triggers. The runner has no service tier and cannot
+        // render layouts, so the rendering attempt must surface as an
+        // AL-observable error. We trigger that via NavReport.RDLCLayout —
+        // a public static method that forwards to GetLayoutCore (Cecil-
+        // rewritten to throw an OOS InvalidOperationException on
+        // ThrowError). The error therefore originates from the actual
+        // layout-resolution code path, not from a guard at the top of Run.
+        if (!IsProcessingOnly(navReport, navReportBase))
+            InvokeLayoutForReport(navReport, navReportBase);
+    }
+
+    // Looks up ProcessingOnly from the parsed AL source (RecordPatches).
+    // Falls back to true when the report ID cannot be resolved — defensive
+    // so unknown reports do not trip the rendering guard.
+    private static bool IsProcessingOnly(object navReport, Type navReportBase)
+    {
+        int reportId = TryGetObjectId(navReport, navReportBase);
+        bool diag = Environment.GetEnvironmentVariable("AL_RUNNER_DIAG_IC") == "1";
+        if (reportId <= 0)
+        {
+            if (diag) Console.Error.WriteLine($"[NavReportSync] SyncRun: reportId=0 (could not resolve), defaulting ProcessingOnly=true");
+            return true;
+        }
+        bool po = AlRunnerV2.Patches.RecordPatches.IsReportProcessingOnly(reportId);
+        if (diag) Console.Error.WriteLine($"[NavReportSync] SyncRun: report {reportId} ProcessingOnly={po}");
+        return po;
+    }
+
+    private static int TryGetObjectId(object navReport, Type navReportBase)
+    {
+        // Primary path: AL-emitted report types are named "Report<N>" (e.g.
+        // "Report50600"). This avoids the ApplicationObjectId.ObjectNumber=0
+        // mystery we hit going through the inherited ObjectId property —
+        // the field IS set by base ctor IL but boxed-struct reflection
+        // returns 0 in some scenarios on the Cecil-rewritten ctor chain.
+        // Type-name parse is robust against that and trivially correct
+        // for AL-emitted reports.
+        var name = navReport.GetType().Name;
+        if (name.Length > 6 && name.StartsWith("Report", StringComparison.Ordinal)
+            && int.TryParse(name.AsSpan(6), out int idFromName))
+        {
+            return idFromName;
+        }
+
+        // Fallback: reflective ObjectId.ObjectNumber.
+        if (_objectIdProp == null)
+        {
+            Type? t = navReportBase;
+            while (t != null && _objectIdProp == null)
+            {
+                _objectIdProp = t.GetProperty("ObjectId",
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                t = t.BaseType;
+            }
+        }
+        if (_objectIdProp == null) return 0;
+        var appObjId = _objectIdProp.GetValue(navReport);
+        if (appObjId == null) return 0;
+        if (_objectNumberProp == null)
+            _objectNumberProp = appObjId.GetType().GetProperty("ObjectNumber",
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        if (_objectNumberProp == null) return 0;
+        var n = _objectNumberProp.GetValue(appObjId);
+        return n is int i ? i : 0;
+    }
+
+    private static void InvokeLayoutForReport(object navReport, Type navReportBase)
+    {
+        if (_rdlcLayoutMethod == null)
+        {
+            // Look up NavReport.RDLCLayout(DataError, int, NavInStream).
+            _rdlcLayoutMethod = navReportBase.GetMethods(
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+                .FirstOrDefault(m => m.Name == "RDLCLayout" && m.GetParameters().Length == 3);
+        }
+        if (_dataErrorType == null)
+        {
+            var typesAsm = AppDomain.CurrentDomain.GetAssemblies()
+                .FirstOrDefault(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Types");
+            _dataErrorType = typesAsm?.GetType("Microsoft.Dynamics.Nav.Types.DataError");
+        }
+        int reportId = TryGetObjectId(navReport, navReportBase);
+        if (_rdlcLayoutMethod != null && _dataErrorType != null)
+        {
+            // DataError.ThrowError = 1 → GetLayoutCore (Cecil-rewritten) throws OOS.
+            var throwError = Enum.ToObject(_dataErrorType, 1);
+            try
+            {
+                _rdlcLayoutMethod.Invoke(null, new object?[] { throwError, reportId, null });
+            }
+            catch (TargetInvocationException tie) when (tie.InnerException != null)
+            {
+                throw tie.InnerException;
+            }
+            // RDLCLayout returning normally would mean we somehow found a
+            // layout — defensive throw in case Cecil rewrite didn't apply.
+            throw new InvalidOperationException(
+                "out-of-scope: NavReport.Run on layout-rendering report (ProcessingOnly = false) " +
+                "— rendering requires a service tier — see docs/scope.md#report-rendering");
+        }
+
+        // Fallback if reflection failed: still throw AL-observable error.
+        throw new InvalidOperationException(
+            "out-of-scope: NavReport.Run on layout-rendering report (ProcessingOnly = false) " +
+            "— rendering requires a service tier — see docs/scope.md#report-rendering");
     }
 
     private static void InvokeVirtual(MethodInfo? m, object instance)

@@ -11,6 +11,7 @@ table 50119 "RH Test Data"
 
 report 50023 "RH Test Report"
 {
+    ProcessingOnly = true;
     dataset
     {
         dataitem(RHTestData; "RH Test Data")

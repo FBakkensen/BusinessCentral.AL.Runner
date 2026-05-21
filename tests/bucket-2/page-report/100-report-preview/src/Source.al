@@ -10,6 +10,7 @@ table 50036 "RP Test Data"
 
 report 50001 "RP Preview Report"
 {
+    ProcessingOnly = true;
     dataset
     {
         dataitem(RPTestData; "RP Test Data") { }

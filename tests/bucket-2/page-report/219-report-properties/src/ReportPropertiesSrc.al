@@ -9,6 +9,7 @@ table 50060 "RPR Row"
 
 report 50010 "RPR Simple"
 {
+    ProcessingOnly = true;
     UsageCategory = Tasks;
     ApplicationArea = All;
     dataset

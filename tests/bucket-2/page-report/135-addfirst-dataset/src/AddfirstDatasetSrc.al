@@ -33,6 +33,7 @@ table 50049 "AFDS Sub"
 /// dataitem at the beginning using addfirst.
 report 50007 "AFDS Base Report"
 {
+    ProcessingOnly = true;
     dataset
     {
         dataitem(AFDSItem; "AFDS Item")

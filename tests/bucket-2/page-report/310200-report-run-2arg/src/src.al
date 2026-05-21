@@ -2,6 +2,7 @@
 /// BC emits Report.Run(ReportId, RequestPage) — two arguments, no SystemPrinter.
 report 50021 "RR2 Report"
 {
+    ProcessingOnly = true;
     dataset
     {
         dataitem(DataLine; "RR2 Table")

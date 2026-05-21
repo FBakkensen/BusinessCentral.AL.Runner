@@ -1,5 +1,6 @@
 report 50005 "Report With Skip"
 {
+    ProcessingOnly = true;
     UsageCategory = ReportsAndAnalysis;
     ApplicationArea = All;
 

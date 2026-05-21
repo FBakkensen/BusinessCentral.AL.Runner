@@ -10,6 +10,7 @@ table 50068 "RDT Record"
 
 report 50014 "RDT Report"
 {
+    ProcessingOnly = true;
     dataset
     {
         dataitem(RDTRecord; "RDT Record")

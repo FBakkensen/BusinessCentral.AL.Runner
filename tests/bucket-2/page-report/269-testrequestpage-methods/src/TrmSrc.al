@@ -1,6 +1,7 @@
 /// Report with a request page used to exercise TestRequestPage methods.
 report 50013 "TRM Report"
 {
+    ProcessingOnly = true;
     Caption = 'TRM Report';
     dataset { }
 

@@ -1,6 +1,7 @@
 /// Report that calls CurrReport.ObjectId(false) in OnPreReport (issue #1191).
 report 50011 "ROI Report"
 {
+    ProcessingOnly = true;
     UsageCategory = None;
 
     dataset

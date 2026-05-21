@@ -1,6 +1,7 @@
 // Base report and table needed for the report extension to compile.
 report 50006 "TestReportWithColumnsExt"
 {
+    ProcessingOnly = true;
     DefaultLayout = RDLC;
     dataset
     {

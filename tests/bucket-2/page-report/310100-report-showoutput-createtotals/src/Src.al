@@ -15,6 +15,7 @@ table 50082 "RSO Table"
 /// CurrReport.CreateTotals(Decimal, Decimal) in triggers.
 report 50020 "RSO Report"
 {
+    ProcessingOnly = true;
     dataset
     {
         dataitem(RsoData; "RSO Table")

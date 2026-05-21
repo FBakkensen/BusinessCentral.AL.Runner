@@ -2,6 +2,7 @@
 /// BC emits Report.Run(ReportId, RequestPage, SystemPrinter) — no record argument.
 report 50018 "RR3 Report"
 {
+    ProcessingOnly = true;
     dataset
     {
         dataitem(DataLine; "RR3 Table")

@@ -1,6 +1,7 @@
 /// Minimal report stub for Clear() coverage.
 report 50009 "RXC Report"
 {
+    ProcessingOnly = true;
     dataset { }
 }
 

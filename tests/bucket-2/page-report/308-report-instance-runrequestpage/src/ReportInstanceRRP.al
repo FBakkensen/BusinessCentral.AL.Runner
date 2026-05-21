@@ -20,6 +20,7 @@ codeunit 50453 "ReportInstanceRRP Src"
 
 report 50019 "ReportInstanceRRP Report"
 {
+    ProcessingOnly = true;
     dataset
     {
     }

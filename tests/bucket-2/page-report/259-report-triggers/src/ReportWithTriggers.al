@@ -1,5 +1,6 @@
 report 50012 "Report With Triggers"
 {
+    ProcessingOnly = true;
     UsageCategory = ReportsAndAnalysis;
     ApplicationArea = All;
 

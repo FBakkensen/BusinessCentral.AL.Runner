@@ -10,6 +10,7 @@ table 50120 "RPH Test Data"
 
 report 50024 "RPH Test Report"
 {
+    ProcessingOnly = true;
     dataset
     {
         dataitem(RPHTestData; "RPH Test Data")

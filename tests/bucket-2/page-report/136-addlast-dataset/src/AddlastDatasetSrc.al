@@ -33,6 +33,7 @@ table 50051 "ALDS Sub"
 /// dataitem at the end using addlast.
 report 50008 "ALDS Base Report"
 {
+    ProcessingOnly = true;
     dataset
     {
         dataitem(ALDSItem; "ALDS Item")

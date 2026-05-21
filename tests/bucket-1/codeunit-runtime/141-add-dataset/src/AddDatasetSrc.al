@@ -18,6 +18,7 @@ table 50014 "ADM Item"
 /// Base report — the reportextension adds columns to its single dataitem.
 report 50000 "ADM Base Report"
 {
+    ProcessingOnly = true;
     dataset
     {
         dataitem(ItemRec; "ADM Item")

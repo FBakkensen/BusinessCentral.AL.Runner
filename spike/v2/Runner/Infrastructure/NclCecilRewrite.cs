@@ -14,7 +14,7 @@ namespace AlRunnerV2.Infrastructure;
 
 public static class NclCecilRewrite
 {
-    private const int CACHE_VERSION = 46;
+    private const int CACHE_VERSION = 48;
 
 
     /// <summary>
@@ -2013,13 +2013,37 @@ public static class NclCecilRewrite
                         continue;
                     }
 
-                    // Instance / static Run() / RunModal() — void. We leave the body as a `ret`
-                    // placeholder. At runtime, a JmpHook on the instance Run() / RunModal()
-                    // re-routes the call into NavReportSync.SyncRun (managed→managed, avoids
-                    // a cross-assembly metadata reference inside Ncl.dll). Static overloads
-                    // are handled by separate JmpHooks in ReportPatches.cs that throw OOS
-                    // (in-process construction from id not yet wired).
+                    // Instance Run() / RunModal() — void. We Cecil-rewrite the
+                    // body to call NavReportSync.SyncRun(this) directly. (The
+                    // previous JmpHook-based approach proved unreliable on the
+                    // tiny Cecil-rewritten body — the JIT inlined the `ret` and
+                    // the entry-point trampoline never fired. Cecil-emitted
+                    // managed call gets full JIT integration.)
                     if ((method.Name == "Run" || method.Name == "RunModal")
+                        && !method.IsStatic
+                        && method.Parameters.Count == 0
+                        && method.ReturnType.FullName == "System.Void")
+                    {
+                        var syncRunInfo = typeof(AlRunnerV2.NavReportSync).GetMethod("SyncRun",
+                            BindingFlags.Static | BindingFlags.Public)
+                            ?? throw new InvalidOperationException("NavReportSync.SyncRun not found via reflection");
+                        var syncRunRef = asm.MainModule.ImportReference(syncRunInfo);
+                        var body = method.Body;
+                        body.Instructions.Clear();
+                        body.ExceptionHandlers.Clear();
+                        body.Variables.Clear();
+                        var il = body.GetILProcessor();
+                        il.Append(il.Create(OpCodes.Ldarg_0));
+                        il.Append(il.Create(OpCodes.Call, syncRunRef));
+                        il.Append(il.Create(OpCodes.Ret));
+                        body.MaxStackSize = 1;
+                        reportRewrites++;
+                    }
+                    // Static Run() / RunModal() overloads remain as `ret`
+                    // placeholders here — separate JmpHooks in ReportPatches.cs
+                    // throw OOS (in-process construction-from-id not wired).
+                    else if ((method.Name == "Run" || method.Name == "RunModal")
+                        && method.IsStatic
                         && method.ReturnType.FullName == "System.Void")
                     {
                         var body = method.Body;

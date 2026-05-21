@@ -16,6 +16,7 @@ table 50074 "CRT Table"
 /// the MockReportHandle stub handles it at runtime when customer code calls it.
 report 50016 "CRT Report"
 {
+    ProcessingOnly = true;
     dataset
     {
         dataitem(CrtData; "CRT Table")

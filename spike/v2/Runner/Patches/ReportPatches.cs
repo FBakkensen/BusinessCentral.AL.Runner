@@ -33,6 +33,11 @@ public static partial class BcRuntime
     // same NavReport instance the AL code constructed. Managed→managed call —
     // avoids a cross-assembly metadata reference inside the rewritten Ncl.dll.
 
+    // NavReport.Run/RunModal — Cecil-rewritten directly to call SyncRun(this).
+    // The static overloads below remain JmpHook targets (OOS throws).
+    // Instance NavReport_InstanceRun{,Modal} kept here for any external caller
+    // that wants to invoke the lifecycle programmatically.
+
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static void NavReport_InstanceRun(object self)
     {
