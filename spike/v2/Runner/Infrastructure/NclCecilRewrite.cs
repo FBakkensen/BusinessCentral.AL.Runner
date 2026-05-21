@@ -14,7 +14,7 @@ namespace AlRunnerV2.Infrastructure;
 
 public static class NclCecilRewrite
 {
-    private const int CACHE_VERSION = 16;
+    private const int CACHE_VERSION = 17;
 
 
     /// <summary>
@@ -1124,6 +1124,65 @@ public static class NclCecilRewrite
             if (rewroteCct == 0)
                 throw new InvalidOperationException("ALSystemObject.ALCaptionClassTranslate(string) not found — Ncl shape changed; do not commit");
             Console.Error.WriteLine($"[Cecil] Rewrote {rewroteCct} ALCaptionClassTranslate overload(s)");
+        }
+
+        // ─── ALSystemArray.ALCopyArray<T>: relax dest.Length==length to dest.Length>=length ───
+        //
+        // BC's 5-arg ALCopyArray<T>(src, srcIdx, dest, destIdx, length) asserts
+        // `if (destinationArray.Length != length) throw NavNCLArrayLengthMismatchException`.
+        // That contradicts the AL CopyArray contract: the destination only has to be large
+        // enough to receive `length` elements starting at destinationIndex (other slots stay
+        // at default). The 3-arg overload `ALCopyArray<T>(dest, src, sourceIndex)` even
+        // computes `length = src.Length - (sourceIndex - 1)`, which makes the strict-equality
+        // check unsatisfiable whenever the AL caller sized dest larger than the remaining
+        // source — exactly the failing tests (Codeunit50013/Codeunit50341 partial-copy cases).
+        //
+        // IL: `[34] ldarg.s length; [33] callvirt dest.get_Length(); [35] beq.s SKIP …`.
+        // Pattern: dest.Length on stack first, then length, then beq → "skip-throw if equal".
+        // Replace with `bge.s SKIP` → "skip-throw if dest.Length >= length". The lower-bound
+        // check `destinationIndex + length > destinationArray.Length` (instr 64, ble.s) at
+        // IL_009e already enforces the real constraint.
+        {
+            var alSystemArray = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.ALSystemArray");
+            if (alSystemArray == null)
+                throw new InvalidOperationException("ALSystemArray type not found — Ncl shape changed");
+            int rewroteCopyArray = 0;
+            foreach (var m in alSystemArray.Methods)
+            {
+                if (m.Name != "ALCopyArray" || !m.HasGenericParameters || m.Parameters.Count != 5) continue;
+                var body = m.Body;
+                var instrs = body.Instructions;
+                // Find the dest.Length != length check: callvirt get_Length on dest (ldarg.2) followed by ldarg length, beq.s, newobj NavNCLArrayLengthMismatchException.
+                int patchIdx = -1;
+                for (int i = 0; i < instrs.Count - 3; i++)
+                {
+                    var a = instrs[i];
+                    var b = instrs[i + 1];
+                    var c = instrs[i + 2];
+                    if (a.OpCode != OpCodes.Callvirt) continue;
+                    if (!(a.Operand is MethodReference mref) || mref.Name != "get_Length") continue;
+                    // preceded by ldarg.2 (destinationArray)?
+                    if (i == 0) continue;
+                    var prev = instrs[i - 1];
+                    if (prev.OpCode != OpCodes.Ldarg_2) continue;
+                    // followed by load of length (ldarg.s length, i.e., ldarg.s on Parameter[4]) then beq.s
+                    if (b.OpCode != OpCodes.Ldarg_S) continue;
+                    if (!(b.Operand is ParameterDefinition pd) || pd.Index != 4) continue;
+                    if (c.OpCode != OpCodes.Beq_S && c.OpCode != OpCodes.Beq) continue;
+                    patchIdx = i + 2;
+                    break;
+                }
+                if (patchIdx < 0)
+                    throw new InvalidOperationException("ALCopyArray<T>: dest.Length==length check not found — Ncl shape changed; do not commit");
+                var beq = instrs[patchIdx];
+                // Replace beq with bge (signed). bge.s is short-form; bge for long-form.
+                var newOp = beq.OpCode == OpCodes.Beq_S ? OpCodes.Bge_S : OpCodes.Bge;
+                beq.OpCode = newOp;
+                rewroteCopyArray++;
+            }
+            if (rewroteCopyArray != 1)
+                throw new InvalidOperationException($"ALSystemArray.ALCopyArray<T>(5-arg): expected exactly 1 rewrite, got {rewroteCopyArray} — Ncl shape changed; do not commit");
+            Console.Error.WriteLine($"[Cecil] Relaxed ALCopyArray<T> length check to dest.Length>=length ({rewroteCopyArray} method)");
         }
 
         var outStream = new MemoryStream();
