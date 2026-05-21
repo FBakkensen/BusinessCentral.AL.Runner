@@ -1338,6 +1338,38 @@ public static partial class BcRuntime
             // .claude/rules/loud-failures.md we do NOT silently install a hook that
             // doesn't intercept. Faithfulness gap: Database.ServiceInstanceId returns 0
             // on the skeleton runtime. Tracked separately.
+
+            // ALCommit / ALRegisterTableConnection / ALUnregisterTableConnection —
+            // database-side operations whose real bodies reach into
+            // NavCurrentThread.Session.TableConnectionManager / Diagnostics chains
+            // (NREs on the skeleton session). The runner has no SQL or connection
+            // manager; these are no-ops in headless mode. AL code (Database.Commit /
+            // Database.RegisterTableConnection / Database.UnregisterTableConnection)
+            // must continue past the call. Faithful per docs/scope.md: tests that
+            // observe side effects of the DB (committed data persisting, connection
+            // actually established) are out of scope; tests that only check that the
+            // statement doesn't throw match the no-op replacement.
+            var alCommit = alDbType.GetMethod("ALCommit",
+                BindingFlags.Public | BindingFlags.Static, null, Type.EmptyTypes, null);
+            if (alCommit != null)
+                Hook(alCommit, nameof(NoOp_0Args), "ALDatabase.ALCommit");
+
+            // Both overloads of ALRegisterTableConnection — the AL `Database.RegisterTableConnection`
+            // builtin compiles to the 4-arg variant prepending CompilationTarget; the
+            // 4-arg overload internally delegates to the 3-arg. Hook both so direct
+            // and indirect calls both no-op.
+            foreach (var m in alDbType.GetMethods(BindingFlags.Public | BindingFlags.Static))
+            {
+                if (m.Name != "ALRegisterTableConnection") continue;
+                var ps = m.GetParameters().Length;
+                var noop = ps switch { 3 => nameof(NoOp3), 4 => nameof(NoOp4), _ => null };
+                if (noop != null) Hook(m, noop, $"ALDatabase.ALRegisterTableConnection({ps} args)");
+            }
+
+            var alUnregister = alDbType.GetMethod("ALUnregisterTableConnection",
+                BindingFlags.Public | BindingFlags.Static);
+            if (alUnregister != null)
+                Hook(alUnregister, nameof(NoOp2), "ALDatabase.ALUnregisterTableConnection");
         }
 
         // NavXmlPortHandle.CreateTarget — same pattern as NavFormHandle/NavReportHandle.
