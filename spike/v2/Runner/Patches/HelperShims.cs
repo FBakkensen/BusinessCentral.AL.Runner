@@ -9,6 +9,7 @@
 //
 // All helpers are `[MethodImpl(NoInlining)]` because the JIT must produce a real
 // callable function pointer for JmpHook to patch.
+using System.Reflection;
 using System.Runtime.CompilerServices;
 
 namespace AlRunnerV2;
@@ -33,6 +34,43 @@ public static partial class BcRuntime
 
     [MethodImpl(MethodImplOptions.NoInlining)] public static object? ReturnNull_OneArg(object a) => null;
     [MethodImpl(MethodImplOptions.NoInlining)] public static int ReturnZero_OneArg(object? a) => 0;
+
+    /// <summary>
+    /// Replacement for <c>NavNotification.ALSend(DataError)</c> and
+    /// <c>NavNotification.ALRecall(DataError)</c>. The real body NREs at
+    /// <c>session.Diagnostics.SendTraceTag(...)</c> (Diagnostics is null on the
+    /// skeleton session) and even past that calls <c>SendLocalNotification</c> /
+    /// <c>SendGlobalNotification</c> which require the notification dispatch layer
+    /// (handlers, AddIn host) that the runner does not have.
+    ///
+    /// Faithful behavior preserved: <c>NotificationInfo.Id</c> is populated with
+    /// a fresh Guid if empty (mirrors the real ALSend body). Returns true to
+    /// mean "operation completed". Tests that observe a <c>[SendNotificationHandler]</c>
+    /// being invoked will still fail (visibly, at the AL assertion) — that
+    /// dispatch layer is out of scope and tracked separately.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static bool NavNotification_ALSendOrRecall(object self, object errorLevel)
+    {
+        try
+        {
+            var notifInfoProp = self.GetType().GetProperty("NotificationInfo",
+                BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+            var info = notifInfoProp?.GetValue(self);
+            if (info != null)
+            {
+                var idProp = info.GetType().GetProperty("Id");
+                if (idProp != null && idProp.CanRead && idProp.CanWrite)
+                {
+                    var current = (System.Guid)(idProp.GetValue(info) ?? System.Guid.Empty);
+                    if (current == System.Guid.Empty)
+                        idProp.SetValue(info, System.Guid.NewGuid());
+                }
+            }
+        }
+        catch { /* best-effort Id population */ }
+        return true;
+    }
 
     /// <summary>
     /// Replacement for <c>ALSystemOperatingSystem.GetUrlCore</c>. The real body reaches

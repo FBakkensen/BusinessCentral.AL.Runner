@@ -2308,6 +2308,23 @@ public static partial class BcRuntime
                 Console.Error.WriteLine("[BcRuntime] NavMediaSet: get_ALMediaId hooked (base slot)");
             }
         }
+
+        // NavNotification.ALSend / ALRecall — the real bodies NRE at
+        // session.Diagnostics.SendTraceTag(...) and even past that need the
+        // notification dispatch layer (handlers, AddIn host) which the runner
+        // does not have. Hook to a faithful replacement that populates
+        // NotificationInfo.Id (mirror of the real body) and returns true.
+        var navNotifType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavNotification");
+        if (navNotifType != null)
+        {
+            foreach (var m in navNotifType.GetMethods(
+                         BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+            {
+                if (m.Name != "ALSend" && m.Name != "ALRecall") continue;
+                if (m.GetParameters().Length != 1) continue;
+                Hook(m, nameof(NavNotification_ALSendOrRecall), $"NavNotification.{m.Name}");
+            }
+        }
     }
 
     // ── NavDialog patches — PAGE-REPORT-CLUSTERS §5 ─────────────────────────────────────
