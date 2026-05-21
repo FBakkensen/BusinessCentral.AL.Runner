@@ -14,7 +14,7 @@ namespace AlRunnerV2.Infrastructure;
 
 public static class NclCecilRewrite
 {
-    private const int CACHE_VERSION = 12;
+    private const int CACHE_VERSION = 13;
 
 
     /// <summary>
@@ -907,6 +907,40 @@ public static class NclCecilRewrite
                     il.InsertBefore(firstOriginal, il.Create(OpCodes.Ret));
                     Console.Error.WriteLine($"[Cecil] Prepended NavALErrorType case (enum={alErrorEnumValue}) to NavValue.CreateNavValueFromObject");
                 }
+            }
+        }
+
+        // RecordLink — rewrite all link-management methods to call BcRuntime helpers
+        // backed by an in-memory dictionary. Real impl writes to table 2000000068
+        // (Record Link), which the runner has no SQL backend for.
+        {
+            var recordLinkType = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.RecordLink");
+            if (recordLinkType != null)
+            {
+                void ReplaceWithStaticHelper(string mName, string helperName, int paramCount)
+                {
+                    var m = recordLinkType.Methods.FirstOrDefault(x => x.Name == mName && x.Parameters.Count == paramCount);
+                    if (m == null || !m.HasBody) return;
+                    var helperMi = typeof(AlRunnerV2.BcRuntime).GetMethod(helperName, BindingFlags.Public | BindingFlags.Static);
+                    if (helperMi == null) return;
+                    var helperRef = asm.MainModule.ImportReference(helperMi);
+                    m.Body.Instructions.Clear();
+                    m.Body.ExceptionHandlers.Clear();
+                    m.Body.Variables.Clear();
+                    var il = m.Body.GetILProcessor();
+                    for (int i = 0; i < paramCount; i++)
+                        il.Append(il.Create(OpCodes.Ldarg, i));
+                    il.Append(il.Create(OpCodes.Call, helperRef));
+                    il.Append(il.Create(OpCodes.Ret));
+                    Console.Error.WriteLine($"[Cecil] Rewrote RecordLink.{mName}({paramCount}) → {helperName}");
+                }
+                ReplaceWithStaticHelper("AddLinkAsync", nameof(AlRunnerV2.BcRuntime.RecordLink_AddLinkAsync), 3);
+                ReplaceWithStaticHelper("HasLinks", nameof(AlRunnerV2.BcRuntime.RecordLink_HasLinks), 1);
+                ReplaceWithStaticHelper("DeleteLinksAsync", nameof(AlRunnerV2.BcRuntime.RecordLink_DeleteLinksAsync), 1);
+                ReplaceWithStaticHelper("DeleteLinkAsync", nameof(AlRunnerV2.BcRuntime.RecordLink_DeleteLinkAsync), 2);
+                ReplaceWithStaticHelper("CopyLinksAsync", nameof(AlRunnerV2.BcRuntime.RecordLink_CopyLinksAsync), 2);
+                ReplaceWithStaticHelper("MoveLinksAsync", nameof(AlRunnerV2.BcRuntime.RecordLink_MoveLinksAsync), 2);
+                ReplaceWithStaticHelper("TableHasLinks", nameof(AlRunnerV2.BcRuntime.RecordLink_TableHasLinks), 3);
             }
         }
 
