@@ -283,6 +283,16 @@ public static partial class BcRuntime
         // Report{N}.InitializeComponent calls NavReport.BeginInitialization which dereferences
         // Session.MetadataProvider (null on skeleton). Same NRE cluster as XmlPort — hook the
         // concrete override before JIT compilation to guarantee the patch lands.
+        //
+        // NOTE: BeginInitialization / EndInitialization / NavReport.Add are also
+        // Cecil-rewritten to safe stubs in NclCecilRewrite.cs, but the BC-emitted
+        // IC tail does `RequestOptionsPage = new RequestPage(this, Metadata.RequestFormMetadata)`
+        // which dereferences `DataItemIterator.Metadata` (null on the skeleton) and NREs
+        // before any of our rewrites help. Until we populate a stub Metadata /
+        // MasterPage and make RequestPage construction null-safe, the only
+        // safe choice is to keep IC as a whole no-op. Triggers (OnInit /
+        // OnPre / OnPost) still fire from NavReportSync.SyncRun for Run() /
+        // RunModal() — that side of the contract is preserved.
         HookReportInitializeComponent(reportType);
         // BC emits report ctors as either:
         //   (ITreeObject parent)

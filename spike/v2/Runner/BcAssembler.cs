@@ -63,7 +63,18 @@ public sealed class BcAssembler
                 .ToList();
             return new CompileResult(null, errs);
         }
-        return new CompileResult(ms.ToArray(), Array.Empty<string>());
+        var bytes = ms.ToArray();
+        if (Environment.GetEnvironmentVariable("AL_RUNNER_DUMP_BC_ASM") == "1")
+        {
+            try
+            {
+                var dumpPath = Path.Combine(Path.GetTempPath(), assemblyName + ".dll");
+                File.WriteAllBytes(dumpPath, bytes);
+                Console.Error.WriteLine($"[BcAssembler] dumped {assemblyName} → {dumpPath}");
+            }
+            catch { /* best-effort */ }
+        }
+        return new CompileResult(bytes, Array.Empty<string>());
     }
 
     private IEnumerable<string> ReferencePaths()

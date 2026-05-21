@@ -14,7 +14,7 @@ namespace AlRunnerV2.Infrastructure;
 
 public static class NclCecilRewrite
 {
-    private const int CACHE_VERSION = 33;
+    private const int CACHE_VERSION = 35;
 
 
     /// <summary>
@@ -1918,6 +1918,73 @@ public static class NclCecilRewrite
                 {
                     if (!method.HasBody) continue;
                     var ps = method.Parameters;
+
+                    // NavReport.Add(DataItem, string) — overrides DataItemIterator.Add.
+                    // The override derefs base.Metadata.DataItems[...] / GetDataItemByName,
+                    // which NRE because Metadata is null (we no-op BeginInitialization).
+                    // The override's only purpose is to populate dataItem.MetaData and
+                    // process column option captions — neither is observable by AL
+                    // tests in the runner. Forward straight to base.Add (which just
+                    // appends to the dataItems list).
+                    if (method.Name == "Add"
+                        && ps.Count == 2
+                        && ps[0].ParameterType.FullName == "Microsoft.Dynamics.Nav.Runtime.DataItem"
+                        && ps[1].ParameterType.FullName == "System.String"
+                        && method.ReturnType.FullName == "System.Void"
+                        && method.IsVirtual && !method.IsNewSlot)
+                    {
+                        var baseAdd = navReportT.BaseType?.Resolve()?.Methods
+                            .FirstOrDefault(m => m.Name == "Add"
+                                && m.Parameters.Count == 2
+                                && m.Parameters[0].ParameterType.FullName == "Microsoft.Dynamics.Nav.Runtime.DataItem"
+                                && m.Parameters[1].ParameterType.FullName == "System.String");
+                        if (baseAdd != null)
+                        {
+                            var baseAddRef = asm.MainModule.ImportReference(baseAdd);
+                            var body = method.Body;
+                            body.Instructions.Clear();
+                            body.ExceptionHandlers.Clear();
+                            body.Variables.Clear();
+                            var il = body.GetILProcessor();
+                            il.Append(il.Create(OpCodes.Ldarg_0));
+                            il.Append(il.Create(OpCodes.Ldarg_1));
+                            il.Append(il.Create(OpCodes.Ldarg_2));
+                            il.Append(il.Create(OpCodes.Call, baseAddRef));
+                            il.Append(il.Create(OpCodes.Ret));
+                            body.MaxStackSize = 3;
+                            reportRewrites++;
+                            continue;
+                        }
+                    }
+
+                    // BeginInitialization / EndInitialization (sync, void, 0-arg) —
+                    // both bodies sync-over-async into …Async() which dereferences
+                    // base.Tree.Session.MetadataProvider / base.Metadata (null on a
+                    // skeleton report). Rewrite to plain `ret`. NclMeta-driven side
+                    // effects (DefaultPaperSourceKindRaw, PreviewMode, UseRequestForm,
+                    // OnInitReport via EndInitializationAsync) are intentionally
+                    // dropped — none of them are AL-observable. OnInitReport is fired
+                    // explicitly by NavReportSync.SyncRun instead.
+                    //
+                    // With Begin/EndInitialization safe, Report{N}.InitializeComponent
+                    // (the BC-emitted method) can run during ctor and populate the
+                    // DataItems list + set ProcessingOnly — both required for
+                    // SyncRun to dispatch triggers and to enforce the
+                    // layout-rendering OOS policy.
+                    if ((method.Name == "BeginInitialization" || method.Name == "EndInitialization")
+                        && ps.Count == 0
+                        && method.ReturnType.FullName == "System.Void")
+                    {
+                        var body = method.Body;
+                        body.Instructions.Clear();
+                        body.ExceptionHandlers.Clear();
+                        body.Variables.Clear();
+                        var il = body.GetILProcessor();
+                        il.Append(il.Create(OpCodes.Ret));
+                        body.MaxStackSize = 0;
+                        reportRewrites++;
+                        continue;
+                    }
 
                     // Instance / static Run() / RunModal() — void. We leave the body as a `ret`
                     // placeholder. At runtime, a JmpHook on the instance Run() / RunModal()
