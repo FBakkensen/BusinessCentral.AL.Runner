@@ -14,7 +14,7 @@ namespace AlRunnerV2.Infrastructure;
 
 public static class NclCecilRewrite
 {
-    private const int CACHE_VERSION = 11;
+    private const int CACHE_VERSION = 12;
 
 
     /// <summary>
@@ -863,6 +863,49 @@ public static class NclCecilRewrite
                     il.Append(il.Create(OpCodes.Ret));
                     body.MaxStackSize = 1;
                     Console.Error.WriteLine($"[Cecil] Rewrote NavFile.ALViewFromStream({m.Parameters.Count}-arg) → return true");
+                }
+            }
+        }
+
+        // NavValue.CreateNavValueFromObject — switch lacks a NavNclType.NavALErrorType
+        // case so calls boxed as ALErrorType from AL ErrorInfo.ErrorType() throw
+        // NavNCLNotSupportedTypeException. Prepend a fast-path that returns
+        // `new NavALErrorType((int)value)` via BcRuntime helper. Numeric literal
+        // for NavALErrorType (59 in the enum at NCL 26.x) is read dynamically.
+        {
+            var navValueType = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.NavValue")
+                ?? asm.MainModule.GetTypes().FirstOrDefault(t => t.FullName == "Microsoft.Dynamics.Nav.Types.NavValue")
+                ?? asm.MainModule.GetTypes().FirstOrDefault(t => t.Name == "NavValue" && !t.IsNested && t.HasMethods && t.Methods.Any(m => m.Name == "CreateNavValueFromObject"));
+            var navNclTypeEnum = asm.MainModule.GetTypes().FirstOrDefault(t => t.Name == "NavNclType" && t.IsEnum);
+            var iMetadataType = asm.MainModule.GetTypes().FirstOrDefault(t => t.Name == "INavValueMetadata");
+            if (navValueType != null && navNclTypeEnum != null && iMetadataType != null)
+            {
+                var alErrorTypeField = navNclTypeEnum.Fields.FirstOrDefault(f => f.Name == "NavALErrorType");
+                var nclTypeGetter = iMetadataType.Properties.FirstOrDefault(p => p.Name == "NclType")?.GetMethod;
+                var createMethod = navValueType.Methods.FirstOrDefault(m =>
+                    m.Name == "CreateNavValueFromObject" && m.IsStatic && m.Parameters.Count == 2);
+                if (alErrorTypeField != null && nclTypeGetter != null && createMethod != null && createMethod.HasBody)
+                {
+                    int alErrorEnumValue = (int)alErrorTypeField.Constant;
+                    var helperMi = typeof(AlRunnerV2.BcRuntime).GetMethod(
+                        "CreateNavALErrorType",
+                        BindingFlags.Public | BindingFlags.Static);
+                    var helperRef = asm.MainModule.ImportReference(helperMi);
+                    var body = createMethod.Body;
+                    var il = body.GetILProcessor();
+                    var firstOriginal = body.Instructions[0];
+                    // if (metadata != null && metadata.NclType == NavALErrorType) return helper(value);
+                    il.InsertBefore(firstOriginal, il.Create(OpCodes.Ldarg_0));
+                    il.InsertBefore(firstOriginal, il.Create(OpCodes.Brfalse_S, firstOriginal));
+                    il.InsertBefore(firstOriginal, il.Create(OpCodes.Ldarg_0));
+                    il.InsertBefore(firstOriginal, il.Create(OpCodes.Callvirt, asm.MainModule.ImportReference(nclTypeGetter)));
+                    il.InsertBefore(firstOriginal, il.Create(OpCodes.Ldc_I4, alErrorEnumValue));
+                    il.InsertBefore(firstOriginal, il.Create(OpCodes.Bne_Un_S, firstOriginal));
+                    il.InsertBefore(firstOriginal, il.Create(OpCodes.Ldarg_1));
+                    il.InsertBefore(firstOriginal, il.Create(OpCodes.Call, helperRef));
+                    il.InsertBefore(firstOriginal, il.Create(OpCodes.Castclass, navValueType));
+                    il.InsertBefore(firstOriginal, il.Create(OpCodes.Ret));
+                    Console.Error.WriteLine($"[Cecil] Prepended NavALErrorType case (enum={alErrorEnumValue}) to NavValue.CreateNavValueFromObject");
                 }
             }
         }

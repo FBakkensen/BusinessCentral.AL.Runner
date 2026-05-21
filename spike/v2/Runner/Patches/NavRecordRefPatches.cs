@@ -109,6 +109,36 @@ public static partial class BcRuntime
         return shared;
     }
 
+    // NavValue.CreateNavValueFromObject lacks a switch case for NavNclType.NavALErrorType
+    // (introduced for ErrorInfo.ErrorType()) — when AL code reads a default ALErrorType
+    // it ends up boxed as a CLR ALErrorType enum value, CalcMetadataFromDotNetObject
+    // returns NavALErrorType metadata, and the switch falls through to the default
+    // throw branch. NclCecilRewrite prepends a check that delegates to this helper
+    // for the NavALErrorType case (returns `(NavValue)new NavALErrorType(int)`).
+    private static ConstructorInfo? _ctorNavALErrorType;
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static object CreateNavALErrorType(object? value)
+    {
+        if (_ctorNavALErrorType == null)
+        {
+            var navNcl = AppDomain.CurrentDomain.GetAssemblies()
+                .First(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Ncl");
+            var t = navNcl.GetType("Microsoft.Dynamics.Nav.Types.NavALErrorType")
+                ?? navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavALErrorType")
+                ?? navNcl.GetTypes().First(x => x.Name == "NavALErrorType" && !x.IsEnum);
+            _ctorNavALErrorType = t.GetConstructors().First(c =>
+                c.GetParameters().Length == 1 &&
+                c.GetParameters()[0].ParameterType == typeof(int));
+        }
+        int iv = value switch
+        {
+            null => 0,
+            int i => i,
+            _ => Convert.ToInt32(value)
+        };
+        return _ctorNavALErrorType.Invoke(new object?[] { iv });
+    }
+
     // NavStringValue.CompareTo(NavStringValue) — real impl reaches NavCurrentThread.Session.Culture
     // which is null on the skeleton. Fall back to ordinal comparison via the public Value property.
     private static PropertyInfo? _pNavStringValue_Value;
