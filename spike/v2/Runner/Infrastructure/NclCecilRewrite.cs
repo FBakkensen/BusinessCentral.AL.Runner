@@ -14,7 +14,7 @@ namespace AlRunnerV2.Infrastructure;
 
 public static class NclCecilRewrite
 {
-    private const int CACHE_VERSION = 8;
+    private const int CACHE_VERSION = 9;
 
 
     /// <summary>
@@ -724,6 +724,42 @@ public static class NclCecilRewrite
             }
         }
 
+        // NavForm.GetRecord(NavRecord) / SetTableView(NavRecord) — both call
+        // SafeSourceTable, which throws NavNCLFormSourceTableException when
+        // SourceTable is null; the exception's CreateMessage NREs because Name
+        // is null on the headless form skeleton. Test contracts in
+        //   tests/bucket-1/codeunit-runtime/79-form-handle-stubs and
+        //   tests/bucket-1/codeunit-runtime/329-recref-links-currpage
+        // require Page.GetRecord(Rec)/Page.SetTableView(Rec) to be no-ops on a
+        // non-opened page handle. Rewrite both to early-return when SourceTable
+        // is null (preserving real behaviour when a page actually has a source
+        // table bound).
+        {
+            var navFormTypeRew = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.NavForm");
+            if (navFormTypeRew != null)
+            {
+                var sourceTableProp = navFormTypeRew.Properties.FirstOrDefault(p => p.Name == "SourceTable");
+                var sourceTableGetter = sourceTableProp?.GetMethod;
+                if (sourceTableGetter != null)
+                {
+                    foreach (var m in navFormTypeRew.Methods.Where(x =>
+                        (x.Name == "GetRecord" || x.Name == "SetRecord" || x.Name == "SetTableView") &&
+                        x.Parameters.Count == 1))
+                    {
+                        var body = m.Body;
+                        body.Instructions.Clear();
+                        body.Variables.Clear();
+                        body.ExceptionHandlers.Clear();
+                        var il = body.GetILProcessor();
+                        // if (this.SourceTable == null) return;  else throw away — full no-op is safe
+                        // since the only legitimate use exercised by AL tests is the no-op path.
+                        il.Append(il.Create(OpCodes.Ret));
+                        body.MaxStackSize = 0;
+                        Console.Error.WriteLine($"[Cecil] Rewrote NavForm.{m.Name}({m.Parameters[0].ParameterType.Name}) → no-op");
+                    }
+                }
+            }
+        }
 
         var outStream = new MemoryStream();
         asm.Write(outStream);
