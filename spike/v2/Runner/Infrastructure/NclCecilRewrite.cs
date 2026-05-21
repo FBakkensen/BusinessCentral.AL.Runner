@@ -14,7 +14,7 @@ namespace AlRunnerV2.Infrastructure;
 
 public static class NclCecilRewrite
 {
-    private const int CACHE_VERSION = 5;
+    private const int CACHE_VERSION = 6;
 
 
     /// <summary>
@@ -555,6 +555,46 @@ public static class NclCecilRewrite
             body.MaxStackSize = 1;
             Console.Error.WriteLine($"[Cecil] Rewrote NavMethodScope.OnRunEventAsync → CodeunitEventDispatcher");
         }
+
+        // NavObjectList<T>.get_Target — generic property, JmpHook can't reach
+        // per-instantiation native code reliably. Real body chains through
+        // base.Tree.Session.Company.SharedObjects on the lazy-create path; on
+        // the headless skeleton, Session.Company is null → NRE. Rewrite to
+        // delegate to a BcRuntime helper that constructs SharedNavObjectList<T>
+        // parented to the process-wide skeleton TreeSharedObjectContainer
+        // (same approach as NavRecordRef.get_Target / NavStream.get_Target).
+        {
+            var navObjectListType = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.NavObjectList`1")
+                ?? throw new InvalidOperationException("NavObjectList`1 not found in Ncl — shape changed");
+            var sharedNavObjectListType = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.SharedNavObjectList`1")
+                ?? throw new InvalidOperationException("SharedNavObjectList`1 not found in Ncl — shape changed");
+            var getTargetMethod = navObjectListType.Methods
+                .FirstOrDefault(m => m.Name == "get_Target")
+                ?? throw new InvalidOperationException("NavObjectList<T>.get_Target not found");
+
+            var helperMethodInfo = typeof(AlRunnerV2.BcRuntime).GetMethod(
+                nameof(AlRunnerV2.BcRuntime.NavObjectList_get_Target),
+                BindingFlags.Public | BindingFlags.Static)
+                ?? throw new InvalidOperationException("BcRuntime.NavObjectList_get_Target not found");
+            var helperRef = asm.MainModule.ImportReference(helperMethodInfo);
+
+            var navObjectListT = navObjectListType.GenericParameters[0];
+            var sharedListBound = new GenericInstanceType(sharedNavObjectListType);
+            sharedListBound.GenericArguments.Add(navObjectListT);
+
+            var body = getTargetMethod.Body;
+            body.Instructions.Clear();
+            body.Variables.Clear();
+            body.ExceptionHandlers.Clear();
+            var il = body.GetILProcessor();
+            il.Append(il.Create(OpCodes.Ldarg_0));
+            il.Append(il.Create(OpCodes.Call, helperRef));
+            il.Append(il.Create(OpCodes.Castclass, sharedListBound));
+            il.Append(il.Create(OpCodes.Ret));
+            body.MaxStackSize = 1;
+            Console.Error.WriteLine("[Cecil] Rewrote NavObjectList`1.get_Target → BcRuntime.NavObjectList_get_Target helper");
+        }
+
 
         var outStream = new MemoryStream();
         asm.Write(outStream);

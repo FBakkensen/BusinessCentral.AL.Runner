@@ -61,6 +61,54 @@ public static partial class BcRuntime
         return srr;
     }
 
+    // NavObjectList<T>.get_Target — same Option-C shape as NavRecordRef.get_Target.
+    // Real body chains through base.Tree.Session.Company.SharedObjects on the
+    // lazy-create path; on the headless skeleton, Session.Company is null → NRE.
+    // Cecil rewrites get_Target to call this helper, which constructs
+    // SharedNavObjectList<T> parented to the process-wide skeleton container.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, ConstructorInfo> _ctorSharedNavObjectList = new();
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static object NavObjectList_get_Target(object self)
+    {
+        var treeProp = self.GetType().GetProperty("Tree",
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy);
+        var tree = treeProp!.GetValue(self)!;
+        if (_mTreeGetReferenceTarget == null)
+            _mTreeGetReferenceTarget = tree.GetType().GetMethod("GetReferenceTarget",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance,
+                null, Type.EmptyTypes, null);
+        if (_mTreeSetReferenceTarget == null)
+            _mTreeSetReferenceTarget = tree.GetType().GetMethod("SetReferenceTarget",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        var existing = _mTreeGetReferenceTarget?.Invoke(tree, null);
+        if (existing != null) return existing;
+
+        var navNcl = AppDomain.CurrentDomain.GetAssemblies()
+            .First(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Ncl");
+        if (_skeletonSharedObjectContainer == null)
+        {
+            var tContainer = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.TreeSharedObjectContainer")!;
+            var tITree = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.ITreeObject")!;
+            _skeletonSharedObjectContainer = tContainer.GetConstructor(new[] { tITree })!
+                .Invoke(new object?[] { RootTreeStub });
+        }
+
+        // Construct SharedNavObjectList<T> for the same T as the receiver.
+        var t = self.GetType().GetGenericArguments()[0];
+        var ctor = _ctorSharedNavObjectList.GetOrAdd(t, tArg =>
+        {
+            var openShared = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.SharedNavObjectList`1")!;
+            var closedShared = openShared.MakeGenericType(tArg);
+            var tIContainer = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.ITreeSharedObjectContainer")!;
+            return closedShared.GetConstructor(
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance,
+                null, new[] { tIContainer }, null)!;
+        });
+        var shared = ctor.Invoke(new[] { _skeletonSharedObjectContainer });
+        _mTreeSetReferenceTarget?.Invoke(tree, new[] { shared });
+        return shared;
+    }
+
     // NavStringValue.CompareTo(NavStringValue) — real impl reaches NavCurrentThread.Session.Culture
     // which is null on the skeleton. Fall back to ordinal comparison via the public Value property.
     private static PropertyInfo? _pNavStringValue_Value;
