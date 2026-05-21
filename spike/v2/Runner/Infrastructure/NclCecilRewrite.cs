@@ -14,7 +14,7 @@ namespace AlRunnerV2.Infrastructure;
 
 public static class NclCecilRewrite
 {
-    private const int CACHE_VERSION = 13;
+    private const int CACHE_VERSION = 14;
 
 
     /// <summary>
@@ -942,6 +942,97 @@ public static class NclCecilRewrite
                 ReplaceWithStaticHelper("MoveLinksAsync", nameof(AlRunnerV2.BcRuntime.RecordLink_MoveLinksAsync), 2);
                 ReplaceWithStaticHelper("TableHasLinks", nameof(AlRunnerV2.BcRuntime.RecordLink_TableHasLinks), 3);
             }
+        }
+
+        // ─── NavSession.GetDefaultRoundPrecision → return NavDecimalHelper.FallbackRoundPrecision() ───
+        //
+        // Real impl: `Company?.SystemCodeunitFactory.UIHelperTriggers.InvokeGetDefaultRoundingPrecision()
+        //             ?? NavDecimalHelper.FallbackRoundPrecision()`.
+        //
+        // The runner builds NavSystemCodeunitFactory via GetUninitializedObject (skeleton — `parent`
+        // field is null). When AL calls `Round(v)` → NavSession.GetDefaultRoundPrecision() → factory.
+        // UIHelperTriggers, the property getter calls `new NavSystemCodeunitUIHelperTriggers(parent)`,
+        // which throws ANE on the null parent (compiler-emitted ThrowIfNull on non-nullable ref param).
+        //
+        // BC's own ALSystemDecimal.GetDefaultRoundPrecision (line 192147) already falls back to
+        // NavDecimalHelper.FallbackRoundPrecision() when Session is null, so the headless-runner
+        // contract here is: no Caption-Class-Translator codeunit (2000000004) installed →
+        // use FallbackRoundPrecision (culture-dependent, typically 0.01 for en-US).
+        //
+        // Sync, value-type return → Cecil-safe.
+        {
+            var navSessionType = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.NavSession")
+                ?? throw new InvalidOperationException("NavSession type not found in Ncl.dll — Ncl shape changed");
+            var navDecimalHelperType = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.NavDecimalHelper")
+                ?? throw new InvalidOperationException("NavDecimalHelper type not found in Ncl.dll — Ncl shape changed");
+
+            var fallbackMethod = navDecimalHelperType.Methods.FirstOrDefault(m => m.Name == "FallbackRoundPrecision" && m.Parameters.Count == 0 && m.IsStatic)
+                ?? throw new InvalidOperationException("NavDecimalHelper.FallbackRoundPrecision() not found — Ncl shape changed");
+
+            int rewroteRound = 0;
+            foreach (var method in navSessionType.Methods.Where(mm => mm.Name == "GetDefaultRoundPrecision" && mm.Parameters.Count == 0).ToList())
+            {
+                Console.Error.WriteLine($"[Cecil] Rewriting {method.FullName} → NavDecimalHelper.FallbackRoundPrecision()");
+                var body = method.Body;
+                body.Instructions.Clear();
+                body.Variables.Clear();
+                body.ExceptionHandlers.Clear();
+                var il = body.GetILProcessor();
+                il.Append(il.Create(OpCodes.Call, fallbackMethod));
+                il.Append(il.Create(OpCodes.Ret));
+                body.MaxStackSize = 1;
+                rewroteRound++;
+            }
+            if (rewroteRound == 0)
+                throw new InvalidOperationException("NavSession.GetDefaultRoundPrecision() not found — Ncl shape changed; do not commit");
+            Console.Error.WriteLine($"[Cecil] Rewrote {rewroteRound} GetDefaultRoundPrecision overload(s)");
+        }
+
+        // ─── ALSystemObject.ALCaptionClassTranslate(string) → return input unchanged ───
+        //
+        // Real impl: `string.IsNullOrEmpty(text) ? "" :
+        //             NavCurrentThread.Session.SystemCodeunitFactory.UIHelperTriggers
+        //                 .InvokeCaptionClassTranslate(Session.LocalLanguage, new NavText(text)).Value`.
+        //
+        // Same skeleton-factory NRE path as GetDefaultRoundPrecision above. The BC standalone
+        // contract (no caption-class resolver codeunit installed) is: caption class strings pass
+        // through unchanged — that is what tests/bucket-2/page-report/214-captionclass asserts.
+        //
+        // Sync, string return → Cecil-safe.
+        {
+            var alSysObjType = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.ALSystemObject")
+                ?? throw new InvalidOperationException("ALSystemObject type not found in Ncl.dll — Ncl shape changed");
+
+            var stringIsNullOrEmpty = asm.MainModule.ImportReference(
+                typeof(string).GetMethod(nameof(string.IsNullOrEmpty), new[] { typeof(string) })
+                ?? throw new InvalidOperationException("string.IsNullOrEmpty not found via reflection"));
+
+            int rewroteCct = 0;
+            foreach (var method in alSysObjType.Methods.Where(mm => mm.Name == "ALCaptionClassTranslate"
+                                                                  && mm.Parameters.Count == 1
+                                                                  && mm.Parameters[0].ParameterType.FullName == "System.String"
+                                                                  && mm.ReturnType.FullName == "System.String").ToList())
+            {
+                Console.Error.WriteLine($"[Cecil] Rewriting {method.FullName} → passthrough (no caption-class resolver)");
+                var body = method.Body;
+                body.Instructions.Clear();
+                body.Variables.Clear();
+                body.ExceptionHandlers.Clear();
+                var il = body.GetILProcessor();
+                var notEmpty = il.Create(OpCodes.Ldarg_0);
+                il.Append(il.Create(OpCodes.Ldarg_0));
+                il.Append(il.Create(OpCodes.Call, stringIsNullOrEmpty));
+                il.Append(il.Create(OpCodes.Brfalse_S, notEmpty));
+                il.Append(il.Create(OpCodes.Ldstr, ""));
+                il.Append(il.Create(OpCodes.Ret));
+                il.Append(notEmpty);          // ldarg.0
+                il.Append(il.Create(OpCodes.Ret));
+                body.MaxStackSize = 1;
+                rewroteCct++;
+            }
+            if (rewroteCct == 0)
+                throw new InvalidOperationException("ALSystemObject.ALCaptionClassTranslate(string) not found — Ncl shape changed; do not commit");
+            Console.Error.WriteLine($"[Cecil] Rewrote {rewroteCct} ALCaptionClassTranslate overload(s)");
         }
 
         var outStream = new MemoryStream();
