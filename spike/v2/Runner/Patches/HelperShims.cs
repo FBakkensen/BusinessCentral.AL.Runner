@@ -86,6 +86,16 @@ public static partial class BcRuntime
     [MethodImpl(MethodImplOptions.NoInlining)] public static object? ReturnNull_OneArg(object a) => null;
     [MethodImpl(MethodImplOptions.NoInlining)] public static int ReturnZero_OneArg(object? a) => 0;
 
+    // Replacement for NavFile.GetTenantIds(NavSession session). The real body reads
+    // session.Tenant.TenantSettings.AadTenantId / session.Tenant.Id — both null on the
+    // headless runner skeleton. Faithful sentinel: empty AAD GUID + the same
+    // "STANDALONE" tenant identifier used elsewhere by the runner (Database.TenantId,
+    // Database.SerialNumber). Return type must be ValueTuple<Guid,string> exactly so
+    // the calling convention (struct-return via hidden ptr) matches the original.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static System.ValueTuple<System.Guid, string> ReturnEmptyTenantIds_OneArg(object? a)
+        => new System.ValueTuple<System.Guid, string>(System.Guid.Empty, "STANDALONE");
+
     /// <summary>
     /// Replacement for <c>NavNotification.ALSend(DataError)</c> and
     /// <c>NavNotification.ALRecall(DataError)</c>. The real body NREs at

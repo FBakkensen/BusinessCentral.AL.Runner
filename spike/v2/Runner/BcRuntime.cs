@@ -1985,6 +1985,33 @@ public static partial class BcRuntime
             }
         }
 
+        // NavRecord.GetCallerRecord(NavSession) — internal static, NREs at
+        // session.CurrentMethodScope on the headless skeleton (CurrentMethodScope
+        // is null until a real scope is pushed). The real body returns null when
+        // ApplicationObject is null, so returning null directly is the faithful
+        // fallback. Caller (ALValidateSafe) handles null by raising a regular AL
+        // error rather than NRE.
+        var navRecordTypeForCaller = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavRecord");
+        if (navRecordTypeForCaller != null)
+        {
+            var getCallerRecord = navRecordTypeForCaller.GetMethod("GetCallerRecord",
+                BindingFlags.NonPublic | BindingFlags.Static);
+            if (getCallerRecord != null && getCallerRecord.GetParameters().Length == 1)
+                Hook(getCallerRecord, nameof(ReturnNull_OneArg), "NavRecord.GetCallerRecord");
+        }
+
+        // NavFile.GetTenantIds(NavSession) — internal static, NREs at session.Tenant
+        // on the skeleton. Return (Guid.Empty, "STANDALONE") to align with the
+        // runner-identity sentinels used by Database.SerialNumber/TenantId.
+        var navFileTypeForTenants = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavFile");
+        if (navFileTypeForTenants != null)
+        {
+            var getTenantIds = navFileTypeForTenants.GetMethod("GetTenantIds",
+                BindingFlags.NonPublic | BindingFlags.Static);
+            if (getTenantIds != null && getTenantIds.GetParameters().Length == 1)
+                Hook(getTenantIds, nameof(ReturnEmptyTenantIds_OneArg), "NavFile.GetTenantIds");
+        }
+
         // NavRecordRef.get_Target — bypass NRE on Session.Company.SharedObjects by
         // constructing a SharedRecordRef parented to a process-wide skeleton container.
         var navRecordRefType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavRecordRef");
