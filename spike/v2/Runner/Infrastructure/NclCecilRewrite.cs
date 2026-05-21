@@ -14,7 +14,7 @@ namespace AlRunnerV2.Infrastructure;
 
 public static class NclCecilRewrite
 {
-    private const int CACHE_VERSION = 6;
+    private const int CACHE_VERSION = 7;
 
 
     /// <summary>
@@ -593,6 +593,49 @@ public static class NclCecilRewrite
             il.Append(il.Create(OpCodes.Ret));
             body.MaxStackSize = 1;
             Console.Error.WriteLine("[Cecil] Rewrote NavObjectList`1.get_Target → BcRuntime.NavObjectList_get_Target helper");
+        }
+
+        // ALDatabase.ALSetDefaultTableConnection / ALHasTableConnection — both NRE
+        // because NavCurrentThread.Session.TableConnectionManager is null on the
+        // headless skeleton. The runner contract documented in
+        // tests/bucket-1/record-table/160-set-default-table-connection and
+        // …/has-table-connection is that SetDefaultTableConnection is a no-op
+        // and HasTableConnection always returns false (no real DB connections
+        // exist in the runner). JmpHook can't reach the bodies because the JIT
+        // inlines these one-liners into the AL-emitted scope wrappers; rewrite
+        // the IL bodies directly so inlined call sites also pick up the change.
+        {
+            var alDatabaseType = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.ALDatabase");
+            if (alDatabaseType != null)
+            {
+                foreach (var m in alDatabaseType.Methods.Where(x =>
+                    x.Name == "ALSetDefaultTableConnection" ||
+                    x.Name == "ALRegisterTableConnection" ||
+                    x.Name == "ALUnregisterTableConnection"))
+                {
+                    var body = m.Body;
+                    body.Instructions.Clear();
+                    body.Variables.Clear();
+                    body.ExceptionHandlers.Clear();
+                    var il = body.GetILProcessor();
+                    il.Append(il.Create(OpCodes.Ret));
+                    body.MaxStackSize = 0;
+                    Console.Error.WriteLine($"[Cecil] Rewrote ALDatabase.{m.Name} → no-op");
+                }
+                foreach (var m in alDatabaseType.Methods.Where(x =>
+                    x.Name == "ALHasTableConnection"))
+                {
+                    var body = m.Body;
+                    body.Instructions.Clear();
+                    body.Variables.Clear();
+                    body.ExceptionHandlers.Clear();
+                    var il = body.GetILProcessor();
+                    il.Append(il.Create(OpCodes.Ldc_I4_0));
+                    il.Append(il.Create(OpCodes.Ret));
+                    body.MaxStackSize = 1;
+                    Console.Error.WriteLine($"[Cecil] Rewrote ALDatabase.{m.Name} → return false");
+                }
+            }
         }
 
 
