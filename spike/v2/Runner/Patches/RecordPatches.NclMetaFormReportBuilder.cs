@@ -26,36 +26,65 @@ namespace AlRunnerV2.Patches;
 
 public static partial class RecordPatches
 {
-    // Parsed page/report tables, mirror of _parsedTables.
+    // Parsed page/report/query/xmlport tables, mirror of _parsedTables.
     private static readonly Dictionary<int, ParsedPage> _parsedPages = new();
     private static readonly Dictionary<int, ParsedReport> _parsedReports = new();
+    private static readonly Dictionary<int, ParsedQuery> _parsedQueries = new();
+    private static readonly Dictionary<int, ParsedXmlPort> _parsedXmlPorts = new();
 
-    // Cache: pageId/reportId → NCLMetaForm / NCLMetaReport instance.
+    // Cache: id → NCLMeta{Form|Report|Query|XmlPort} instance.
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<int, object?> _metaFormCache = new();
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<int, object?> _metaReportCache = new();
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<int, object?> _metaQueryCache = new();
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<int, object?> _metaXmlPortCache = new();
 
     // Type/method handles resolved lazily.
     private static Type? _tNCLMetaForm;
     private static Type? _tNCLMetaReport;
+    private static Type? _tNCLMetaQuery;
+    private static Type? _tNCLMetaXmlPort;
     private static MethodInfo? _mCreateEmptyNCLMetaForm;
     private static MethodInfo? _mCreateEmptyNCLMetaReport;
+    private static MethodInfo? _mCreateEmptyNCLMetaQuery;
+    private static MethodInfo? _mCreateEmptyNCLMetaXmlPort;
+    private static Type? _tApplicationObjectId;
+    private static Type? _tObjectTypeEnum;
     private static object? _baseAppGroup;
 
     private static void EnsureFormReportReflection()
     {
-        if (_tNCLMetaForm != null && _tNCLMetaReport != null) return;
+        if (_tNCLMetaForm != null && _tNCLMetaReport != null
+            && _tNCLMetaQuery != null && _tNCLMetaXmlPort != null) return;
         var nclAsm = AppDomain.CurrentDomain.GetAssemblies()
             .FirstOrDefault(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Ncl");
         if (nclAsm == null) return;
 
         _tNCLMetaForm = nclAsm.GetType("Microsoft.Dynamics.Nav.Runtime.NCLMetaForm");
         _tNCLMetaReport = nclAsm.GetType("Microsoft.Dynamics.Nav.Runtime.NCLMetaReport");
+        _tNCLMetaQuery = nclAsm.GetType("Microsoft.Dynamics.Nav.Runtime.NCLMetaQuery");
+        _tNCLMetaXmlPort = nclAsm.GetType("Microsoft.Dynamics.Nav.Runtime.NCLMetaXmlPort");
 
         // Factories are `internal static`.
         _mCreateEmptyNCLMetaForm = _tNCLMetaForm?.GetMethod("CreateEmptyNCLMetaForm",
             BindingFlags.NonPublic | BindingFlags.Static);
         _mCreateEmptyNCLMetaReport = _tNCLMetaReport?.GetMethod("CreateEmptyNCLMetaReport",
             BindingFlags.NonPublic | BindingFlags.Static);
+        _mCreateEmptyNCLMetaXmlPort = _tNCLMetaXmlPort?.GetMethod("CreateEmptyNCLMetaXmlPort",
+            BindingFlags.NonPublic | BindingFlags.Static);
+
+        // NCLMetaQuery has two CreateEmptyNCLMetaQuery overloads — the (loader,
+        // ApplicationObjectId, NavAppGroup, int, string) one is the analog of
+        // Form/Report and the only one we want.
+        if (_tNCLMetaQuery != null)
+        {
+            foreach (var m in _tNCLMetaQuery.GetMethods(BindingFlags.NonPublic | BindingFlags.Static))
+            {
+                if (m.Name != "CreateEmptyNCLMetaQuery") continue;
+                var ps = m.GetParameters();
+                if (ps.Length == 5 && ps[1].ParameterType.Name == "ApplicationObjectId")
+                { _mCreateEmptyNCLMetaQuery = m; break; }
+            }
+        }
 
         // NavAppGroup.BaseGroup
         var tAppGroup = nclAsm.GetType("Microsoft.Dynamics.Nav.Runtime.Apps.NavAppGroup");
@@ -63,6 +92,12 @@ public static partial class RecordPatches
                 BindingFlags.Public | BindingFlags.Static)?.GetValue(null)
             ?? tAppGroup?.GetField("BaseGroup",
                 BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
+
+        // ApplicationObjectId(ObjectType, int) — Microsoft.Dynamics.Nav.Types
+        var typesAsm = AppDomain.CurrentDomain.GetAssemblies()
+            .FirstOrDefault(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Types");
+        _tApplicationObjectId = typesAsm?.GetType("Microsoft.Dynamics.Nav.Types.ApplicationObjectId");
+        _tObjectTypeEnum = typesAsm?.GetType("Microsoft.Dynamics.Nav.Types.ObjectType");
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
@@ -117,6 +152,65 @@ public static partial class RecordPatches
         {
             var inner = ex is TargetInvocationException tie ? tie.InnerException ?? ex : ex;
             Console.Error.WriteLine($"[RecordPatches] BuildNCLMetaReport({reportId}) failed: {inner.GetType().Name}: {inner.Message}");
+            return null;
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static object? BuildNCLMetaQuery(int queryId)
+    {
+        if (!_parsedQueries.TryGetValue(queryId, out var parsed)) return null;
+        EnsureFormReportReflection();
+        if (_mCreateEmptyNCLMetaQuery == null
+            || _tApplicationObjectId == null || _tObjectTypeEnum == null) return null;
+
+        try
+        {
+            // Build ApplicationObjectId(ObjectType.Query=9, queryId).
+            var queryEnumVal = Enum.ToObject(_tObjectTypeEnum, 9);
+            var appObjId = Activator.CreateInstance(_tApplicationObjectId, queryEnumVal, queryId);
+
+            // CreateEmptyNCLMetaQuery(loader, ApplicationObjectId, NavAppGroup, int, string)
+            var meta = _mCreateEmptyNCLMetaQuery.Invoke(null,
+                new object?[] { null, appObjId, _baseAppGroup, -1, string.Empty });
+
+            EnsureCachePopulatorReflection();
+            if (meta != null && _fNCLMetaAppObjMetadataLoaded != null)
+                AlRunnerV2.Infrastructure.FieldPoke.SetInstance(_fNCLMetaAppObjMetadataLoaded, meta, true);
+
+            return meta;
+        }
+        catch (Exception ex)
+        {
+            var inner = ex is TargetInvocationException tie ? tie.InnerException ?? ex : ex;
+            Console.Error.WriteLine($"[RecordPatches] BuildNCLMetaQuery({queryId}) failed: {inner.GetType().Name}: {inner.Message}");
+            return null;
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static object? BuildNCLMetaXmlPort(int xmlPortId)
+    {
+        if (!_parsedXmlPorts.TryGetValue(xmlPortId, out var parsed)) return null;
+        EnsureFormReportReflection();
+        if (_mCreateEmptyNCLMetaXmlPort == null) return null;
+
+        try
+        {
+            // (loader, xmlPortId, appGroup, depOrder=-1, alNamespace="")
+            var meta = _mCreateEmptyNCLMetaXmlPort.Invoke(null,
+                new object?[] { null, xmlPortId, _baseAppGroup, -1, string.Empty });
+
+            EnsureCachePopulatorReflection();
+            if (meta != null && _fNCLMetaAppObjMetadataLoaded != null)
+                AlRunnerV2.Infrastructure.FieldPoke.SetInstance(_fNCLMetaAppObjMetadataLoaded, meta, true);
+
+            return meta;
+        }
+        catch (Exception ex)
+        {
+            var inner = ex is TargetInvocationException tie ? tie.InnerException ?? ex : ex;
+            Console.Error.WriteLine($"[RecordPatches] BuildNCLMetaXmlPort({xmlPortId}) failed: {inner.GetType().Name}: {inner.Message}");
             return null;
         }
     }

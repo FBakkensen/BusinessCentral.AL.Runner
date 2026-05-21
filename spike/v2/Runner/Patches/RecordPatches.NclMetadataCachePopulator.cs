@@ -57,7 +57,9 @@ public static partial class RecordPatches
 
         const int objectTypeTable = 1;
         const int objectTypeReport = 3;
+        const int objectTypeXmlPort = 6;
         const int objectTypePage = 8;
+        const int objectTypeQuery = 9;
 
         // Tables — existing §O path.
         PopulateOneObjectType(arr, objectTypeTable, _parsedTables.Keys.ToArray(),
@@ -70,6 +72,14 @@ public static partial class RecordPatches
         // Reports — §P, mirror via BuildNCLMetaReport using NCLMetaReport.CreateEmptyNCLMetaReport.
         PopulateOneObjectType(arr, objectTypeReport, _parsedReports.Keys.ToArray(),
             id => _metaReportCache.GetOrAdd(id, BuildNCLMetaReport), "Report");
+
+        // Queries — same shape, ObjectType=9, factory takes ApplicationObjectId.
+        PopulateOneObjectType(arr, objectTypeQuery, _parsedQueries.Keys.ToArray(),
+            id => _metaQueryCache.GetOrAdd(id, BuildNCLMetaQuery), "Query");
+
+        // XmlPorts — same shape, ObjectType=6, factory takes int xmlPortId.
+        PopulateOneObjectType(arr, objectTypeXmlPort, _parsedXmlPorts.Keys.ToArray(),
+            id => _metaXmlPortCache.GetOrAdd(id, BuildNCLMetaXmlPort), "XmlPort");
 
         // W-8b A-prime: now that every publisher table has an NCLMetaTable with its
         // tableTriggerEventHandler field populated, inject AL-emitted [NavEventSubscriber]

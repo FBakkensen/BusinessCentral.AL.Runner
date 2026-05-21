@@ -110,6 +110,8 @@ public static partial class RecordPatches
                 TryParseTableExtensionFile(text);
                 TryParsePageFile(text);
                 TryParseReportFile(text);
+                TryParseQueryFile(text);
+                TryParseXmlPortFile(text);
             }
             PopulateNclMetadataCache();
         }
@@ -253,6 +255,8 @@ public static partial class RecordPatches
         ParseAllSources();
         ParseAllPageSources();
         ParseAllReportSources();
+        ParseAllQuerySources();
+        ParseAllXmlPortSources();
 
         // NCL-internal system tables (RecordLink=2000000068, Field=2000000041, …)
         // live as AL source embedded in Microsoft.BusinessCentral.SystemApp.dll's
