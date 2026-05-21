@@ -415,13 +415,63 @@ public static partial class BcRuntime
                 .IsAssignableFrom(c.GetParameters()[0].ParameterType));
         if (twoArg != null) return twoArg.Invoke(new object?[] { self, null });
 
-        // NOTE: 3-arg ctors (ITreeObject, SecurityFiltering, NCLMetaQuery) require a
-        // populated NCLMetaQuery whose .MetaQuery is non-null (NavQuery..ctor calls
-        // ValidateColumns on it). Until we either Cecil-rewrite NavQuery..ctor or
-        // build a sufficiently-populated NCLMetaQuery skeleton, fall through to the
-        // explicit error so this path remains observable.
+        // 3-arg (ITreeObject, SecurityFiltering, NCLMetaQuery): NavQuery..ctor was
+        // Cecil-rewritten to be null-safe (skips metadata access), so we can pass
+        // null as metaQuery and SecurityFiltering=Disabled.
+        var threeArgMq = ctors.FirstOrDefault(c =>
+        {
+            var ps = c.GetParameters();
+            return ps.Length == 3 &&
+                typeof(Microsoft.Dynamics.Nav.Runtime.ITreeObject).IsAssignableFrom(ps[0].ParameterType) &&
+                ps[1].ParameterType.FullName == "Microsoft.Dynamics.Nav.Runtime.SecurityFiltering" &&
+                ps[2].ParameterType.Name == "NCLMetaQuery";
+        });
+        if (threeArgMq != null)
+        {
+            var secFilt = threeArgMq.GetParameters()[1].ParameterType;
+            // SecurityFiltering.Disabled = 0 (first enum member); use 0 as a safe default.
+            var secVal = Enum.ToObject(secFilt, 0);
+            return threeArgMq.Invoke(new object?[] { self, secVal, null });
+        }
+
+        // 4-arg (ITreeObject, int, SecurityFiltering, NCLMetaQuery): chains to the
+        // 3-arg null-safe ctor in NavQuery base, so passing null metaQuery is OK.
+        var fourArg = ctors.FirstOrDefault(c =>
+        {
+            var ps = c.GetParameters();
+            return ps.Length == 4 &&
+                typeof(Microsoft.Dynamics.Nav.Runtime.ITreeObject).IsAssignableFrom(ps[0].ParameterType) &&
+                ps[1].ParameterType == typeof(int) &&
+                ps[2].ParameterType.FullName == "Microsoft.Dynamics.Nav.Runtime.SecurityFiltering" &&
+                ps[3].ParameterType.Name == "NCLMetaQuery";
+        });
+        if (fourArg != null)
+        {
+            var secFilt = fourArg.GetParameters()[2].ParameterType;
+            var secVal = Enum.ToObject(secFilt, 0);
+            return fourArg.Invoke(new object?[] { self, id, secVal, null });
+        }
+
+        // 3-arg (ITreeObject, int, SecurityFiltering): also Cecil-rewritten to skip metadata.
+        var threeArgInt = ctors.FirstOrDefault(c =>
+        {
+            var ps = c.GetParameters();
+            return ps.Length == 3 &&
+                typeof(Microsoft.Dynamics.Nav.Runtime.ITreeObject).IsAssignableFrom(ps[0].ParameterType) &&
+                ps[1].ParameterType == typeof(int) &&
+                ps[2].ParameterType.FullName == "Microsoft.Dynamics.Nav.Runtime.SecurityFiltering";
+        });
+        if (threeArgInt != null)
+        {
+            var secFilt = threeArgInt.GetParameters()[2].ParameterType;
+            var secVal = Enum.ToObject(secFilt, 0);
+            return threeArgInt.Invoke(new object?[] { self, id, secVal });
+        }
+
+        var sigs = string.Join(" | ", ctors.Select(c =>
+            "(" + string.Join(",", c.GetParameters().Select(p => p.ParameterType.Name)) + ")"));
         throw new InvalidOperationException(
-            $"Query{id} has no (ITreeObject) or (ITreeObject, ...) constructor");
+            $"Query{id} has no recognized constructor. Available: {sigs}");
     }
 
     private static Type? FindQueryType(int id)

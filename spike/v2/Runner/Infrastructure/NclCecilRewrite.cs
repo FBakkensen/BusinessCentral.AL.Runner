@@ -14,7 +14,7 @@ namespace AlRunnerV2.Infrastructure;
 
 public static class NclCecilRewrite
 {
-    private const int CACHE_VERSION = 26;
+    private const int CACHE_VERSION = 27;
 
 
     /// <summary>
@@ -1479,6 +1479,200 @@ public static class NclCecilRewrite
             il.Append(il.Create(OpCodes.Ret));
             body.MaxStackSize = 3;
             Console.Error.WriteLine("[Cecil] Replaced RecordImplementation.CalcFieldsAsync(DataError,NCLMetaField[]) → FlowFieldPatches.RecordImpl_CalcFieldsAsync_2");
+        }
+
+        // === NavQuery ctor null-safety ===
+        // The AL-emitted Query{ID} class chains to `: base(parent, securityFiltering, metaQuery)`
+        // (the 3-arg ctor `(ITreeObject, SecurityFiltering, NCLMetaQuery)`). The original ctor
+        // body dereferences metaQuery (metaQuery.ApplicationObjectId, ValidateColumns,
+        // ExtractDefaultRuntimeFilters, TopNumberOfRowsToReturn). We have no real metadata
+        // tier, so we rewrite the ctor to be null-safe: just call base, set securityFiltering,
+        // set NCLMetaQuery (may be null), and ExecutionGuid = Guid.NewGuid(). All metadata-
+        // touching field inits are skipped — they'll fall to method-level rewrites.
+        //
+        // Same trim applied to the (ITreeObject, int, SecurityFiltering) overload.
+        // The (ITreeObject, int, SecurityFiltering, NCLMetaQuery) overload chains to
+        // : this(parent, securityFiltering, metaQuery) so it inherits the fix.
+        {
+            var navQuery = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.NavQuery")
+                ?? throw new InvalidOperationException("NavQuery type not found in Ncl");
+
+            // Discover required references by scanning NavQuery's existing ctor IL.
+            MethodReference? appObjIdNewobj = null;
+            MethodReference? baseCtorRef = null;
+            FieldReference? securityFilteringFld = null;
+            MethodReference? appObjIdGetter = null;     // NCLMetaQuery.get_ApplicationObjectId
+            MethodReference? metaQuerySetter = null;    // NavQuery.set_NCLMetaQuery
+            MethodReference? execGuidSetter = null;     // NavQuery.set_ExecutionGuid
+            int objectTypeQueryValue = -1;
+
+            foreach (var m in navQuery.Methods.Where(mm => mm.IsConstructor && !mm.IsStatic && mm.HasBody))
+            {
+                var instrs = m.Body.Instructions;
+                for (int i = 0; i < instrs.Count; i++)
+                {
+                    var ins = instrs[i];
+                    if (ins.OpCode == OpCodes.Newobj && ins.Operand is MethodReference mrNew &&
+                        mrNew.DeclaringType.FullName == "Microsoft.Dynamics.Nav.Types.ApplicationObjectId")
+                    {
+                        appObjIdNewobj = mrNew;
+                        // Preceding instructions: ... <load ObjectType> <load int> newobj
+                        // Walk backwards to find the ldc.i4 for ObjectType.Query (skip the int-objectId load).
+                        for (int j = i - 1; j >= 0 && j >= i - 4; j--)
+                        {
+                            var p = instrs[j];
+                            int? val = null;
+                            if (p.OpCode == OpCodes.Ldc_I4) val = (int)p.Operand;
+                            else if (p.OpCode == OpCodes.Ldc_I4_S) val = (sbyte)p.Operand;
+                            else if (p.OpCode.Code >= Code.Ldc_I4_0 && p.OpCode.Code <= Code.Ldc_I4_8)
+                                val = (int)(p.OpCode.Code - Code.Ldc_I4_0);
+                            if (val.HasValue && val.Value > 0 && val.Value < 256)
+                            {
+                                // Heuristic: ObjectType.Query is a small positive int; objectId
+                                // arg is loaded via ldarg, so the only ldc.i4 in this window is
+                                // the enum value.
+                                objectTypeQueryValue = val.Value;
+                                break;
+                            }
+                        }
+                    }
+                    if (ins.OpCode == OpCodes.Call && ins.Operand is MethodReference mrBase &&
+                        mrBase.Name == ".ctor" &&
+                        mrBase.DeclaringType.FullName == "Microsoft.Dynamics.Nav.Runtime.NavApplicationObjectBase")
+                    {
+                        baseCtorRef = mrBase;
+                    }
+                    if (ins.OpCode == OpCodes.Stfld && ins.Operand is FieldReference fr &&
+                        fr.Name == "securityFiltering" &&
+                        fr.DeclaringType.FullName == "Microsoft.Dynamics.Nav.Runtime.NavQuery")
+                    {
+                        securityFilteringFld = fr;
+                    }
+                    if ((ins.OpCode == OpCodes.Callvirt || ins.OpCode == OpCodes.Call) &&
+                        ins.Operand is MethodReference mrGet && mrGet.Name == "get_ApplicationObjectId" &&
+                        mrGet.ReturnType.FullName == "Microsoft.Dynamics.Nav.Types.ApplicationObjectId")
+                    {
+                        // Defined on NCLMetaApplicationObject (base of NCLMetaQuery); ABI compatible.
+                        appObjIdGetter = mrGet;
+                    }
+                    if (ins.OpCode == OpCodes.Call && ins.Operand is MethodReference mrSet &&
+                        mrSet.Name == "set_NCLMetaQuery")
+                    {
+                        metaQuerySetter = mrSet;
+                    }
+                    if (ins.OpCode == OpCodes.Call && ins.Operand is MethodReference mrEg &&
+                        mrEg.Name == "set_ExecutionGuid")
+                    {
+                        execGuidSetter = mrEg;
+                    }
+                }
+            }
+
+            if (appObjIdNewobj == null || baseCtorRef == null || securityFilteringFld == null ||
+                appObjIdGetter == null || metaQuerySetter == null || execGuidSetter == null ||
+                objectTypeQueryValue < 0)
+            {
+                throw new InvalidOperationException(
+                    $"NavQuery ctor rewrite: missing IL refs " +
+                    $"(appObjIdNewobj={appObjIdNewobj?.FullName ?? "null"}, " +
+                    $"baseCtor={baseCtorRef?.FullName ?? "null"}, " +
+                    $"secFld={securityFilteringFld?.FullName ?? "null"}, " +
+                    $"appObjGetter={appObjIdGetter?.FullName ?? "null"}, " +
+                    $"mqSetter={metaQuerySetter?.FullName ?? "null"}, " +
+                    $"execSetter={execGuidSetter?.FullName ?? "null"}, " +
+                    $"otQuery={objectTypeQueryValue})");
+            }
+
+            var guidNewGuid = asm.MainModule.ImportReference(
+                typeof(Guid).GetMethod(nameof(Guid.NewGuid), Type.EmptyTypes)!);
+
+            // Rewrite #1: ..ctor(ITreeObject, SecurityFiltering, NCLMetaQuery)
+            var ctor3 = navQuery.Methods.FirstOrDefault(mm => mm.IsConstructor && !mm.IsStatic &&
+                mm.Parameters.Count == 3 &&
+                mm.Parameters[0].ParameterType.FullName == "Microsoft.Dynamics.Nav.Runtime.ITreeObject" &&
+                mm.Parameters[1].ParameterType.FullName == "Microsoft.Dynamics.Nav.Runtime.SecurityFiltering" &&
+                mm.Parameters[2].ParameterType.Name == "NCLMetaQuery")
+                ?? throw new InvalidOperationException("NavQuery..ctor(ITreeObject,SecurityFiltering,NCLMetaQuery) not found");
+            {
+                var body = ctor3.Body;
+                body.Instructions.Clear();
+                body.Variables.Clear();
+                body.ExceptionHandlers.Clear();
+                var il = body.GetILProcessor();
+
+                // base ctor expects: (ITreeObject, ApplicationObjectId, NCLStaticMetadata)
+                // Build the AppObjId argument null-safely:
+                //   if (metaQuery == null) new ApplicationObjectId(Query, 0); else metaQuery.ApplicationObjectId;
+                var nullPath = il.Create(OpCodes.Ldc_I4, objectTypeQueryValue);
+                var afterAppObjId = il.Create(OpCodes.Ldnull); // staticMetadata, also our merge point
+
+                il.Append(il.Create(OpCodes.Ldarg_0));
+                il.Append(il.Create(OpCodes.Ldarg_1));         // parent
+                il.Append(il.Create(OpCodes.Ldarg_3));         // metaQuery
+                il.Append(il.Create(OpCodes.Brfalse_S, nullPath));
+                il.Append(il.Create(OpCodes.Ldarg_3));
+                il.Append(il.Create(OpCodes.Callvirt, appObjIdGetter));
+                il.Append(il.Create(OpCodes.Br_S, afterAppObjId));
+                il.Append(nullPath);                            // ldc.i4 ObjectType.Query
+                il.Append(il.Create(OpCodes.Ldc_I4_0));         // objectId = 0
+                il.Append(il.Create(OpCodes.Newobj, appObjIdNewobj));
+                il.Append(afterAppObjId);                       // ldnull (staticMetadata)
+                il.Append(il.Create(OpCodes.Call, baseCtorRef));
+
+                // this.securityFiltering = securityFiltering
+                il.Append(il.Create(OpCodes.Ldarg_0));
+                il.Append(il.Create(OpCodes.Ldarg_2));
+                il.Append(il.Create(OpCodes.Stfld, securityFilteringFld));
+
+                // this.NCLMetaQuery = metaQuery
+                il.Append(il.Create(OpCodes.Ldarg_0));
+                il.Append(il.Create(OpCodes.Ldarg_3));
+                il.Append(il.Create(OpCodes.Call, metaQuerySetter));
+
+                // this.ExecutionGuid = Guid.NewGuid()
+                il.Append(il.Create(OpCodes.Ldarg_0));
+                il.Append(il.Create(OpCodes.Call, guidNewGuid));
+                il.Append(il.Create(OpCodes.Call, execGuidSetter));
+
+                il.Append(il.Create(OpCodes.Ret));
+                body.MaxStackSize = 4;
+                Console.Error.WriteLine("[Cecil] Rewrote NavQuery..ctor(ITreeObject,SecurityFiltering,NCLMetaQuery) → null-safe minimal init");
+            }
+
+            // Rewrite #2: ..ctor(ITreeObject, int, SecurityFiltering)
+            var ctor3i = navQuery.Methods.FirstOrDefault(mm => mm.IsConstructor && !mm.IsStatic &&
+                mm.Parameters.Count == 3 &&
+                mm.Parameters[0].ParameterType.FullName == "Microsoft.Dynamics.Nav.Runtime.ITreeObject" &&
+                mm.Parameters[1].ParameterType.FullName == "System.Int32" &&
+                mm.Parameters[2].ParameterType.FullName == "Microsoft.Dynamics.Nav.Runtime.SecurityFiltering")
+                ?? throw new InvalidOperationException("NavQuery..ctor(ITreeObject,int,SecurityFiltering) not found");
+            {
+                var body = ctor3i.Body;
+                body.Instructions.Clear();
+                body.Variables.Clear();
+                body.ExceptionHandlers.Clear();
+                var il = body.GetILProcessor();
+
+                il.Append(il.Create(OpCodes.Ldarg_0));
+                il.Append(il.Create(OpCodes.Ldarg_1));         // parent
+                il.Append(il.Create(OpCodes.Ldc_I4, objectTypeQueryValue));
+                il.Append(il.Create(OpCodes.Ldarg_2));         // objectId
+                il.Append(il.Create(OpCodes.Newobj, appObjIdNewobj));
+                il.Append(il.Create(OpCodes.Ldnull));          // staticMetadata
+                il.Append(il.Create(OpCodes.Call, baseCtorRef));
+
+                il.Append(il.Create(OpCodes.Ldarg_0));
+                il.Append(il.Create(OpCodes.Ldarg_3));
+                il.Append(il.Create(OpCodes.Stfld, securityFilteringFld));
+
+                il.Append(il.Create(OpCodes.Ldarg_0));
+                il.Append(il.Create(OpCodes.Call, guidNewGuid));
+                il.Append(il.Create(OpCodes.Call, execGuidSetter));
+
+                il.Append(il.Create(OpCodes.Ret));
+                body.MaxStackSize = 4;
+                Console.Error.WriteLine("[Cecil] Rewrote NavQuery..ctor(ITreeObject,int,SecurityFiltering) → null-safe minimal init (skip metadata)");
+            }
         }
 
         var outStream = new MemoryStream();
