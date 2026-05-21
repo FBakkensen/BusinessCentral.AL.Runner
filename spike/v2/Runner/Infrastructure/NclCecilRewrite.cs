@@ -14,7 +14,7 @@ namespace AlRunnerV2.Infrastructure;
 
 public static class NclCecilRewrite
 {
-    private const int CACHE_VERSION = 25;
+    private const int CACHE_VERSION = 26;
 
 
     /// <summary>
@@ -1436,6 +1436,49 @@ public static class NclCecilRewrite
             il.Append(il.Create(OpCodes.Ret));
             body.MaxStackSize = 1;
             Console.Error.WriteLine("[Cecil] Replaced NCLMetadata.GetSnapshotOfAllObjects body → new SortedList<...>() (empty) in skeleton mode");
+        }
+
+        // ── RecordImplementation.CalcFieldsAsync(DataError, NCLMetaField[]) ───────
+        // The 2-arg sync wrapper just calls the 3-arg private async overload, but
+        // that path NREs on Session.Company.CompanyNameToken under the skeleton
+        // runtime. Cecil-rewrite the wrapper body to call our static helper that
+        // evaluates Sum/Count/Exists/Min/Max/Lookup/Average directly against the
+        // in-memory TempTableDataProvider store. JmpHook on this method does NOT
+        // fire under R2R + ValueTask, so Cecil is required.
+        //
+        // Replacement signature (already lives in Runner.dll):
+        //   FlowFieldPatches.RecordImpl_CalcFieldsAsync_2(object self, DataError, Array)
+        //     → ValueTask<bool>
+        //
+        // NCLMetaField[] is-a System.Array, so we can call the helper directly with
+        // ldarg.0/1/2 and no castclass.
+        {
+            var recImpl = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.RecordImplementation")
+                ?? throw new InvalidOperationException("RecordImplementation type not found");
+            var calc2 = recImpl.Methods.FirstOrDefault(m =>
+                m.Name == "CalcFieldsAsync" && m.Parameters.Count == 2
+                && m.Parameters[1].ParameterType is ArrayType
+                && m.Parameters[1].ParameterType.GetElementType().FullName == "Microsoft.Dynamics.Nav.Runtime.NCLMetaField")
+                ?? throw new InvalidOperationException("RecordImplementation.CalcFieldsAsync(DataError,NCLMetaField[]) not found");
+
+            var helperMi = typeof(AlRunnerV2.Patches.FlowFieldPatches).GetMethod(
+                nameof(AlRunnerV2.Patches.FlowFieldPatches.RecordImpl_CalcFieldsAsync_2),
+                BindingFlags.Public | BindingFlags.Static)
+                ?? throw new InvalidOperationException("FlowFieldPatches.RecordImpl_CalcFieldsAsync_2 not found");
+            var helperRef = asm.MainModule.ImportReference(helperMi);
+
+            var body = calc2.Body;
+            body.Instructions.Clear();
+            body.Variables.Clear();
+            body.ExceptionHandlers.Clear();
+            var il = body.GetILProcessor();
+            il.Append(il.Create(OpCodes.Ldarg_0));
+            il.Append(il.Create(OpCodes.Ldarg_1));
+            il.Append(il.Create(OpCodes.Ldarg_2));
+            il.Append(il.Create(OpCodes.Call, helperRef));
+            il.Append(il.Create(OpCodes.Ret));
+            body.MaxStackSize = 3;
+            Console.Error.WriteLine("[Cecil] Replaced RecordImplementation.CalcFieldsAsync(DataError,NCLMetaField[]) → FlowFieldPatches.RecordImpl_CalcFieldsAsync_2");
         }
 
         var outStream = new MemoryStream();

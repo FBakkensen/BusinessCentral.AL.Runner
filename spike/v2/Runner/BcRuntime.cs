@@ -2187,6 +2187,13 @@ public static partial class BcRuntime
         // ── Record / data-access plumbing (~300 lines) lives in RecordWritePatches.cs ──
         ApplyRecordPatches(navNcl);
 
+        // FlowField CalcFields evaluator — directly evaluates Sum/Count/Exist/Min/Max/Lookup
+        // against the in-memory TempTableDataProvider, bypassing the broken async pipeline.
+        var ffNavTypesAsm = AppDomain.CurrentDomain.GetAssemblies()
+            .FirstOrDefault(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Types");
+        if (ffNavTypesAsm != null)
+            AlRunnerV2.Patches.FlowFieldPatches.Register(navNcl, ffNavTypesAsm);
+
         // NavCancellationToken throws — uninitialized cancellation tokens trip the check.
         var typesAsm = AppDomain.CurrentDomain.GetAssemblies()
             .FirstOrDefault(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Types");

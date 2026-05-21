@@ -827,10 +827,13 @@ public static partial class RecordPatches
                 static _ => new ConcurrentDictionary<int, object>());
             var tableId = table.TableId;
             if (perTable.TryGetValue(tableId, out var cached))
+            {
                 return cached;
+            }
             var result = _mCreateTempDataAccess!.Invoke(self, new object[] { table })!;
             // Race: keep first winner.
-            return perTable.GetOrAdd(tableId, result);
+            var added = perTable.GetOrAdd(tableId, result);
+            return added;
         }
         catch (Exception ex)
         {
