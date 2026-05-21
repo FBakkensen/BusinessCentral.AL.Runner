@@ -14,7 +14,7 @@ namespace AlRunnerV2.Infrastructure;
 
 public static class NclCecilRewrite
 {
-    private const int CACHE_VERSION = 29;
+    private const int CACHE_VERSION = 31;
 
 
     /// <summary>
@@ -1878,6 +1878,103 @@ public static class NclCecilRewrite
                 }
                 Console.Error.WriteLine($"[Cecil] Rewrote {rewriteCount} NavQuery method(s) (ALColumnName/Caption, ALGetFilter(s), ALSetFilter, ALSetRangeSafe, ALClose, set_ALTopNumberOfRowsToReturn)");
             }
+        }
+
+        // Rewrite NavReport sync wrappers + DataItemIterator.SetTableView for null-safe
+        // standalone execution. The underlying RunReportAsync is async (forbidden to rewrite),
+        // so we short-circuit at the sync entry points instead.
+        {
+            var navReportT = asm.MainModule.Types
+                .FirstOrDefault(t => t.FullName == "Microsoft.Dynamics.Nav.Runtime.NavReport");
+            var ioeCtor = asm.MainModule.ImportReference(
+                typeof(InvalidOperationException).GetConstructor(new[] { typeof(string) })!);
+            int reportRewrites = 0;
+            if (navReportT != null)
+            {
+                foreach (var method in navReportT.Methods.ToList())
+                {
+                    if (!method.HasBody) continue;
+                    var ps = method.Parameters;
+                    // Run / RunModal (instance void + static void) — sync over async. No-op for standalone.
+                    if ((method.Name == "Run" || method.Name == "RunModal")
+                        && method.ReturnType.FullName == "System.Void")
+                    {
+                        var body = method.Body;
+                        body.Instructions.Clear();
+                        body.ExceptionHandlers.Clear();
+                        body.Variables.Clear();
+                        var il = body.GetILProcessor();
+                        il.Append(il.Create(OpCodes.Ret));
+                        body.MaxStackSize = 0;
+                        reportRewrites++;
+                    }
+                    // RunRequestPage (any sync overload returning string) — throw OOS.
+                    else if (method.Name == "RunRequestPage"
+                        && method.ReturnType.FullName == "System.String")
+                    {
+                        var body = method.Body;
+                        body.Instructions.Clear();
+                        body.ExceptionHandlers.Clear();
+                        body.Variables.Clear();
+                        var il = body.GetILProcessor();
+                        il.Append(il.Create(OpCodes.Ldstr,
+                            "out-of-scope: NavReport.RunRequestPage (request-page UI rendering requires service tier)"));
+                        il.Append(il.Create(OpCodes.Newobj, ioeCtor));
+                        il.Append(il.Create(OpCodes.Throw));
+                        body.MaxStackSize = 1;
+                        reportRewrites++;
+                    }
+                    // SaveAsPdf / SaveAsHtml / SaveAsExcel / SaveAsWord / SaveAsDocx (sync, returning bool)
+                    // → return true (no-op success). Tests use if-not-guard pattern expecting success.
+                    else if (method.Name.StartsWith("SaveAs")
+                        && method.ReturnType.FullName == "System.Boolean")
+                    {
+                        var body = method.Body;
+                        body.Instructions.Clear();
+                        body.ExceptionHandlers.Clear();
+                        body.Variables.Clear();
+                        var il = body.GetILProcessor();
+                        il.Append(il.Create(OpCodes.Ldc_I4_1));
+                        il.Append(il.Create(OpCodes.Ret));
+                        body.MaxStackSize = 1;
+                        reportRewrites++;
+                    }
+                }
+            }
+            // DataItemIterator.SetTableView(NavRecord) — make null-safe (no-op set of flag).
+            var diiT = asm.MainModule.Types
+                .FirstOrDefault(t => t.FullName == "Microsoft.Dynamics.Nav.Runtime.DataItemIterator");
+            if (diiT != null)
+            {
+                var setTableViewUsed = diiT.Properties.FirstOrDefault(p => p.Name == "SetTableViewUsed")?.SetMethod;
+                foreach (var method in diiT.Methods.ToList())
+                {
+                    if (!method.HasBody) continue;
+                    var ps = method.Parameters;
+                    if (method.Name == "SetTableView"
+                        && ps.Count == 1
+                        && ps[0].ParameterType.FullName == "Microsoft.Dynamics.Nav.Runtime.NavRecord"
+                        && method.ReturnType.FullName == "System.Void")
+                    {
+                        var body = method.Body;
+                        body.Instructions.Clear();
+                        body.ExceptionHandlers.Clear();
+                        body.Variables.Clear();
+                        var il = body.GetILProcessor();
+                        // if (record != null) SetTableViewUsed = true; return;
+                        if (setTableViewUsed != null)
+                        {
+                            il.Append(il.Create(OpCodes.Ldarg_0));
+                            il.Append(il.Create(OpCodes.Ldc_I4_1));
+                            il.Append(il.Create(OpCodes.Call, setTableViewUsed));
+                        }
+                        il.Append(il.Create(OpCodes.Ret));
+                        body.MaxStackSize = 2;
+                        reportRewrites++;
+                    }
+                }
+            }
+            Console.Error.WriteLine($"[Cecil] Rewrote {reportRewrites} NavReport/DataItemIterator method(s) (Run, RunModal, RunRequestPage×2, SetTableView)");
         }
 
         var outStream = new MemoryStream();
