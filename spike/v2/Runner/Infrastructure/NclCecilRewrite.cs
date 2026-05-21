@@ -14,7 +14,7 @@ namespace AlRunnerV2.Infrastructure;
 
 public static class NclCecilRewrite
 {
-    private const int CACHE_VERSION = 35;
+    private const int CACHE_VERSION = 46;
 
 
     /// <summary>
@@ -1957,21 +1957,48 @@ public static class NclCecilRewrite
                         }
                     }
 
-                    // BeginInitialization / EndInitialization (sync, void, 0-arg) —
-                    // both bodies sync-over-async into …Async() which dereferences
-                    // base.Tree.Session.MetadataProvider / base.Metadata (null on a
-                    // skeleton report). Rewrite to plain `ret`. NclMeta-driven side
-                    // effects (DefaultPaperSourceKindRaw, PreviewMode, UseRequestForm,
-                    // OnInitReport via EndInitializationAsync) are intentionally
-                    // dropped — none of them are AL-observable. OnInitReport is fired
-                    // explicitly by NavReportSync.SyncRun instead.
+                    // BeginInitialization (sync, void, 0-arg) —
+                    // The real body sync-over-asyncs into BeginInitializationAsync
+                    // which dereferences base.Tree.Session.MetadataProvider (null
+                    // on the skeleton Session) to populate base.Metadata. We
+                    // instead route to NavReportSync.StubInitializeMetadata which
+                    // installs an uninitialized MetaReport whose `masterPage`
+                    // field points at an empty MasterPage. That makes the
+                    // BC-emitted Report{N}.InitializeComponent tail line
+                    // `RequestOptionsPage = new RequestPage(this, Metadata.RequestFormMetadata)`
+                    // null-safe (RequestFormMetadata calls EnsureMasterPageLoaded
+                    // → CreateMasterPage which early-returns when masterPage is
+                    // already non-null), so IC runs to completion and the
+                    // DataItems list populates.
                     //
-                    // With Begin/EndInitialization safe, Report{N}.InitializeComponent
-                    // (the BC-emitted method) can run during ctor and populate the
-                    // DataItems list + set ProcessingOnly — both required for
-                    // SyncRun to dispatch triggers and to enforce the
-                    // layout-rendering OOS policy.
-                    if ((method.Name == "BeginInitialization" || method.Name == "EndInitialization")
+                    // EndInitialization remains a plain `ret` — the real body
+                    // also sync-over-asyncs and runs metadata-bound side
+                    // effects (DefaultPaperSourceKindRaw, PreviewMode,
+                    // UseRequestForm, OnInitReport via EndInitializationAsync)
+                    // that are not AL-observable. OnInitReport is fired
+                    // explicitly by NavReportSync.SyncRun.
+                    if (method.Name == "BeginInitialization"
+                        && ps.Count == 0
+                        && method.ReturnType.FullName == "System.Void")
+                    {
+                        var stubInfo = typeof(AlRunnerV2.NavReportSync).GetMethod("StubInitializeMetadata",
+                            BindingFlags.Static | BindingFlags.Public)
+                            ?? throw new InvalidOperationException("NavReportSync.StubInitializeMetadata not found via reflection");
+                        var stubRef = asm.MainModule.ImportReference(stubInfo);
+                        var body = method.Body;
+                        body.Instructions.Clear();
+                        body.ExceptionHandlers.Clear();
+                        body.Variables.Clear();
+                        var il = body.GetILProcessor();
+                        il.Append(il.Create(OpCodes.Ldarg_0));
+                        il.Append(il.Create(OpCodes.Call, stubRef));
+                        il.Append(il.Create(OpCodes.Ret));
+                        body.MaxStackSize = 1;
+                        reportRewrites++;
+                        continue;
+                    }
+
+                    if (method.Name == "EndInitialization"
                         && ps.Count == 0
                         && method.ReturnType.FullName == "System.Void")
                     {
@@ -2073,6 +2100,552 @@ public static class NclCecilRewrite
                 }
             }
             Console.Error.WriteLine($"[Cecil] Rewrote {reportRewrites} NavReport/DataItemIterator method(s) (Run/RunModal→SyncRun; SaveAs*/RunRequestPage→OOS-throw; SetTableView→null-safe)");
+        }
+
+        // RequestPageBase ctors — the 2-arg ctor (NavApplicationObjectBase, MasterPage)
+        // chains `: this(parent, parent.Session.Company.SharedObjects, masterPage, null)`
+        // which dereferences `parent.Session.Company.SharedObjects` — Session.Company may be
+        // null on the runner skeleton. The 3-arg overload (NavApplicationObjectBase,
+        // MasterPage, NCLStaticMetadata) has the same deref. Both are called from
+        // BC-emitted Report{N}.RequestPage and Report{N}.RequestPage : RequestPageBase via
+        // `: base(parent, metaForm)` in Report{N}.InitializeComponent. Rewrite them to
+        // bypass the Session.Company.SharedObjects deref by calling NavForm 2-arg ctor
+        // directly, which assigns masterPage and runs the rest of NavForm init using
+        // `parent` (the report instance) as the ITreeObject. RequestPageBase.Parent is
+        // left null — not observable by AL tests; if needed later, set it explicitly.
+        {
+            var requestPageBaseT = asm.MainModule.Types
+                .FirstOrDefault(t => t.FullName == "Microsoft.Dynamics.Nav.Runtime.RequestPageBase");
+            var navFormT = asm.MainModule.Types
+                .FirstOrDefault(t => t.FullName == "Microsoft.Dynamics.Nav.Runtime.NavForm");
+            if (requestPageBaseT != null && navFormT != null)
+            {
+                var navFormCtor2 = navFormT.Methods
+                    .FirstOrDefault(m => m.IsConstructor
+                        && m.Parameters.Count == 2
+                        && m.Parameters[0].ParameterType.FullName == "Microsoft.Dynamics.Nav.Runtime.ITreeObject"
+                        && m.Parameters[1].ParameterType.FullName == "Microsoft.Dynamics.Nav.Types.Metadata.MasterPage");
+                var navFormCtor3 = navFormT.Methods
+                    .FirstOrDefault(m => m.IsConstructor
+                        && m.Parameters.Count == 3
+                        && m.Parameters[0].ParameterType.FullName == "Microsoft.Dynamics.Nav.Runtime.ITreeObject"
+                        && m.Parameters[1].ParameterType.FullName == "Microsoft.Dynamics.Nav.Types.Metadata.MasterPage"
+                        && m.Parameters[2].ParameterType.FullName == "Microsoft.Dynamics.Nav.Runtime.NCLStaticMetadata");
+
+                int rpRewrites = 0;
+                foreach (var ctor in requestPageBaseT.Methods.Where(m => m.IsConstructor && m.HasBody).ToList())
+                {
+                    var ps = ctor.Parameters;
+                    // (NavApplicationObjectBase parent, MasterPage masterPage)
+                    if (ps.Count == 2
+                        && ps[0].ParameterType.FullName == "Microsoft.Dynamics.Nav.Runtime.NavApplicationObjectBase"
+                        && ps[1].ParameterType.FullName == "Microsoft.Dynamics.Nav.Types.Metadata.MasterPage"
+                        && navFormCtor2 != null)
+                    {
+                        var body = ctor.Body;
+                        body.Instructions.Clear();
+                        body.ExceptionHandlers.Clear();
+                        body.Variables.Clear();
+                        var il = body.GetILProcessor();
+                        il.Append(il.Create(OpCodes.Ldarg_0));
+                        il.Append(il.Create(OpCodes.Ldarg_1));
+                        il.Append(il.Create(OpCodes.Ldarg_2));
+                        il.Append(il.Create(OpCodes.Call, navFormCtor2));
+                        il.Append(il.Create(OpCodes.Ret));
+                        body.MaxStackSize = 3;
+                        rpRewrites++;
+                    }
+                    // (NavApplicationObjectBase parent, MasterPage masterPage, NCLStaticMetadata staticMetadata)
+                    else if (ps.Count == 3
+                        && ps[0].ParameterType.FullName == "Microsoft.Dynamics.Nav.Runtime.NavApplicationObjectBase"
+                        && ps[1].ParameterType.FullName == "Microsoft.Dynamics.Nav.Types.Metadata.MasterPage"
+                        && ps[2].ParameterType.FullName == "Microsoft.Dynamics.Nav.Runtime.NCLStaticMetadata"
+                        && navFormCtor3 != null)
+                    {
+                        var body = ctor.Body;
+                        body.Instructions.Clear();
+                        body.ExceptionHandlers.Clear();
+                        body.Variables.Clear();
+                        var il = body.GetILProcessor();
+                        il.Append(il.Create(OpCodes.Ldarg_0));
+                        il.Append(il.Create(OpCodes.Ldarg_1));
+                        il.Append(il.Create(OpCodes.Ldarg_2));
+                        il.Append(il.Create(OpCodes.Ldarg_3));
+                        il.Append(il.Create(OpCodes.Call, navFormCtor3));
+                        il.Append(il.Create(OpCodes.Ret));
+                        body.MaxStackSize = 4;
+                        rpRewrites++;
+                    }
+                }
+                Console.Error.WriteLine($"[Cecil] Rewrote {rpRewrites} RequestPageBase ctor(s) → skip Session.Company.SharedObjects deref, call NavForm ctor directly");
+            }
+        }
+
+        // NavForm 5-arg PRIVATE ctor — final stop of the RequestPageBase → NavForm 2-arg → NavForm 5-arg
+        // chain. The real body derefs `base.Session.NavAppGroup` (NavExtensionMetricsFormatter ctor on
+        // line 42099) which NREs because NavAppGroup is unset on the skeleton session. Also calls
+        // NavCurrentThread.DrillDownPersonalizationId / FormPersonalizationId statics, sets formId
+        // from base.ObjectId.ObjectNumber, etc. — we keep only the bare minimum required for
+        // AL-observable correctness: chain base NavApplicationObjectBase ctor (already JmpHooked
+        // for skeleton-session injection) and set the masterPage field. Drop everything else.
+        {
+            var navFormT = asm.MainModule.Types
+                .FirstOrDefault(t => t.FullName == "Microsoft.Dynamics.Nav.Runtime.NavForm");
+            if (navFormT != null)
+            {
+                var navFormCtor5 = navFormT.Methods.FirstOrDefault(m =>
+                    m.IsConstructor && !m.IsStatic && m.HasBody
+                    && m.Parameters.Count == 5
+                    && m.Parameters[0].ParameterType.FullName == "Microsoft.Dynamics.Nav.Runtime.ITreeObject"
+                    && m.Parameters[1].ParameterType.FullName == "System.Int32"
+                    && m.Parameters[2].ParameterType.FullName == "Microsoft.Dynamics.Nav.Types.Metadata.MasterPage"
+                    && m.Parameters[3].ParameterType.FullName == "Microsoft.Dynamics.Nav.Runtime.NavRecord"
+                    && m.Parameters[4].ParameterType.FullName == "Microsoft.Dynamics.Nav.Runtime.NCLStaticMetadata");
+                if (navFormCtor5 != null)
+                {
+                    // Discover required references by scanning NavForm 5-arg's existing IL.
+                    MethodReference? appObjIdNewobj = null;
+                    MethodReference? baseCtorRef = null;
+                    FieldReference? masterPageFld = null;
+                    int objectTypePageValue = -1;
+                    var instrs = navFormCtor5.Body.Instructions;
+                    for (int i = 0; i < instrs.Count; i++)
+                    {
+                        var ins = instrs[i];
+                        if (ins.OpCode == OpCodes.Newobj && ins.Operand is MethodReference mrNew &&
+                            mrNew.DeclaringType.FullName == "Microsoft.Dynamics.Nav.Types.ApplicationObjectId")
+                        {
+                            appObjIdNewobj = mrNew;
+                            for (int j = i - 1; j >= 0 && j >= i - 4; j--)
+                            {
+                                var p = instrs[j];
+                                int? val = null;
+                                if (p.OpCode == OpCodes.Ldc_I4) val = (int)p.Operand;
+                                else if (p.OpCode == OpCodes.Ldc_I4_S) val = (sbyte)p.Operand;
+                                else if (p.OpCode.Code >= Code.Ldc_I4_0 && p.OpCode.Code <= Code.Ldc_I4_8)
+                                    val = (int)(p.OpCode.Code - Code.Ldc_I4_0);
+                                if (val.HasValue && val.Value > 0 && val.Value < 256)
+                                {
+                                    objectTypePageValue = val.Value;
+                                    break;
+                                }
+                            }
+                        }
+                        if (ins.OpCode == OpCodes.Call && ins.Operand is MethodReference mrBase &&
+                            mrBase.Name == ".ctor" &&
+                            mrBase.DeclaringType.FullName == "Microsoft.Dynamics.Nav.Runtime.NavApplicationObjectBase")
+                        {
+                            baseCtorRef = mrBase;
+                        }
+                        if (ins.OpCode == OpCodes.Stfld && ins.Operand is FieldReference fr &&
+                            fr.Name == "masterPage" &&
+                            fr.DeclaringType.FullName == "Microsoft.Dynamics.Nav.Runtime.NavForm")
+                        {
+                            masterPageFld = fr;
+                        }
+                    }
+
+                    if (appObjIdNewobj == null || baseCtorRef == null || masterPageFld == null || objectTypePageValue < 0)
+                    {
+                        throw new InvalidOperationException(
+                            $"NavForm 5-arg ctor rewrite: missing IL refs " +
+                            $"(appObjIdNewobj={appObjIdNewobj?.FullName ?? "null"}, " +
+                            $"baseCtor={baseCtorRef?.FullName ?? "null"}, " +
+                            $"masterPageFld={masterPageFld?.FullName ?? "null"}, " +
+                            $"otPage={objectTypePageValue})");
+                    }
+
+                    var body = navFormCtor5.Body;
+                    body.Instructions.Clear();
+                    body.Variables.Clear();
+                    body.ExceptionHandlers.Clear();
+                    var il = body.GetILProcessor();
+
+                    // base(parent, new ApplicationObjectId(Page, objectId), staticMetadata)
+                    il.Append(il.Create(OpCodes.Ldarg_0));
+                    il.Append(il.Create(OpCodes.Ldarg_1));                       // parent
+                    il.Append(il.Create(OpCodes.Ldc_I4, objectTypePageValue));   // ObjectType.Page
+                    il.Append(il.Create(OpCodes.Ldarg_2));                       // objectId (int)
+                    il.Append(il.Create(OpCodes.Newobj, appObjIdNewobj));
+                    il.Append(il.Create(OpCodes.Ldarg_S, navFormCtor5.Parameters[4])); // staticMetadata
+                    il.Append(il.Create(OpCodes.Call, baseCtorRef));
+
+                    // this.masterPage = masterPage
+                    il.Append(il.Create(OpCodes.Ldarg_0));
+                    il.Append(il.Create(OpCodes.Ldarg_3));                       // masterPage
+                    il.Append(il.Create(OpCodes.Stfld, masterPageFld));
+
+                    il.Append(il.Create(OpCodes.Ret));
+                    body.MaxStackSize = 4;
+                    Console.Error.WriteLine("[Cecil] Rewrote NavForm 5-arg private ctor → null-safe minimal init (skip Session.NavAppGroup, formId, personalizationId, etc.)");
+                }
+                else
+                {
+                    Console.Error.WriteLine("[Cecil] WARN: NavForm 5-arg private ctor not found — RequestPageBase chain may NRE in InitializeComponent");
+                }
+            }
+        }
+
+        // NavForm form-initialization methods called from {Report}.RequestPage.InitializeComponent.
+        // These touch skeleton-session state (PageExtensions list, base.Session.IsCompanyOpen,
+        // MasterPage.Expressions) that is unset in headless mode. For ProcessingOnly reports the
+        // request-page subgraph is never rendered, and non-ProcessingOnly reports already throw
+        // OOS at Run time, so collapsing these to safe early-returns has no AL-observable effect.
+        // (Aligned with the "no real form rendering" architectural limit; documented in docs/scope.md.)
+        {
+            var navFormT = asm.MainModule.Types
+                .FirstOrDefault(t => t.FullName == "Microsoft.Dynamics.Nav.Runtime.NavForm");
+            if (navFormT != null)
+            {
+                int rewrites = 0;
+                foreach (var m in navFormT.Methods)
+                {
+                    if (!m.HasBody) continue;
+                    bool target = false;
+                    if (m.Name == "CallInitializeComponentExtensionMethod" && m.Parameters.Count == 0) target = true;
+                    else if (m.Name == "InitializeForm" && m.Parameters.Count == 0 && m.ReturnType.FullName == "System.Void") target = true;
+                    else if (m.Name == "RegisterSourceExpression") target = true;
+                    if (!target) continue;
+                    // NEVER rewrite an async ValueTask body (CoreCLR segfault risk).
+                    if (m.ReturnType.FullName.StartsWith("System.Threading.Tasks.ValueTask")) continue;
+                    var body = m.Body;
+                    body.Instructions.Clear();
+                    body.Variables.Clear();
+                    body.ExceptionHandlers.Clear();
+                    var il = body.GetILProcessor();
+                    il.Append(il.Create(OpCodes.Ret));
+                    body.MaxStackSize = 0;
+                    rewrites++;
+                }
+                Console.Error.WriteLine($"[Cecil] Rewrote {rewrites} NavForm form-init method(s) (CallInitComponentExt/InitializeForm/RegisterSourceExpression) → no-op (headless: never observed via AL on ProcessingOnly path)");
+            }
+        }
+
+        // Diagnostic prepend (gated by env AL_RUNNER_DIAG_IC=1): print marker at
+        // entry of each Ncl method called by Report{N}.InitializeComponent.
+        {
+            var diagMi = typeof(AlRunnerV2.NavReportSync).GetMethod("Diag",
+                BindingFlags.Static | BindingFlags.Public);
+            if (diagMi != null)
+            {
+                var diagRef = asm.MainModule.ImportReference(diagMi);
+                var targets = new[]
+                {
+                    ("Microsoft.Dynamics.Nav.Runtime.NavRecordHandle", ".ctor", 4, "NavRecordHandle..ctor(ITreeObject,int,bool,SecurityFiltering)"),
+                    ("Microsoft.Dynamics.Nav.Runtime.DataItem",        ".ctor", 2, "DataItem..ctor(ITreeObject,NavRecordHandle)"),
+                    ("Microsoft.Dynamics.Nav.Runtime.DataItem",        "set_OnAfterGetRecord", 1, "DataItem.set_OnAfterGetRecord"),
+                    ("Microsoft.Dynamics.Nav.Runtime.DataItemIterator","Add", 2, "DataItemIterator.Add(DataItem,string)"),
+                    ("Microsoft.Dynamics.Nav.Runtime.DataItemIterator","EndInitialization", 0, "DataItemIterator.EndInitialization"),
+                    ("Microsoft.Dynamics.Nav.Runtime.DataItemIterator","get_Metadata", 0, "DataItemIterator.get_Metadata"),
+                    ("Microsoft.Dynamics.Nav.Runtime.NavReport",       "set_RequestOptionsPage", 1, "NavReport.set_RequestOptionsPage"),
+                };
+                // Also instrument TreeObjectReference..ctor(2) — nested type lookup.
+                int diagPrepends = 0;
+                // Nested TreeObjectReference under TreeHandler.
+                var treeHandlerT = asm.MainModule.Types.FirstOrDefault(tt => tt.FullName == "Microsoft.Dynamics.Nav.Runtime.TreeHandler");
+                if (treeHandlerT != null)
+                {
+                    foreach (var nested in treeHandlerT.NestedTypes.Where(n => n.Name == "TreeObjectReference"))
+                    {
+                        foreach (var m in nested.Methods.Where(mm => mm.Name == ".ctor" && mm.Parameters.Count == 2 && mm.HasBody))
+                        {
+                            if (m.ReturnType.FullName.StartsWith("System.Threading.Tasks.ValueTask")) continue;
+                            var il = m.Body.GetILProcessor();
+                            var first = m.Body.Instructions[0];
+                            il.InsertBefore(first, il.Create(OpCodes.Ldstr, "TreeObjectReference..ctor(parent,initialTarget)"));
+                            il.InsertBefore(first, il.Create(OpCodes.Call, diagRef));
+                            diagPrepends++;
+                        }
+                    }
+                }
+                foreach (var (typeName, methName, paramCount, msg) in targets)
+                {
+                    var t = asm.MainModule.Types.FirstOrDefault(tt => tt.FullName == typeName);
+                    if (t == null) continue;
+                    foreach (var m in t.Methods.Where(mm => mm.Name == methName && mm.Parameters.Count == paramCount && mm.HasBody))
+                    {
+                        if (m.ReturnType.FullName.StartsWith("System.Threading.Tasks.ValueTask")) continue;
+                        var body = m.Body;
+                        var il = body.GetILProcessor();
+                        var first = body.Instructions[0];
+                        il.InsertBefore(first, il.Create(OpCodes.Ldstr, msg));
+                        il.InsertBefore(first, il.Create(OpCodes.Call, diagRef));
+                        diagPrepends++;
+                    }
+                }
+                // Also prepend on MetaReport.get_RequestFormMetadata in Types.dll? Cannot — different asm.
+                Console.Error.WriteLine($"[Cecil] Prepended {diagPrepends} IC diagnostic marker(s) (AL_RUNNER_DIAG_IC=1 to enable output)");
+            }
+        }
+
+        // NavReport..ctor(ITreeObject, int, NCLStaticMetadata) — original body:
+        //   : base(parent, new ApplicationObjectId(Report, objectId), staticMetadata)
+        //   PreviewCanPrint = true;
+        //   parent.Tree.Session.Company.RegisterReport(this);   // NREs on skeleton (Company is null)
+        // We must keep the base-ctor chain (DataItemIterator..ctor → NavApplicationObjectBase..ctor)
+        // because DataItemIterator has a field initializer `dataItems = new List<DataItem>()` whose
+        // emitted IL lives in DataItemIterator's ctor body. Skipping that chain (e.g. via JmpHook)
+        // would leave `dataItems` null and IC's `Add(dataItem, "...")` would NRE.
+        // Strategy: clear the body, chain base via the existing DataItemIterator..ctor reference,
+        // set PreviewCanPrint=true, skip RegisterReport.
+        {
+            var navReportT = asm.MainModule.Types
+                .FirstOrDefault(t => t.FullName == "Microsoft.Dynamics.Nav.Runtime.NavReport");
+            if (navReportT != null)
+            {
+                var ctor3 = navReportT.Methods.FirstOrDefault(m =>
+                    m.IsConstructor && !m.IsStatic && m.HasBody
+                    && m.Parameters.Count == 3
+                    && m.Parameters[0].ParameterType.FullName == "Microsoft.Dynamics.Nav.Runtime.ITreeObject"
+                    && m.Parameters[1].ParameterType.FullName == "System.Int32"
+                    && m.Parameters[2].ParameterType.FullName == "Microsoft.Dynamics.Nav.Runtime.NCLStaticMetadata");
+                if (ctor3 == null)
+                {
+                    Console.Error.WriteLine("[Cecil] WARN: NavReport 3-arg StaticMetadata ctor not found");
+                }
+                else
+                {
+                    // Discover refs by scanning the existing IL.
+                    MethodReference? appObjIdNewobj = null;
+                    MethodReference? baseCtorRef = null;
+                    MethodReference? previewCanPrintSetter = null;
+                    int objectTypeReportValue = -1;
+                    var instrs = ctor3.Body.Instructions;
+                    for (int i = 0; i < instrs.Count; i++)
+                    {
+                        var ins = instrs[i];
+                        if (ins.OpCode == OpCodes.Newobj && ins.Operand is MethodReference mrNew &&
+                            mrNew.DeclaringType.FullName == "Microsoft.Dynamics.Nav.Types.ApplicationObjectId")
+                        {
+                            appObjIdNewobj = mrNew;
+                            for (int j = i - 1; j >= 0 && j >= i - 4; j--)
+                            {
+                                var p = instrs[j];
+                                int? val = null;
+                                if (p.OpCode == OpCodes.Ldc_I4) val = (int)p.Operand;
+                                else if (p.OpCode == OpCodes.Ldc_I4_S) val = (sbyte)p.Operand;
+                                else if (p.OpCode.Code >= Code.Ldc_I4_0 && p.OpCode.Code <= Code.Ldc_I4_8)
+                                    val = (int)(p.OpCode.Code - Code.Ldc_I4_0);
+                                if (val.HasValue && val.Value > 0 && val.Value < 256)
+                                {
+                                    objectTypeReportValue = val.Value;
+                                    break;
+                                }
+                            }
+                        }
+                        if (ins.OpCode == OpCodes.Call && ins.Operand is MethodReference mrBase &&
+                            mrBase.Name == ".ctor" &&
+                            (mrBase.DeclaringType.FullName == "Microsoft.Dynamics.Nav.Runtime.DataItemIterator"
+                             || mrBase.DeclaringType.FullName == "Microsoft.Dynamics.Nav.Runtime.NavApplicationObjectBase"))
+                        {
+                            baseCtorRef = mrBase;
+                        }
+                        if ((ins.OpCode == OpCodes.Call || ins.OpCode == OpCodes.Callvirt)
+                            && ins.Operand is MethodReference mrPC
+                            && mrPC.Name == "set_PreviewCanPrint")
+                        {
+                            previewCanPrintSetter = mrPC;
+                        }
+                    }
+
+                    if (appObjIdNewobj == null || baseCtorRef == null || objectTypeReportValue < 0)
+                    {
+                        throw new InvalidOperationException(
+                            $"NavReport 3-arg ctor rewrite: missing IL refs " +
+                            $"(appObjIdNewobj={appObjIdNewobj?.FullName ?? "null"}, " +
+                            $"baseCtor={baseCtorRef?.FullName ?? "null"}, " +
+                            $"otReport={objectTypeReportValue})");
+                    }
+
+                    var body = ctor3.Body;
+                    body.Instructions.Clear();
+                    body.Variables.Clear();
+                    body.ExceptionHandlers.Clear();
+                    var il = body.GetILProcessor();
+
+                    // base(parent, new ApplicationObjectId(Report, objectId), staticMetadata)
+                    il.Append(il.Create(OpCodes.Ldarg_0));
+                    il.Append(il.Create(OpCodes.Ldarg_1));                          // parent
+                    il.Append(il.Create(OpCodes.Ldc_I4, objectTypeReportValue));    // ObjectType.Report
+                    il.Append(il.Create(OpCodes.Ldarg_2));                          // objectId
+                    il.Append(il.Create(OpCodes.Newobj, appObjIdNewobj));
+                    il.Append(il.Create(OpCodes.Ldarg_3));                          // staticMetadata
+                    il.Append(il.Create(OpCodes.Call, baseCtorRef));
+
+                    if (previewCanPrintSetter != null)
+                    {
+                        il.Append(il.Create(OpCodes.Ldarg_0));
+                        il.Append(il.Create(OpCodes.Ldc_I4_1));
+                        il.Append(il.Create(OpCodes.Call, previewCanPrintSetter));
+                    }
+                    // Skip parent.Tree.Session.Company.RegisterReport(this) — Company is null on skeleton.
+
+                    il.Append(il.Create(OpCodes.Ret));
+                    body.MaxStackSize = 4;
+                    Console.Error.WriteLine($"[Cecil] Rewrote NavReport..ctor(ITreeObject,int,NCLStaticMetadata) → base ctor chain + set_PreviewCanPrint; skip Company.RegisterReport (base->{baseCtorRef.DeclaringType.Name})");
+                }
+
+                // NavReport.set_RequestOptionsPage — original body:
+                //   if (requestOptionsPage != null && requestOptionsPage.SaveValues) { /* unsub */ }
+                //   new TreeObjectReference(this, value);                  // tree bookkeeping
+                //   requestOptionsPage = value;
+                //   if (requestOptionsPage.SaveValues) { /* +event */ }    // NREs through RequestPage.SaveValues → EnsureMetadataLoaded → ApplicationObjectRootScope ctor
+                // Rewrite: simply assign the backing field. AL only observes the getter
+                // (returns the field). TreeObjectReference is internal disposal bookkeeping;
+                // ApplyReportOptions/GetReportOptions events are internal NCL hooks fired
+                // only when a real UI applies saved options — never on the headless ProcessingOnly
+                // path. SaveValues itself requires service-tier metadata which we don't have.
+                {
+                    var setter = navReportT.Methods.FirstOrDefault(m =>
+                        m.Name == "set_RequestOptionsPage" && !m.IsStatic && m.HasBody && m.Parameters.Count == 1);
+                    if (setter != null)
+                    {
+                        // Find the backing field via the IL: look for `stfld requestOptionsPage`.
+                        FieldReference? backing = null;
+                        foreach (var ins in setter.Body.Instructions)
+                        {
+                            if (ins.OpCode == OpCodes.Stfld && ins.Operand is FieldReference fr
+                                && fr.Name == "requestOptionsPage")
+                            {
+                                backing = fr;
+                                break;
+                            }
+                        }
+                        if (backing == null)
+                        {
+                            Console.Error.WriteLine("[Cecil] WARN: NavReport.set_RequestOptionsPage backing field not found — leaving original IL (will NRE through SaveValues)");
+                        }
+                        else
+                        {
+                            var body = setter.Body;
+                            body.Instructions.Clear();
+                            body.Variables.Clear();
+                            body.ExceptionHandlers.Clear();
+                            var il = body.GetILProcessor();
+                            il.Append(il.Create(OpCodes.Ldarg_0));
+                            il.Append(il.Create(OpCodes.Ldarg_1));
+                            il.Append(il.Create(OpCodes.Stfld, backing));
+                            il.Append(il.Create(OpCodes.Ret));
+                            body.MaxStackSize = 2;
+                            Console.Error.WriteLine("[Cecil] Rewrote NavReport.set_RequestOptionsPage → assign backing field (skip TreeObjectReference + SaveValues event-subscribe; both untriggerable headless)");
+                        }
+                    }
+                }
+            }
+        }
+
+        // ─── Standalone-mode metadata short-circuits ───────────────────────────────
+        // None of these are silent no-ops: they all return the truthful value for
+        // a runner that has no service-tier metadata layer (no installed layouts,
+        // no license, no metadata-derived doc XML). The alternative — letting the
+        // real code path execute — would NRE inside service-tier metadata lookups.
+        // For each rewrite we document what the original method does and why the
+        // chosen replacement is the AL-faithful answer for the standalone runner.
+        {
+            // (a) NavReport.GetLayoutCore(DataError, int, ReportModel, NavInStream)
+            //     Original: looks up the registered layout from ReportLayoutSelection
+            //     and copies its bytes into `inStream`. With no service tier, there
+            //     IS no layout selection. Per DataError contract:
+            //       TrapError  → return false  (truthful: "no layout available")
+            //       ThrowError → throw         (AL-observable error)
+            var navReportT = asm.MainModule.Types.FirstOrDefault(t =>
+                t.FullName == "Microsoft.Dynamics.Nav.Runtime.NavReport");
+            if (navReportT != null)
+            {
+                var getLayoutCore = navReportT.Methods.FirstOrDefault(m =>
+                    m.Name == "GetLayoutCore" && m.IsStatic && m.HasBody && m.Parameters.Count == 4);
+                if (getLayoutCore != null)
+                {
+                    var oosCtorInfo2 = typeof(InvalidOperationException).GetConstructor(new[] { typeof(string) })!;
+                    var oosCtor2 = asm.MainModule.ImportReference(oosCtorInfo2);
+                    var body = getLayoutCore.Body;
+                    body.Instructions.Clear();
+                    body.Variables.Clear();
+                    body.ExceptionHandlers.Clear();
+                    var il = body.GetILProcessor();
+                    // if (errorLevel == TrapError /*0*/) return false;
+                    var throwLbl = il.Create(OpCodes.Ldstr, "out-of-scope: NavReport.<Layout> — layout rendering requires service tier — see docs/scope.md#report-rendering");
+                    il.Append(il.Create(OpCodes.Ldarg_0));
+                    il.Append(il.Create(OpCodes.Ldc_I4_0));
+                    il.Append(il.Create(OpCodes.Bne_Un_S, throwLbl));
+                    il.Append(il.Create(OpCodes.Ldc_I4_0));
+                    il.Append(il.Create(OpCodes.Ret));
+                    il.Append(throwLbl);
+                    il.Append(il.Create(OpCodes.Newobj, oosCtor2));
+                    il.Append(il.Create(OpCodes.Throw));
+                    body.MaxStackSize = 2;
+                    Console.Error.WriteLine("[Cecil] Rewrote NavReport.GetLayoutCore → TrapError=>false; else throw OOS (was: ReportLayoutSelection NRE)");
+                }
+
+                // (b) NavReport.WordXmlPart(bool) — instance method.
+                //     Original: calls OfficeCustomXmlPart.Generate(base.Metadata, …)
+                //     which NREs on our stub MetaReport (no Datasets/Columns).
+                //     Replacement: return string.Empty. The Word custom XML part is
+                //     a metadata-derived document; "no metadata" → empty is correct,
+                //     not a silent no-op.
+                var wordXml = navReportT.Methods.FirstOrDefault(m =>
+                    m.Name == "WordXmlPart" && !m.IsStatic && m.HasBody && m.Parameters.Count == 1);
+                if (wordXml != null)
+                {
+                    var body = wordXml.Body;
+                    body.Instructions.Clear();
+                    body.Variables.Clear();
+                    body.ExceptionHandlers.Clear();
+                    var il = body.GetILProcessor();
+                    il.Append(il.Create(OpCodes.Ldstr, ""));
+                    il.Append(il.Create(OpCodes.Ret));
+                    body.MaxStackSize = 1;
+                    Console.Error.WriteLine("[Cecil] Rewrote NavReport.WordXmlPart(bool) → \"\" (was: OfficeCustomXmlPart.Generate NRE on stub MetaReport)");
+                }
+            }
+
+            // (c) DataItemIterator.ObjectID(bool useCaption) — abstract base method
+            //     for NavReport / NavQuery / NavXmlPort. Original:
+            //       if (useCaption) return GetCaption(true);    // metadata path → NRE
+            //       return string.Format("{0} {1}", IteratorType, ObjectId.ObjectNumber);
+            //     The non-caption branch is fully self-contained on data we already
+            //     populate (IteratorType is a const override, ObjectId is set in the
+            //     ctor). Force useCaption=false at method entry so we always take
+            //     the truthful "Report 50015" / "Query 50100" formatted-string path.
+            var dataIterT = asm.MainModule.Types.FirstOrDefault(t =>
+                t.FullName == "Microsoft.Dynamics.Nav.Runtime.DataItemIterator");
+            if (dataIterT != null)
+            {
+                var objIdMeth = dataIterT.Methods.FirstOrDefault(m =>
+                    m.Name == "ObjectID" && !m.IsStatic && m.HasBody && m.Parameters.Count == 1
+                    && m.Parameters[0].ParameterType.FullName == "System.Boolean");
+                if (objIdMeth != null)
+                {
+                    var il = objIdMeth.Body.GetILProcessor();
+                    var first = objIdMeth.Body.Instructions[0];
+                    il.InsertBefore(first, il.Create(OpCodes.Ldc_I4_0));
+                    il.InsertBefore(first, il.Create(OpCodes.Starg_S, objIdMeth.Parameters[0]));
+                    Console.Error.WriteLine("[Cecil] Rewrote DataItemIterator.ObjectID(bool) → force useCaption=false (skip GetCaption metadata NRE)");
+                }
+            }
+
+            // (d) NavSession.TestReportLanguagePermission(int lcid) — license check
+            //     that derefs Session.License (null on skeleton). AL has no observable
+            //     license model in the runner; the headless runner trusts all locales.
+            //     Replacement: ret.
+            var navSessionT = asm.MainModule.Types.FirstOrDefault(t =>
+                t.FullName == "Microsoft.Dynamics.Nav.Runtime.NavSession");
+            if (navSessionT != null)
+            {
+                var permMeth = navSessionT.Methods.FirstOrDefault(m =>
+                    m.Name == "TestReportLanguagePermission" && m.HasBody && m.Parameters.Count == 1);
+                if (permMeth != null)
+                {
+                    var body = permMeth.Body;
+                    body.Instructions.Clear();
+                    body.Variables.Clear();
+                    body.ExceptionHandlers.Clear();
+                    var il = body.GetILProcessor();
+                    il.Append(il.Create(OpCodes.Ret));
+                    body.MaxStackSize = 0;
+                    Console.Error.WriteLine("[Cecil] Rewrote NavSession.TestReportLanguagePermission → ret (no license model in runner)");
+                }
+            }
         }
 
         var outStream = new MemoryStream();

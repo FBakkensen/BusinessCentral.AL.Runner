@@ -35,6 +35,19 @@ if (args.Length == 0)
 AlRunnerV2.Log.Install();
 bool showPass = Environment.GetEnvironmentVariable("AL_RUNNER_SHOW_PASS") == "1";
 
+// AL_RUNNER_TRACE_NRE=1 — log every first-chance NullReferenceException with its
+// full stack trace before it gets swallowed by AL `asserterror` / test machinery.
+if (Environment.GetEnvironmentVariable("AL_RUNNER_TRACE_NRE") == "1")
+{
+    AppDomain.CurrentDomain.FirstChanceException += (s, e) =>
+    {
+        if (e.Exception is NullReferenceException)
+        {
+            Console.Error.WriteLine($"[FCE-NRE] {e.Exception}");
+        }
+    };
+}
+
 // ── --precompile subcommand ────────────────────────────────────────────────
 if (args[0] == "--precompile")
 {

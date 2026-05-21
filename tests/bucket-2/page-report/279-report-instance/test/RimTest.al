@@ -7,53 +7,54 @@ codeunit 50432 "RIM Test"
     // ── SaveAs* ────────────────────────────────────────────────────────────────
 
     [Test]
-    procedure SaveAsPdf_NoThrow()
+    procedure SaveAsPdf_ThrowsOOS()
     var
         Src: Codeunit "RIM Source";
     begin
-        // Positive: SaveAsPdf completes without error in standalone mode.
-        Src.SaveAsPdf_NoOp();
-        Assert.IsTrue(true, 'SaveAsPdf must not throw');
+        // OOS: PDF rendering requires a service-tier rendering pipeline; in
+        // standalone mode the call must produce an AL-observable error.
+        asserterror Src.SaveAsPdf_NoOp();
+        Assert.ExpectedError('out-of-scope: NavReport.SaveAs');
     end;
 
     [Test]
-    procedure SaveAsExcel_NoThrow()
+    procedure SaveAsExcel_ThrowsOOS()
     var
         Src: Codeunit "RIM Source";
     begin
-        // Positive: SaveAsExcel completes without error in standalone mode.
-        Src.SaveAsExcel_NoOp();
-        Assert.IsTrue(true, 'SaveAsExcel must not throw');
+        // OOS: Excel rendering requires a service-tier rendering pipeline.
+        asserterror Src.SaveAsExcel_NoOp();
+        Assert.ExpectedError('out-of-scope: NavReport.SaveAs');
     end;
 
     [Test]
-    procedure SaveAsWord_NoThrow()
+    procedure SaveAsWord_ThrowsOOS()
     var
         Src: Codeunit "RIM Source";
     begin
-        // Positive: SaveAsWord completes without error in standalone mode.
-        Src.SaveAsWord_NoOp();
-        Assert.IsTrue(true, 'SaveAsWord must not throw');
+        // OOS: Word rendering requires a service-tier rendering pipeline.
+        asserterror Src.SaveAsWord_NoOp();
+        Assert.ExpectedError('out-of-scope: NavReport.SaveAs');
     end;
 
     [Test]
-    procedure SaveAsHtml_NoThrow()
+    procedure SaveAsHtml_ThrowsOOS()
     var
         Src: Codeunit "RIM Source";
     begin
-        // Positive: SaveAsHtml completes without error in standalone mode.
-        Src.SaveAsHtml_NoOp();
-        Assert.IsTrue(true, 'SaveAsHtml must not throw');
+        // OOS: HTML rendering requires a service-tier rendering pipeline.
+        asserterror Src.SaveAsHtml_NoOp();
+        Assert.ExpectedError('out-of-scope: NavReport.SaveAs');
     end;
 
     [Test]
-    procedure SaveAsXml_NoThrow()
+    procedure SaveAsXml_ThrowsOOS()
     var
         Src: Codeunit "RIM Source";
     begin
-        // Positive: SaveAsXml completes without error in standalone mode.
-        Src.SaveAsXml_NoOp();
-        Assert.IsTrue(true, 'SaveAsXml must not throw');
+        // OOS: XML rendering requires a service-tier rendering pipeline.
+        asserterror Src.SaveAsXml_NoOp();
+        Assert.ExpectedError('out-of-scope: NavReport.SaveAs');
     end;
 
     // ── Property getters ──────────────────────────────────────────────────────

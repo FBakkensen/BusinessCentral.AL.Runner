@@ -36,8 +36,15 @@ using System.Reflection;
 
 namespace AlRunnerV2;
 
-internal static class NavReportSync
+public static class NavReportSync
 {
+    /// <summary>Diagnostic marker; gated by AL_RUNNER_DIAG_IC=1.</summary>
+    public static void Diag(string msg)
+    {
+        if (Environment.GetEnvironmentVariable("AL_RUNNER_DIAG_IC") == "1")
+            Console.Error.WriteLine($"[DiagIC] {msg}");
+    }
+
     // Reflection handles cached after first use.
     private static FieldInfo? _dataItemsField;     // DataItemIterator.dataItems : List<DataItem>
     private static PropertyInfo? _onPreDataItem;   // DataItem.OnPreDataItem : NavTrigger
@@ -45,6 +52,70 @@ internal static class NavReportSync
     private static MethodInfo? _onPreReport;       // NavReport.OnPreReport()  (protected virtual)
     private static MethodInfo? _onPostReport;      // NavReport.OnPostReport() (protected virtual)
     private static MethodInfo? _onInitReport;      // NavReport.OnInitReport() (protected virtual)
+
+    // Stub-Metadata path (called from Cecil-rewritten NavReport.BeginInitialization).
+    private static Type? _metaReportType;          // Microsoft.Dynamics.Nav.Types.MetaReport
+    private static Type? _masterPageType;          // Microsoft.Dynamics.Nav.Types.MasterPage
+    private static ConstructorInfo? _masterPageCtor;
+    private static FieldInfo? _metaReportMasterPageField; // MetaReport.masterPage : MasterPage
+    private static FieldInfo? _processingOnlyBackingField; // MetaReport.<ProcessingOnly>k__BackingField : bool
+    private static PropertyInfo? _metadataSetter;  // DataItemIterator.Metadata : MetaReport (protected set)
+
+    /// <summary>
+    /// Replacement body for NavReport.BeginInitialization (sync wrapper).
+    /// The real implementation calls VerifyExecutePermission + reads
+    /// Tree.Session.MetadataProvider.GetReportMetadata(NclMetaReport) — both
+    /// of which NRE on the runner's skeleton Session. We instead populate
+    /// `base.Metadata` with an uninitialized MetaReport whose `masterPage`
+    /// field points at an empty MasterPage. That makes the BC-emitted IC's
+    /// tail line `RequestOptionsPage = new RequestPage(this, Metadata.RequestFormMetadata)`
+    /// null-safe: `RequestFormMetadata` calls `EnsureMasterPageLoaded()` →
+    /// `CreateMasterPage()` which early-returns when `masterPage != null`.
+    /// </summary>
+    public static void StubInitializeMetadata(object navReport)
+    {
+        Diag($"IC step: BeginInitialization (StubInit) on {navReport?.GetType().Name}");
+        if (navReport == null) { Console.Error.WriteLine("[NavReportSync] StubInit: navReport=null"); return; }
+
+        if (_metaReportType == null)
+        {
+            var typesAsm = AppDomain.CurrentDomain.GetAssemblies()
+                .FirstOrDefault(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Types");
+            if (typesAsm == null) { Console.Error.WriteLine("[NavReportSync] StubInit: Types asm not loaded"); return; }
+            _metaReportType = typesAsm.GetType("Microsoft.Dynamics.Nav.Types.Metadata.MetaReport");
+            _masterPageType = typesAsm.GetType("Microsoft.Dynamics.Nav.Types.Metadata.MasterPage");
+            if (_metaReportType == null || _masterPageType == null) { Console.Error.WriteLine($"[NavReportSync] StubInit: MetaReport={_metaReportType}, MasterPage={_masterPageType}"); return; }
+            _masterPageCtor = _masterPageType.GetConstructor(Type.EmptyTypes);
+            _metaReportMasterPageField = _metaReportType.GetField("masterPage",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            _processingOnlyBackingField = _metaReportType.GetField("<ProcessingOnly>k__BackingField",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Console.Error.WriteLine($"[NavReportSync] StubInit: cached MetaReport={_metaReportType.FullName}, MasterPageCtor={_masterPageCtor != null}, masterPageField={_metaReportMasterPageField != null}, ProcessingOnlyBacking={_processingOnlyBackingField != null}");
+        }
+        if (_masterPageCtor == null || _metaReportMasterPageField == null) { Console.Error.WriteLine("[NavReportSync] StubInit: missing ctor/field"); return; }
+
+        if (_metadataSetter == null)
+        {
+            var t = navReport.GetType();
+            while (t != null && _metadataSetter == null)
+            {
+                _metadataSetter = t.GetProperty("Metadata",
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                t = t.BaseType;
+            }
+            Console.Error.WriteLine($"[NavReportSync] StubInit: Metadata prop found={_metadataSetter != null} canWrite={_metadataSetter?.CanWrite}");
+        }
+        if (_metadataSetter == null) return;
+
+        if (_metadataSetter.GetValue(navReport) != null) return;
+
+        var masterPage = _masterPageCtor.Invoke(null);
+        var metaReport = System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(_metaReportType!);
+        _metaReportMasterPageField.SetValue(metaReport, masterPage);
+        _processingOnlyBackingField?.SetValue(metaReport, true);
+        _metadataSetter.SetValue(navReport, metaReport);
+        Console.Error.WriteLine($"[NavReportSync] StubInit: installed stub on {navReport.GetType().Name}");
+    }
 
     /// <summary>
     /// Replacement for NavReport.Run() / RunModal(). Invoked from Cecil-rewritten

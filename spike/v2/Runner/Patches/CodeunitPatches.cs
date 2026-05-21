@@ -168,62 +168,15 @@ public static partial class BcRuntime
     private static void EnsureNavReportCtorHooked()
     {
         if (System.Threading.Interlocked.Exchange(ref _navReportCtorHookApplied, 1) != 0) return;
-        try
-        {
-            var navNcl = AppDomain.CurrentDomain.GetAssemblies()
-                .FirstOrDefault(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Ncl");
-            var navReportType = navNcl?.GetType("Microsoft.Dynamics.Nav.Runtime.NavReport");
-            if (navReportType == null)
-            {
-                Console.Error.WriteLine("[BcRuntime] EnsureNavReportCtorHooked: NavReport type not found");
-                return;
-            }
-            // Find NavReport..ctor(ITreeObject parent, Int32 objectId, NCLStaticMetadata staticMetadata).
-            var navReportCtor = navReportType.GetConstructors(
-                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
-                .FirstOrDefault(c =>
-                {
-                    var ps = c.GetParameters();
-                    return ps.Length == 3
-                        && ps[0].ParameterType.Name == "ITreeObject"
-                        && ps[1].ParameterType == typeof(int)
-                        && ps[2].ParameterType.Name == "NCLStaticMetadata";
-                });
-            if (navReportCtor == null)
-            {
-                Console.Error.WriteLine("[BcRuntime] EnsureNavReportCtorHooked: NavReport..ctor(ITreeObject, Int32, NCLStaticMetadata) not found");
-                return;
-            }
-            var replCtor = typeof(BcRuntime).GetMethod(nameof(NavApplicationObjectBaseCtorReplacement),
-                BindingFlags.Public | BindingFlags.Static)
-                ?? throw new InvalidOperationException("NavApplicationObjectBaseCtorReplacement not found");
-            AlRunnerV2.Infrastructure.JmpHook.Apply(navReportCtor, replCtor, "NavReport..ctor(ITreeObject, Int32, NCLStaticMetadata)");
-            Console.Error.WriteLine("[BcRuntime] NavReport..ctor(ITreeObject, Int32, NCLStaticMetadata) hooked → NavApplicationObjectBaseCtorReplacement");
-
-            // Also hook NavReport.BeginInitialization / EndInitialization — same NRE cluster as
-            // NavXmlPort.BeginInitialization (dereferences Session.MetadataProvider on skeleton).
-            var replNoOp = typeof(BcRuntime).GetMethod(nameof(NavReport_BeginEndInitialization),
-                BindingFlags.Public | BindingFlags.Static)
-                ?? throw new InvalidOperationException("NavReport_BeginEndInitialization not found");
-            var beginInit = navReportType.GetMethod("BeginInitialization",
-                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance, null, Type.EmptyTypes, null);
-            if (beginInit != null)
-            {
-                AlRunnerV2.Infrastructure.JmpHook.Apply(beginInit, replNoOp, "NavReport.BeginInitialization()");
-                Console.Error.WriteLine("[BcRuntime] NavReport.BeginInitialization() hooked → NoOp");
-            }
-            var endInit = navReportType.GetMethod("EndInitialization",
-                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance, null, Type.EmptyTypes, null);
-            if (endInit != null)
-            {
-                AlRunnerV2.Infrastructure.JmpHook.Apply(endInit, replNoOp, "NavReport.EndInitialization()");
-                Console.Error.WriteLine("[BcRuntime] NavReport.EndInitialization() hooked → NoOp");
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"[BcRuntime] EnsureNavReportCtorHooked failed: {ex.Message}");
-        }
+        // NavReport..ctor(ITreeObject, Int32, NCLStaticMetadata) is now Cecil-rewritten in
+        // NclCecilRewrite.cs (search "NavReport ctor") to:
+        //   - chain DataItemIterator..ctor (preserves the `dataItems = new List<DataItem>()`
+        //     field initializer needed by IC's `Add(dataItem, "...")` call)
+        //   - skip `parent.Tree.Session.Company.RegisterReport(this)` (NREs on skeleton session)
+        //   - keep `PreviewCanPrint = true` (auto-prop, safe).
+        // A JmpHook here would replace the ENTIRE ctor including the DataItemIterator chain,
+        // which would skip the dataItems field initializer and cause IC to NRE in Add.
+        // Kept as a placeholder for future per-instance setup if needed.
     }
 
     // Cache: report types whose InitializeComponent has been no-op'd.
@@ -280,20 +233,15 @@ public static partial class BcRuntime
             throw new InvalidOperationException(
                 $"Report{id} is not present in the test assembly or any loaded dependency.");
         // Hook this report type's InitializeComponent override to no-op before invoking the ctor.
-        // Report{N}.InitializeComponent calls NavReport.BeginInitialization which dereferences
-        // Session.MetadataProvider (null on skeleton). Same NRE cluster as XmlPort — hook the
-        // concrete override before JIT compilation to guarantee the patch lands.
-        //
-        // NOTE: BeginInitialization / EndInitialization / NavReport.Add are also
-        // Cecil-rewritten to safe stubs in NclCecilRewrite.cs, but the BC-emitted
-        // IC tail does `RequestOptionsPage = new RequestPage(this, Metadata.RequestFormMetadata)`
-        // which dereferences `DataItemIterator.Metadata` (null on the skeleton) and NREs
-        // before any of our rewrites help. Until we populate a stub Metadata /
-        // MasterPage and make RequestPage construction null-safe, the only
-        // safe choice is to keep IC as a whole no-op. Triggers (OnInit /
-        // OnPre / OnPost) still fire from NavReportSync.SyncRun for Run() /
-        // RunModal() — that side of the contract is preserved.
-        HookReportInitializeComponent(reportType);
+        // NavReport.BeginInitialization is Cecil-rewritten to install a stub
+        // MetaReport+MasterPage on `base.Metadata` (see NclCecilRewrite.cs §NavReport
+        // block). With that stub in place, BC-emitted Report{N}.InitializeComponent
+        // runs to completion: it creates NavRecordHandle + DataItems, binds
+        // OnAfterGetRecord triggers, calls Add (Cecil → base.Add populates dataItems),
+        // and finally `new RequestPage(this, Metadata.RequestFormMetadata)` which
+        // returns our stubbed MasterPage. DO NOT hook IC to a no-op or DataItems
+        // never populates and per-row triggers can't fire.
+        // -- HookReportInitializeComponent(reportType);   // deliberately not hooked
         // BC emits report ctors as either:
         //   (ITreeObject parent)
         //   (ITreeObject parent, NCLMetaReport metadata)

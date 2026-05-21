@@ -13,6 +13,10 @@ table 50072 "RIM Table"
 /// The OnAfterGetRecord trigger exercises CurrReport.Quit/PrintOnlyIfDetail.
 report 50015 "RIM Report"
 {
+    // ProcessingOnly: this suite tests ReportInstance method semantics, not
+    // layout rendering. Per scope, layout-rendering reports (RDLC/Word/Excel)
+    // are out-of-scope for the standalone runner and must throw on .Run/.Save*.
+    ProcessingOnly = true;
     dataset
     {
         dataitem(RimData; "RIM Table")
