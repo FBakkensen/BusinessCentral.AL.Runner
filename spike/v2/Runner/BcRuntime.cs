@@ -1455,7 +1455,7 @@ public static partial class BcRuntime
             var alSerialGetter = alDbType.GetMethod("get_ALSerialNumber",
                 BindingFlags.Public | BindingFlags.Static);
             if (alSerialGetter != null)
-                Hook(alSerialGetter, nameof(ReturnEmptyString_0Args), "ALDatabase.get_ALSerialNumber");
+                Hook(alSerialGetter, nameof(ReturnStandalone_0Args), "ALDatabase.get_ALSerialNumber");
 
             // ALDatabase.ALChangeUserPassword — both the void(2-arg) terminal and
             // the bool(3-arg) DataError wrapper that delegates to it. Real body
@@ -1634,6 +1634,29 @@ public static partial class BcRuntime
                 BindingFlags.Public | BindingFlags.Static);
             if (alAlterKey != null && alAlterKey.GetParameters().Length == 3)
                 Hook(alAlterKey, nameof(ReturnValueTask3), "ALDatabase.ALAlterKeyAsync");
+
+            // ALDatabase.ALTenantID() — companion to ALSerialNumber; both surface
+            // the runner-identity sentinel "STANDALONE" so AL tests can assert
+            // a stable non-empty value without a real tenant.
+            var alTenant = alDbType.GetMethod("ALTenantID",
+                BindingFlags.Public | BindingFlags.Static);
+            if (alTenant != null && alTenant.GetParameters().Length == 0)
+                Hook(alTenant, nameof(ReturnStandalone_0Args), "ALDatabase.ALTenantID");
+
+            // ALDatabase.ALLastUsedRowVersion() / ALMinimumActiveRowVersion() —
+            // both reach DataAccess.RowVersionTracker which is null on the
+            // headless session. With no SQL, no row has ever been written, so
+            // returning NavBigInteger zero is the faithful answer.
+            var lastUsedRv = alDbType.GetMethod("ALLastUsedRowVersion",
+                BindingFlags.Public | BindingFlags.Static);
+            if (lastUsedRv != null && lastUsedRv.GetParameters().Length == 0)
+                Hook(lastUsedRv, nameof(ReturnNavBigIntegerZero_0Args),
+                    "ALDatabase.ALLastUsedRowVersion");
+            var minActiveRv = alDbType.GetMethod("ALMinimumActiveRowVersion",
+                BindingFlags.Public | BindingFlags.Static);
+            if (minActiveRv != null && minActiveRv.GetParameters().Length == 0)
+                Hook(minActiveRv, nameof(ReturnNavBigIntegerZero_0Args),
+                    "ALDatabase.ALMinimumActiveRowVersion");
         }
 
         // ALTaskScheduler.ALCreateTaskAsync — 8-arg ValueTask<Guid> static. Hook

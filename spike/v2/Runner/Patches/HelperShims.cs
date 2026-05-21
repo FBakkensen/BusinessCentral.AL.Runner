@@ -57,6 +57,19 @@ public static partial class BcRuntime
 
     [MethodImpl(MethodImplOptions.NoInlining)] public static int ReturnZero_0Args() => 0;
 
+    // Runner identity sentinels for license-bound database getters. The headless
+    // session has no License/Tenant; tests in 318-navtext-string-rewrite assert
+    // that these surface a stable non-empty marker, so we return "STANDALONE"
+    // (matching the runner's documented behavior for sandboxed environments).
+    [MethodImpl(MethodImplOptions.NoInlining)] public static string ReturnStandalone_0Args() => "STANDALONE";
+
+    // Zero-valued NavBigInteger for ALDatabase.ALLastUsedRowVersion /
+    // ALMinimumActiveRowVersion. AL semantics: with no SQL backend, no rows have
+    // ever been written, so the "last used" row version is the default (0).
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static Microsoft.Dynamics.Nav.Runtime.NavBigInteger ReturnNavBigIntegerZero_0Args()
+        => Microsoft.Dynamics.Nav.Runtime.NavBigInteger.Default;
+
     [MethodImpl(MethodImplOptions.NoInlining)] public static System.Threading.Tasks.ValueTask ReturnValueTask2(object? a, object? b) => default;
     [MethodImpl(MethodImplOptions.NoInlining)] public static System.Threading.Tasks.ValueTask ReturnValueTask3(object? a, object? b, object? c) => default;
     [MethodImpl(MethodImplOptions.NoInlining)] public static System.Threading.Tasks.ValueTask ReturnValueTask4(object? a, object? b, object? c, object? d) => default;
