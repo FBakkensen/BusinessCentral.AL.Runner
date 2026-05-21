@@ -109,6 +109,20 @@ tier with SQL Server.
 |---|---|
 | `Report.Run(Print, ...)` / `SaveAsPdf` to a real printer or PDF | Requires renderer + driver. Report **callbacks** (`[ReportHandler]`, `[RequestPageHandler]`) fire — see §2. |
 
+### §3.5.1. Report rendering (layout + request page) <a id="report-rendering"></a>
+
+| API | Reason |
+|---|---|
+| `Report.SaveAsPdf` / `SaveAsHtml` / `SaveAsExcel` / `SaveAsWord` / `SaveAsDocx` | No layout renderer. Cecil-rewritten to throw `InvalidOperationException("out-of-scope: NavReport.SaveAs* ...")`. Tests `asserterror` + `Assert.ExpectedError('out-of-scope: NavReport.SaveAs')`. |
+| `Report.RunRequestPage(...)` | No UI tier — request-page dialog can't be rendered or driven. Throws OOS at the sync wrapper before entering `RunReportAsync`. |
+| Static `Report.Run(id, ...)` / `Report.RunModal(id, ...)` | In-process construction from a metadata id is not yet wired; throws OOS with the reportId in the message. Construct the report as an AL variable and call instance `Run()` instead — that path executes triggers. |
+
+Instance `report.Run()` / `report.RunModal()` on an AL variable **does** run: the
+runner JmpHooks the sync wrapper into `NavReportSync.SyncRun`, which reflectively
+invokes `OnInitReport` → `OnPreReport` → per-DataItem `OnPreDataItem` / `OnPostDataItem`
+→ `OnPostReport`. DataItem row iteration is a follow-up (FindSet +
+`OnAfterGetRecord` per row).
+
 ### §3.6. Background jobs / scheduling <a id="jobs"></a>
 
 | API | Reason |
