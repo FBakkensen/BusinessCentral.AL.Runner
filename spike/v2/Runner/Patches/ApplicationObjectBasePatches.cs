@@ -3,6 +3,7 @@
 // Every AL codeunit/page/report inherits from NavApplicationObjectBase. The real ctor
 // reads session/app-group state from the BC service tier; we rebuild the equivalent
 // state pointing at the skeleton session.
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using AlRunnerV2.Infrastructure;
 
@@ -22,7 +23,6 @@ public static partial class BcRuntime
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static void NavApplicationObjectBaseCtorReplacement(object self, object parent, object objectId, object? staticMetadata)
     {
-        Console.Error.WriteLine($"[AoCtor] called for {self?.GetType().Name ?? "null"}");
         // 1. Replicate TreeObject.ctor: create the TreeHandler from parent and assign to this.tree.
         //    This is what the `base(parent)` chain normally does for NavApplicationObjectBase.
         if (_mCreateTreeHandler != null && _fNavComplexValueTree != null)
@@ -40,8 +40,16 @@ public static partial class BcRuntime
                 {
                     var handler = _mCreateTreeHandler.Invoke(null, new object[] { effectiveParent, self });
                     FieldPoke.SetInstance(_fNavComplexValueTree, self, handler);
-                    var treeCheck = _fNavComplexValueTree.GetValue(self);
-                    Console.Error.WriteLine($"[AoCtor] tree set for {self?.GetType().Name}: {treeCheck != null}");
+                    // Defensive: if the parent chain has a null session (e.g. parent is a
+                    // NavCodeunitHandle whose TreeObjectReferenceHandler was built via a path
+                    // that bypassed our root-tree seeding), the new handler inherits null
+                    // session. Plant _skeletonSession so downstream code that reads
+                    // `base.Tree.Session.X` (NavCodeunit.BindSubscription, etc.) finds it.
+                    if (_fTreeHandlerSession != null && handler != null
+                        && _fTreeHandlerSession.GetValue(handler) == null)
+                    {
+                        FieldPoke.SetInstance(_fTreeHandlerSession, handler, _skeletonSession!);
+                    }
                 }
                 catch (Exception ex) { Console.Error.WriteLine($"[AoCtor] tree creation failed for {self?.GetType().Name}: {ex.Message}"); }
             }

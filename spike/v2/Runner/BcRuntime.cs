@@ -37,6 +37,7 @@ public static partial class BcRuntime
     private static FieldInfo? _fAoOrigGroupId;         // NavApplicationObjectBase.originalAppGroupId
     private static FieldInfo? _fAoRuntimeGroupId;      // NavApplicationObjectBase.runtimeAppGroupId
     private static FieldInfo? _fNavComplexValueTree;   // NavComplexValue.tree (distinct from TreeObject.tree)
+    internal static FieldInfo? _fTreeHandlerSession;   // TreeHandler.session (private readonly, on base class)
     private static object? _skeletonCompany;            // cached skeleton NavCompany (CompanyNameToken=0)
 
     // NavRecord write-path replacement fields (cached for perf).
@@ -373,6 +374,22 @@ public static partial class BcRuntime
         {
             _skeletonSession = RuntimeHelpers.GetUninitializedObject(sessType);
             HookProperty(aoType, "Session", false, nameof(GetSessionReplacement));
+
+            // Plant the skeleton session into RootTreeStub's TreeHandler.session field.
+            // TreeHandler.ctor sets `session = parentHandler.session ?? (hostObject as NavSession)`
+            // for every child; if the root handler's session is null, every NavCodeunit/NavRecord/etc.
+            // created under it ends up with `Tree.Session == null`. BC code that reads
+            // `base.Tree.Session.X` (e.g. NavCodeunit.BindSubscription → Session.EventBindings.Add)
+            // then NREs. Planting the skeleton here makes the entire test-time tree share one session,
+            // matching how a real BC server roots every object under its NavSession.
+            if (treeHandlerType != null && RootTreeStub != null)
+            {
+                var rootHandler = RootTreeStub.Tree;
+                _fTreeHandlerSession = treeHandlerType.GetField("session",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+                if (_fTreeHandlerSession != null && rootHandler != null)
+                    FieldPoke.SetInstance(_fTreeHandlerSession, rootHandler, _skeletonSession!);
+            }
 
             // Cache fields for the ctor replacement.
             _fAoSession       = aoType.GetField("session",             BindingFlags.NonPublic | BindingFlags.Instance);
@@ -2286,5 +2303,4 @@ public static partial class BcRuntime
 
     private static void Hook(MethodBase original, MethodInfo replacement, string description)
         => JmpHook.Apply(original, replacement, description);
-
 }
