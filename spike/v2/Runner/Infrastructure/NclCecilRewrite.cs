@@ -14,7 +14,7 @@ namespace AlRunnerV2.Infrastructure;
 
 public static class NclCecilRewrite
 {
-    private const int CACHE_VERSION = 10;
+    private const int CACHE_VERSION = 11;
 
 
     /// <summary>
@@ -837,6 +837,32 @@ public static class NclCecilRewrite
                         il.InsertBefore(firstOriginal, il.Create(OpCodes.Ret));
                         Console.Error.WriteLine("[Cecil] Prepended IsOpen-gate to NavRecordRef.GetALIsEmptyAsync");
                     }
+                }
+            }
+        }
+
+        // NavFile.ALViewFromStream — runner has no UI; the stream argument may be
+        // an uninitialized NavInStream which makes source.InternalStreamChecked
+        // throw NavNCLNotInitializedException. AL test contracts in
+        //   tests/bucket-1/codeunit-runtime/307-viewfromstream-4arg
+        //   tests/bucket-1/codeunit-runtime/328-file-viewfromstream-bool
+        // require this method to be a true-returning no-op.
+        {
+            var navFileType = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.NavFile");
+            if (navFileType != null)
+            {
+                foreach (var m in navFileType.Methods.Where(x => x.Name == "ALViewFromStream"))
+                {
+                    if (m.ReturnType.MetadataType != MetadataType.Boolean) continue;
+                    var body = m.Body;
+                    body.Instructions.Clear();
+                    body.Variables.Clear();
+                    body.ExceptionHandlers.Clear();
+                    var il = body.GetILProcessor();
+                    il.Append(il.Create(OpCodes.Ldc_I4_1));
+                    il.Append(il.Create(OpCodes.Ret));
+                    body.MaxStackSize = 1;
+                    Console.Error.WriteLine($"[Cecil] Rewrote NavFile.ALViewFromStream({m.Parameters.Count}-arg) → return true");
                 }
             }
         }
