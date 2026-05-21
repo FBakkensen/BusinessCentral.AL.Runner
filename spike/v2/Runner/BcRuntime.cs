@@ -182,9 +182,18 @@ public static partial class BcRuntime
         _applied = true;
         Win32Stubs.Register();
 
-        // Phase A: prove EventPipe plumbing without body patching.
-        EventPipeJitListener.DryRun = true;
-        StartJitListener();
+        // Phase A diagnostic-only EventPipe JIT listener. Subscribing to the JIT
+        // event stream is known to race with R2R precode patching and intermittently
+        // SIGSEGV during early test discovery (~50% rate at HEAD; ~10% with
+        // DOTNET_ReadyToRun=0). Bisect (cc7c2cdf) confirmed the race window opened
+        // once a perf change made startup ~30% faster. The listener does no
+        // production work in DryRun mode — it only logs counts at process exit.
+        // Off by default; opt in with AL_RUNNER_JIT_LISTENER=1 for diagnostics.
+        if (Environment.GetEnvironmentVariable("AL_RUNNER_JIT_LISTENER") == "1")
+        {
+            EventPipeJitListener.DryRun = true;
+            StartJitListener();
+        }
 
         ForceLoadBcDlls();
         var navNcl = AppDomain.CurrentDomain.GetAssemblies()
