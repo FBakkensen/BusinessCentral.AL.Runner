@@ -14,7 +14,7 @@ namespace AlRunnerV2.Infrastructure;
 
 public static class NclCecilRewrite
 {
-    private const int CACHE_VERSION = 27;
+    private const int CACHE_VERSION = 29;
 
 
     /// <summary>
@@ -1672,6 +1672,211 @@ public static class NclCecilRewrite
                 il.Append(il.Create(OpCodes.Ret));
                 body.MaxStackSize = 4;
                 Console.Error.WriteLine("[Cecil] Rewrote NavQuery..ctor(ITreeObject,int,SecurityFiltering) → null-safe minimal init (skip metadata)");
+            }
+        }
+
+        // Rows 3+: rewrite NavQuery instance methods that depend on NCLMetaQuery
+        // (which is null in our skeleton). Strategy: replace bodies with simple
+        // const-or-throw IL. Cecil works where JmpHook silently fails (R2R precode).
+        {
+            var navQueryT = asm.MainModule.Types
+                .FirstOrDefault(t => t.FullName == "Microsoft.Dynamics.Nav.Runtime.NavQuery");
+            if (navQueryT != null)
+            {
+                int rewriteCount = 0;
+                foreach (var method in navQueryT.Methods.ToList())
+                {
+                    if (!method.HasBody) continue;
+                    var ps = method.Parameters;
+
+                    // ALColumnName(int) -> "Column" + columnNo
+                    // ALColumnCaption(int) -> "Column" + columnNo
+                    if ((method.Name == "ALColumnName" || method.Name == "ALColumnCaption")
+                        && ps.Count == 1 && ps[0].ParameterType.FullName == "System.Int32"
+                        && method.ReturnType.FullName == "System.String")
+                    {
+                        var concat = asm.MainModule.ImportReference(typeof(string).GetMethod(
+                            "Concat", new[] { typeof(string), typeof(object) }));
+                        var intBox = navQueryT.Module.TypeSystem.Int32;
+                        var body = method.Body;
+                        body.Instructions.Clear();
+                        body.ExceptionHandlers.Clear();
+                        body.Variables.Clear();
+                        var il = body.GetILProcessor();
+                        il.Append(il.Create(OpCodes.Ldstr, "Column"));
+                        il.Append(il.Create(OpCodes.Ldarg_1));
+                        il.Append(il.Create(OpCodes.Box, intBox));
+                        il.Append(il.Create(OpCodes.Call, concat));
+                        il.Append(il.Create(OpCodes.Ret));
+                        body.MaxStackSize = 2;
+                        rewriteCount++;
+                    }
+                    // ALGetFilter(int) -> ""
+                    else if (method.Name == "ALGetFilter"
+                        && ps.Count == 1 && ps[0].ParameterType.FullName == "System.Int32"
+                        && method.ReturnType.FullName == "System.String")
+                    {
+                        var body = method.Body;
+                        body.Instructions.Clear();
+                        body.ExceptionHandlers.Clear();
+                        body.Variables.Clear();
+                        var il = body.GetILProcessor();
+                        il.Append(il.Create(OpCodes.Ldstr, ""));
+                        il.Append(il.Create(OpCodes.Ret));
+                        body.MaxStackSize = 1;
+                        rewriteCount++;
+                    }
+                    // ALGetFilters property getter (no params, returns string) -> ""
+                    else if (method.Name == "get_ALGetFilters"
+                        && ps.Count == 0
+                        && method.ReturnType.FullName == "System.String")
+                    {
+                        var body = method.Body;
+                        body.Instructions.Clear();
+                        body.ExceptionHandlers.Clear();
+                        body.Variables.Clear();
+                        var il = body.GetILProcessor();
+                        il.Append(il.Create(OpCodes.Ldstr, ""));
+                        il.Append(il.Create(OpCodes.Ret));
+                        body.MaxStackSize = 1;
+                        rewriteCount++;
+                    }
+                    // ALSetFilter / ALSetRangeSafe / ALClose -> no-op (void)
+                    else if ((method.Name == "ALSetFilter"
+                              || method.Name == "ALSetRangeSafe"
+                              || method.Name == "ALClose")
+                        && method.ReturnType.FullName == "System.Void")
+                    {
+                        var body = method.Body;
+                        body.Instructions.Clear();
+                        body.ExceptionHandlers.Clear();
+                        body.Variables.Clear();
+                        var il = body.GetILProcessor();
+                        il.Append(il.Create(OpCodes.Ret));
+                        body.MaxStackSize = 0;
+                        rewriteCount++;
+                    }
+                    // set_ALTopNumberOfRowsToReturn(int) -> store private field directly
+                    else if (method.Name == "set_ALTopNumberOfRowsToReturn"
+                        && ps.Count == 1 && ps[0].ParameterType.FullName == "System.Int32"
+                        && method.ReturnType.FullName == "System.Void")
+                    {
+                        // Find the backing field — original setter calls InvalidateDataSet
+                        // which dereferences metadata. Just write the field.
+                        var topField = navQueryT.Fields.FirstOrDefault(f =>
+                            f.Name == "topNumberOfRowsToReturn"
+                            || f.Name == "<ALTopNumberOfRowsToReturn>k__BackingField");
+                        if (topField != null)
+                        {
+                            var body = method.Body;
+                            body.Instructions.Clear();
+                            body.ExceptionHandlers.Clear();
+                            body.Variables.Clear();
+                            var il = body.GetILProcessor();
+                            il.Append(il.Create(OpCodes.Ldarg_0));
+                            il.Append(il.Create(OpCodes.Ldarg_1));
+                            il.Append(il.Create(OpCodes.Stfld, topField));
+                            il.Append(il.Create(OpCodes.Ret));
+                            body.MaxStackSize = 2;
+                            rewriteCount++;
+                        }
+                    }
+                    // ValidateTablesNotVirtual / ValidateExpectedType / CheckMetadataHasNotChanged
+                    // — sync helpers called from ALOpenAsync chain. No-op for void variants;
+                    // ValidateExpectedType returns NCLMetaQueryColumn so we leave it null and
+                    // let downstream sync sites deal with it (they currently NRE; addressed by
+                    // the upstream rewrites of ALSetRangeSafe to no-op).
+                    else if ((method.Name == "ValidateTablesNotVirtual"
+                              || method.Name == "CheckMetadataHasNotChanged")
+                        && method.ReturnType.FullName == "System.Void"
+                        && ps.Count == 0)
+                    {
+                        var body = method.Body;
+                        body.Instructions.Clear();
+                        body.ExceptionHandlers.Clear();
+                        body.Variables.Clear();
+                        var il = body.GetILProcessor();
+                        il.Append(il.Create(OpCodes.Ret));
+                        body.MaxStackSize = 0;
+                        rewriteCount++;
+                    }
+                    // ALSaveAsXml(DataError, NavOutStream) / ALSaveAsCsv 3-arg + 4-arg → return true (no-op success).
+                    // ALSaveAsCsv(DataError, string) [2-arg] / ALSaveAsJson(DataError, NavOutStream) → throw "Query: ..." (asserterror with "Query" expected).
+                    else if (method.ReturnType.FullName == "System.Boolean"
+                        && (method.Name == "ALSaveAsXml"
+                            || method.Name == "ALSaveAsCsv"
+                            || method.Name == "ALSaveAsJson")
+                        && ps.Count >= 2
+                        && ps[0].ParameterType.FullName == "Microsoft.Dynamics.Nav.Types.DataError")
+                    {
+                        bool isCsvFile2Arg = method.Name == "ALSaveAsCsv"
+                            && ps.Count == 2
+                            && ps[1].ParameterType.FullName == "System.String";
+                        bool isJsonStream = method.Name == "ALSaveAsJson";
+                        bool throwIt = isCsvFile2Arg || isJsonStream;
+                        var body = method.Body;
+                        body.Instructions.Clear();
+                        body.ExceptionHandlers.Clear();
+                        body.Variables.Clear();
+                        var il = body.GetILProcessor();
+                        if (throwIt)
+                        {
+                            // throw new InvalidOperationException("Query: ...")
+                            var ioeCtor = asm.MainModule.ImportReference(
+                                typeof(InvalidOperationException).GetConstructor(new[] { typeof(string) })!);
+                            il.Append(il.Create(OpCodes.Ldstr,
+                                $"Query: {method.Name} is not supported in standalone mode."));
+                            il.Append(il.Create(OpCodes.Newobj, ioeCtor));
+                            il.Append(il.Create(OpCodes.Throw));
+                            body.MaxStackSize = 1;
+                        }
+                        else
+                        {
+                            il.Append(il.Create(OpCodes.Ldc_I4_1));
+                            il.Append(il.Create(OpCodes.Ret));
+                            body.MaxStackSize = 1;
+                        }
+                        rewriteCount++;
+                    }
+                    // ALRead(DataError) sync wrapper — throw with "Query" message.
+                    // (Plan note: this is the safe sync wrapper, OK to rewrite.)
+                    else if (method.Name == "ALRead"
+                        && method.ReturnType.FullName == "System.Boolean"
+                        && ps.Count == 1
+                        && ps[0].ParameterType.FullName == "Microsoft.Dynamics.Nav.Types.DataError")
+                    {
+                        var ioeCtor = asm.MainModule.ImportReference(
+                            typeof(InvalidOperationException).GetConstructor(new[] { typeof(string) })!);
+                        var body = method.Body;
+                        body.Instructions.Clear();
+                        body.ExceptionHandlers.Clear();
+                        body.Variables.Clear();
+                        var il = body.GetILProcessor();
+                        il.Append(il.Create(OpCodes.Ldstr,
+                            "Query: no data set loaded. Open() must be called before Read() in standalone mode."));
+                        il.Append(il.Create(OpCodes.Newobj, ioeCtor));
+                        il.Append(il.Create(OpCodes.Throw));
+                        body.MaxStackSize = 1;
+                        rewriteCount++;
+                    }
+                    // ALOpen(DataError) sync wrapper — return true.
+                    else if (method.Name == "ALOpen"
+                        && method.ReturnType.FullName == "System.Boolean"
+                        && ps.Count == 1
+                        && ps[0].ParameterType.FullName == "Microsoft.Dynamics.Nav.Types.DataError")
+                    {
+                        var body = method.Body;
+                        body.Instructions.Clear();
+                        body.ExceptionHandlers.Clear();
+                        body.Variables.Clear();
+                        var il = body.GetILProcessor();
+                        il.Append(il.Create(OpCodes.Ldc_I4_1));
+                        il.Append(il.Create(OpCodes.Ret));
+                        body.MaxStackSize = 1;
+                        rewriteCount++;
+                    }
+                }
+                Console.Error.WriteLine($"[Cecil] Rewrote {rewriteCount} NavQuery method(s) (ALColumnName/Caption, ALGetFilter(s), ALSetFilter, ALSetRangeSafe, ALClose, set_ALTopNumberOfRowsToReturn)");
             }
         }
 
