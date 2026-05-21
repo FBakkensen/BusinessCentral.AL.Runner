@@ -14,7 +14,7 @@ namespace AlRunnerV2.Infrastructure;
 
 public static class NclCecilRewrite
 {
-    private const int CACHE_VERSION = 9;
+    private const int CACHE_VERSION = 10;
 
 
     /// <summary>
@@ -756,6 +756,86 @@ public static class NclCecilRewrite
                         il.Append(il.Create(OpCodes.Ret));
                         body.MaxStackSize = 0;
                         Console.Error.WriteLine($"[Cecil] Rewrote NavForm.{m.Name}({m.Parameters[0].ParameterType.Name}) → no-op");
+                    }
+                }
+            }
+        }
+
+        // NavRecordRef closed-state property gates. The properties below all
+        // delegate to SafeRecord, which throws NavNCLRecordNotOpenedException
+        // when the RecRef hasn't been opened. AL test contracts in
+        //   tests/bucket-1/record-table/306-recref-readpermission-autocalcfields
+        //   tests/bucket-1/record-table/311-recref-writepermission
+        //   tests/bucket-1/codeunit-runtime/74-mock-stubs (RecRef.Name before Open)
+        //   tests/bucket-1/codeunit-runtime/99-misc-stubs (IsEmpty on unbound)
+        // require closed RecRefs to return permissive defaults rather than
+        // throw. Prepend a `if (!IsOpen) return <default>;` gate to each getter.
+        {
+            var navRecordRefType = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.NavRecordRef");
+            if (navRecordRefType != null)
+            {
+                var isOpenGetter = navRecordRefType.Properties
+                    .FirstOrDefault(p => p.Name == "IsOpen")?.GetMethod;
+                if (isOpenGetter != null)
+                {
+                    void PrependClosedGate(string propName, Action<ILProcessor, Instruction> emitDefaultReturn)
+                    {
+                        var prop = navRecordRefType.Properties.FirstOrDefault(p => p.Name == propName);
+                        var getter = prop?.GetMethod;
+                        if (getter == null || !getter.HasBody) return;
+                        var body = getter.Body;
+                        var il = body.GetILProcessor();
+                        var firstOriginal = body.Instructions[0];
+                        // Insert in reverse before firstOriginal: SKIP target = firstOriginal
+                        // ldarg.0 ; call IsOpen ; brtrue.s firstOriginal ; <default> ; ret
+                        il.InsertBefore(firstOriginal, il.Create(OpCodes.Ldarg_0));
+                        il.InsertBefore(firstOriginal, il.Create(OpCodes.Call, isOpenGetter));
+                        il.InsertBefore(firstOriginal, il.Create(OpCodes.Brtrue_S, firstOriginal));
+                        emitDefaultReturn(il, firstOriginal);
+                        Console.Error.WriteLine($"[Cecil] Prepended IsOpen-gate to NavRecordRef.get_{propName}");
+                    }
+
+                    PrependClosedGate("ALReadPermission", (il, target) =>
+                    {
+                        il.InsertBefore(target, il.Create(OpCodes.Ldc_I4_1));
+                        il.InsertBefore(target, il.Create(OpCodes.Ret));
+                    });
+                    PrependClosedGate("ALWritePermission", (il, target) =>
+                    {
+                        il.InsertBefore(target, il.Create(OpCodes.Ldc_I4_1));
+                        il.InsertBefore(target, il.Create(OpCodes.Ret));
+                    });
+                    PrependClosedGate("ALName", (il, target) =>
+                    {
+                        il.InsertBefore(target, il.Create(OpCodes.Ldstr, ""));
+                        il.InsertBefore(target, il.Create(OpCodes.Ret));
+                    });
+                    PrependClosedGate("ALIsEmpty", (il, target) =>
+                    {
+                        il.InsertBefore(target, il.Create(OpCodes.Ldc_I4_1));
+                        il.InsertBefore(target, il.Create(OpCodes.Ret));
+                    });
+
+                    // GetALIsEmptyAsync (ValueTask<bool>) is what the obsolete sync
+                    // ALIsEmpty wraps. Rewrite to ValueTask.FromResult(true) when closed.
+                    var asyncIsEmpty = navRecordRefType.Methods.FirstOrDefault(m => m.Name == "GetALIsEmptyAsync");
+                    if (asyncIsEmpty != null && asyncIsEmpty.HasBody)
+                    {
+                        var fromResultBool = typeof(System.Threading.Tasks.ValueTask)
+                            .GetMethods()
+                            .First(m => m.Name == "FromResult" && m.IsGenericMethod && m.GetParameters().Length == 1)
+                            .MakeGenericMethod(typeof(bool));
+                        var fromResultBoolRef = asm.MainModule.ImportReference(fromResultBool);
+                        var body = asyncIsEmpty.Body;
+                        var il = body.GetILProcessor();
+                        var firstOriginal = body.Instructions[0];
+                        il.InsertBefore(firstOriginal, il.Create(OpCodes.Ldarg_0));
+                        il.InsertBefore(firstOriginal, il.Create(OpCodes.Call, isOpenGetter));
+                        il.InsertBefore(firstOriginal, il.Create(OpCodes.Brtrue_S, firstOriginal));
+                        il.InsertBefore(firstOriginal, il.Create(OpCodes.Ldc_I4_1));
+                        il.InsertBefore(firstOriginal, il.Create(OpCodes.Call, fromResultBoolRef));
+                        il.InsertBefore(firstOriginal, il.Create(OpCodes.Ret));
+                        Console.Error.WriteLine("[Cecil] Prepended IsOpen-gate to NavRecordRef.GetALIsEmptyAsync");
                     }
                 }
             }
