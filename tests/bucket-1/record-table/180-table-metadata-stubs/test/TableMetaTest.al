@@ -85,7 +85,7 @@ codeunit 50496 "TMI Test"
         Rec: Record "TMI Record";
     begin
         asserterror Src.TriggerFieldError(Rec);
-        Assert.ExpectedError('');
+        Assert.ExpectedError('You must specify');
     end;
 
     [Test]

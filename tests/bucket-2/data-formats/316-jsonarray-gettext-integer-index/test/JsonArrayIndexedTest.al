@@ -54,7 +54,7 @@ codeunit 50256 "Json Array Indexed Test"
         asserterror Helper.GetTextAtIndex(Arr, 5);
 
         // [THEN] An error is raised
-        Assert.ExpectedError('');
+        Assert.ExpectedError('Index out of bounds');
     end;
 
     // ── GetInteger(Integer) ───────────────────────────────────────────────────
@@ -82,7 +82,7 @@ codeunit 50256 "Json Array Indexed Test"
         Arr: JsonArray;
     begin
         asserterror Helper.GetIntegerAtIndex(Arr, 0);
-        Assert.ExpectedError('');
+        Assert.ExpectedError('Index out of bounds');
     end;
 
     // ── GetDecimal(Integer) ───────────────────────────────────────────────────
@@ -107,7 +107,7 @@ codeunit 50256 "Json Array Indexed Test"
         Arr: JsonArray;
     begin
         asserterror Helper.GetDecimalAtIndex(Arr, 0);
-        Assert.ExpectedError('');
+        Assert.ExpectedError('Index out of bounds');
     end;
 
     // ── GetBoolean(Integer) ───────────────────────────────────────────────────
@@ -133,7 +133,7 @@ codeunit 50256 "Json Array Indexed Test"
         Arr: JsonArray;
     begin
         asserterror Helper.GetBooleanAtIndex(Arr, 0);
-        Assert.ExpectedError('');
+        Assert.ExpectedError('Index out of bounds');
     end;
 
     // ── GetArray(Integer) ─────────────────────────────────────────────────────
@@ -162,6 +162,6 @@ codeunit 50256 "Json Array Indexed Test"
         Arr: JsonArray;
     begin
         asserterror Helper.GetArrayAtIndex(Arr, 0);
-        Assert.ExpectedError('');
+        Assert.ExpectedError('Index out of bounds');
     end;
 }

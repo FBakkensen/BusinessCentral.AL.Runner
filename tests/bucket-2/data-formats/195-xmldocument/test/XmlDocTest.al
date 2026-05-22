@@ -60,7 +60,7 @@ codeunit 50156 "XmlDoc Test"
         // [WHEN] ReadFrom is called
         // [THEN] an error is raised
         asserterror Src.ReadFromInvalid('not xml at all <<<');
-        Assert.ExpectedError('');
+        Assert.ExpectedError('Data at the root level is invalid');
     end;
 
     // ── WriteTo ───────────────────────────────────────────────────────────────

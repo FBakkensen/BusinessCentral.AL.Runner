@@ -25,7 +25,7 @@ codeunit 50130 "JAEX Test"
         Arr: JsonArray;
     begin
         asserterror Src.GetBigInteger(Arr, 0);
-        Assert.ExpectedError('');
+        Assert.ExpectedError('Index out of bounds');
     end;
 
     // ── GetByte ───────────────────────────────────────────────────────────────
@@ -47,7 +47,7 @@ codeunit 50130 "JAEX Test"
         Arr: JsonArray;
     begin
         asserterror Src.GetByte(Arr, 0);
-        Assert.ExpectedError('');
+        Assert.ExpectedError('Index out of bounds');
     end;
 
     // ── GetChar ───────────────────────────────────────────────────────────────
@@ -69,7 +69,7 @@ codeunit 50130 "JAEX Test"
         Arr: JsonArray;
     begin
         asserterror Src.GetChar(Arr, 0);
-        Assert.ExpectedError('');
+        Assert.ExpectedError('Index out of bounds');
     end;
 
     // ── GetDate ───────────────────────────────────────────────────────────────
@@ -91,7 +91,7 @@ codeunit 50130 "JAEX Test"
         Arr: JsonArray;
     begin
         asserterror Src.GetDate(Arr, 0);
-        Assert.ExpectedError('');
+        Assert.ExpectedError('Index out of bounds');
     end;
 
     // ── GetDateTime ───────────────────────────────────────────────────────────
@@ -113,7 +113,7 @@ codeunit 50130 "JAEX Test"
         Arr: JsonArray;
     begin
         asserterror Src.GetDateTime(Arr, 0);
-        Assert.ExpectedError('');
+        Assert.ExpectedError('Index out of bounds');
     end;
 
     // ── GetDuration ───────────────────────────────────────────────────────────
@@ -135,7 +135,7 @@ codeunit 50130 "JAEX Test"
         Arr: JsonArray;
     begin
         asserterror Src.GetDuration(Arr, 0);
-        Assert.ExpectedError('');
+        Assert.ExpectedError('Index out of bounds');
     end;
 
     // ── GetOption ─────────────────────────────────────────────────────────────
@@ -155,7 +155,7 @@ codeunit 50130 "JAEX Test"
         Arr: JsonArray;
     begin
         asserterror Src.GetOption(Arr, 0);
-        Assert.ExpectedError('');
+        Assert.ExpectedError('Index out of bounds');
     end;
 
     // ── GetTime ───────────────────────────────────────────────────────────────
@@ -175,6 +175,6 @@ codeunit 50130 "JAEX Test"
         Arr: JsonArray;
     begin
         asserterror Src.GetTime(Arr, 0);
-        Assert.ExpectedError('');
+        Assert.ExpectedError('Index out of bounds');
     end;
 }

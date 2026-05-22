@@ -63,6 +63,6 @@ codeunit 50419 "TTP Tooltip Tests"
     begin
         // Negative: record-not-found error still propagates correctly.
         asserterror Rec.Get(9999);
-        Assert.ExpectedError('');
+        Assert.ExpectedError('does not exist');
     end;
 }

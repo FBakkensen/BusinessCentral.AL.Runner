@@ -23,7 +23,7 @@ codeunit 50126 "JOEX Test"
         Obj: JsonObject;
     begin
         asserterror Src.GetTime(Obj, 'missing');
-        Assert.ExpectedError('');
+        Assert.ExpectedError('There is no property');
     end;
 
     // ── GetDuration ────────────────────────────────────────────────────────────
@@ -45,7 +45,7 @@ codeunit 50126 "JOEX Test"
         Obj: JsonObject;
     begin
         asserterror Src.GetDuration(Obj, 'missing');
-        Assert.ExpectedError('');
+        Assert.ExpectedError('There is no property');
     end;
 
     // ── GetOption ─────────────────────────────────────────────────────────────
@@ -65,7 +65,7 @@ codeunit 50126 "JOEX Test"
         Obj: JsonObject;
     begin
         asserterror Src.GetOption(Obj, 'missing');
-        Assert.ExpectedError('');
+        Assert.ExpectedError('There is no property');
     end;
 
     // ── GetByte ───────────────────────────────────────────────────────────────
@@ -87,7 +87,7 @@ codeunit 50126 "JOEX Test"
         Obj: JsonObject;
     begin
         asserterror Src.GetByte(Obj, 'missing');
-        Assert.ExpectedError('');
+        Assert.ExpectedError('There is no property');
     end;
 
     // ── GetBigInteger ─────────────────────────────────────────────────────────
@@ -109,7 +109,7 @@ codeunit 50126 "JOEX Test"
         Obj: JsonObject;
     begin
         asserterror Src.GetBigInteger(Obj, 'missing');
-        Assert.ExpectedError('');
+        Assert.ExpectedError('There is no property');
     end;
 
     // ── Values ────────────────────────────────────────────────────────────────

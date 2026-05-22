@@ -224,7 +224,7 @@ codeunit 50120 "XNN Test"
         Attr := XmlAttribute.Create('id', 'val');
         Node := Attr.AsXmlNode();
         asserterror Src.AsElementWrongType(Node);
-        Assert.ExpectedError('');
+        Assert.ExpectedError('Unable to convert');
     end;
 
     // ── AsXmlAttribute ──────────────────────────────────────────────────────────

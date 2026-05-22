@@ -26,7 +26,7 @@ codeunit 50017 "JSON Overloads Test"
         Obj: JsonObject;
     begin
         asserterror Src.GetTextWithBool(Obj, 'missing', true);
-        Assert.ExpectedError('');
+        Assert.ExpectedError('There is no property');
     end;
 
     // ── JsonObject.GetText(key, false) — key missing returns empty ────────────
@@ -79,6 +79,6 @@ codeunit 50017 "JSON Overloads Test"
         Arr: JsonArray;
     begin
         asserterror Src.GetObjectByIndex(Arr, 0);
-        Assert.ExpectedError('');
+        Assert.ExpectedError('Index out of bounds');
     end;
 }

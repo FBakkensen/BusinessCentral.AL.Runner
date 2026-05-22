@@ -90,6 +90,6 @@ codeunit 50587 "Test Record GetPosition"
         Rec.Insert();
 
         asserterror Rec.SetPosition('totally-invalid-position-string');
-        Assert.ExpectedError('');
+        Assert.ExpectedError('Invalid expression');
     end;
 }

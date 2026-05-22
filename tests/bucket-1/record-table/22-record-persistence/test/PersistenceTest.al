@@ -51,7 +51,7 @@ codeunit 50510 "Record Persistence Tests"
         asserterror Helper.GetDescription(99);
 
         // [THEN] Should error (record not found)
-        Assert.ExpectedError('');
+        Assert.ExpectedError('does not exist');
     end;
 
     [Test]

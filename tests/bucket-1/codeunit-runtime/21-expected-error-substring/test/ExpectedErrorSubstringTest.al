@@ -50,12 +50,18 @@ codeunit 50165 "Expected Error Substring Tests"
     end;
 
     [Test]
-    procedure TestEmptyExpectedErrorPasses()
+    procedure TestEmptyExpectedErrorFails()
     begin
-        // [WHEN] An error is thrown
+        // [GIVEN] A real error has been raised
         asserterror ErrorProducer.RaiseCustomerNoError();
 
-        // [THEN] ExpectedError with empty string should pass (any error matches)
-        Assert.ExpectedError('');
+        // [WHEN] ExpectedError is called with an empty expected string
+        // [THEN] It must fail — BC's LibraryAssert uses StrPos(actual, expected)
+        //       to test for substring containment, and StrPos(<any>, '') = 0
+        //       (empty string is never "found"). So empty expected ≠ "match any".
+        asserterror Assert.ExpectedError('');
+
+        // [THEN] The assertion failure itself surfaces with the standard format.
+        Assert.ExpectedError('Assert.ExpectedError failed');
     end;
 }
