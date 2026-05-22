@@ -48,8 +48,14 @@ public static partial class RecordPatches
         {
             if (!int.TryParse(m.Groups[1].Value, out int id)) continue;
             var name = m.Groups[2].Success ? m.Groups[2].Value : m.Groups[3].Value;
-            // reportextension cannot redeclare ProcessingOnly; default false.
-            _parsedReports[id] = new ParsedReport(id, name, IsExtension: true, ProcessingOnly: false);
+            // reportextension has its OWN id namespace, separate from `report`.
+            // Keep them in a dedicated dict so an extension declared with the
+            // same numeric id as a plain report (legal in AL) does not clobber
+            // the base report's ProcessingOnly flag. Regression: bucket-2
+            // suite 135-addfirst-dataset declared `reportextension 50001`
+            // which silently turned suite 100-report-preview's report 50001
+            // (ProcessingOnly=true) into a layout-bound report → OOS at run.
+            _parsedReportExtensions[id] = new ParsedReport(id, name, IsExtension: true, ProcessingOnly: false);
         }
     }
 

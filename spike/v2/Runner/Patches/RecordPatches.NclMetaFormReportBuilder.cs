@@ -29,6 +29,8 @@ public static partial class RecordPatches
     // Parsed page/report/query/xmlport tables, mirror of _parsedTables.
     private static readonly Dictionary<int, ParsedPage> _parsedPages = new();
     private static readonly Dictionary<int, ParsedReport> _parsedReports = new();
+    // Separate id namespace: reportextension N may legally reuse a `report` id.
+    private static readonly Dictionary<int, ParsedReport> _parsedReportExtensions = new();
     private static readonly Dictionary<int, ParsedQuery> _parsedQueries = new();
     private static readonly Dictionary<int, ParsedXmlPort> _parsedXmlPorts = new();
 
