@@ -65,22 +65,30 @@ codeunit 50254 "VRB Test"
     // ── ReportInstance.SaveAs / SaveAsPdf ───────────────────────────────────
 
     [Test]
-    procedure ReportSaveAsPdf_IfNotGuard_BranchNotTaken()
+    procedure ReportSaveAsPdf_ThrowsOOS()
+    var
+        Rep: Report "VRB Empty Report";
     begin
-        // Positive: ReportInstance.SaveAsPdf must return true so the guard body is skipped.
-        Assert.IsTrue(Src.ReportSaveAsPdf_IfNotGuard(''),
-            'if-not guard must not fire when ReportInstance.SaveAsPdf succeeds');
+        // Negative: ReportInstance.SaveAsPdf requires a service tier to render
+        // a layout. Standalone runner must surface the rendering attempt as an
+        // AL-observable error. (Compilation that the bool is consumable in an
+        // `if not ...` guard is already proven by VoidReturningBoolSrc.al
+        // having ReportSaveAsPdf_IfNotGuard compile.)
+        asserterror Rep.SaveAsPdf('');
+        Assert.ExpectedError('out-of-scope: NavReport');
     end;
 
     [Test]
-    procedure ReportSaveAs_IfNotGuard_BranchNotTaken()
+    procedure ReportSaveAs_ThrowsOOS()
     var
+        Rep: Report "VRB Empty Report";
         BlobRec: Record "VRB Blob Store" temporary;
         OutStr: OutStream;
     begin
-        // Positive: ReportInstance.SaveAs must return true so the guard body is skipped.
+        // Negative: ReportInstance.SaveAs (with Format + OutStream) requires a
+        // service tier — same reasoning as ReportSaveAsPdf_ThrowsOOS.
         BlobRec.Data.CreateOutStream(OutStr);
-        Assert.IsTrue(Src.ReportSaveAs_IfNotGuard('', ReportFormat::Pdf, OutStr),
-            'if-not guard must not fire when ReportInstance.SaveAs succeeds');
+        asserterror Rep.SaveAs('', ReportFormat::Pdf, OutStr);
+        Assert.ExpectedError('out-of-scope: NavReport');
     end;
 }
