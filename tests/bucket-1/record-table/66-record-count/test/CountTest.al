@@ -32,6 +32,7 @@ codeunit 50593 "Record Count Test"
     var
         Rec: Record "Count Rows Test Table";
     begin
+        Rec.DeleteAll();
         InsertRow(1, 'A', 10);
         Assert.AreEqual(1, Rec.Count, 'Count() after one insert must be 1');
     end;
@@ -41,6 +42,7 @@ codeunit 50593 "Record Count Test"
     var
         Rec: Record "Count Rows Test Table";
     begin
+        Rec.DeleteAll();
         InsertRow(1, 'A', 10);
         InsertRow(2, 'B', 20);
         InsertRow(3, 'A', 30);
@@ -52,6 +54,7 @@ codeunit 50593 "Record Count Test"
     var
         Rec: Record "Count Rows Test Table";
     begin
+        Rec.DeleteAll();
         InsertRow(1, 'A', 10);
         InsertRow(2, 'B', 20);
         InsertRow(3, 'A', 30);
@@ -64,6 +67,7 @@ codeunit 50593 "Record Count Test"
     var
         Rec: Record "Count Rows Test Table";
     begin
+        Rec.DeleteAll();
         InsertRow(1, 'A', 10);
         InsertRow(2, 'B', 20);
         Rec.SetRange(Category, 'Z');
@@ -75,6 +79,7 @@ codeunit 50593 "Record Count Test"
     var
         Rec: Record "Count Rows Test Table";
     begin
+        Rec.DeleteAll();
         InsertRow(1, 'A', 10);
         InsertRow(2, 'B', 20);
         InsertRow(3, 'A', 30);
@@ -111,6 +116,7 @@ codeunit 50593 "Record Count Test"
     var
         Rec: Record "Count Rows Test Table";
     begin
+        Rec.DeleteAll();
         InsertRow(1, 'A', 10);
         InsertRow(2, 'B', 20);
         InsertRow(3, 'A', 30);

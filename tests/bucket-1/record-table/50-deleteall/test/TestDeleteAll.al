@@ -42,6 +42,7 @@ codeunit 50564 "Test Delete All"
     var
         Rec: Record "Delete All Table";
     begin
+        Rec.DeleteAll();
         // Setup: Status=1 (2 rows) and Status=2 (1 row)
         InsertRow(1, 1, 'Alpha');
         InsertRow(2, 2, 'Beta');

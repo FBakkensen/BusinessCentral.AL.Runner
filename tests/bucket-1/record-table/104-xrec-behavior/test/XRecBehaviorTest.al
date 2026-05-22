@@ -10,6 +10,7 @@ codeunit 50407 "XR Tests"
         Src: Record "XR Source";
         Log: Record "XR EventLog";
     begin
+        Src.DeleteAll();
         // In BC, when modifying from code (Rec.Modify()), xRec has the SAME
         // values as Rec (new values). This is a known BC behavior — xRec is
         // only correctly populated with old values from page triggers.
@@ -61,6 +62,7 @@ codeunit 50407 "XR Tests"
         Src: Record "XR Source";
         Log: Record "XR EventLog";
     begin
+        Src.DeleteAll();
         // Verify that ALL fields in xRec match Rec (not just Name).
         Src.PK := 1;
         Src.Name := 'Alice';

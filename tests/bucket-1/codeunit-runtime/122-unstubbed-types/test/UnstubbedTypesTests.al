@@ -191,7 +191,9 @@ codeunit 50076 "Unstubbed Types Tests"
     procedure DataTransferCopyRowsIsNoOp()
     var
         Helper: Codeunit "DataTransfer Helper";
+        _ResetDTSource: Record "DT Source";
     begin
+        _ResetDTSource.DeleteAll();
         // Positive: CopyRows is a no-op — target table remains empty
         Assert.IsTrue(Helper.CopyRowsLeavesTargetEmpty(), 'CopyRows should be a no-op: target must remain empty');
     end;

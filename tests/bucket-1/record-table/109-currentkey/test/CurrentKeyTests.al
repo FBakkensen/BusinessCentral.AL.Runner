@@ -75,6 +75,7 @@ codeunit 50414 "CurrentKey Tests"
     var
         Rec: Record "Key Probe";
     begin
+        Rec.DeleteAll();
         // [GIVEN] Records inserted in PK (Code) order: AAA/Zoe, BBB/Anna, CCC/Mike
         InsertKeyProbe('AAA', 'Zoe', 3);
         InsertKeyProbe('BBB', 'Anna', 1);

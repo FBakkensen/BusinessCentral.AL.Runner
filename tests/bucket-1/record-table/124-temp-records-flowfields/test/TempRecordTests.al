@@ -18,6 +18,7 @@ codeunit 50433 "Temp Record Tests"
         TempItem: Record "Temp Test Item" temporary;
         Item: Record "Temp Test Item";
     begin
+        Item.DeleteAll();
         TempItem.Init();
         TempItem.Id := 1;
         TempItem.Name := 'Temp Only';
@@ -46,6 +47,7 @@ codeunit 50433 "Temp Record Tests"
         TempItem: Record "Temp Test Item" temporary;
         Item: Record "Temp Test Item";
     begin
+        Item.DeleteAll();
         Item.Init();
         Item.Id := 1;
         Item.Insert();

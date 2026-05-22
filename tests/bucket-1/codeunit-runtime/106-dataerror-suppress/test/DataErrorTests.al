@@ -35,6 +35,7 @@ codeunit 50061 "DataError Suppress Tests"
         R: Record "DataError Probe";
         Second: Record "DataError Probe";
     begin
+        R.DeleteAll();
         // [GIVEN] A record already exists
         R."Entry No." := 1;
         R.Insert();
@@ -279,6 +280,7 @@ codeunit 50061 "DataError Suppress Tests"
     var
         R: Record "DataError Probe";
     begin
+        R.DeleteAll();
         // [GIVEN] First insert works
         R."Entry No." := 1;
         R.Description := 'Original';
@@ -304,6 +306,7 @@ codeunit 50061 "DataError Suppress Tests"
         R: Record "DataError Probe";
         Ok: Boolean;
     begin
+        R.DeleteAll();
         // [GIVEN] A record already exists
         R."Entry No." := 1;
         R.Insert(true);
@@ -322,6 +325,7 @@ codeunit 50061 "DataError Suppress Tests"
         R: Record "DataError Probe";
         Second: Record "DataError Probe";
     begin
+        R.DeleteAll();
         // [GIVEN] A record already exists
         R."Entry No." := 1;
         R.Insert(true);

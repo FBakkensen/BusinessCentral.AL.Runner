@@ -10,6 +10,7 @@ codeunit 50556 "Test Count SetFilter"
     var
         Rec: Record "CountSF Probe";
     begin
+        Rec.DeleteAll();
         // Positive: '>' comparator filter.
         Seed();
         Rec.SetFilter(Status, '>1');
@@ -22,6 +23,7 @@ codeunit 50556 "Test Count SetFilter"
     var
         Rec: Record "CountSF Probe";
     begin
+        Rec.DeleteAll();
         // Positive: '<' comparator filter.
         Seed();
         Rec.SetFilter(Status, '<2');
@@ -34,6 +36,7 @@ codeunit 50556 "Test Count SetFilter"
     var
         Rec: Record "CountSF Probe";
     begin
+        Rec.DeleteAll();
         // Positive: '<>' filter.
         Seed();
         Rec.SetFilter(Status, '<>2');
@@ -46,6 +49,7 @@ codeunit 50556 "Test Count SetFilter"
     var
         Rec: Record "CountSF Probe";
     begin
+        Rec.DeleteAll();
         // Positive: 'a|b' OR-list filter.
         Seed();
         Rec.SetFilter(Status, '1|3');
@@ -58,6 +62,7 @@ codeunit 50556 "Test Count SetFilter"
     var
         Rec: Record "CountSF Probe";
     begin
+        Rec.DeleteAll();
         // Positive: 'a..b' range expression.
         Seed();
         Rec.SetFilter(Status, '2..3');
@@ -70,6 +75,7 @@ codeunit 50556 "Test Count SetFilter"
     var
         Rec: Record "CountSF Probe";
     begin
+        Rec.DeleteAll();
         // Negative: filter that matches nothing.
         Seed();
         Rec.SetFilter(Status, '>99');

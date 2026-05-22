@@ -9,7 +9,9 @@ codeunit 50425 "RecRef Method Tests"
     procedure TestRenameWorks()
     var
         Helper: Codeunit "RecRef Method Helper";
+        _ResetRecRefMethodTable: Record "RecRef Method Table";
     begin
+        _ResetRecRefMethodTable.DeleteAll();
         Assert.IsTrue(Helper.TestRename(), 'Rename should preserve record data');
     end;
 
@@ -18,7 +20,9 @@ codeunit 50425 "RecRef Method Tests"
     var
         Helper: Codeunit "RecRef Method Helper";
         Pos: Text;
+        _ResetRecRefMethodTable: Record "RecRef Method Table";
     begin
+        _ResetRecRefMethodTable.DeleteAll();
         Pos := Helper.TestGetPosition();
         Assert.AreNotEqual('', Pos, 'GetPosition should return non-empty string');
     end;
@@ -43,7 +47,9 @@ codeunit 50425 "RecRef Method Tests"
     procedure TestMarkReturnsTrueAfterMarking()
     var
         Helper: Codeunit "RecRef Method Helper";
+        _ResetRecRefMethodTable: Record "RecRef Method Table";
     begin
+        _ResetRecRefMethodTable.DeleteAll();
         // Mark(true) marks the record, then Mark() returns true
         Assert.IsTrue(Helper.TestMark(), 'Mark() should return true after Mark(true)');
     end;

@@ -10,6 +10,7 @@ codeunit 50335 "PK Probe Tests"
         R: Record "PK Probe Row";
         Second: Record "PK Probe Row";
     begin
+        R.DeleteAll();
         R.Id := 1; R.Name := 'a'; R.Insert();
 
         asserterror begin

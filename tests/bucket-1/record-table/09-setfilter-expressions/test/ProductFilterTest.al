@@ -21,6 +21,7 @@ codeunit 50389 "Product Filter Tests"
     var
         Product: Record "Test Product";
     begin
+        Product.DeleteAll();
         // [GIVEN] Products with various descriptions
         SetupProducts();
 
@@ -36,6 +37,7 @@ codeunit 50389 "Product Filter Tests"
     var
         Product: Record "Test Product";
     begin
+        Product.DeleteAll();
         SetupProducts();
 
         // [WHEN] Filtering descriptions starting with "Super"
@@ -50,6 +52,7 @@ codeunit 50389 "Product Filter Tests"
     var
         Product: Record "Test Product";
     begin
+        Product.DeleteAll();
         SetupProducts();
 
         // [WHEN] Filtering descriptions ending with "Tool"
@@ -61,7 +64,10 @@ codeunit 50389 "Product Filter Tests"
 
     [Test]
     procedure TestOrPipeFilter()
+    var
+        _ResetTestProduct: Record "Test Product";
     begin
+        _ResetTestProduct.DeleteAll();
         SetupProducts();
 
         // [WHEN] Filtering category with OR pipe
@@ -72,7 +78,10 @@ codeunit 50389 "Product Filter Tests"
 
     [Test]
     procedure TestNotEqualFilter()
+    var
+        _ResetTestProduct: Record "Test Product";
     begin
+        _ResetTestProduct.DeleteAll();
         SetupProducts();
 
         // [WHEN] Filtering category not equal to TOOLS
@@ -83,7 +92,10 @@ codeunit 50389 "Product Filter Tests"
 
     [Test]
     procedure TestGreaterThanOrEqualFilter()
+    var
+        _ResetTestProduct: Record "Test Product";
     begin
+        _ResetTestProduct.DeleteAll();
         SetupProducts();
 
         // [WHEN] Filtering price >= 50
@@ -94,7 +106,10 @@ codeunit 50389 "Product Filter Tests"
 
     [Test]
     procedure TestLessThanOrEqualFilter()
+    var
+        _ResetTestProduct: Record "Test Product";
     begin
+        _ResetTestProduct.DeleteAll();
         SetupProducts();
 
         // [WHEN] Filtering price <= 15
@@ -105,7 +120,10 @@ codeunit 50389 "Product Filter Tests"
 
     [Test]
     procedure TestRangeFilter()
+    var
+        _ResetTestProduct: Record "Test Product";
     begin
+        _ResetTestProduct.DeleteAll();
         SetupProducts();
 
         // [WHEN] Filtering stock in range 30..100
@@ -133,6 +151,7 @@ codeunit 50389 "Product Filter Tests"
     var
         Product: Record "Test Product";
     begin
+        Product.DeleteAll();
         SetupProducts();
 
         // [WHEN] Filtering description case-insensitively with wildcard

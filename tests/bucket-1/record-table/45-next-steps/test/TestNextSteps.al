@@ -11,6 +11,7 @@ codeunit 50554 "Test Next Steps"
         Rec: Record "Next Probe";
         Steps: Integer;
     begin
+        Rec.DeleteAll();
         Seed();
         Rec.FindFirst();
         Assert.AreEqual('A', Rec."No.", 'Precondition: first record is A');
@@ -26,6 +27,7 @@ codeunit 50554 "Test Next Steps"
         Rec: Record "Next Probe";
         Steps: Integer;
     begin
+        Rec.DeleteAll();
         Seed();
         Rec.FindFirst();
         Steps := Rec.Next(2);
@@ -39,6 +41,7 @@ codeunit 50554 "Test Next Steps"
         Rec: Record "Next Probe";
         Steps: Integer;
     begin
+        Rec.DeleteAll();
         // Negative/boundary: asking for more steps than remain returns actual moves.
         Seed();
         Rec.FindFirst();
@@ -70,6 +73,7 @@ codeunit 50554 "Test Next Steps"
         Rec: Record "Next Probe";
         Steps: Integer;
     begin
+        Rec.DeleteAll();
         // Positive: negative step count moves backward.
         Seed();
         Rec.FindLast();
@@ -86,6 +90,7 @@ codeunit 50554 "Test Next Steps"
         Rec: Record "Next Probe";
         Steps: Integer;
     begin
+        Rec.DeleteAll();
         // Negative/boundary: asking to go before first returns what's possible.
         Seed();
         Rec.FindFirst();
@@ -103,6 +108,7 @@ codeunit 50554 "Test Next Steps"
     var
         Rec: Record "Next Probe";
     begin
+        Rec.DeleteAll();
         // Positive: Next advances within the filtered result set.
         Seed();
         Rec.SetRange(Status, 1);  // A, C, E

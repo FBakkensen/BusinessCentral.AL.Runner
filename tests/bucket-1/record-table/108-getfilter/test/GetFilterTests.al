@@ -26,6 +26,7 @@ codeunit 50412 "GetFilter Tests"
     var
         Rec: Record "Filter Probe";
     begin
+        Rec.DeleteAll();
         // [GIVEN] A record with SetRange on a single value
         InsertEntry(1, 'Alice', 100, 'A');
         Rec.SetRange("Entry No.", 1);
@@ -40,6 +41,7 @@ codeunit 50412 "GetFilter Tests"
     var
         Rec: Record "Filter Probe";
     begin
+        Rec.DeleteAll();
         // [GIVEN] A record with SetRange from..to
         InsertEntry(1, 'Alice', 100, 'A');
         InsertEntry(5, 'Eve', 500, 'E');
@@ -55,6 +57,7 @@ codeunit 50412 "GetFilter Tests"
     var
         Rec: Record "Filter Probe";
     begin
+        Rec.DeleteAll();
         // [GIVEN] A record with SetFilter expression
         InsertEntry(1, 'Alice', 100, 'A');
         Rec.SetFilter("Category", 'A|B');
@@ -69,6 +72,7 @@ codeunit 50412 "GetFilter Tests"
     var
         Rec: Record "Filter Probe";
     begin
+        Rec.DeleteAll();
         // [GIVEN] A record with SetRange on a text field
         InsertEntry(1, 'Alice', 100, 'A');
         Rec.SetRange("Name", 'Alice');
@@ -87,6 +91,7 @@ codeunit 50412 "GetFilter Tests"
     var
         Rec: Record "Filter Probe";
     begin
+        Rec.DeleteAll();
         // [GIVEN] A record with no filters
         InsertEntry(1, 'Alice', 100, 'A');
 
@@ -120,6 +125,7 @@ codeunit 50412 "GetFilter Tests"
         Rec: Record "Filter Probe";
         FilterText: Text;
     begin
+        Rec.DeleteAll();
         // [GIVEN] A record with multiple filters
         InsertEntry(1, 'Alice', 100, 'A');
         Rec.SetRange("Entry No.", 1, 5);
@@ -137,6 +143,7 @@ codeunit 50412 "GetFilter Tests"
     var
         Rec: Record "Filter Probe";
     begin
+        Rec.DeleteAll();
         // [GIVEN] A record with no filters
         InsertEntry(1, 'Alice', 100, 'A');
 
@@ -154,6 +161,7 @@ codeunit 50412 "GetFilter Tests"
     var
         Rec: Record "Filter Probe";
     begin
+        Rec.DeleteAll();
         // [GIVEN] A record with an active filter
         InsertEntry(1, 'Alice', 100, 'A');
         Rec.SetRange("Entry No.", 1);
@@ -167,6 +175,7 @@ codeunit 50412 "GetFilter Tests"
     var
         Rec: Record "Filter Probe";
     begin
+        Rec.DeleteAll();
         // [GIVEN] A record with no filters
         InsertEntry(1, 'Alice', 100, 'A');
 
@@ -179,6 +188,7 @@ codeunit 50412 "GetFilter Tests"
     var
         Rec: Record "Filter Probe";
     begin
+        Rec.DeleteAll();
         // [GIVEN] A record filtered, then Reset
         InsertEntry(1, 'Alice', 100, 'A');
         Rec.SetRange("Entry No.", 1);

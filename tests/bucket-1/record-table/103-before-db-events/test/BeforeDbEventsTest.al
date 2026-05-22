@@ -10,6 +10,7 @@ codeunit 50405 "BDE Tests"
         Src: Record "BDE Source";
         Log: Record "BDE EventLog";
     begin
+        Src.DeleteAll();
         // Positive: OnBeforeInsertEvent fires when Insert() is called.
         Src.PK := 1;
         Src.Name := 'Alice';
@@ -26,6 +27,7 @@ codeunit 50405 "BDE Tests"
         Src: Record "BDE Source";
         Log: Record "BDE EventLog";
     begin
+        Src.DeleteAll();
         // Positive: OnBeforeModifyEvent fires when Modify() is called.
         Src.PK := 1;
         Src.Name := 'Original';
@@ -45,6 +47,7 @@ codeunit 50405 "BDE Tests"
         Src: Record "BDE Source";
         Log: Record "BDE EventLog";
     begin
+        Src.DeleteAll();
         // Positive: OnBeforeDeleteEvent fires when Delete() is called.
         Src.PK := 1;
         Src.Name := 'ToDelete';
@@ -82,6 +85,7 @@ codeunit 50405 "BDE Tests"
         BeforeLog: Record "BDE EventLog";
         AfterLog: Record "BDE EventLog";
     begin
+        Src.DeleteAll();
         Src.PK := 1;
         Src.Name := 'Orig';
         Src.Insert();
@@ -121,6 +125,7 @@ codeunit 50405 "BDE Tests"
         Src: Record "BDE Source";
         Log: Record "BDE EventLog";
     begin
+        Src.DeleteAll();
         // Negative: only events with subscribers produce log entries.
         Src.PK := 1;
         Src.Name := 'Test';

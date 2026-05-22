@@ -24,6 +24,7 @@ codeunit 50568 "FindFirst Tests"
     var
         Letter: Record "FF Letter";
     begin
+        Letter.DeleteAll();
         // [GIVEN] Three records inserted in non-alphabetical order (M first, then A, then Z)
         Letter.Init(); Letter.Code := 'M'; Letter.Category := 2; Letter.Weight := 20; Letter.Insert();
         Letter.Init(); Letter.Code := 'A'; Letter.Category := 1; Letter.Weight := 10; Letter.Insert();

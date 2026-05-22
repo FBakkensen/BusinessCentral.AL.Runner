@@ -10,7 +10,9 @@ codeunit 50617 "SR Tests"
     procedure SetRangeIntegerMatchesRow()
     var
         Probe: Codeunit "SR Probe";
+        _ResetSRTestItem: Record "SR Test Item";
     begin
+        _ResetSRTestItem.DeleteAll();
         // [GIVEN] Two rows with different Ids
         Probe.InsertRow(1, 'Alpha', 'A001', 0, 10.0);
         Probe.InsertRow(2, 'Bravo', 'B002', 1, 20.0);
@@ -24,7 +26,9 @@ codeunit 50617 "SR Tests"
     procedure SetRangeIntegerNoMatch()
     var
         Probe: Codeunit "SR Probe";
+        _ResetSRTestItem: Record "SR Test Item";
     begin
+        _ResetSRTestItem.DeleteAll();
         // [GIVEN] Two rows with Ids 1 and 2
         Probe.InsertRow(1, 'Alpha', 'A001', 0, 10.0);
         Probe.InsertRow(2, 'Bravo', 'B002', 1, 20.0);
@@ -54,7 +58,9 @@ codeunit 50617 "SR Tests"
     procedure SetRangeCodeNoMatch()
     var
         Probe: Codeunit "SR Probe";
+        _ResetSRTestItem: Record "SR Test Item";
     begin
+        _ResetSRTestItem.DeleteAll();
         // [GIVEN] Two rows
         Probe.InsertRow(10, 'Alpha', 'A001', 0, 10.0);
         Probe.InsertRow(20, 'Bravo', 'B002', 1, 20.0);
@@ -87,6 +93,7 @@ codeunit 50617 "SR Tests"
         Probe: Codeunit "SR Probe";
         SRTestItem: Record "SR Test Item";
     begin
+        SRTestItem.DeleteAll();
         // [GIVEN] Two rows: both Open (0)
         Probe.InsertRow(100, 'Alpha', 'A001', SRTestItem.Status::Open, 10.0);
         Probe.InsertRow(200, 'Bravo', 'B002', SRTestItem.Status::Open, 20.0);
@@ -117,7 +124,9 @@ codeunit 50617 "SR Tests"
     procedure SetRangeDecimalRangeNoMatch()
     var
         Probe: Codeunit "SR Probe";
+        _ResetSRTestItem: Record "SR Test Item";
     begin
+        _ResetSRTestItem.DeleteAll();
         // [GIVEN] Three rows with Amounts 10, 20, 30
         Probe.InsertRow(1, 'Alpha', 'A001', 0, 10.0);
         Probe.InsertRow(2, 'Bravo', 'B002', 1, 20.0);

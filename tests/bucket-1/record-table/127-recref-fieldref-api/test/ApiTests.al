@@ -17,7 +17,10 @@ codeunit 50437 "API Tests"
 
     [Test]
     procedure SetAscendingFalseReversesSortOrder()
+    var
+        _ResetAPITestEntry: Record "API Test Entry";
     begin
+        _ResetAPITestEntry.DeleteAll();
         // [GIVEN] 3 entries with Entry No. 1, 2, 3
         Probe.InsertEntry(1, 'A', 'First', 10.0, true);
         Probe.InsertEntry(2, 'B', 'Second', 20.0, false);
@@ -36,7 +39,9 @@ codeunit 50437 "API Tests"
     var
         RecRef: RecordRef;
         FldRef: FieldRef;
+        _ResetAPITestEntry: Record "API Test Entry";
     begin
+        _ResetAPITestEntry.DeleteAll();
         // [GIVEN] 2 entries
         Probe.InsertEntry(1, 'A', 'Alpha', 10.0, true);
         Probe.InsertEntry(2, 'B', 'Bravo', 20.0, false);
@@ -60,7 +65,10 @@ codeunit 50437 "API Tests"
 
     [Test]
     procedure MarkedOnlyFiltersIteration()
+    var
+        _ResetAPITestEntry: Record "API Test Entry";
     begin
+        _ResetAPITestEntry.DeleteAll();
         // [GIVEN] 3 entries
         Probe.InsertEntry(1, 'A', 'Alpha', 10.0, true);
         Probe.InsertEntry(2, 'B', 'Bravo', 20.0, false);
@@ -239,7 +247,10 @@ codeunit 50437 "API Tests"
 
     [Test]
     procedure FindLastWithMarkedOnlyReturnsLastMarkedRecord()
+    var
+        _ResetAPITestEntry: Record "API Test Entry";
     begin
+        _ResetAPITestEntry.DeleteAll();
         // [GIVEN] 3 entries (Entry No. 1, 2, 3); the probe marks only entry 2 via RecordRef.Mark
         // Note: the last parameter to InsertEntry is the 'Active' field, not the mark flag
         Probe.InsertEntry(1, 'A', 'Alpha', 10.0, true);
@@ -256,7 +267,9 @@ codeunit 50437 "API Tests"
     var
         RecRef: RecordRef;
         FldRef: FieldRef;
+        _ResetAPITestEntry: Record "API Test Entry";
     begin
+        _ResetAPITestEntry.DeleteAll();
         // [GIVEN] An entry exists but is not marked
         Probe.InsertEntry(1, 'A', 'Alpha', 10.0, true);
         RecRef.Open(Database::"API Test Entry");

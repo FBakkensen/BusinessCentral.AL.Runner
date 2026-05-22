@@ -32,6 +32,7 @@ codeunit 50551 "Test SetFilter Placeholder"
         Line: Record "SalesLine Stub";
         MinAmount: Decimal;
     begin
+        Line.DeleteAll();
         // Positive: SetFilter with %1 substitutes the argument correctly
         SetupLines();
         MinAmount := 100.00;
@@ -50,6 +51,7 @@ codeunit 50551 "Test SetFilter Placeholder"
         LowAmount: Decimal;
         HighAmount: Decimal;
     begin
+        Line.DeleteAll();
         // Positive: SetFilter with %1 and %2 creates a range expression
         SetupLines();
         LowAmount := 50.00;
@@ -68,6 +70,7 @@ codeunit 50551 "Test SetFilter Placeholder"
         Line: Record "SalesLine Stub";
         Prefix: Text;
     begin
+        Line.DeleteAll();
         // Positive: %1 placeholder with wildcard suffix
         SetupLines();
         Prefix := 'B';
@@ -84,6 +87,7 @@ codeunit 50551 "Test SetFilter Placeholder"
         Line: Record "SalesLine Stub";
         ExactAmount: Decimal;
     begin
+        Line.DeleteAll();
         // Negative: records outside the placeholder filter are excluded
         SetupLines();
         ExactAmount := 999.00;
@@ -120,6 +124,7 @@ codeunit 50551 "Test SetFilter Placeholder"
         MinQty: Integer;
         MaxQty: Integer;
     begin
+        Line.DeleteAll();
         // Positive: placeholder substitution works on Integer fields
         SetupLines();
         MinQty := 3;

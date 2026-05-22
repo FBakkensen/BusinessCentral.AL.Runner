@@ -8,7 +8,10 @@ codeunit 50510 "Record Persistence Tests"
 
     [Test]
     procedure TestRecordsPersistAcrossFunctions()
+    var
+        _ResetPersistenceDemo: Record "Persistence Demo";
     begin
+        _ResetPersistenceDemo.DeleteAll();
         // [GIVEN] Records inserted by SetupData in one function call
         Helper.SetupData();
 
@@ -19,7 +22,10 @@ codeunit 50510 "Record Persistence Tests"
 
     [Test]
     procedure TestTotalAmountAcrossFunctions()
+    var
+        _ResetPersistenceDemo: Record "Persistence Demo";
     begin
+        _ResetPersistenceDemo.DeleteAll();
         // [GIVEN] Records inserted by SetupData
         Helper.SetupData();
 
@@ -30,7 +36,10 @@ codeunit 50510 "Record Persistence Tests"
 
     [Test]
     procedure TestIndividualRecordPersistence()
+    var
+        _ResetPersistenceDemo: Record "Persistence Demo";
     begin
+        _ResetPersistenceDemo.DeleteAll();
         // [GIVEN] Records inserted by SetupData
         Helper.SetupData();
 

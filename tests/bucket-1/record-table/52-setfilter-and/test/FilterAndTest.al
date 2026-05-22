@@ -23,6 +23,7 @@ codeunit 50569 "RWK Filter Tests"
     var
         R: Record "RWK Row";
     begin
+        R.DeleteAll();
         SeedFour();
         // Id <> 2 AND Id <> 12 — should match Id=1 and Id=7.
         R.SetFilter(Id, '<>%1&<>%2', 2, 12);
@@ -45,6 +46,7 @@ codeunit 50569 "RWK Filter Tests"
     var
         R: Record "RWK Row";
     begin
+        R.DeleteAll();
         SeedFour();
         R.SetFilter(Id, '1|7');
         Assert.AreEqual(2, R.Count(), 'OR filter should match 1 and 7');
@@ -55,6 +57,7 @@ codeunit 50569 "RWK Filter Tests"
     var
         R: Record "RWK Row";
     begin
+        R.DeleteAll();
         SeedFour();
         // BC precedence: AND binds tighter than OR.
         // 1 | >=5&<=10  -> (1) OR (5..10) -> matches 1 and 7
@@ -67,6 +70,7 @@ codeunit 50569 "RWK Filter Tests"
     var
         R: Record "RWK Row";
     begin
+        R.DeleteAll();
         SeedFour();
         R.SetFilter(Id, '2..10');
         Assert.AreEqual(2, R.Count(), '.. range should match 2 and 7');
@@ -77,6 +81,7 @@ codeunit 50569 "RWK Filter Tests"
     var
         R: Record "RWK Row";
     begin
+        R.DeleteAll();
         SeedFour();
         R.SetFilter(Name, '@*a*');
         // Every seeded name contains an 'a': alpha, beta, gamma, delta
@@ -88,6 +93,7 @@ codeunit 50569 "RWK Filter Tests"
     var
         R: Record "RWK Row";
     begin
+        R.DeleteAll();
         SeedFour();
         R.SetFilter(Name, '@ALPHA');
         Assert.AreEqual(1, R.Count(), '@ case-insensitive should match alpha/ALPHA');
@@ -98,6 +104,7 @@ codeunit 50569 "RWK Filter Tests"
     var
         R: Record "RWK Row";
     begin
+        R.DeleteAll();
         SeedFour();
         // Per-field filters AND-combine: Id >= 5 AND Name starts with g*.
         R.SetFilter(Id, '>=5');
@@ -110,6 +117,7 @@ codeunit 50569 "RWK Filter Tests"
     var
         R: Record "RWK Row";
     begin
+        R.DeleteAll();
         SeedFour();
         R.SetFilter(Name, '');
         Assert.AreEqual(4, R.Count(), 'Empty filter should match every row');
@@ -122,6 +130,7 @@ codeunit 50569 "RWK Filter Tests"
         Low: Integer;
         High: Integer;
     begin
+        R.DeleteAll();
         SeedFour();
         Low := 2;
         High := 10;
@@ -136,6 +145,7 @@ codeunit 50569 "RWK Filter Tests"
         R: Record "RWK Row";
         Target: Text;
     begin
+        R.DeleteAll();
         SeedFour();
         Target := 'beta';
         R.SetFilter(Name, '%1', Target);
@@ -147,6 +157,7 @@ codeunit 50569 "RWK Filter Tests"
     var
         R: Record "RWK Row";
     begin
+        R.DeleteAll();
         SeedFour();
         // Four placeholders in an OR chain — %1|%2|%3|%4.
         R.SetFilter(Id, '%1|%2|%3|%4', 1, 2, 7, 99);
@@ -159,6 +170,7 @@ codeunit 50569 "RWK Filter Tests"
     var
         R: Record "RWK Row";
     begin
+        R.DeleteAll();
         // #19 regression: AL filter literals like `<>Red&<>Blue` must
         // resolve option member names to ordinals, not compare against the
         // stored NavOption string form (which is the ordinal).
@@ -176,6 +188,7 @@ codeunit 50569 "RWK Filter Tests"
     var
         R: Record "RWK Row";
     begin
+        R.DeleteAll();
         SeedFour();
         // Mixes placeholders with precedence: %1 | (>=%2 & <=%3).
         R.SetFilter(Id, '%1|>=%2&<=%3', 1, 7, 12);

@@ -15,6 +15,7 @@ codeunit 50411 "Rename Tests"
         R: Record "Rename Probe";
         Lookup: Record "Rename Probe";
     begin
+        R.DeleteAll();
         // [GIVEN] A record exists with key 1
         R."Entry No." := 1;
         R.Description := 'Original';
@@ -38,6 +39,7 @@ codeunit 50411 "Rename Tests"
         Lookup: Record "Rename Probe";
         Found: Boolean;
     begin
+        R.DeleteAll();
         // [GIVEN] A record exists with key 1
         R."Entry No." := 1;
         R.Description := 'ToMove';
@@ -81,6 +83,7 @@ codeunit 50411 "Rename Tests"
         R: Record "Rename Probe";
         Blocker: Record "Rename Probe";
     begin
+        R.DeleteAll();
         // [GIVEN] Two records exist
         R."Entry No." := 1;
         R.Description := 'First';
@@ -123,7 +126,10 @@ codeunit 50411 "Rename Tests"
         R: Record "Rename Probe";
         Blocker: Record "Rename Probe";
         Ok: Boolean;
+        _ResetRenameProbe: Record "Rename Probe";
     begin
+        _ResetRenameProbe.DeleteAll();
+        R.DeleteAll();
         // [GIVEN] Two records exist
         R."Entry No." := 1;
         R.Insert();

@@ -91,6 +91,7 @@ codeunit 50431 "FE Tests"
     var
         Item: Record "FE Test Item";
     begin
+        Item.DeleteAll();
         // [GIVEN] Three records with Price = 10.50, 20.25, 30.75
         Item.Init();
         Item."Id" := 1;
@@ -189,6 +190,7 @@ codeunit 50431 "FE Tests"
     var
         Item: Record "FE Test Item";
     begin
+        Item.DeleteAll();
         Item.Init();
         Item."Id" := 1;
         Item."Price" := 10.00;

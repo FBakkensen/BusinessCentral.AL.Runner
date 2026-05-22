@@ -12,7 +12,9 @@ codeunit 50427 "FieldRef SetTable Tests"
         Helper: Codeunit "FieldRef SetTable Helper";
         EntryNo: Integer;
         Desc: Text[100];
+        _ResetFieldRefTestTable: Record "FieldRef Test Table";
     begin
+        _ResetFieldRefTestTable.DeleteAll();
         Helper.SetTableCopiesData(EntryNo, Desc);
         Assert.AreEqual(42, EntryNo, 'SetTable should copy Entry No. from RecRef');
     end;

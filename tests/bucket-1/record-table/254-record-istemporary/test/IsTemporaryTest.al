@@ -29,7 +29,9 @@ codeunit 50518 "IsTemporary Tests"
     procedure TempRecord_StaysTemporary_AfterInsert()
     var
         TempWidget: Record "IsTemp Widget" temporary;
+        _ResetIsTempWidget: Record "IsTemp Widget";
     begin
+        _ResetIsTempWidget.DeleteAll();
         TempWidget.Init();
         TempWidget."No." := 'T1';
         TempWidget.Name := 'Alpha';

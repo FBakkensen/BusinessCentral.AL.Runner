@@ -8,7 +8,10 @@ codeunit 50490 "FREO Test"
 
     [Test]
     procedure GetEnumValueCaptionFromOrdinal_Zero()
+    var
+        _ResetFREOOrder: Record "FREO Order";
     begin
+        _ResetFREOOrder.DeleteAll();
         // Enum: 0 → Open; 5 → InProgress; 10 → Closed.
         Assert.AreEqual('Open', Src.CaptionForOrdinal(0),
             'Caption for ordinal 0 must be "Open"');
@@ -16,7 +19,10 @@ codeunit 50490 "FREO Test"
 
     [Test]
     procedure GetEnumValueCaptionFromOrdinal_Middle()
+    var
+        _ResetFREOOrder: Record "FREO Order";
     begin
+        _ResetFREOOrder.DeleteAll();
         // Note: EnumRegistry captures names, not captions, so standalone Caption
         // returns the AL identifier ("InProgress"), not the display caption
         // ("In Progress"). Documenting the runner behaviour.
@@ -33,7 +39,10 @@ codeunit 50490 "FREO Test"
 
     [Test]
     procedure GetEnumValueNameFromOrdinal_Zero()
+    var
+        _ResetFREOOrder: Record "FREO Order";
     begin
+        _ResetFREOOrder.DeleteAll();
         // Enum member names (distinct from captions).
         Assert.AreEqual('Open', Src.NameForOrdinal(0),
             'Name for ordinal 0 must be "Open"');
@@ -49,7 +58,10 @@ codeunit 50490 "FREO Test"
 
     [Test]
     procedure GetEnumValue_Ordinal_IsNotIndex_NegativeTrap()
+    var
+        _ResetFREOOrder: Record "FREO Order";
     begin
+        _ResetFREOOrder.DeleteAll();
         // Negative: guard against accidentally using 1-based INDEX instead of ORDINAL.
         // Ordinals are 0, 5, 10 — if the impl mistakenly treats the arg as a 1-based
         // index, passing 5 would produce "Closed" (the 5th item doesn't exist, so

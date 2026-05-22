@@ -34,6 +34,7 @@ codeunit 50598 "RF Tests"
         Probe: Codeunit "RF Probe";
         R: Record "RF Test Item";
     begin
+        R.DeleteAll();
         // [GIVEN] A row inserted via typed Record
         R.Id := 10;
         R.Name := 'Gadget';
@@ -50,6 +51,7 @@ codeunit 50598 "RF Tests"
         Probe: Codeunit "RF Probe";
         R: Record "RF Test Item";
     begin
+        R.DeleteAll();
         // [GIVEN] A row exists
         R.Id := 1;
         R.Insert();
@@ -91,6 +93,7 @@ codeunit 50598 "RF Tests"
         Probe: Codeunit "RF Probe";
         R: Record "RF Test Item";
     begin
+        R.DeleteAll();
         // [GIVEN] 3 rows with known names
         R.Id := 1; R.Name := 'Alpha'; R.Insert();
         R.Id := 2; R.Name := 'Bravo'; R.Insert();
@@ -127,6 +130,7 @@ codeunit 50598 "RF Tests"
         Probe: Codeunit "RF Probe";
         R: Record "RF Test Item";
     begin
+        R.DeleteAll();
         R.Id := 1; R.Insert();
         Assert.IsFalse(Probe.IsTableEmpty(50193), 'Table with row must not be empty');
     end;
@@ -139,6 +143,7 @@ codeunit 50598 "RF Tests"
         Probe: Codeunit "RF Probe";
         R: Record "RF Test Item";
     begin
+        R.DeleteAll();
         // [GIVEN] 2 rows
         R.Id := 1; R.Name := 'Keep'; R.Insert();
         R.Id := 2; R.Name := 'Remove'; R.Insert();
@@ -156,6 +161,7 @@ codeunit 50598 "RF Tests"
         Probe: Codeunit "RF Probe";
         R: Record "RF Test Item";
     begin
+        R.DeleteAll();
         R.Id := 1; R.Insert();
         R.Id := 2; R.Insert();
         R.Id := 3; R.Insert();
@@ -185,6 +191,7 @@ codeunit 50598 "RF Tests"
         Probe: Codeunit "RF Probe";
         R: Record "RF Test Item";
     begin
+        R.DeleteAll();
         R.Id := 1; R.Insert();
         R.Id := 2; R.Insert();
         R.Id := 3; R.Insert();
@@ -202,6 +209,7 @@ codeunit 50598 "RF Tests"
         Probe: Codeunit "RF Probe";
         R: Record "RF Test Item";
     begin
+        R.DeleteAll();
         R.Id := 1; R.Insert();
         R.Id := 2; R.Insert();
 
@@ -218,6 +226,7 @@ codeunit 50598 "RF Tests"
         Probe: Codeunit "RF Probe";
         R: Record "RF Test Item";
     begin
+        R.DeleteAll();
         // [GIVEN] A row with Id=1 exists
         R.Id := 1; R.Name := 'First'; R.Insert();
 
@@ -282,6 +291,7 @@ codeunit 50598 "RF Tests"
         RecRef: RecordRef;
         FldRef: FieldRef;
     begin
+        R.DeleteAll();
         R.Id := 1; R.Name := 'Alpha'; R.Insert();
         R.Id := 2; R.Name := 'Bravo'; R.Insert();
         R.Id := 3; R.Name := 'Alpha'; R.Insert();

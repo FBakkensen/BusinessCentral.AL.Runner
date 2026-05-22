@@ -19,6 +19,7 @@ codeunit 50550 "Test Count Filtered"
     var
         Rec: Record "Count Probe";
     begin
+        Rec.DeleteAll();
         Seed();
         Assert.AreEqual(5, Rec.Count,
             'Count must be 5 across the whole table (no filter)');
@@ -29,6 +30,7 @@ codeunit 50550 "Test Count Filtered"
     var
         Rec: Record "Count Probe";
     begin
+        Rec.DeleteAll();
         // Positive: SetRange filters Count to matching subset.
         Seed();
         Rec.SetRange(Status, 1);
@@ -57,6 +59,7 @@ codeunit 50550 "Test Count Filtered"
     var
         Rec: Record "Count Probe";
     begin
+        Rec.DeleteAll();
         // Positive/reset: clearing filters restores the full count.
         Seed();
         Rec.SetRange(Status, 1);
@@ -72,6 +75,7 @@ codeunit 50550 "Test Count Filtered"
     var
         Rec: Record "Count Probe";
     begin
+        Rec.DeleteAll();
         // Positive: range-style SetRange is honoured.
         Seed();
         Rec.SetRange(Amount, 20, 40);

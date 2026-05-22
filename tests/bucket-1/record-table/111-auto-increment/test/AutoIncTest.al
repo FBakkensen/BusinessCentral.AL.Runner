@@ -25,7 +25,10 @@ codeunit 50416 "Auto Increment Test"
     procedure InsertMultiple_AutoIncrements_Sequentially()
     var
         Entry: Record "Auto Inc Entry";
+        _ResetAutoIncEntry: Record "Auto Inc Entry";
     begin
+        _ResetAutoIncEntry.DeleteAll();
+        Entry.DeleteAll();
         // [GIVEN] A clean table with AutoIncrement
         Entry.DeleteAll();
         // [WHEN] Insert three records with EntryNo = 0
@@ -90,7 +93,10 @@ codeunit 50416 "Auto Increment Test"
     var
         Entry: Record "Auto Inc Entry";
         Entry2: Record "Auto Inc Entry";
+        _ResetAutoIncEntry: Record "Auto Inc Entry";
     begin
+        _ResetAutoIncEntry.DeleteAll();
+        Entry.DeleteAll();
         // [GIVEN] A clean table
         Entry.DeleteAll();
         // [WHEN] Two records inserted with EntryNo = 0

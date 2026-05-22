@@ -138,6 +138,7 @@ codeunit 50504 "TRM Test"
         Rec: Record "TRM Table";
         CountAfter: Integer;
     begin
+        Rec.DeleteAll();
         // Truncate(true) — 2-arg overload must compile and delete all rows
         CountAfter := H.InsertAndTruncateWithTrigger(Rec, true);
         Assert.AreEqual(0, CountAfter, 'Truncate(true) must delete all rows');

@@ -10,6 +10,7 @@ codeunit 50631 "DTE Tests"
         Src: Record "DTE Source";
         C: Record "DTE Counter";
     begin
+        Src.DeleteAll();
         // Positive: inserting a record fires OnAfterInsertEvent subscriber
         Src.PK := 1;
         Src.Name := 'Test';
@@ -25,6 +26,7 @@ codeunit 50631 "DTE Tests"
         Src: Record "DTE Source";
         C: Record "DTE Counter";
     begin
+        Src.DeleteAll();
         // Positive: modifying a record fires OnAfterModifyEvent subscriber
         Src.PK := 1;
         Src.Name := 'Original';
@@ -43,6 +45,7 @@ codeunit 50631 "DTE Tests"
         Src: Record "DTE Source";
         C: Record "DTE Counter";
     begin
+        Src.DeleteAll();
         // Positive: deleting a record fires OnAfterDeleteEvent subscriber
         Src.PK := 1;
         Src.Name := 'ToDelete';
