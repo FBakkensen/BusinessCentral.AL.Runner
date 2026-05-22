@@ -178,7 +178,11 @@ foreach (var bundle in bundles)
     foreach (var suite in suites)
     {
         var s = Path.Combine(suite, "src");
-        if (Directory.Exists(s)) AlRunnerV2.Patches.RecordPatches.AddSourceDir(s);
+        if (Directory.Exists(s))
+            AlRunnerV2.Patches.RecordPatches.AddSourceDir(s);
+        else if (!Directory.Exists(Path.Combine(suite, "test")))
+            // Flat bundle: register the suite root so table parsers can find .al files.
+            AlRunnerV2.Patches.RecordPatches.AddSourceDir(suite);
     }
 
     var bundleEmit = TimeSpan.Zero;
@@ -632,6 +636,10 @@ static List<string> CollectSuitePaths(string suite, string? bucketRoot = null)
     foreach (var app in Directory.EnumerateDirectories(suite, "app*"))
         all.Add(app);
     if (Directory.Exists(t)) all.Add(t);
+    // Flat bundle: if neither src/ nor test/ exist, include the suite root so
+    // the emitter can recurse into it and find all .al files.
+    if (all.Count == 0 && Directory.EnumerateFiles(suite, "*.al", SearchOption.AllDirectories).Any())
+        all.Add(suite);
     if (bucketRoot != null)
     {
         var shared = Path.Combine(bucketRoot, "_shared");
@@ -779,9 +787,18 @@ static IReadOnlyList<string> GetOrderedDepIds(string? bucketRoot, IReadOnlyList<
 static IEnumerable<string> EnumerateSuites(string root)
 {
     if (LooksLikeSuite(root)) { yield return Path.GetFullPath(root); yield break; }
+    bool found = false;
     foreach (var d in Directory.EnumerateDirectories(root, "*", SearchOption.AllDirectories))
         if (LooksLikeSuite(d))
+        {
+            found = true;
             yield return Path.GetFullPath(d);
+        }
+    // Flat bundle: no src/test sub-structure but .al files exist (e.g. a standalone
+    // test library with its own app.json and category sub-directories). Treat the
+    // whole root as one compilation + test unit.
+    if (!found && Directory.EnumerateFiles(root, "*.al", SearchOption.AllDirectories).Any())
+        yield return Path.GetFullPath(root);
 }
 
 static bool LooksLikeSuite(string dir)
