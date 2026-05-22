@@ -32,9 +32,8 @@ codeunit 50099 "DTA Test"
     [Test]
     procedure CopyFieldsWithAudit_DoesNotThrow()
     begin
-        // Negative trap: the entire flow (SetTables + AddFieldValue +
-        // UpdateAuditFields := true + CopyFields) must complete without throwing.
-        Src.CopyFieldsWithAudit();
-        Assert.IsTrue(true, 'CopyFields with UpdateAuditFields must not throw');
+        // BC raises "DataTransfer is only usable during upgrade and installation code."
+        asserterror Src.CopyFieldsWithAudit();
+        Assert.ExpectedError('DataTransfer');
     end;
 }

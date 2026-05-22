@@ -1022,44 +1022,47 @@ public static partial class BcRuntime
                 Hook(setTables, nameof(NoOp3), "NavDataTransfer.SetTables");
 
             // The AL `DataTransfer.{AddFieldValue,AddConstantValue,AddSourceFilter,AddJoin,
-            // CopyFields,CopyRows}` builtins compile directly to the *internal* counterparts
-            // on NavDataTransfer (not the AL* wrappers). Each internal body begins with
-            // `CheckIsOpen()` which throws NavCSideException("SetTables must first be
-            // called…") because our no-op SetTables leaves SourceTable null. Even past that
-            // guard, Copy() reads SourceTable.TableId and TableConnectionManager state the
-            // skeleton can't provide. The runner has no SQL data layer — there is no
-            // faithful "data move" semantics to implement here, so every AL DataTransfer
-            // call is observably a no-op. Tests in scope only verify that the AL statement
-            // doesn't throw and execution continues. Hook the AL-visible internal methods.
-            foreach (var name in new[] { "AddFieldValue", "AddConstantValue", "AddSourceFilter",
-                                         "AddJoin", "CopyFields", "CopyRows" })
+            // CopyFields,CopyRows,Clear}` builtins compile to the *internal* counterparts on
+            // NavDataTransfer. BC raises "DataTransfer is only usable during upgrade and
+            // installation code." for the finalize methods (CopyFields, CopyRows, Clear).
+            // The setup helpers (SetTables/AddFieldValue/AddConstantValue/AddSourceFilter/
+            // AddJoin) succeed silently so AL code that builds a DataTransfer then
+            // `asserterror`s the finalize call matches BC behavior in both runtimes.
+            var thrownNames = new System.Collections.Generic.HashSet<string> {
+                "CopyFields", "CopyRows", "Clear"
+            };
+            var hookNames = new System.Collections.Generic.List<string>(
+                new[] { "AddFieldValue", "AddConstantValue", "AddSourceFilter",
+                        "AddJoin", "CopyFields", "CopyRows", "Clear" });
+            foreach (var name in hookNames)
             {
                 var m = navDataTransferType.GetMethod(name,
                     BindingFlags.NonPublic | BindingFlags.Instance);
                 if (m == null) continue;
                 var ps = m.GetParameters().Length;
-                string? noop;
+                bool throwHere = thrownNames.Contains(name);
+                string? hook;
                 if (m.ReturnType == typeof(void))
                 {
-                    noop = ps switch
+                    hook = ps switch
                     {
-                        0 => nameof(NoOp_OneArg),
-                        1 => nameof(NoOp2),
-                        2 => nameof(NoOp3),
-                        3 => nameof(NoOp4),
+                        0 => throwHere ? nameof(ThrowDataTransfer_OneArg) : nameof(NoOp_OneArg),
+                        1 => throwHere ? nameof(ThrowDataTransfer_2Args) : nameof(NoOp2),
+                        2 => throwHere ? nameof(ThrowDataTransfer_3Args) : nameof(NoOp3),
+                        3 => throwHere ? nameof(ThrowDataTransfer_4Args) : nameof(NoOp4),
                         _ => null
                     };
                 }
                 else if (m.ReturnType == typeof(int))
                 {
-                    noop = ps switch
+                    hook = ps switch
                     {
-                        0 => nameof(ReturnZero_OneArg),
+                        0 => throwHere ? nameof(ThrowDataTransferReturnInt_OneArg) : nameof(ReturnZero_OneArg),
                         _ => null
                     };
                 }
-                else noop = null;
-                if (noop != null) Hook(m, noop, $"NavDataTransfer.{name}");
+                else hook = null;
+                if (hook != null) Hook(m, hook, $"NavDataTransfer.{name}");
             }
         }
 

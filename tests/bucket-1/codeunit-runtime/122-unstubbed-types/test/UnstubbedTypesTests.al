@@ -194,8 +194,9 @@ codeunit 50076 "Unstubbed Types Tests"
         _ResetDTSource: Record "DT Source";
     begin
         _ResetDTSource.DeleteAll();
-        // Positive: CopyRows is a no-op — target table remains empty
-        Assert.IsTrue(Helper.CopyRowsLeavesTargetEmpty(), 'CopyRows should be a no-op: target must remain empty');
+        // BC raises "DataTransfer is only usable during upgrade and installation code."
+        asserterror Helper.CopyRowsLeavesTargetEmpty();
+        Assert.ExpectedError('DataTransfer');
     end;
 
     [Test]
@@ -203,8 +204,8 @@ codeunit 50076 "Unstubbed Types Tests"
     var
         Helper: Codeunit "DataTransfer Helper";
     begin
-        // Positive: CopyFields is a no-op — target table remains empty
-        Assert.IsTrue(Helper.CopyFieldsLeavesTargetEmpty(), 'CopyFields should be a no-op: target must remain empty');
+        asserterror Helper.CopyFieldsLeavesTargetEmpty();
+        Assert.ExpectedError('DataTransfer');
     end;
 
     [Test]
@@ -212,7 +213,7 @@ codeunit 50076 "Unstubbed Types Tests"
     var
         Helper: Codeunit "DataTransfer Helper";
     begin
-        // Positive: AddConstantValue + CopyRows is a no-op
-        Assert.IsTrue(Helper.AddConstantValueNoError(), 'AddConstantValue + CopyRows should be a no-op: target must remain empty');
+        asserterror Helper.AddConstantValueNoError();
+        Assert.ExpectedError('DataTransfer');
     end;
 }

@@ -9,26 +9,23 @@ codeunit 50196 "DTC Test"
     [Test]
     procedure Clear_AfterSetup_DoesNotThrow()
     begin
-        // Positive: calling Clear after SetTables + AddFieldValue + AddConstantValue
-        // must not throw -- the method must exist and be callable.
-        Src.ClearAfterSetup_DoesNotThrow();
-        Assert.IsTrue(true, 'DataTransfer.Clear must not throw');
+        // BC raises "DataTransfer is only usable during upgrade and installation code."
+        asserterror Src.ClearAfterSetup_DoesNotThrow();
+        Assert.ExpectedError('DataTransfer');
     end;
 
     [Test]
     procedure Clear_ThenCopyFields_DoesNotThrow()
     begin
-        // Positive: Clear followed by CopyFields must not throw.
-        Src.ClearThenCopyFields_DoesNotThrow();
-        Assert.IsTrue(true, 'CopyFields after Clear must not throw');
+        asserterror Src.ClearThenCopyFields_DoesNotThrow();
+        Assert.ExpectedError('DataTransfer');
     end;
 
     [Test]
     procedure Clear_ThenCopyRows_DoesNotThrow()
     begin
-        // Positive: Clear followed by CopyRows must not throw.
-        Src.ClearThenCopyRows_DoesNotThrow();
-        Assert.IsTrue(true, 'CopyRows after Clear must not throw');
+        asserterror Src.ClearThenCopyRows_DoesNotThrow();
+        Assert.ExpectedError('DataTransfer');
     end;
 
     [Test]

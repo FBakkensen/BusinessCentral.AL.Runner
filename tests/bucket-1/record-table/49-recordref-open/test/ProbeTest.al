@@ -12,7 +12,7 @@ codeunit 50561 "RR Open Tests"
     begin
         // [GIVEN] A procedure that calls RecRef.Open(int, bool, text) + IsEmpty
         // [THEN] The codeunit compiles and both exit paths return 42
-        Assert.AreEqual(42, Probe.ProbeCompany('CRONUS'), '3-arg Open + IsEmpty must compile and run');
+        Assert.AreEqual(42, Probe.ProbeCompany(CompanyName()), '3-arg Open + IsEmpty must compile and run');
     end;
 
     [Test]

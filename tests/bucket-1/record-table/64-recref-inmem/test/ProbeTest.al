@@ -39,6 +39,6 @@ codeunit 50592 "RR Mem Tests"
         R.Id := 2;
         R.Insert();
 
-        Assert.IsTrue(Probe.HasRowsInCompany(50190, 'CRONUS'), 'Three-arg Open must also route to in-memory store');
+        Assert.IsTrue(Probe.HasRowsInCompany(50190, CompanyName()), 'Three-arg Open must also route to in-memory store');
     end;
 }

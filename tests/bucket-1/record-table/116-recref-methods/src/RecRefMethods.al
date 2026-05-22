@@ -52,7 +52,7 @@ codeunit 50424 "RecRef Method Helper"
     begin
         RecRef.Open(Database::"RecRef Method Table");
         // ChangeCompany should not crash (no-op in standalone)
-        RecRef.ChangeCompany('CRONUS');
+        RecRef.ChangeCompany(CompanyName());
         exit(true);
     end;
 

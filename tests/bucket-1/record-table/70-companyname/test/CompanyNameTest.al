@@ -13,9 +13,9 @@ codeunit 50600 "Company Name Test"
     begin
         // Positive: CompanyName should return a text value without crashing
         Result := Helper.GetCompanyName();
-        // In standalone mode, CompanyName returns 'CRONUS' by default — the key thing
-        // is that it does NOT throw a NullReferenceException and returns a non-empty value
-        Assert.AreEqual('CRONUS', Result, 'CompanyName should return CRONUS stub value in standalone mode');
+        // Env-agnostic: runner returns 'CRONUS', BC returns 'CRONUS USA, Inc.'.
+        // The contract is that CompanyName returns a non-empty value without throwing.
+        Assert.AreNotEqual('', Result, 'CompanyName must return a non-empty value');
     end;
 
     [Test]
