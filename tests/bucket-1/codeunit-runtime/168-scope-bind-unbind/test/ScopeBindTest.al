@@ -3,14 +3,15 @@ codeunit 50125 "SBU Test"
     Subtype = Test;
     var
         Assert: Codeunit Assert;
+        C: Record "SBU Counter";
 
     [Test]
     procedure BindSubscription_ScopeCompiles_NoThrow()
     var
         Pub: Codeunit "SBU Publisher";
         Sub: Codeunit "SBU Manual Sub";
-        C: Record "SBU Counter";
     begin
+        C.DeleteAll();
         // Positive: BindSubscription on the codeunit compiles and runs.
         // This exercises the _parent.Bind() path (AlScope.Bind + codeunit.Bind injection).
         BindSubscription(Sub);
@@ -27,8 +28,8 @@ codeunit 50125 "SBU Test"
     var
         Pub: Codeunit "SBU Publisher";
         Sub: Codeunit "SBU Manual Sub";
-        C: Record "SBU Counter";
     begin
+        C.DeleteAll();
         // Negative: after UnbindSubscription, the subscriber must not fire.
         BindSubscription(Sub);
         Pub.Fire();

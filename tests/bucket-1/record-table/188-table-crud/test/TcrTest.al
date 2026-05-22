@@ -26,6 +26,7 @@ codeunit 50497 "TCR Test"
     var
         Item: Record "TCR Item";
     begin
+        Item.DeleteAll();
         InsertItem('A001', 'Apple', 10, 'FRUIT');
         Assert.IsTrue(Item.Get('A001'), 'Get must return true for inserted record');
         Assert.AreEqual('Apple', Item.Name, 'Name must match inserted value');
@@ -37,6 +38,7 @@ codeunit 50497 "TCR Test"
     var
         Item: Record "TCR Item";
     begin
+        Item.DeleteAll();
         Assert.IsFalse(Item.Get('MISSING'), 'Get must return false for non-existent record');
     end;
 
@@ -47,6 +49,7 @@ codeunit 50497 "TCR Test"
     var
         Item: Record "TCR Item";
     begin
+        Item.DeleteAll();
         InsertItem('B001', 'Banana', 5, 'FRUIT');
         Item.Get('B001');
         Item.Quantity := 99;
@@ -60,6 +63,7 @@ codeunit 50497 "TCR Test"
     var
         Item: Record "TCR Item";
     begin
+        Item.DeleteAll();
         InsertItem('C001', 'Cherry', 20, 'FRUIT');
         InsertItem('C002', 'Cranberry', 30, 'FRUIT');
         Item.Get('C001');
@@ -76,6 +80,7 @@ codeunit 50497 "TCR Test"
     var
         Item: Record "TCR Item";
     begin
+        Item.DeleteAll();
         InsertItem('D001', 'Date', 15, 'FRUIT');
         Assert.IsTrue(Item.Get('D001'), 'Record must exist before Delete');
         Item.Delete();
@@ -87,6 +92,7 @@ codeunit 50497 "TCR Test"
     var
         Item: Record "TCR Item";
     begin
+        Item.DeleteAll();
         InsertItem('E001', 'Elderberry', 7, 'BERRY');
         InsertItem('E002', 'Eggplant', 3, 'VEG');
         Item.Get('E001');
@@ -101,6 +107,7 @@ codeunit 50497 "TCR Test"
     var
         Item: Record "TCR Item";
     begin
+        Item.DeleteAll();
         InsertItem('F001', 'Fig', 8, 'FRUIT');
         InsertItem('F002', 'Feijoa', 4, 'FRUIT');
         Assert.IsTrue(Item.Find('-'), 'Find(-) must return true when records exist');
@@ -112,6 +119,7 @@ codeunit 50497 "TCR Test"
     var
         Item: Record "TCR Item";
     begin
+        Item.DeleteAll();
         Assert.IsFalse(Item.Find('-'), 'Find(-) must return false on empty table');
     end;
 
@@ -122,6 +130,7 @@ codeunit 50497 "TCR Test"
     var
         Item: Record "TCR Item";
     begin
+        Item.DeleteAll();
         InsertItem('G001', 'Grape', 10, 'FRUIT');
         InsertItem('G002', 'Garlic', 5, 'VEG');
         InsertItem('G003', 'Ginger', 3, 'VEG');
@@ -134,6 +143,7 @@ codeunit 50497 "TCR Test"
     var
         Item: Record "TCR Item";
     begin
+        Item.DeleteAll();
         InsertItem('H001', 'Hazelnut', 12, 'NUT');
         InsertItem('H002', 'Honey', 6, 'OTHER');
         Item.SetRange(Category, 'NUT');
@@ -149,6 +159,7 @@ codeunit 50497 "TCR Test"
     var
         Item: Record "TCR Item";
     begin
+        Item.DeleteAll();
         InsertItem('I001', 'Ice Apple', 9, 'FRUIT');
         InsertItem('I002', 'Iceberry', 4, 'BERRY');
         InsertItem('I003', 'Mango', 20, 'FRUIT');
@@ -161,6 +172,7 @@ codeunit 50497 "TCR Test"
     var
         Item: Record "TCR Item";
     begin
+        Item.DeleteAll();
         InsertItem('J001', 'Jackfruit', 11, 'FRUIT');
         Item.SetFilter(Name, 'ZZZNOTFOUND*');
         Assert.AreEqual(0, Item.Count(), 'SetFilter with no match must return Count = 0');

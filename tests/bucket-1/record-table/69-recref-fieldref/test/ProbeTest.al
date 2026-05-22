@@ -3,12 +3,14 @@ codeunit 50598 "RF Tests"
     Subtype = Test;
     var
         Assert: Codeunit Assert;
+        R: Record "RF Test Item";
 
     [Test]
     procedure TableNoReturnsOpenedTable()
     var
         Probe: Codeunit "RF Probe";
     begin
+        R.DeleteAll();
         // [GIVEN] RecRef opened on table 50193
         // [THEN] Number() returns 50193
         Assert.AreEqual(50193, Probe.TableNoAfterOpen(50193), 'TableNo must match opened table');
@@ -20,6 +22,7 @@ codeunit 50598 "RF Tests"
         Probe: Codeunit "RF Probe";
         R: Record "RF Test Item";
     begin
+        R.DeleteAll();
         // [GIVEN] A row inserted via RecordRef with Field().Value
         Probe.SetFieldAndInsert(50193, 1, 42, 2, 'Widget');
 
@@ -66,6 +69,7 @@ codeunit 50598 "RF Tests"
         Probe: Codeunit "RF Probe";
         R: Record "RF Test Item";
     begin
+        R.DeleteAll();
         // [GIVEN] 3 rows inserted via typed Record
         R.Id := 1; R.Insert();
         R.Id := 2; R.Insert();
@@ -80,6 +84,7 @@ codeunit 50598 "RF Tests"
     var
         Probe: Codeunit "RF Probe";
     begin
+        R.DeleteAll();
         // [GIVEN] No rows
         // [THEN] Count is 0
         Assert.AreEqual(0, Probe.CountRecords(50193), 'Count of empty table must be 0');
@@ -109,6 +114,7 @@ codeunit 50598 "RF Tests"
     var
         Probe: Codeunit "RF Probe";
     begin
+        R.DeleteAll();
         // [GIVEN] Empty table
         // [THEN] IterateNames returns empty string (FindSet returns false)
         Assert.AreEqual('', Probe.IterateNames(50193), 'Empty table must yield empty result');
@@ -121,6 +127,7 @@ codeunit 50598 "RF Tests"
     var
         Probe: Codeunit "RF Probe";
     begin
+        R.DeleteAll();
         Assert.IsTrue(Probe.IsTableEmpty(50193), 'Empty table must be empty');
     end;
 
@@ -178,6 +185,7 @@ codeunit 50598 "RF Tests"
     var
         Probe: Codeunit "RF Probe";
     begin
+        R.DeleteAll();
         // [GIVEN] Insert with name 'Old', then modify to 'New' via RecRef
         // [THEN] Read back returns 'New'
         Assert.AreEqual('New', Probe.InsertAndModify(50193, 99, 'Old', 'New'), 'Modify must update field');
@@ -244,6 +252,7 @@ codeunit 50598 "RF Tests"
         Probe: Codeunit "RF Probe";
         R: Record "RF Test Item";
     begin
+        R.DeleteAll();
         // [GIVEN] A typed record with known fields
         R.Id := 77;
         R.Name := 'Copied';
@@ -261,6 +270,7 @@ codeunit 50598 "RF Tests"
         Probe: Codeunit "RF Probe";
         R: Record "RF Test Item";
     begin
+        R.DeleteAll();
         // [GIVEN] A RecRef inserts a row and copies it to R via SetTable
         Probe.CopyRecRefToRecord(88, 'FromRecRef', R);
 
@@ -276,6 +286,7 @@ codeunit 50598 "RF Tests"
     var
         RecRef: RecordRef;
     begin
+        R.DeleteAll();
         // RecRef.FindFirst() must return false on empty table (no error)
         RecRef.Open(50193);
         Assert.IsFalse(RecRef.FindFirst(), 'FindFirst on empty table must return false');
@@ -310,6 +321,7 @@ codeunit 50598 "RF Tests"
     var
         Probe: Codeunit "RF Probe";
     begin
+        R.DeleteAll();
         // [GIVEN] 3 rows inserted via RecRef
         Probe.SetFieldAndInsert(50193, 1, 10, 2, 'First');
         Probe.SetFieldAndInsert(50193, 1, 20, 2, 'Second');
@@ -327,6 +339,7 @@ codeunit 50598 "RF Tests"
         RecRef: RecordRef;
         FldRef: FieldRef;
     begin
+        R.DeleteAll();
         // RecRef is not opened — ALField should still work without crash
         // FieldRef.Number returns the field number even on unbound RecRef
         FldRef := RecRef.Field(1);
@@ -341,6 +354,7 @@ codeunit 50598 "RF Tests"
         RecRef: RecordRef;
         FldRef: FieldRef;
     begin
+        R.DeleteAll();
         RecRef.Open(50193);
         FldRef := RecRef.Field(1);
         FldRef.Value := 999;

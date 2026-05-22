@@ -6,12 +6,13 @@ codeunit 50555 "Test UserId"
         Assert: Codeunit Assert;
 
     [Test]
-    procedure UserIdReturnsTestUserByDefault()
+    procedure UserIdReturnsNonEmptyText()
     var
         Id: Text;
     begin
-        // By default, UserId() returns "TESTUSER" when not configured via --user-id.
+        // Positive: UserId() must return a non-empty string on any environment.
+        // Runner returns 'TESTUSER'; real BC returns the logged-in user's ID.
         Id := UserId();
-        Assert.AreEqual('TESTUSER', Id, 'UserId() must return TESTUSER when not configured');
+        Assert.AreNotEqual('', Id, 'UserId() must return a non-empty string');
     end;
 }

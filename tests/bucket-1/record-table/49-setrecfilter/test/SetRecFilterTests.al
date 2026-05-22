@@ -14,6 +14,7 @@ codeunit 50562 "SetRecFilter Tests"
     var
         Rec: Record "SRF Single Table";
     begin
+        Rec.DeleteAll();
         // [GIVEN] Three records exist
         InsertSingle('AAA', 'Alpha');
         InsertSingle('BBB', 'Beta');
@@ -33,6 +34,7 @@ codeunit 50562 "SetRecFilter Tests"
         Rec: Record "SRF Single Table";
         Found: Integer;
     begin
+        Rec.DeleteAll();
         // [GIVEN] Three records exist
         InsertSingle('D01', 'Delta');
         InsertSingle('D02', 'Epsilon');
@@ -56,6 +58,7 @@ codeunit 50562 "SetRecFilter Tests"
     var
         Rec: Record "SRF Single Table";
     begin
+        Rec.DeleteAll();
         // [GIVEN] A record with a specific description
         InsertSingle('E01', 'Expected Description');
         InsertSingle('E02', 'Other Description');
@@ -78,6 +81,7 @@ codeunit 50562 "SetRecFilter Tests"
     var
         Rec: Record "SRF Composite Table";
     begin
+        Rec.DeleteAll();
         // [GIVEN] Three records that share Doc Type=1 but differ on other PK fields
         InsertComposite(1, 'ORD001', 10000, 'Line 1a');
         InsertComposite(1, 'ORD001', 20000, 'Line 1b');
@@ -96,6 +100,7 @@ codeunit 50562 "SetRecFilter Tests"
     var
         Rec: Record "SRF Composite Table";
     begin
+        Rec.DeleteAll();
         // [GIVEN] Two records sharing first two PK fields
         InsertComposite(2, 'PO001', 100, 'First line');
         InsertComposite(2, 'PO001', 200, 'Second line');
@@ -119,6 +124,7 @@ codeunit 50562 "SetRecFilter Tests"
     var
         Rec: Record "SRF Single Table";
     begin
+        Rec.DeleteAll();
         // [GIVEN] Three records, with SetRecFilter applied
         InsertSingle('R01', 'One');
         InsertSingle('R02', 'Two');
@@ -141,6 +147,7 @@ codeunit 50562 "SetRecFilter Tests"
         Rec: Record "SRF Single Table";
         Other: Record "SRF Single Table";
     begin
+        Rec.DeleteAll();
         // [GIVEN] Three records, SetRecFilter on Rec
         InsertSingle('S01', 'One');
         InsertSingle('S02', 'Two');

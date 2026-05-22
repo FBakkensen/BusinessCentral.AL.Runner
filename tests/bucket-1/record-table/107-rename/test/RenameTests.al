@@ -63,6 +63,7 @@ codeunit 50411 "Rename Tests"
     var
         R: Record "Rename Probe";
     begin
+        R.DeleteAll();
         // [GIVEN] No records exist
         // [WHEN] Trying to rename a record that doesn't exist in the table
         R."Entry No." := 42;
@@ -110,6 +111,7 @@ codeunit 50411 "Rename Tests"
         R: Record "Rename Probe";
         Ok: Boolean;
     begin
+        R.DeleteAll();
         // [GIVEN] No records exist
         R."Entry No." := 42;
 
@@ -154,6 +156,7 @@ codeunit 50411 "Rename Tests"
         R: Record "Rename Composite";
         Lookup: Record "Rename Composite";
     begin
+        R.DeleteAll();
         // [GIVEN] A record with composite key (1, 'ORD001', 10000)
         R."Doc Type" := 1;
         R."Doc No." := 'ORD001';
@@ -177,6 +180,7 @@ codeunit 50411 "Rename Tests"
         Lookup: Record "Rename Composite";
         Found: Boolean;
     begin
+        R.DeleteAll();
         // [GIVEN] A record with composite key
         R."Doc Type" := 1;
         R."Doc No." := 'ORD001';
@@ -202,6 +206,7 @@ codeunit 50411 "Rename Tests"
     var
         R: Record "Rename Probe";
     begin
+        R.DeleteAll();
         // [GIVEN] Three records
         R."Entry No." := 1; R.Insert();
         R.Init();

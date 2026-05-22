@@ -23,10 +23,10 @@ codeunit 50600 "Company Name Test"
     var
         Result: Text;
     begin
-        // Positive: UserId should return a text value without crashing.
-        // Default is "TESTUSER" when not configured via --user-id.
+        // Positive: UserId should return a non-empty text value on any environment.
+        // Runner returns 'TESTUSER'; real BC returns the logged-in user's ID.
         Result := Helper.GetUserId();
-        Assert.AreEqual('TESTUSER', Result, 'UserId should return TESTUSER by default');
+        Assert.AreNotEqual('', Result, 'UserId must return a non-empty string');
     end;
 
     [Test]

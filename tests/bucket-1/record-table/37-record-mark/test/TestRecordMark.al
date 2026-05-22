@@ -11,6 +11,7 @@ codeunit 50539 "Test Record Mark"
         Rec: Record "Record Mark Table";
         Count: Integer;
     begin
+        Rec.DeleteAll();
         // Positive: marking a subset and enabling MarkedOnly returns only marked rows.
         InsertRow('A', 'Alpha', 10);
         InsertRow('B', 'Beta', 20);
@@ -39,6 +40,7 @@ codeunit 50539 "Test Record Mark"
     var
         Rec: Record "Record Mark Table";
     begin
+        Rec.DeleteAll();
         // Positive: Mark() returns true after Mark(true), false after Mark(false).
         InsertRow('X', 'xray', 1);
         Rec.Get('X');
@@ -56,6 +58,7 @@ codeunit 50539 "Test Record Mark"
         Rec: Record "Record Mark Table";
         Count: Integer;
     begin
+        Rec.DeleteAll();
         // Positive: ClearMarks wipes all marks; MarkedOnly iteration then finds nothing.
         InsertRow('P', 'P', 1);
         InsertRow('Q', 'Q', 2);
@@ -83,6 +86,7 @@ codeunit 50539 "Test Record Mark"
         Rec: Record "Record Mark Table";
         Count: Integer;
     begin
+        Rec.DeleteAll();
         // Negative/off-switch: MarkedOnly(false) after marking still returns every record.
         InsertRow('1', 'One', 1);
         InsertRow('2', 'Two', 2);
@@ -106,6 +110,7 @@ codeunit 50539 "Test Record Mark"
         Rec: Record "Record Mark Table";
         Hit: Boolean;
     begin
+        Rec.DeleteAll();
         // Regression #1492: CS0019 "Operator '&' cannot be applied to operands of type 'bool' and 'void'"
         // BC emits "CStmtHit(N) & rec.ALMark(true)" for "if Rec.Mark(true) then", which requires
         // ALMark(bool) to return bool (not void).

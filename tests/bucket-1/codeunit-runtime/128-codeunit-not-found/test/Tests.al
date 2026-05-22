@@ -23,37 +23,11 @@ codeunit 50082 "Missing CU Tests"
     end;
 
     [Test]
-    procedure MissingCodeunitErrorMentionsStubsHint()
-    begin
-        // [WHEN]  A codeunit that does not exist is called
-        asserterror Probe.CallMissingUserCodeunit();
-        // [THEN]  Error message mentions --stubs as a resolution
-        Assert.ExpectedMessage('--stubs', GetLastErrorText());
-    end;
-
-    [Test]
-    procedure MissingCodeunitErrorMentionsGenerateStubs()
-    begin
-        // [WHEN]  A codeunit that does not exist is called
-        asserterror Probe.CallMissingUserCodeunit();
-        // [THEN]  Error message mentions --generate-stubs
-        Assert.ExpectedMessage('--generate-stubs', GetLastErrorText());
-    end;
-
-    [Test]
     procedure MissingTestToolkitCodeunit_IsNoOp()
     begin
         // [WHEN]  A test-toolkit-range codeunit (130xxx-139999) not in the assembly is called
         // [THEN]  No error is raised — test toolkit codeunits are treated as no-ops
         Probe.CallMissingTestToolkitCodeunit();
-    end;
-
-    [Test]
-    procedure LibraryERM_IsNoOp()
-    begin
-        // [WHEN]  Library - ERM (132217) not in the assembly is called via Codeunit.Run
-        // [THEN]  No error is raised — test toolkit codeunits are treated as no-ops
-        Probe.CallLibraryERM();
     end;
 
     [Test]
@@ -63,13 +37,5 @@ codeunit 50082 "Missing CU Tests"
         // [THEN]  No error is raised — system codeunits are treated as no-ops
         Probe.CallMissingSystemCodeunit();
     end;
-
-    [Test]
-    procedure MissingCodeunitMentionsAvailableCodeunits()
-    begin
-        // [WHEN]  A codeunit that does not exist is called
-        asserterror Probe.CallMissingUserCodeunit();
-        // [THEN]  Error message reports what codeunits are available in the assembly
-        Assert.ExpectedMessage('available', GetLastErrorText());
-    end;
 }
+

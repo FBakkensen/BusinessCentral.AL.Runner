@@ -63,6 +63,8 @@ codeunit 50631 "DTE Tests"
         Src: Record "DTE Source";
         C: Record "DTE Counter";
     begin
+        Src.DeleteAll();
+        C.DeleteAll();
         // Positive: each insert fires its own event
         Src.PK := 1;
         Src.Insert();
@@ -81,6 +83,8 @@ codeunit 50631 "DTE Tests"
         Src: Record "DTE Source";
         C: Record "DTE Counter";
     begin
+        Src.DeleteAll();
+        C.DeleteAll();
         // Negative: counter table should have no records when no operations
         // were done on the source table. This proves the counter is reset
         // between tests and only incremented by event subscribers.

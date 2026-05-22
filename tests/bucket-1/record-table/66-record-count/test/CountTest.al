@@ -23,6 +23,7 @@ codeunit 50593 "Record Count Test"
     var
         Rec: Record "Count Rows Test Table";
     begin
+        Rec.DeleteAll();
         // Negative: empty table must return 0
         Assert.AreEqual(0, Rec.Count, 'Count() on empty table must be 0');
     end;
@@ -96,6 +97,7 @@ codeunit 50593 "Record Count Test"
     var
         Rec: Record "Count Rows Test Table";
     begin
+        Rec.DeleteAll();
         Assert.AreEqual(0, Rec.CountApprox, 'CountApprox() on empty table must be 0');
     end;
 
@@ -104,6 +106,7 @@ codeunit 50593 "Record Count Test"
     var
         Rec: Record "Count Rows Test Table";
     begin
+        Rec.DeleteAll();
         InsertRow(1, 'A', 10);
         InsertRow(2, 'B', 20);
         // In runner context CountApprox returns exact count

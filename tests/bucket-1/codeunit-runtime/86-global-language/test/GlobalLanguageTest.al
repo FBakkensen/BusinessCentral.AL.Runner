@@ -17,25 +17,28 @@ codeunit 50371 "Global Language Test"
     end;
 
     [Test]
-    procedure GlobalLanguageDefaultIsENU()
+    procedure GlobalLanguageDefaultIsPositive()
     var
         Api: Codeunit "Global Language Api";
         Lang: Integer;
     begin
-        // Positive: Default language should be 1033 (ENU).
+        // Positive: Default language must be a valid positive integer.
+        // Env-agnostic: runner defaults to 1033 (ENU), BC sandbox may use any locale.
         Lang := Api.GetCurrentLanguage();
-        Assert.AreEqual(1033, Lang, 'Default GlobalLanguage should be 1033 (ENU)');
+        Assert.IsTrue(Lang > 0, 'Default GlobalLanguage must be a positive integer');
     end;
 
     [Test]
     procedure GlobalLanguageSaveSetRestore()
     var
         Api: Codeunit "Global Language Api";
+        Original: Integer;
         Result: Integer;
     begin
         // Positive: Save/set/restore round-trip must return the original value.
+        Original := Api.GetCurrentLanguage();
         Result := Api.SetAndRestoreLanguage();
-        Assert.AreEqual(1033, Result, 'After save/set/restore, GlobalLanguage must equal the original');
+        Assert.AreEqual(Original, Result, 'After save/set/restore, GlobalLanguage must equal the original');
     end;
 
     [Test]

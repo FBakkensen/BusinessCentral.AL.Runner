@@ -5,6 +5,7 @@ codeunit 50510 "Record Persistence Tests"
     var
         Helper: Codeunit "Persistence Helper";
         Assert: Codeunit Assert;
+        Rec: Record "Persistence Demo";
 
     [Test]
     procedure TestRecordsPersistAcrossFunctions()
@@ -53,6 +54,7 @@ codeunit 50510 "Record Persistence Tests"
     [Test]
     procedure TestGetNonExistentRecordFails()
     begin
+        Rec.DeleteAll();
         // [GIVEN] Records inserted by SetupData
         Helper.SetupData();
 
@@ -66,6 +68,7 @@ codeunit 50510 "Record Persistence Tests"
     [Test]
     procedure TestEmptyTableBeforeSetup()
     begin
+        Rec.DeleteAll();
         // [WHEN] No records have been inserted yet
         // [THEN] Count should be zero
         Assert.AreEqual(0, Helper.GetRecordCount(), 'Table should be empty before setup');

@@ -4,10 +4,12 @@ codeunit 50526 "SSF Test"
     var
         Assert: Codeunit Assert;
         Src: Codeunit "SSF Source";
+        Rec: Record "SSF Table";
 
     [Test]
     procedure SetSelectionFilter_FilterCopied_CountMatches()
     begin
+        Rec.DeleteAll();
         // [GIVEN] Two records; SetRange on Id='A001'; SetSelectionFilter copies filter
         // [THEN] Filtered.Count() = 1
         Src.InsertRecord('A001', 10);
@@ -18,6 +20,7 @@ codeunit 50526 "SSF Test"
     [Test]
     procedure SetSelectionFilter_NoMatchingRecords_ReturnsZero()
     begin
+        Rec.DeleteAll();
         // [GIVEN] Records exist; filter matches nothing
         // [THEN] Filtered.Count() = 0
         Src.InsertRecord('B001', 10);
@@ -28,6 +31,7 @@ codeunit 50526 "SSF Test"
     [Test]
     procedure SetSelectionFilter_NoFilter_AllRecordsVisible()
     begin
+        Rec.DeleteAll();
         // [GIVEN] Three records; no filter on source
         // [THEN] Filtered.Count() = total record count (all records visible)
         Src.InsertRecord('C001', 10);
@@ -39,6 +43,7 @@ codeunit 50526 "SSF Test"
     [Test]
     procedure SetSelectionFilter_SourceRetainsOwnFilter()
     begin
+        Rec.DeleteAll();
         // [GIVEN] Source has a range filter; SetSelectionFilter is called
         // [THEN] Source's own filter is unchanged (Count = 1)
         Src.InsertRecord('D001', 10);

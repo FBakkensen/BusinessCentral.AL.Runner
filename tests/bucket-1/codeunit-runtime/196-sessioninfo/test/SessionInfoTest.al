@@ -7,18 +7,20 @@ codeunit 50155 "SI Test"
         Src: Codeunit "SI Src";
 
     [Test]
-    procedure SqlRowsRead_ReturnsZero()
+    procedure SqlRowsRead_ReturnsNonNegative()
     begin
-        // Standalone contract — no real SQL, so the counter is always 0.
-        Assert.AreEqual(0, Src.GetSqlRowsRead(),
-            'SessionInformation.SqlRowsRead must return 0 in standalone mode');
+        // Env-agnostic: runner returns 0, real BC returns actual SQL row count.
+        // Contract: must not throw and must return a non-negative integer.
+        Assert.IsTrue(Src.GetSqlRowsRead() >= 0,
+            'SessionInformation.SqlRowsRead must return a non-negative integer');
     end;
 
     [Test]
-    procedure SqlStatementsExecuted_ReturnsZero()
+    procedure SqlStatementsExecuted_ReturnsNonNegative()
     begin
-        Assert.AreEqual(0, Src.GetSqlStatementsExecuted(),
-            'SessionInformation.SqlStatementsExecuted must return 0 in standalone mode');
+        // Env-agnostic: runner returns 0, real BC returns actual SQL statement count.
+        Assert.IsTrue(Src.GetSqlStatementsExecuted() >= 0,
+            'SessionInformation.SqlStatementsExecuted must return a non-negative integer');
     end;
 
     [Test]

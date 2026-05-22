@@ -4,6 +4,7 @@ codeunit 50086 "Test Item Processor"
 
     var
         Assert: Codeunit Assert;
+        Staging: Record "Item Staging";
 
     [Test]
     procedure SumQuantities_ReturnsCorrectTotal()
@@ -12,6 +13,7 @@ codeunit 50086 "Test Item Processor"
         Processor: Codeunit "Item Processor";
         Result: Decimal;
     begin
+        Staging.DeleteAll();
         // Arrange
         Staging.Init();
         Staging."Entry No." := 1;
@@ -40,6 +42,7 @@ codeunit 50086 "Test Item Processor"
         Processor: Codeunit "Item Processor";
         Result: Text;
     begin
+        Staging.DeleteAll();
         Result := Processor.FormatItemLine('ITEM-A', 'Widget', 10);
         // Prove the exact format, not just non-empty
         Assert.AreEqual('ITEM-A - Widget: 10', Result, 'FormatItemLine must produce "ITEM-A - Widget: 10"');
@@ -52,6 +55,7 @@ codeunit 50086 "Test Item Processor"
         Processor: Codeunit "Item Processor";
         Result: Decimal;
     begin
+        Staging.DeleteAll();
         Staging.Reset();
         Result := Processor.SumQuantities(Staging);
         Assert.AreEqual(0, Result, 'SumQuantities on empty table must return 0');

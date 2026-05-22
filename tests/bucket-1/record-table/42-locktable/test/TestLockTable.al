@@ -10,6 +10,7 @@ codeunit 50546 "Test LockTable"
     var
         Rec: Record "Lock Probe";
     begin
+        Rec.DeleteAll();
         // Positive: LockTable on an empty table compiles and runs without error.
         Rec.LockTable();
         Assert.AreEqual(0, Rec.Count, 'Table should still be empty after LockTable');
@@ -20,6 +21,7 @@ codeunit 50546 "Test LockTable"
     var
         Rec: Record "Lock Probe";
     begin
+        Rec.DeleteAll();
         // Positive: subsequent Modify operates normally after LockTable.
         Rec.Init();
         Rec."No." := 'A';
@@ -45,6 +47,7 @@ codeunit 50546 "Test LockTable"
     var
         Rec: Record "Lock Probe";
     begin
+        Rec.DeleteAll();
         // Positive: Insert operates normally after LockTable on an empty table.
         Rec.LockTable();
 
@@ -64,6 +67,7 @@ codeunit 50546 "Test LockTable"
     var
         Rec: Record "Lock Probe";
     begin
+        Rec.DeleteAll();
         // Positive: multiple LockTable calls in a row do not break subsequent operations.
         Rec.Init();
         Rec."No." := 'C';
@@ -82,6 +86,7 @@ codeunit 50546 "Test LockTable"
     var
         Rec: Record "Lock Probe";
     begin
+        Rec.DeleteAll();
         // Positive: Delete works after LockTable.
         Rec.Init();
         Rec."No." := 'D';
@@ -100,6 +105,7 @@ codeunit 50546 "Test LockTable"
     var
         Rec: Record "Lock Probe";
     begin
+        Rec.DeleteAll();
         // Positive: LockTable(Wait: Boolean) overload is a no-op — must not raise an error.
         Rec.LockTable(false);
         Assert.AreEqual(0, Rec.Count, 'LockTable(false) must not alter the table or throw');
@@ -110,6 +116,7 @@ codeunit 50546 "Test LockTable"
     var
         Rec: Record "Lock Probe";
     begin
+        Rec.DeleteAll();
         // Positive: LockTable(true) is also a no-op.
         Rec.LockTable(true);
         Assert.AreEqual(0, Rec.Count, 'LockTable(true) must not alter the table or throw');
@@ -120,6 +127,7 @@ codeunit 50546 "Test LockTable"
     var
         Rec: Record "Lock Probe";
     begin
+        Rec.DeleteAll();
         // Positive: Insert still works after LockTable(false).
         Rec.LockTable(false);
         Rec.Init();

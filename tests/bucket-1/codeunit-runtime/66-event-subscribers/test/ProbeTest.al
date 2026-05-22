@@ -3,13 +3,14 @@ codeunit 50339 "ES Tests"
     Subtype = Test;
     var
         Assert: Codeunit Assert;
+        C: Record "ES Counter";
 
     [Test]
     procedure SubscribersFireOnceEach()
     var
         Publisher: Codeunit "ES Publisher";
-        C: Record "ES Counter";
     begin
+        C.DeleteAll();
         Publisher.DoIt();
         Assert.IsTrue(C.Get(1), 'Subscriber should have inserted counter row');
         Assert.AreEqual(1, C.Before, 'OnBefore should have fired once');
@@ -20,8 +21,8 @@ codeunit 50339 "ES Tests"
     procedure SubscribersFireOnEachCall()
     var
         Publisher: Codeunit "ES Publisher";
-        C: Record "ES Counter";
     begin
+        C.DeleteAll();
         Publisher.DoIt();
         Publisher.DoIt();
         Publisher.DoIt();

@@ -10,6 +10,7 @@ codeunit 50528 "Test Modify All"
     var
         Rec: Record "Mod All Table";
     begin
+        Rec.DeleteAll();
         // Positive: ModifyAll updates all records in the table
         Rec.Init();
         Rec."No." := 'A';
@@ -41,6 +42,7 @@ codeunit 50528 "Test Modify All"
     var
         Rec: Record "Mod All Table";
     begin
+        Rec.DeleteAll();
         // Positive: ModifyAll with filter only updates matching records
         Rec.Init();
         Rec."No." := 'X';
@@ -77,6 +79,7 @@ codeunit 50528 "Test Modify All"
     var
         Rec: Record "Mod All Table";
     begin
+        Rec.DeleteAll();
         // Negative: ModifyAll on empty table is a no-op
         Rec.ModifyAll("Status", 'Done');
         Assert.AreEqual(0, Rec.Count(), 'Table should still be empty');
@@ -87,6 +90,7 @@ codeunit 50528 "Test Modify All"
     var
         Rec: Record "Mod All Table";
     begin
+        Rec.DeleteAll();
         // Positive: ModifyAll with runTrigger parameter works
         Rec.Init();
         Rec."No." := 'T1';

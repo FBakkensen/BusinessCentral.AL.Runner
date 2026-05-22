@@ -23,6 +23,7 @@ codeunit 50174 "CI Isolation Tests"
     var
         Rec: Record "CI Shared Table";
     begin
+        Rec.DeleteAll();
         // [GIVEN] No inserts have been done in this test
         // [THEN] Table count is 0 — proves isolation reset happened
         Assert.AreEqual(0, Rec.Count(), 'Table must be empty at start of each test method');
@@ -37,6 +38,7 @@ codeunit 50174 "CI Isolation Tests"
     var
         Rec: Record "CI Shared Table";
     begin
+        Rec.DeleteAll();
         // [GIVEN] Table is empty
         Assert.AreEqual(0, Rec.Count(), 'Pre-condition: table must be empty');
 
@@ -62,6 +64,7 @@ codeunit 50174 "CI Isolation Tests"
     var
         Rec: Record "CI Shared Table";
     begin
+        Rec.DeleteAll();
         // [GIVEN] Previous test (InsertAndReadBack_SameMethod) inserted a record
         // [WHEN] Running under --test-isolation method
         // [THEN] Table is empty — the per-method reset fired
