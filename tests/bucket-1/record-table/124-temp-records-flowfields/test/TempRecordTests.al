@@ -81,12 +81,11 @@ codeunit 50433 "Temp Record Tests"
         TempItem.Name := 'First';
         TempItem.Insert();
 
-        asserterror begin
-            TempItem.Init();
-            TempItem.Id := 99;
-            TempItem.Name := 'Duplicate';
-            TempItem.Insert();
-        end;
+        TempItem.Init();
+        TempItem.Id := 99;
+        TempItem.Name := 'Duplicate';
+        asserterror TempItem.Insert();
+
         Assert.ExpectedError('already exists');
     end;
 }

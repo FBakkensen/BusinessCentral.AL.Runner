@@ -13,11 +13,9 @@ codeunit 50335 "PK Probe Tests"
         R.DeleteAll();
         R.Id := 1; R.Name := 'a'; R.Insert();
 
-        asserterror begin
-            Second.Id := 1;
-            Second.Name := 'b';
-            Second.Insert();
-        end;
+        Second.Id := 1;
+        Second.Name := 'b';
+        asserterror Second.Insert();
 
         // Only one row should remain
         Assert.AreEqual(1, R.Count(), 'Duplicate Insert should not have created a second row');

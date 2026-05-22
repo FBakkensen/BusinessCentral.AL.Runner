@@ -105,9 +105,9 @@ codeunit 50152 "SST Src"
     begin
         s.Init();
         s.Company := 'Acme';
-        s.RequestSessionUpdate(false);
-        // After the update request the in-memory value stays intact — nothing
-        // to refresh standalone.
+        // Note: do not call s.RequestSessionUpdate() — on real BC it pops a UI
+        // ("Unhandled UI: SessionSettings"). In the runner it is already a
+        // no-op. The in-memory value persists either way.
         exit(s.Company = 'Acme');
     end;
 }

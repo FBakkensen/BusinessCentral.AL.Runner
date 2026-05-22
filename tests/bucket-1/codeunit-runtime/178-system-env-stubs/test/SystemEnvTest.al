@@ -80,9 +80,16 @@ codeunit 50143 "SEVS Test"
     end;
 #endif
     [Test]
+    [HandlerFunctions('AcceptHyperlinkHandler')]
     procedure Hyperlink_NoThrow()
     begin
         // no-op in runner — must not throw
         Src.OpenHyperlink('https://example.com');
+    end;
+
+    [HyperlinkHandler]
+    procedure AcceptHyperlinkHandler(Url: Text[1024])
+    begin
+        // accept; verifies the call reached the platform hyperlink API
     end;
 }

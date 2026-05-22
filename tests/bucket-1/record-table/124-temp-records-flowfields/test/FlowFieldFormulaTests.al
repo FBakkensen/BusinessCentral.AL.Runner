@@ -159,13 +159,12 @@ codeunit 50432 "FlowField Formula Tests"
         Line.Amount := 50.00;
         Line.Insert();
 
-        asserterror begin
-            Line.Init();
-            Line."Order No." := 'DUP-HDR';
-            Line."Line No." := 10000;
-            Line.Amount := 75.00;
-            Line.Insert();
-        end;
+        Line.Init();
+        Line."Order No." := 'DUP-HDR';
+        Line."Line No." := 10000;
+        Line.Amount := 75.00;
+        asserterror Line.Insert();
+
         Assert.ExpectedError('already exists');
     end;
 }

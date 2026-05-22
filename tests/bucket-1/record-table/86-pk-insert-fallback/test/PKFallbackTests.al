@@ -32,12 +32,10 @@ codeunit 50615 "PK Fallback Tests"
         Rec.Description := 'Original';
         Rec.Insert();
 
-        asserterror begin
-            Rec.Init();
-            Rec."Entry No." := 42;
-            Rec.Description := 'Duplicate';
-            Rec.Insert();
-        end;
+        Rec.Init();
+        Rec."Entry No." := 42;
+        Rec.Description := 'Duplicate';
+        asserterror Rec.Insert();
 
         // The table must still have exactly one row
         Assert.AreEqual(1, Rec.Count(), 'Duplicate Insert must not create a second row');

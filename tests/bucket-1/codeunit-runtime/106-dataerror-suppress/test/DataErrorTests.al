@@ -41,10 +41,8 @@ codeunit 50061 "DataError Suppress Tests"
         R.Insert();
 
         // [WHEN] Inserting a duplicate without capturing the return value
-        asserterror begin
-            Second."Entry No." := 1;
-            Second.Insert();
-        end;
+        Second."Entry No." := 1;
+        asserterror Second.Insert();
 
         // [THEN] Should have thrown an error
         Assert.ExpectedError('already exists');
@@ -331,10 +329,8 @@ codeunit 50061 "DataError Suppress Tests"
         R.Insert(true);
 
         // [WHEN] Inserting a duplicate with RunTrigger=true without capturing return
-        asserterror begin
-            Second."Entry No." := 1;
-            Second.Insert(true);
-        end;
+        Second."Entry No." := 1;
+        asserterror Second.Insert(true);
 
         // [THEN] Should have thrown an error
         Assert.ExpectedError('already exists');
