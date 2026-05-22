@@ -22,8 +22,9 @@ public static partial class RecordPatches
         @"\bfield\s*\(\s*(\d+)\s*;\s*(?:""([^""]+)""|([A-Za-z_]\w*))\s*;\s*([^)]+?)\s*\)",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+    // Group 1 = key name, group 2 = comma-separated field list.
     private static readonly Regex RxKey = new(
-        @"\bkey\s*\(\s*[^;]+;\s*([^)]+)\)",
+        @"\bkey\s*\(\s*([^;]+)\s*;\s*([^)]+)\)",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     private static readonly Regex RxFieldClass = new(
@@ -45,6 +46,12 @@ public static partial class RecordPatches
     // getter at Init() time.
     private static readonly Regex RxInitValue = new(
         @"\bInitValue\s*=\s*([^;]+);",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    // AutoIncrement = true; — detect on PK field bodies so we can wire up autoincrement
+    // semantics in the NCLMetaTable.
+    private static readonly Regex RxAutoIncrement = new(
+        @"\bAutoIncrement\s*=\s*true\b",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     private static readonly Regex RxCalcFormula = new(
@@ -137,37 +144,52 @@ public static partial class RecordPatches
                 // BC's NCLMetaField.InitValue getter calls ALSystemVariable.EvaluateIntoNavValue
                 // on it at Init() time.
                 string? initValueText = null;
+                bool isAutoIncrement = false;
                 if (fieldBody != null)
                 {
                     var ivMatch = RxInitValue.Match(fieldBody);
                     if (ivMatch.Success)
                         initValueText = ivMatch.Groups[1].Value.Trim();
+                    isAutoIncrement = RxAutoIncrement.IsMatch(fieldBody);
                 }
 
-                fields.Add(new ParsedField(fid, fname, ftype, length, isFlowField, calcFormula, optionMembers, initValueText));
+                fields.Add(new ParsedField(fid, fname, ftype, length, isFlowField, calcFormula, optionMembers, initValueText, isAutoIncrement));
             }
 
-            // Parse first key as PK
+            // Parse first key as PK; all subsequent keys are secondary.
             var pkFieldIds = new List<int>();
-            var keyMatch = RxKey.Match(slice);
-            if (keyMatch.Success)
+            var secondaryKeys = new List<ParsedKey>();
+            var allKeyMatches = RxKey.Matches(slice);
+            bool firstKey = true;
+            foreach (Match keyMatch in allKeyMatches)
             {
-                var keyFieldNames = keyMatch.Groups[1].Value
+                var keyName = keyMatch.Groups[1].Value.Trim().Trim('"');
+                var keyFieldNames = keyMatch.Groups[2].Value
                     .Split(',')
                     .Select(s => s.Trim().Trim('"'))
                     .ToList();
+                var keyFieldIds = new List<int>();
                 foreach (var kn in keyFieldNames)
                 {
                     var f = fields.FirstOrDefault(x =>
                         string.Equals(x.FieldName, kn, StringComparison.OrdinalIgnoreCase));
-                    if (f != null) pkFieldIds.Add(f.FieldId);
+                    if (f != null) keyFieldIds.Add(f.FieldId);
+                }
+                if (firstKey)
+                {
+                    pkFieldIds.AddRange(keyFieldIds);
+                    firstKey = false;
+                }
+                else if (keyFieldIds.Count > 0)
+                {
+                    secondaryKeys.Add(new ParsedKey(keyName, keyFieldIds));
                 }
             }
             // Fallback: first field is PK
             if (pkFieldIds.Count == 0 && fields.Count > 0)
                 pkFieldIds.Add(fields[0].FieldId);
 
-            _parsedTables[tableId] = new ParsedTable(tableId, tableName, fields, pkFieldIds);
+            _parsedTables[tableId] = new ParsedTable(tableId, tableName, fields, pkFieldIds, secondaryKeys);
         }
     }
 
@@ -268,6 +290,7 @@ public static partial class RecordPatches
 
 internal record ParsedCalcFilter(string SourceFieldName, string ParentFieldName);
 internal record ParsedCalcFormula(string FormulaType, string SourceTableName, string? SourceFieldName, List<ParsedCalcFilter> Filters);
-internal record ParsedField(int FieldId, string FieldName, string TypeName, int Length, bool IsFlowField = false, ParsedCalcFormula? CalcFormula = null, string? OptionMembers = null, string? InitValueText = null);
+internal record ParsedField(int FieldId, string FieldName, string TypeName, int Length, bool IsFlowField = false, ParsedCalcFormula? CalcFormula = null, string? OptionMembers = null, string? InitValueText = null, bool IsAutoIncrement = false);
+internal record ParsedKey(string Name, List<int> FieldIds);
 internal record ParsedTable(int TableId, string TableName,
-    List<ParsedField> Fields, List<int> PkFieldIds);
+    List<ParsedField> Fields, List<int> PkFieldIds, List<ParsedKey>? SecondaryKeys = null);

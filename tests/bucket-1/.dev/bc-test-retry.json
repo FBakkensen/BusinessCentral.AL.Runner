@@ -1,0 +1,412 @@
+[
+  {
+    "id": 50055,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50057,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50057.AreEqual_ViaCodeunit130002_FailsOnMismatch()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      },
+      {
+        "method": "AreEqual_ViaCodeunit130002_FailsOnMismatch",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50057.AreEqual_ViaCodeunit130002_FailsOnMismatch()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      }
+    ]
+  },
+  {
+    "id": 50071,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The date is not valid."
+      },
+      {
+        "method": "NormalDateOnZeroDateReturnsZero",
+        "error": "The date is not valid."
+      }
+    ]
+  },
+  {
+    "id": 50076,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50203,
+    "status": "Error",
+    "message": "4 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50203.Insert_TwoArg_DuplicateErrors()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      },
+      {
+        "method": "Insert_TwoArg_DuplicateErrors",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50203.Insert_TwoArg_DuplicateErrors()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      },
+      {
+        "method": "Insert_TwoArg_InsertsRecord",
+        "error": "The record in table OGap Table already exists. Identification fields and values: No.='I1'"
+      },
+      {
+        "method": "FindSet_TwoArg_ReturnsTrueWhenRecordExists",
+        "error": "The record in table OGap Table already exists. Identification fields and values: No.='F1'"
+      }
+    ]
+  },
+  {
+    "id": 50212,
+    "status": "Error",
+    "message": "4 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table NullOpt Record already exists. Identification fields and values: Id='3'"
+      },
+      {
+        "method": "ReadInitializedEnumField_ActiveOrdinalIs1",
+        "error": "The record in table NullOpt Record already exists. Identification fields and values: Id='3'"
+      },
+      {
+        "method": "ReadInitializedEnumField_ReturnsCorrectOrdinal",
+        "error": "The record in table NullOpt Record already exists. Identification fields and values: Id='2'"
+      },
+      {
+        "method": "ReadUninitializedEnumField_ReturnsDefaultOrdinal",
+        "error": "The record in table NullOpt Record already exists. Identification fields and values: Id='1'"
+      }
+    ]
+  },
+  {
+    "id": 50241,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.AreEqual failed. Expected:<99> (Integer). Actual:<7> (Integer). Sum must not be 99."
+      },
+      {
+        "method": "InsertViaOnInsert_ReturnsCorrectNo",
+        "error": "The record in table NAD Demo Table already exists. Identification fields and values: No.='X001'"
+      }
+    ]
+  },
+  {
+    "id": 50303,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.ExpectedError failed. Expected: An entry with key 'A' is already present in the dictionary.. Actual: An item with the same key has already been added.."
+      },
+      {
+        "method": "DictionaryAdd_DuplicateKey_Throws",
+        "error": "Assert.ExpectedError failed. Expected: An entry with key 'A' is already present in the dictionary.. Actual: An item with the same key has already been added.."
+      }
+    ]
+  },
+  {
+    "id": 50344,
+    "status": "Error",
+    "message": "4 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.ExpectedError failed. Expected: No ModalPageHandler registered. Actual: Unhandled UI: ModalPage 50008."
+      },
+      {
+        "method": "TestModalNoHandler",
+        "error": "Assert.ExpectedError failed. Expected: No ModalPageHandler registered. Actual: Unhandled UI: ModalPage 50008."
+      },
+      {
+        "method": "TestModalHandlerCancel",
+        "error": "Unexpected CLR exception thrown.: System.NotSupportedException: Specified method is not supported.\\   at Microsoft.Dynamics.Nav.Runtime.NavTestExecution.TestHandleModalForm(NavForm form, FormResult& action, NavFormRuntimeParameters parameters)\\   at Microsoft.Dynamics.Nav.Runtime.NavForm.RunModalAsync(NavRecord record, Int32 fieldNo)\\   at Microsoft.Dynamics.Nav.Runtime.NavFormHandle.RunModalAsync(NavRecord record, Int32 fieldNo)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50343.OpenModalAndGetResult()\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50344.TestModalHandlerCancel()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      },
+      {
+        "method": "TestModalHandlerOk",
+        "error": "Unexpected CLR exception thrown.: System.NotSupportedException: Specified method is not supported.\\   at Microsoft.Dynamics.Nav.Runtime.NavTestExecution.TestHandleModalForm(NavForm form, FormResult& action, NavFormRuntimeParameters parameters)\\   at Microsoft.Dynamics.Nav.Runtime.NavForm.RunModalAsync(NavRecord record, Int32 fieldNo)\\   at Microsoft.Dynamics.Nav.Runtime.NavFormHandle.RunModalAsync(NavRecord record, Int32 fieldNo)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50343.OpenModalAndGetResult()\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50344.TestModalHandlerOk()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      }
+    ]
+  },
+  {
+    "id": 50374,
+    "status": "Error",
+    "message": "9 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Unexpected CLR exception thrown.: System.NotSupportedException: Specified method is not supported.\\   at Microsoft.Dynamics.Nav.Runtime.NavSession.CreateNavTestService()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_Server()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_ClientApi()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.GetClientApiOrThrow()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.<>c__DisplayClass49_0`1.<CallServer>b__0()\\   at Microsoft.Dynamics.Nav.Client.ServerInvocationHandler.CallServerSync[T](Func`1 callServer, Nullable`1 options)\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.OpenForm(NavOpenFormArguments& mainForm, NavOpenFormArguments[]& subForms, Guid mainFormHandle)\\   at Microsoft.Dynamics.Nav.Client.DataBinder.NstDataAccess.OpenForm(LogicalForm mainForm, ICollection`1 subForms)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.TryOpenForm(LogicalForm form, Boolean retry)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.OnFormOpened(Object sender, EventArgs e)\\   at Microsoft.Dynamics.Framework.UI.LogicalForm.BuildForm(Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.Builder.NavSessionHelper.BuildForm(LogicalForm form, Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.CompleteBuildDependingOnPageDefinition(MasterPage definition, LogicalForm form, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.Build(MasterPage definition, BindingManager bindingManager, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalForm(MasterPage metadata, FormState formState)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.<>c__DisplayClass39_0.<CreateLogicalForm>b__0(Boolean isRetry)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalFormWithErrorHandling(Int32 formId, Int32 retryCounter, Func`2 action)\\   at Microsoft.Dynamics.Nav.Client.TestPage"
+      },
+      {
+        "method": "CurrentKey_AfterSetCurrentKey_NotDefault",
+        "error": "Unexpected CLR exception thrown.: System.NotSupportedException: Specified method is not supported.\\   at Microsoft.Dynamics.Nav.Runtime.NavSession.CreateNavTestService()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_Server()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_ClientApi()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.GetClientApiOrThrow()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.<>c__DisplayClass49_0`1.<CallServer>b__0()\\   at Microsoft.Dynamics.Nav.Client.ServerInvocationHandler.CallServerSync[T](Func`1 callServer, Nullable`1 options)\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.OpenForm(NavOpenFormArguments& mainForm, NavOpenFormArguments[]& subForms, Guid mainFormHandle)\\   at Microsoft.Dynamics.Nav.Client.DataBinder.NstDataAccess.OpenForm(LogicalForm mainForm, ICollection`1 subForms)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.TryOpenForm(LogicalForm form, Boolean retry)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.OnFormOpened(Object sender, EventArgs e)\\   at Microsoft.Dynamics.Framework.UI.LogicalForm.BuildForm(Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.Builder.NavSessionHelper.BuildForm(LogicalForm form, Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.CompleteBuildDependingOnPageDefinition(MasterPage definition, LogicalForm form, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.Build(MasterPage definition, BindingManager bindingManager, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalForm(MasterPage metadata, FormState formState)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.<>c__DisplayClass39_0.<CreateLogicalForm>b__0(Boolean isRetry)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalFormWithErrorHandling(Int32 formId, Int32 retryCounter, Func`2 action)\\   at Microsoft.Dynamics.Nav.Client.TestPage"
+      },
+      {
+        "method": "SetCurrentKey_CurrentKey_RoundTrip",
+        "error": "Unexpected CLR exception thrown.: System.NotSupportedException: Specified method is not supported.\\   at Microsoft.Dynamics.Nav.Runtime.NavSession.CreateNavTestService()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_Server()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_ClientApi()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.GetClientApiOrThrow()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.<>c__DisplayClass49_0`1.<CallServer>b__0()\\   at Microsoft.Dynamics.Nav.Client.ServerInvocationHandler.CallServerSync[T](Func`1 callServer, Nullable`1 options)\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.OpenForm(NavOpenFormArguments& mainForm, NavOpenFormArguments[]& subForms, Guid mainFormHandle)\\   at Microsoft.Dynamics.Nav.Client.DataBinder.NstDataAccess.OpenForm(LogicalForm mainForm, ICollection`1 subForms)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.TryOpenForm(LogicalForm form, Boolean retry)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.OnFormOpened(Object sender, EventArgs e)\\   at Microsoft.Dynamics.Framework.UI.LogicalForm.BuildForm(Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.Builder.NavSessionHelper.BuildForm(LogicalForm form, Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.CompleteBuildDependingOnPageDefinition(MasterPage definition, LogicalForm form, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.Build(MasterPage definition, BindingManager bindingManager, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalForm(MasterPage metadata, FormState formState)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.<>c__DisplayClass39_0.<CreateLogicalForm>b__0(Boolean isRetry)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalFormWithErrorHandling(Int32 formId, Int32 retryCounter, Func`2 action)\\   at Microsoft.Dynamics.Nav.Client.TestPage"
+      },
+      {
+        "method": "Ascending_NotStuckAtDefault",
+        "error": "Unexpected CLR exception thrown.: System.NotSupportedException: Specified method is not supported.\\   at Microsoft.Dynamics.Nav.Runtime.NavSession.CreateNavTestService()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_Server()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_ClientApi()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.GetClientApiOrThrow()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.<>c__DisplayClass49_0`1.<CallServer>b__0()\\   at Microsoft.Dynamics.Nav.Client.ServerInvocationHandler.CallServerSync[T](Func`1 callServer, Nullable`1 options)\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.OpenForm(NavOpenFormArguments& mainForm, NavOpenFormArguments[]& subForms, Guid mainFormHandle)\\   at Microsoft.Dynamics.Nav.Client.DataBinder.NstDataAccess.OpenForm(LogicalForm mainForm, ICollection`1 subForms)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.TryOpenForm(LogicalForm form, Boolean retry)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.OnFormOpened(Object sender, EventArgs e)\\   at Microsoft.Dynamics.Framework.UI.LogicalForm.BuildForm(Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.Builder.NavSessionHelper.BuildForm(LogicalForm form, Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.CompleteBuildDependingOnPageDefinition(MasterPage definition, LogicalForm form, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.Build(MasterPage definition, BindingManager bindingManager, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalForm(MasterPage metadata, FormState formState)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.<>c__DisplayClass39_0.<CreateLogicalForm>b__0(Boolean isRetry)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalFormWithErrorHandling(Int32 formId, Int32 retryCounter, Func`2 action)\\   at Microsoft.Dynamics.Nav.Client.TestPage"
+      },
+      {
+        "method": "Ascending_Set_GetRoundTrip",
+        "error": "Unexpected CLR exception thrown.: System.NotSupportedException: Specified method is not supported.\\   at Microsoft.Dynamics.Nav.Runtime.NavSession.CreateNavTestService()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_Server()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_ClientApi()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.GetClientApiOrThrow()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.<>c__DisplayClass49_0`1.<CallServer>b__0()\\   at Microsoft.Dynamics.Nav.Client.ServerInvocationHandler.CallServerSync[T](Func`1 callServer, Nullable`1 options)\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.OpenForm(NavOpenFormArguments& mainForm, NavOpenFormArguments[]& subForms, Guid mainFormHandle)\\   at Microsoft.Dynamics.Nav.Client.DataBinder.NstDataAccess.OpenForm(LogicalForm mainForm, ICollection`1 subForms)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.TryOpenForm(LogicalForm form, Boolean retry)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.OnFormOpened(Object sender, EventArgs e)\\   at Microsoft.Dynamics.Framework.UI.LogicalForm.BuildForm(Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.Builder.NavSessionHelper.BuildForm(LogicalForm form, Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.CompleteBuildDependingOnPageDefinition(MasterPage definition, LogicalForm form, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.Build(MasterPage definition, BindingManager bindingManager, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalForm(MasterPage metadata, FormState formState)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.<>c__DisplayClass39_0.<CreateLogicalForm>b__0(Boolean isRetry)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalFormWithErrorHandling(Int32 formId, Int32 retryCounter, Func`2 action)\\   at Microsoft.Dynamics.Nav.Client.TestPage"
+      },
+      {
+        "method": "Ascending_DefaultIsTrue",
+        "error": "Unexpected CLR exception thrown.: System.NotSupportedException: Specified method is not supported.\\   at Microsoft.Dynamics.Nav.Runtime.NavSession.CreateNavTestService()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_Server()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_ClientApi()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.GetClientApiOrThrow()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.<>c__DisplayClass49_0`1.<CallServer>b__0()\\   at Microsoft.Dynamics.Nav.Client.ServerInvocationHandler.CallServerSync[T](Func`1 callServer, Nullable`1 options)\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.OpenForm(NavOpenFormArguments& mainForm, NavOpenFormArguments[]& subForms, Guid mainFormHandle)\\   at Microsoft.Dynamics.Nav.Client.DataBinder.NstDataAccess.OpenForm(LogicalForm mainForm, ICollection`1 subForms)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.TryOpenForm(LogicalForm form, Boolean retry)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.OnFormOpened(Object sender, EventArgs e)\\   at Microsoft.Dynamics.Framework.UI.LogicalForm.BuildForm(Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.Builder.NavSessionHelper.BuildForm(LogicalForm form, Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.CompleteBuildDependingOnPageDefinition(MasterPage definition, LogicalForm form, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.Build(MasterPage definition, BindingManager bindingManager, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalForm(MasterPage metadata, FormState formState)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.<>c__DisplayClass39_0.<CreateLogicalForm>b__0(Boolean isRetry)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalFormWithErrorHandling(Int32 formId, Int32 retryCounter, Func`2 action)\\   at Microsoft.Dynamics.Nav.Client.TestPage"
+      },
+      {
+        "method": "SetFilter_NotDefaultEmpty",
+        "error": "Unexpected CLR exception thrown.: System.NotSupportedException: Specified method is not supported.\\   at Microsoft.Dynamics.Nav.Runtime.NavSession.CreateNavTestService()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_Server()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_ClientApi()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.GetClientApiOrThrow()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.<>c__DisplayClass49_0`1.<CallServer>b__0()\\   at Microsoft.Dynamics.Nav.Client.ServerInvocationHandler.CallServerSync[T](Func`1 callServer, Nullable`1 options)\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.OpenForm(NavOpenFormArguments& mainForm, NavOpenFormArguments[]& subForms, Guid mainFormHandle)\\   at Microsoft.Dynamics.Nav.Client.DataBinder.NstDataAccess.OpenForm(LogicalForm mainForm, ICollection`1 subForms)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.TryOpenForm(LogicalForm form, Boolean retry)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.OnFormOpened(Object sender, EventArgs e)\\   at Microsoft.Dynamics.Framework.UI.LogicalForm.BuildForm(Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.Builder.NavSessionHelper.BuildForm(LogicalForm form, Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.CompleteBuildDependingOnPageDefinition(MasterPage definition, LogicalForm form, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.Build(MasterPage definition, BindingManager bindingManager, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalForm(MasterPage metadata, FormState formState)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.<>c__DisplayClass39_0.<CreateLogicalForm>b__0(Boolean isRetry)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalFormWithErrorHandling(Int32 formId, Int32 retryCounter, Func`2 action)\\   at Microsoft.Dynamics.Nav.Client.TestPage"
+      },
+      {
+        "method": "GetFilter_ReturnsEmpty_WhenNotSet",
+        "error": "Unexpected CLR exception thrown.: System.NotSupportedException: Specified method is not supported.\\   at Microsoft.Dynamics.Nav.Runtime.NavSession.CreateNavTestService()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_Server()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_ClientApi()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.GetClientApiOrThrow()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.<>c__DisplayClass49_0`1.<CallServer>b__0()\\   at Microsoft.Dynamics.Nav.Client.ServerInvocationHandler.CallServerSync[T](Func`1 callServer, Nullable`1 options)\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.OpenForm(NavOpenFormArguments& mainForm, NavOpenFormArguments[]& subForms, Guid mainFormHandle)\\   at Microsoft.Dynamics.Nav.Client.DataBinder.NstDataAccess.OpenForm(LogicalForm mainForm, ICollection`1 subForms)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.TryOpenForm(LogicalForm form, Boolean retry)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.OnFormOpened(Object sender, EventArgs e)\\   at Microsoft.Dynamics.Framework.UI.LogicalForm.BuildForm(Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.Builder.NavSessionHelper.BuildForm(LogicalForm form, Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.CompleteBuildDependingOnPageDefinition(MasterPage definition, LogicalForm form, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.Build(MasterPage definition, BindingManager bindingManager, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalForm(MasterPage metadata, FormState formState)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.<>c__DisplayClass39_0.<CreateLogicalForm>b__0(Boolean isRetry)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalFormWithErrorHandling(Int32 formId, Int32 retryCounter, Func`2 action)\\   at Microsoft.Dynamics.Nav.Client.TestPage"
+      },
+      {
+        "method": "SetFilter_GetFilter_RoundTrip",
+        "error": "Unexpected CLR exception thrown.: System.NotSupportedException: Specified method is not supported.\\   at Microsoft.Dynamics.Nav.Runtime.NavSession.CreateNavTestService()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_Server()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_ClientApi()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.GetClientApiOrThrow()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.<>c__DisplayClass49_0`1.<CallServer>b__0()\\   at Microsoft.Dynamics.Nav.Client.ServerInvocationHandler.CallServerSync[T](Func`1 callServer, Nullable`1 options)\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.OpenForm(NavOpenFormArguments& mainForm, NavOpenFormArguments[]& subForms, Guid mainFormHandle)\\   at Microsoft.Dynamics.Nav.Client.DataBinder.NstDataAccess.OpenForm(LogicalForm mainForm, ICollection`1 subForms)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.TryOpenForm(LogicalForm form, Boolean retry)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.OnFormOpened(Object sender, EventArgs e)\\   at Microsoft.Dynamics.Framework.UI.LogicalForm.BuildForm(Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.Builder.NavSessionHelper.BuildForm(LogicalForm form, Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.CompleteBuildDependingOnPageDefinition(MasterPage definition, LogicalForm form, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.Build(MasterPage definition, BindingManager bindingManager, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalForm(MasterPage metadata, FormState formState)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.<>c__DisplayClass39_0.<CreateLogicalForm>b__0(Boolean isRetry)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalFormWithErrorHandling(Int32 formId, Int32 retryCounter, Func`2 action)\\   at Microsoft.Dynamics.Nav.Client.TestPage"
+      }
+    ]
+  },
+  {
+    "id": 50411,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table Rename Probe already exists. Identification fields and values: Entry No.='2'"
+      },
+      {
+        "method": "RenameToConflictReturnsFalse",
+        "error": "The record in table Rename Probe already exists. Identification fields and values: Entry No.='2'"
+      }
+    ]
+  },
+  {
+    "id": 50415,
+    "status": "Error",
+    "message": "4 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table Transfer Source already exists. Identification fields and values: Entry No.='10'"
+      },
+      {
+        "method": "TransferFieldsSkipsPKWhenInitPKFalse",
+        "error": "The record in table Transfer Source already exists. Identification fields and values: Entry No.='10'"
+      },
+      {
+        "method": "TransferFieldsDoesNotCopyNonOverlappingFields",
+        "error": "The record in table Transfer Source already exists. Identification fields and values: Entry No.='2'"
+      },
+      {
+        "method": "TransferFieldsCopiesMatchingFields",
+        "error": "The record in table Transfer Source already exists. Identification fields and values: Entry No.='1'"
+      }
+    ]
+  },
+  {
+    "id": 50432,
+    "status": "Error",
+    "message": "8 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50432.DuplicateLineInsertThrowsError()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      },
+      {
+        "method": "DuplicateLineInsertThrowsError",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50432.DuplicateLineInsertThrowsError()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      },
+      {
+        "method": "FlowFieldsFilterByParentKey",
+        "error": "The record in table FF Order Line already exists. Identification fields and values: Order No.='H1',Line No.='10000'"
+      },
+      {
+        "method": "SumFlowFieldReturnsZeroForNoLines",
+        "error": "The record in table FF Order Header already exists. Identification fields and values: No.='ORD-EMPTY2'"
+      },
+      {
+        "method": "CountFlowFieldReturnsZeroForNoLines",
+        "error": "The record in table FF Order Header already exists. Identification fields and values: No.='ORD-EMPTY'"
+      },
+      {
+        "method": "LookupFlowFieldReturnsFirstMatch",
+        "error": "The record in table FF Order Header already exists. Identification fields and values: No.='ORD003'"
+      },
+      {
+        "method": "SumFlowFieldReturnsCorrectTotal",
+        "error": "The record in table FF Order Header already exists. Identification fields and values: No.='ORD002'"
+      },
+      {
+        "method": "CountFlowFieldReturnsCorrectCount",
+        "error": "The record in table FF Order Header already exists. Identification fields and values: No.='ORD001'"
+      }
+    ]
+  },
+  {
+    "id": 50448,
+    "status": "Error",
+    "message": "4 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.IsTrue failed. IsEmpty must be true on empty table"
+      },
+      {
+        "method": "IsEmpty_EmptyTable_ReturnsTrue",
+        "error": "Assert.IsTrue failed. IsEmpty must be true on empty table"
+      },
+      {
+        "method": "Count_AfterInsert_ReturnsCorrectTotal",
+        "error": "The record in table CNT Item already exists. Identification fields and values: No.='1'"
+      },
+      {
+        "method": "Count_EmptyTable_ReturnsZero",
+        "error": "Assert.AreEqual failed. Expected:<0> (Integer). Actual:<1> (Integer). Count on empty table must be 0."
+      }
+    ]
+  },
+  {
+    "id": 50450,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50476,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50478,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table IWT Dummy already exists. Identification fields and values: ID='0'"
+      },
+      {
+        "method": "IsInWriteTransaction_AfterInsert_StillFalse",
+        "error": "The record in table IWT Dummy already exists. Identification fields and values: ID='0'"
+      }
+    ]
+  },
+  {
+    "id": 50544,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table FC Five already exists. Identification fields and values: Code='X'"
+      },
+      {
+        "method": "FieldCountIsNotWriteCount",
+        "error": "The record in table FC Five already exists. Identification fields and values: Code='X'"
+      },
+      {
+        "method": "FieldCountUnchangedAfterSettingFields",
+        "error": "The record in table FC Three already exists. Identification fields and values: Id='1'"
+      }
+    ]
+  },
+  {
+    "id": 50554,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table Next Probe already exists. Identification fields and values: No.='A'"
+      },
+      {
+        "method": "NextAtEndReturnsZero",
+        "error": "The record in table Next Probe already exists. Identification fields and values: No.='A'"
+      }
+    ]
+  },
+  {
+    "id": 50574,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table FFM Child already exists. Identification fields and values: C1='X',C2='OTHER'"
+      },
+      {
+        "method": "MultiFieldExistNoMatchWithPartialKey",
+        "error": "The record in table FFM Child already exists. Identification fields and values: C1='X',C2='OTHER'"
+      },
+      {
+        "method": "MultiFieldExistFalseThenTrue",
+        "error": "Assert.IsFalse failed. no matching child yet"
+      }
+    ]
+  },
+  {
+    "id": 50585,
+    "status": "Error",
+    "message": "4 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.AreEqual failed. Expected:<2> (Integer). Actual:<4> (Integer). OnInsert should have incremented the counter twice."
+      },
+      {
+        "method": "OnInsertCounterIncrementsAcrossInserts",
+        "error": "Assert.AreEqual failed. Expected:<2> (Integer). Actual:<4> (Integer). OnInsert should have incremented the counter twice."
+      },
+      {
+        "method": "OnInsertWithoutRunTriggerFlagSkipsTrigger",
+        "error": "The record in table OI Probe Row already exists. Identification fields and values: Id='2'"
+      },
+      {
+        "method": "OnInsertSetsTraceField",
+        "error": "The record in table OI Probe Row already exists. Identification fields and values: Id='1'"
+      }
+    ]
+  },
+  {
+    "id": 50606,
+    "status": "Error",
+    "message": "4 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record is not open."
+      },
+      {
+        "method": "RecRefDuplicateOnClosedRefIsEmpty",
+        "error": "The record is not open."
+      },
+      {
+        "method": "InStreamAssignCopiesData",
+        "error": "The record in table Isolation Probe already exists. Identification fields and values: Entry No.='1'"
+      },
+      {
+        "method": "RecRefDuplicateSharesTable",
+        "error": "The record in table Isolation Probe already exists. Identification fields and values: Entry No.='10'"
+      }
+    ]
+  }
+]

@@ -15,20 +15,27 @@ codeunit 50533 "RecRef WritePerm Test"
     end;
 
     [Test]
-    procedure WritePermission_ClosedRef_ReturnsTrue()
-    // Proves WritePermission returns true on a closed (uninitialized) RecordRef
+    procedure WritePermission_ClosedRef_Throws()
+    // BC 16.1: WritePermission on an uninitialized (never-opened) RecordRef raises
+    // "The record is not open." — permission check requires an open reference.
     var
-        Helper: Codeunit "RecRef WritePerm Helper";
+        RecRef: RecordRef;
+        Dummy: Boolean;
     begin
-        Assert.IsTrue(Helper.TestWritePermissionOnClosedRef(), 'WritePermission on closed RecordRef should return true');
+        asserterror Dummy := RecRef.WritePermission;
+        Assert.ExpectedError('not open');
     end;
 
     [Test]
-    procedure WritePermission_AfterClose_ReturnsTrue()
-    // Proves WritePermission returns true after the RecordRef is explicitly closed
+    procedure WritePermission_AfterClose_Throws()
+    // BC 16.1: WritePermission after Close() raises "The record is not open."
     var
-        Helper: Codeunit "RecRef WritePerm Helper";
+        RecRef: RecordRef;
+        Dummy: Boolean;
     begin
-        Assert.IsTrue(Helper.TestWritePermissionAfterClose(), 'WritePermission after Close() should return true');
+        RecRef.Open(Database::"RecRef WritePerm Table");
+        RecRef.Close();
+        asserterror Dummy := RecRef.WritePermission;
+        Assert.ExpectedError('not open');
     end;
 }

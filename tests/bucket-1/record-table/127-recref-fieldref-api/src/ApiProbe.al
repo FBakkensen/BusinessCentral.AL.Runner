@@ -77,16 +77,18 @@ codeunit 50436 "API Probe"
         Result: Text;
     begin
         RecRef.Open(Database::"API Test Entry");
-        // Mark entries 1 and 3
         FldRef := RecRef.Field(1);
+        // Mark entry 1
         FldRef.SetRange(1);
         if RecRef.FindFirst() then
             RecRef.Mark(true);
+        // Mark entry 3 (FldRef filter is still active but marks are cumulative)
         FldRef.SetRange(3);
         if RecRef.FindFirst() then
             RecRef.Mark(true);
-        // Reset filters and iterate marked only
-        RecRef.Reset();
+        // Clear the field filter without calling Reset() (which clears marks in BC)
+        FldRef.SetRange();
+        // Now iterate only marked records
         RecRef.MarkedOnly(true);
         if RecRef.FindSet() then
             repeat
@@ -275,7 +277,8 @@ codeunit 50436 "API Probe"
         FldRef.SetRange(2);
         if RecRef.FindFirst() then
             RecRef.Mark(true);
-        RecRef.Reset();
+        // Clear the field filter without calling Reset() (which clears marks in BC)
+        FldRef.SetRange();
         RecRef.MarkedOnly(true);
         if RecRef.FindLast() then begin
             FldRef := RecRef.Field(1);

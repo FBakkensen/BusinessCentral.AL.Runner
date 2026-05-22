@@ -9,11 +9,22 @@ codeunit 50563 "TableRelation Tests"
     // TableRelation syntax — positive tests
     // -----------------------------------------------------------------------
 
+
+    local procedure Initialize()
+    var
+        ExtraRec: Record "TR Parent";
+        Rec1: Record "TR Child";
+    begin
+        ExtraRec.DeleteAll(false);
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure TableRelation_TableCompilesAndInsertWorks()
     var
         Child: Record "TR Child";
     begin
+        Initialize();
         // [GIVEN/WHEN] Insert a child record with a Parent Code value
         // (no parent record exists — runner does not enforce FK relations)
         Child.Init();
@@ -34,6 +45,7 @@ codeunit 50563 "TableRelation Tests"
         Parent: Record "TR Parent";
         Child: Record "TR Child";
     begin
+        Initialize();
         // [GIVEN] A parent record exists
         Parent.Init();
         Parent.Code := 'BETA';
@@ -59,6 +71,7 @@ codeunit 50563 "TableRelation Tests"
     var
         Child: Record "TR Child";
     begin
+        Initialize();
         // [GIVEN] An existing child record
         Child.Init();
         Child."Entry No." := 3;
@@ -83,6 +96,7 @@ codeunit 50563 "TableRelation Tests"
     var
         Child: Record "TR Child";
     begin
+        Initialize();
         // [GIVEN] An existing child record
         Child.Init();
         Child."Entry No." := 4;
@@ -103,6 +117,7 @@ codeunit 50563 "TableRelation Tests"
     var
         Child: Record "TR Child";
     begin
+        Initialize();
         // [GIVEN] Two child records inserted (Entry No. 10 and 11)
         Child.Init();
         Child."Entry No." := 10;
@@ -130,6 +145,7 @@ codeunit 50563 "TableRelation Tests"
         Parent: Record "TR Parent";
         Inserted: Boolean;
     begin
+        Initialize();
         // [GIVEN] No parent record with code 'GHOST' exists
         Assert.IsFalse(Parent.Get('GHOST'), 'Parent GHOST must not exist before test');
 

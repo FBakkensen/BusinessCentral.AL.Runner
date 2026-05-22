@@ -9,12 +9,21 @@ codeunit 50567 "Record Copy Tests"
     // Copy transfers field values
     // -----------------------------------------------------------------------
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "RC Test Table";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure CopyTransfersFieldValues()
     var
         Source: Record "RC Test Table";
         Target: Record "RC Test Table";
     begin
+        Initialize();
         // [GIVEN] A record with specific field values
         Source.Init();
         Source."No." := 'A001';
@@ -40,6 +49,7 @@ codeunit 50567 "Record Copy Tests"
         Source: Record "RC Test Table";
         Target: Record "RC Test Table";
     begin
+        Initialize();
         // [GIVEN] Source has a SetRange filter applied
         Source.SetRange(Status, 1, 3);
 
@@ -56,6 +66,7 @@ codeunit 50567 "Record Copy Tests"
         Source: Record "RC Test Table";
         Target: Record "RC Test Table";
     begin
+        Initialize();
         // [GIVEN] Three records, Source filtered to Status=1
         InsertRow('B01', 1, 10);
         InsertRow('B02', 2, 20);
@@ -79,6 +90,7 @@ codeunit 50567 "Record Copy Tests"
         Source: Record "RC Test Table" temporary;
         Target: Record "RC Test Table" temporary;
     begin
+        Initialize();
         // [GIVEN] A temp record with one row
         Source.Init();
         Source."No." := 'T01';
@@ -100,6 +112,7 @@ codeunit 50567 "Record Copy Tests"
         Source: Record "RC Test Table" temporary;
         Target: Record "RC Test Table" temporary;
     begin
+        Initialize();
         // [GIVEN] Copy with ShareTable=true
         Source.Init();
         Source."No." := 'T10';
@@ -125,25 +138,26 @@ codeunit 50567 "Record Copy Tests"
         Source: Record "RC Test Table" temporary;
         Target: Record "RC Test Table" temporary;
     begin
+        Initialize();
         // [GIVEN] Source temp has one row
         Source.Init();
         Source."No." := 'U01';
         Source.Insert();
 
-        // [WHEN] Copy with ShareTable=false — Target gets an independent deep copy
+        // [WHEN] Copy with ShareTable=false — Target gets independent temp table (empty, not deep-copied)
         Target.Copy(Source, false);
 
-        // [THEN] Target sees Source's existing row (deep-copied, not shared)
-        Assert.AreEqual(1, Target.Count(), 'ShareTable=false: Target gets a deep copy of Source rows');
+        // [THEN] In BC, ShareTable=false on temp records gives Target its own empty temp table
+        Assert.AreEqual(0, Target.Count(), 'ShareTable=false: Target gets its own empty temp table in BC');
 
         // [WHEN] Insert a new row into Source
         Source.Init();
         Source."No." := 'U02';
         Source.Insert();
 
-        // [THEN] Target still sees only 1 row (independent — Source insert not visible)
+        // [THEN] Source has 2 rows, Target remains at 0 (independent)
         Assert.AreEqual(2, Source.Count(), 'Source must have 2 rows after second insert');
-        Assert.AreEqual(1, Target.Count(), 'ShareTable=false: Source inserts must not be visible in Target');
+        Assert.AreEqual(0, Target.Count(), 'ShareTable=false: Source inserts must not be visible in Target');
     end;
 
     // -----------------------------------------------------------------------
@@ -157,6 +171,7 @@ codeunit 50567 "Record Copy Tests"
         Target: Record "RC Test Table";
         OriginalFilter: Text;
     begin
+        Initialize();
         // [GIVEN] Source has a filter
         Source.SetRange(Status, 5);
         OriginalFilter := Source.GetFilters();

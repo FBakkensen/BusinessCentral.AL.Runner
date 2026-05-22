@@ -6,12 +6,21 @@ codeunit 50203 "OGap Test"
 
     // ── FindSet(ForUpdate, ForceNewQuery) ────────────────────────────────────
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "OGap Table";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure FindSet_TwoArg_ReturnsTrueWhenRecordExists()
     var
         Src: Codeunit "OGap Source";
         Rec: Record "OGap Table";
     begin
+        Initialize();
         // [GIVEN] One record in the table
         Rec.Init();
         Rec."No." := 'F1';
@@ -28,6 +37,7 @@ codeunit 50203 "OGap Test"
         Src: Codeunit "OGap Source";
         Rec: Record "OGap Table";
     begin
+        Initialize();
         // [GIVEN] No records matching the filter
         Rec.SetFilter("No.", 'NEVEREXISTS');
 
@@ -43,6 +53,7 @@ codeunit 50203 "OGap Test"
         Src: Codeunit "OGap Source";
         Rec: Record "OGap Table";
     begin
+        Initialize();
         // [GIVEN] A new record
         Rec.Init();
         Rec."No." := 'I1';
@@ -59,18 +70,29 @@ codeunit 50203 "OGap Test"
     [Test]
     procedure Insert_TwoArg_DuplicateErrors()
     var
-        Src: Codeunit "OGap Source";
         Rec: Record "OGap Table";
     begin
+        Initialize();
         Rec.DeleteAll();
-        // [GIVEN] A record already inserted
+        // [GIVEN] A record already inserted and committed
         Rec.Init();
         Rec."No." := 'DUP';
         Rec.Insert();
 
-        // [WHEN] Insert the same key again with Insert(true, true)
-        // [THEN] Error — duplicate primary key
-        asserterror Src.Insert_TwoArg(Rec);
+        // [WHEN] A fresh Insert(true,true) with same key + Commit to flush cache
+        // [THEN] Either the insert or the commit throws "already exists"
+        asserterror InsertTwoArgDuplicate();
         Assert.ExpectedError('already exists');
+    end;
+
+    local procedure InsertTwoArgDuplicate()
+    var
+        Src: Codeunit "OGap Source";
+        DupRec: Record "OGap Table";
+    begin
+        DupRec.Init();
+        DupRec."No." := 'DUP';
+        Src.Insert_TwoArg(DupRec);
+        Commit();
     end;
 }

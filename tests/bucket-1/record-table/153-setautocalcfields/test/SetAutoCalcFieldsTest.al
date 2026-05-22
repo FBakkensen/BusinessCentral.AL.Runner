@@ -10,9 +10,20 @@ codeunit 50466 "SACF SetAutoCalcFields Tests"
     // SetAutoCalcFields + Get — FlowField calculated automatically
     // -----------------------------------------------------------------------
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "SACF Line";
+        Rec2: Record "SACF Order";
+    begin
+        Rec1.DeleteAll(false);
+        Rec2.DeleteAll(false);
+    end;
+
     [Test]
     procedure SetAutoCalcFields_Get_AutoCalculatesFlowField()
     begin
+        Initialize();
         // Positive: SetAutoCalcFields causes FlowField to be populated on Get
         Helper.InsertOrder('ORD001');
         Helper.InsertLines('ORD001', 3);
@@ -23,6 +34,7 @@ codeunit 50466 "SACF SetAutoCalcFields Tests"
     [Test]
     procedure SetAutoCalcFields_Get_ZeroLines_ReturnsZero()
     begin
+        Initialize();
         // Edge: order with no lines returns 0 after auto-calc
         Helper.InsertOrder('ORD004');
         Assert.AreEqual(0, Helper.GetLineCountWithAutoCalc('ORD004'),
@@ -36,6 +48,7 @@ codeunit 50466 "SACF SetAutoCalcFields Tests"
     [Test]
     procedure SetAutoCalcFields_FindFirst_AutoCalculatesFlowField()
     begin
+        Initialize();
         // Positive: SetAutoCalcFields causes FlowField to be populated on FindFirst
         Helper.InsertOrder('ORD002');
         Helper.InsertLines('ORD002', 5);
@@ -50,6 +63,7 @@ codeunit 50466 "SACF SetAutoCalcFields Tests"
     [Test]
     procedure NoAutoCalcFields_Get_FlowFieldIsZero()
     begin
+        Initialize();
         // Negative: without SetAutoCalcFields, FlowField is not auto-calculated
         Helper.InsertOrder('ORD003');
         Helper.InsertLines('ORD003', 2);
@@ -64,6 +78,7 @@ codeunit 50466 "SACF SetAutoCalcFields Tests"
     [Test]
     procedure SetAutoCalcFields_FindSetNext_SumsAllLineCountsCorrectly()
     begin
+        Initialize();
         // Positive: SetAutoCalcFields recalculates FlowField on every Next() call.
         // BC runtime 16.0+ emits ALSetAutoCalcFields(DataError.ThrowError, fieldNo);
         // this test proves the typed (DataError, params int[]) overload is wired correctly.
@@ -82,6 +97,7 @@ codeunit 50466 "SACF SetAutoCalcFields Tests"
     [Test]
     procedure SetAutoCalcFields_Error()
     begin
+        Initialize();
         // Negative: error mechanism works correctly
         asserterror Error('expected error');
         Assert.ExpectedError('expected error');

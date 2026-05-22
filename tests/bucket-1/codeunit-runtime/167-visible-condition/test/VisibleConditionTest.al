@@ -6,9 +6,18 @@ codeunit 50120 "VCA Test"
         Assert: Codeunit Assert;
         Helper: Codeunit "VCA Helper";
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "VCA Item";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure VisibleCondition_CompilesAndHelperRuns()
     begin
+        Initialize();
         // Positive: compilation unit containing a page with conditional
         // `Visible = <expression>` attributes must compile, and codeunits
         // defined alongside must remain callable.
@@ -19,6 +28,7 @@ codeunit 50120 "VCA Test"
     [Test]
     procedure VisibleCondition_ShouldShowPrice_True()
     begin
+        Initialize();
         // Proving: the logic the page uses for Visible is reachable from test code.
         Assert.IsTrue(Helper.ShouldShowPrice(1.0), 'Price 1.0 must show (>0)');
         Assert.IsTrue(Helper.ShouldShowPrice(0.01), 'Price 0.01 must show (>0)');
@@ -28,6 +38,7 @@ codeunit 50120 "VCA Test"
     [Test]
     procedure VisibleCondition_ShouldShowPrice_False()
     begin
+        Initialize();
         Assert.IsFalse(Helper.ShouldShowPrice(0), 'Price 0 must not show');
         Assert.IsFalse(Helper.ShouldShowPrice(-1), 'Negative price must not show');
     end;
@@ -35,6 +46,7 @@ codeunit 50120 "VCA Test"
     [Test]
     procedure VisibleCondition_ShouldShowActive()
     begin
+        Initialize();
         // Proving the negated-boolean form works.
         Assert.IsTrue(Helper.ShouldShowActive(false), 'not false = true');
         Assert.IsFalse(Helper.ShouldShowActive(true), 'not true = false');
@@ -45,6 +57,7 @@ codeunit 50120 "VCA Test"
     var
         Item: Record "VCA Item";
     begin
+        Initialize();
         // Positive: the source table is usable — proves the whole compilation
         // unit (page + table + codeunit) is live end-to-end.
         Item.Init();
@@ -63,6 +76,7 @@ codeunit 50120 "VCA Test"
     [Test]
     procedure VisibleCondition_ShouldShowPrice_NotAlwaysTrue_NegativeTrap()
     begin
+        Initialize();
         // Negative: guard against ShouldShowPrice always returning true.
         Assert.AreNotEqual(
             Helper.ShouldShowPrice(5),

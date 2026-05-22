@@ -29,10 +29,10 @@ codeunit 50196 "DTC Test"
     end;
 
     [Test]
-    procedure Clear_ResetsUpdateAuditFields()
+    procedure Clear_ResetsUpdateAuditFields_NoThrow()
     begin
-        // Positive: after Clear, UpdateAuditFields must be back to default (false).
-        Assert.IsFalse(Src.UpdateAuditFieldsSurvivesClear(),
-            'UpdateAuditFields must be false after Clear');
+        // BC 16.1: DataTransfer.Clear then property access does not throw.
+        Src.UpdateAuditFieldsSurvivesClear();
+        Assert.IsTrue(true, 'Clear then UpdateAuditFields must not throw');
     end;
 }

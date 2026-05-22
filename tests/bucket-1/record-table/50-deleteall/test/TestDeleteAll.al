@@ -22,11 +22,20 @@ codeunit 50564 "Test Delete All"
         exit(Rec.Count());
     end;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "Delete All Table";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure DeleteAll_NoFilters_DeletesAllRecords()
     var
         Rec: Record "Delete All Table";
     begin
+        Initialize();
         // Setup: 3 records
         InsertRow(1, 1, 'Alpha');
         InsertRow(2, 2, 'Beta');
@@ -42,6 +51,7 @@ codeunit 50564 "Test Delete All"
     var
         Rec: Record "Delete All Table";
     begin
+        Initialize();
         Rec.DeleteAll();
         // Setup: Status=1 (2 rows) and Status=2 (1 row)
         InsertRow(1, 1, 'Alpha');
@@ -63,6 +73,7 @@ codeunit 50564 "Test Delete All"
     var
         Rec: Record "Delete All Table";
     begin
+        Initialize();
         // Setup: Id 1..5
         InsertRow(1, 0, 'One');
         InsertRow(2, 0, 'Two');
@@ -82,6 +93,7 @@ codeunit 50564 "Test Delete All"
     var
         Rec: Record "Delete All Table";
     begin
+        Initialize();
         // Table starts empty — should not raise any error
         Rec.DeleteAll();
         Assert.AreEqual(0, CountAll(), 'DeleteAll on empty table must leave count at 0');
@@ -92,6 +104,7 @@ codeunit 50564 "Test Delete All"
     var
         Rec: Record "Delete All Table";
     begin
+        Initialize();
         Rec.SetRange(Status, 99);
         Rec.DeleteAll();
         Assert.AreEqual(0, CountAll(), 'DeleteAll with non-matching filter on empty table must not error');
@@ -102,6 +115,7 @@ codeunit 50564 "Test Delete All"
     var
         Rec: Record "Delete All Table";
     begin
+        Initialize();
         InsertRow(1, 10, 'A');
         InsertRow(2, 10, 'B');
         InsertRow(3, 20, 'C');

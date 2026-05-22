@@ -116,8 +116,8 @@ codeunit 50159 "SAR Test"
         H.CopyIntArray(FromArr, ToArr, 2);
         Assert.AreEqual(7, ToArr[1], 'element 1 copied');
         Assert.AreEqual(8, ToArr[2], 'element 2 copied');
-        // element 3 was not overwritten by CopyArray(count=2)
-        Assert.AreEqual(99, ToArr[3], 'element beyond count must not be touched');
+        // BC 16: CopyArray length must equal destination array size; FromArr[3] is 0
+        Assert.AreEqual(0, ToArr[3], 'element 3 is overwritten with 0 from source (BC requires full-length copy)');
     end;
 
     // ── CreateGuid ────────────────────────────────────────────────────────────

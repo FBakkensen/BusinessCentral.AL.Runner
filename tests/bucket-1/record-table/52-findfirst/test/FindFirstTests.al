@@ -78,6 +78,7 @@ codeunit 50568 "FindFirst Tests"
         Letter: Record "FF Letter";
     begin
         // [GIVEN] Exactly one record
+        Letter.DeleteAll();
         Letter.Init(); Letter.Code := 'ONLY'; Letter.Category := 5; Letter.Weight := 99; Letter.Insert();
 
         // [WHEN] FindFirst

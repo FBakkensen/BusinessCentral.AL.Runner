@@ -11,29 +11,27 @@ codeunit 50194 "NavApp Resource Test"
     // ------------------------------------------------------------------
 
     [Test]
-    procedure GetResourceAsText_MissingResource_ReturnsEmpty()
+    procedure GetResourceAsText_MissingResource_Throws()
     var
         Src: Codeunit "NavApp Resource Src";
-        Result: Text;
     begin
-        // [GIVEN] No .app is loaded (standalone mode)
+        // [GIVEN] Resource does not exist in the app bundle
         // [WHEN] GetResourceAsText is called for a non-existent resource
-        Result := Src.GetTextResource('nonexistent.txt');
-        // [THEN] Returns empty string — no exception
-        Assert.AreEqual('', Result, 'GetResourceAsText must return empty string for missing resource in standalone mode');
+        // [THEN] BC throws "could not be found"
+        asserterror Src.GetTextResource('nonexistent.txt');
+        Assert.ExpectedError('could not be found');
     end;
 
     [Test]
-    procedure GetResourceAsJson_MissingResource_ReturnsDefault()
+    procedure GetResourceAsJson_MissingResource_Throws()
     var
         Src: Codeunit "NavApp Resource Src";
-        Obj: JsonObject;
     begin
-        // [GIVEN] No .app is loaded
+        // [GIVEN] Resource does not exist in the app bundle
         // [WHEN] GetResourceAsJson is called for a non-existent resource
-        Obj := Src.GetJsonResource('nonexistent.json');
-        // [THEN] Returns a default JsonObject — no exception
-        Assert.IsTrue(true, 'GetResourceAsJson must not throw for missing resource in standalone mode');
+        // [THEN] BC throws "could not be found"
+        asserterror Src.GetJsonResource('nonexistent.json');
+        Assert.ExpectedError('could not be found');
     end;
 
     [Test]
@@ -52,15 +50,14 @@ codeunit 50194 "NavApp Resource Test"
     // ------------------------------------------------------------------
 
     [Test]
-    procedure GetResourceAsText_CalledTwice_BothReturnEmpty()
+    procedure GetResourceAsText_CalledTwice_BothThrow()
     var
         Src: Codeunit "NavApp Resource Src";
-        R1: Text;
-        R2: Text;
     begin
-        R1 := Src.GetTextResource('a.txt');
-        R2 := Src.GetTextResource('b.txt');
-        Assert.AreEqual('', R1, 'First call must return empty');
-        Assert.AreEqual('', R2, 'Second call must return empty');
+        // Both calls should throw "could not be found" — BC does not return empty for missing resources.
+        asserterror Src.GetTextResource('a.txt');
+        Assert.ExpectedError('could not be found');
+        asserterror Src.GetTextResource('b.txt');
+        Assert.ExpectedError('could not be found');
     end;
 }

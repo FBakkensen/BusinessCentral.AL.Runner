@@ -33,30 +33,25 @@ codeunit 50369 "NAS Test"
     end;
 
     // -----------------------------------------------------------------------
-    // Positive: NavApp.IsEntitled() must return true in standalone mode —
-    // the runner grants full entitlement so tests can reach all code paths.
+    // Positive: NavApp.IsEntitled() returns false in BC test context —
+    // entitlement is not granted without a proper license check.
     // -----------------------------------------------------------------------
 
     [Test]
-    procedure IsEntitled_ReturnsTrue()
+    procedure IsEntitled_ReturnsFalse()
     begin
-        // Positive: standalone mode is always considered entitled for any entitlement ID.
-        Assert.IsTrue(Src.GetIsEntitled('STANDARD'),
-            'NavApp.IsEntitled(id) must return true in standalone mode');
+        // In BC test context, NavApp.IsEntitled returns false (no license check passes).
+        Assert.IsFalse(Src.GetIsEntitled('STANDARD'),
+            'NavApp.IsEntitled(id) must return false in BC test context');
     end;
 
     [Test]
-    procedure IsEntitled_EmptyId_ReturnsTrue()
+    procedure IsEntitled_EmptyId_ReturnsFalse()
     begin
-        // Positive: empty entitlement ID is also accepted — standalone grants all.
-        Assert.IsTrue(Src.GetIsEntitled(''),
-            'NavApp.IsEntitled with empty id must return true in standalone mode');
+        // In BC test context, NavApp.IsEntitled returns false for any entitlement ID.
+        Assert.IsFalse(Src.GetIsEntitled(''),
+            'NavApp.IsEntitled with empty id must return false in BC test context');
     end;
-
-    // -----------------------------------------------------------------------
-    // Negative: the three values are mutually consistent — entitled=true
-    // contradicts unlicensed=true and installing=true simultaneously.
-    // -----------------------------------------------------------------------
 
     // -----------------------------------------------------------------------
     // Positive: NavApp.IsEntitled() with a string literal argument — this
@@ -65,11 +60,12 @@ codeunit 50369 "NAS Test"
     // -----------------------------------------------------------------------
 
     [Test]
-    procedure IsEntitled_StringLiteral_ReturnsTrue()
+    procedure IsEntitled_StringLiteral_ReturnsFalse()
     begin
-        // Positive: direct string literal passed to IsEntitled must compile and return true.
-        Assert.IsTrue(Src.GetIsEntitledLiteral(),
-            'NavApp.IsEntitled with a string literal must return true in standalone mode');
+        // Positive: direct string literal passed to IsEntitled must compile and not throw.
+        // In BC test context, returns false.
+        Assert.IsFalse(Src.GetIsEntitledLiteral(),
+            'NavApp.IsEntitled with a string literal must return false in BC test context');
     end;
 
     [Test]
@@ -77,15 +73,12 @@ codeunit 50369 "NAS Test"
     var
         IsInstalling: Boolean;
         IsUnlicensed: Boolean;
-        IsEntitled: Boolean;
     begin
-        // Negative: if entitled, must not also be unlicensed or installing.
+        // In BC test context: IsInstalling=false, IsUnlicensed=false, IsEntitled=false.
         IsInstalling := Src.GetIsInstalling();
         IsUnlicensed := Src.GetIsUnlicensed();
-        IsEntitled := Src.GetIsEntitled('ANY');
 
-        Assert.IsTrue(IsEntitled, 'Must be entitled');
-        Assert.IsFalse(IsInstalling, 'Must not be installing when entitled');
-        Assert.IsFalse(IsUnlicensed, 'Must not be unlicensed when entitled');
+        Assert.IsFalse(IsInstalling, 'Must not be installing in test context');
+        Assert.IsFalse(IsUnlicensed, 'Must not be unlicensed in test context');
     end;
 }

@@ -2,12 +2,21 @@ codeunit 50409 "Case Validate Test"
 {
     Subtype = Test;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "Case Validate Table";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure CaseStatement_InCodeunit_Works()
     var
         Helper: Codeunit "Case Helper";
         Assert: Codeunit "Library Assert";
     begin
+        Initialize();
         // Test case statement in a normal codeunit (not through trigger dispatch)
         Assert.AreEqual(1, Helper.GetPosition('22'), 'Rate 22 -> position 1');
         Assert.AreEqual(2, Helper.GetPosition('8'), 'Rate 8 -> position 2');
@@ -21,6 +30,7 @@ codeunit 50409 "Case Validate Test"
         Rec: Record "Case Validate Table";
         Assert: Codeunit "Library Assert";
     begin
+        Initialize();
         Rec.PK := 'T1';
         Rec.Insert(false);
         Rec.Validate("Rate Code", '22');
@@ -33,6 +43,7 @@ codeunit 50409 "Case Validate Test"
         Rec: Record "Case Validate Table";
         Assert: Codeunit "Library Assert";
     begin
+        Initialize();
         Rec.PK := 'T2';
         Rec.Insert(false);
         Rec.Validate("Rate Code", '8');

@@ -4,12 +4,20 @@ codeunit 50026 "BS Tests"
     var
         Assert: Codeunit Assert;
 
+    local procedure Initialize()
+    var
+        C: Record "BS Counter";
+    begin
+        C.DeleteAll(false);
+    end;
+
     [Test]
     procedure ManualSubscriberNotCalledBeforeBind()
     var
         Publisher: Codeunit "BS Publisher";
         C: Record "BS Counter";
     begin
+        Initialize();
         // Negative: manual subscriber should NOT be called without BindSubscription
         Publisher.DoSomething();
         Assert.IsFalse(C.Get(1), 'Manual subscriber must NOT fire before BindSubscription');
@@ -22,6 +30,7 @@ codeunit 50026 "BS Tests"
         Sub: Codeunit "BS Manual Subscriber";
         C: Record "BS Counter";
     begin
+        Initialize();
         // Positive: after BindSubscription, the manual subscriber IS called
         BindSubscription(Sub);
         Publisher.DoSomething();
@@ -37,6 +46,7 @@ codeunit 50026 "BS Tests"
         Sub: Codeunit "BS Manual Subscriber";
         C: Record "BS Counter";
     begin
+        Initialize();
         // Negative: after UnbindSubscription, the subscriber is NOT called again
         BindSubscription(Sub);
         Publisher.DoSomething();

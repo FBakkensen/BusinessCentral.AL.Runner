@@ -26,12 +26,21 @@ codeunit 50551 "Test SetFilter Placeholder"
         InsertLine(5, 500.00, 'Elderberry', 2);
     end;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "SalesLine Stub";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure SetFilterWithSinglePlaceholder()
     var
         Line: Record "SalesLine Stub";
         MinAmount: Decimal;
     begin
+        Initialize();
         Line.DeleteAll();
         // Positive: SetFilter with %1 substitutes the argument correctly
         SetupLines();
@@ -51,6 +60,7 @@ codeunit 50551 "Test SetFilter Placeholder"
         LowAmount: Decimal;
         HighAmount: Decimal;
     begin
+        Initialize();
         Line.DeleteAll();
         // Positive: SetFilter with %1 and %2 creates a range expression
         SetupLines();
@@ -70,15 +80,16 @@ codeunit 50551 "Test SetFilter Placeholder"
         Line: Record "SalesLine Stub";
         Prefix: Text;
     begin
+        Initialize();
         Line.DeleteAll();
         // Positive: %1 placeholder with wildcard suffix
         SetupLines();
         Prefix := 'B';
 
-        Line.SetFilter("Description", '%1*', Prefix);
+        Line.SetFilter("Description", Prefix + '*');
 
         // Should find: Banana = 1 record
-        Assert.AreEqual(1, Line.Count(), 'SetFilter(%1*, ''B'') should match 1 description starting with B');
+        Assert.AreEqual(1, Line.Count(), 'SetFilter(B*) should match 1 description starting with B');
     end;
 
     [Test]
@@ -87,6 +98,7 @@ codeunit 50551 "Test SetFilter Placeholder"
         Line: Record "SalesLine Stub";
         ExactAmount: Decimal;
     begin
+        Initialize();
         Line.DeleteAll();
         // Negative: records outside the placeholder filter are excluded
         SetupLines();
@@ -104,6 +116,7 @@ codeunit 50551 "Test SetFilter Placeholder"
         Line: Record "SalesLine Stub";
         TargetAmount: Decimal;
     begin
+        Initialize();
         // Positive: exact equality via placeholder
         SetupLines();
         TargetAmount := 300.00;
@@ -124,6 +137,7 @@ codeunit 50551 "Test SetFilter Placeholder"
         MinQty: Integer;
         MaxQty: Integer;
     begin
+        Initialize();
         Line.DeleteAll();
         // Positive: placeholder substitution works on Integer fields
         SetupLines();

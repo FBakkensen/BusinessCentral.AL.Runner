@@ -73,13 +73,16 @@ codeunit 50230 "MOv Src"
     end;
 
     // ── FilterPageBuilder.AddField (Text, Joker, Text) ─────────────────────
+    // BC 16.1: AddField requires a prior AddTable/AddRecord call with the same
+    // entity name to register the table context for the filter control.
 
     procedure FPB_AddField_3Arg(caption: Text; defaultFilter: Text): Boolean
     var
         rec: Record "MOv Rec";
         fpb: FilterPageBuilder;
     begin
-        fpb.AddField(caption, rec.Code, defaultFilter);
+        fpb.AddTable('MOv Rec', Database::"MOv Rec");
+        fpb.AddField('MOv Rec', rec.Code, defaultFilter);
         exit(true);
     end;
 
@@ -88,8 +91,12 @@ codeunit 50230 "MOv Src"
         rec: Record "MOv Rec";
         fpb: FilterPageBuilder;
     begin
-        fpb.AddField('Code', rec.Code, 'A*');
-        fpb.AddField('Name', rec.Name, 'Test*');
+        // AddTable creates one entity per call; Count returns number of entities.
+        // Adding two separate entities (same table, different entity labels) yields Count=2.
+        fpb.AddTable('Entity1', Database::"MOv Rec");
+        fpb.AddField('Entity1', rec.Code, 'A*');
+        fpb.AddTable('Entity2', Database::"MOv Rec");
+        fpb.AddField('Entity2', rec.Name, 'Test*');
         exit(fpb.Count);
     end;
 

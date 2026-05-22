@@ -9,12 +9,21 @@ codeunit 50558 "Test CopyFilters"
     // CopyFilters — positive tests
     // -----------------------------------------------------------------------
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "CopyFilters Probe";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure CopyFilters_TransfersSetRangeFilter()
     var
         Source: Record "CopyFilters Probe";
         Target: Record "CopyFilters Probe";
     begin
+        Initialize();
         // [GIVEN] Source record has a SetRange filter on Status
         Source.SetRange(Status, 2, 5);
 
@@ -32,6 +41,7 @@ codeunit 50558 "Test CopyFilters"
         Source: Record "CopyFilters Probe";
         Target: Record "CopyFilters Probe";
     begin
+        Initialize();
         // [GIVEN] Source record has a SetFilter expression on Status
         Source.SetFilter(Status, '>3');
 
@@ -49,6 +59,7 @@ codeunit 50558 "Test CopyFilters"
         Source: Record "CopyFilters Probe";
         Target: Record "CopyFilters Probe";
     begin
+        Initialize();
         // [GIVEN] Source has filters on two different fields
         Source.SetRange(Status, 1);
         Source.SetFilter(Category, 'A*');
@@ -66,6 +77,7 @@ codeunit 50558 "Test CopyFilters"
         Source: Record "CopyFilters Probe";
         Target: Record "CopyFilters Probe";
     begin
+        Initialize();
         // [GIVEN] Target already has a filter on a different field
         Target.SetRange(Status, 99);
 
@@ -85,6 +97,7 @@ codeunit 50558 "Test CopyFilters"
         Source: Record "CopyFilters Probe";
         Target: Record "CopyFilters Probe";
     begin
+        Initialize();
         // [GIVEN] Records inserted: Status 1, 2, 3
         InsertProbe('A', 1, 'X');
         InsertProbe('B', 2, 'X');
@@ -110,6 +123,7 @@ codeunit 50558 "Test CopyFilters"
         Source: Record "CopyFilters Probe";
         Target: Record "CopyFilters Probe";
     begin
+        Initialize();
         // [GIVEN] Target has a filter, Source has no filters
         Target.SetRange(Status, 5);
         // Source is fresh — no filters
@@ -130,6 +144,7 @@ codeunit 50558 "Test CopyFilters"
         SourceFiltersBeforeCopy: Text;
         SourceFiltersAfterCopy: Text;
     begin
+        Initialize();
         // [GIVEN] Source has a filter
         Source.SetRange(Status, 3);
         SourceFiltersBeforeCopy := Source.GetFilters();

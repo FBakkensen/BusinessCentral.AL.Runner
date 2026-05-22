@@ -49,9 +49,13 @@ codeunit 50141 "SEU Test"
     end;
 
     [Test]
-    procedure HasCollectedErrors_FalseByDefault()
+    [ErrorBehavior(ErrorBehavior::Collect)]
+    procedure AfterClear_HasCollectedErrors_IsFalse()
     begin
-        Assert.IsFalse(Src.HasCollected(), 'HasCollectedErrors must be false when not collecting');
+        // Positive: after ClearCollectedErrors the state is clean.
+        // [ErrorBehavior(Collect)] activates collection so ClearCollectedErrors resets to false.
+        Src.ClearCollected();
+        Assert.IsFalse(Src.HasCollected(), 'HasCollectedErrors must be false after ClearCollectedErrors');
     end;
 
     [Test]
@@ -65,8 +69,10 @@ codeunit 50141 "SEU Test"
     end;
 
     [Test]
+    [ErrorBehavior(ErrorBehavior::Collect)]
     procedure ClearCollectedErrors_DoesNotCrash()
     begin
+        // [ErrorBehavior(Collect)] activates collection so ClearCollectedErrors resets to false.
         Src.ClearCollected();
         Assert.IsFalse(Src.HasCollected(), 'HasCollectedErrors must be false after ClearCollectedErrors');
     end;

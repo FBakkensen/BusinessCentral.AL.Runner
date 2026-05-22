@@ -5,11 +5,20 @@ codeunit 50556 "Test Count SetFilter"
     var
         Assert: Codeunit Assert;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "CountSF Probe";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure CountWithGreaterThanFilter()
     var
         Rec: Record "CountSF Probe";
     begin
+        Initialize();
         Rec.DeleteAll();
         // Positive: '>' comparator filter.
         Seed();
@@ -23,6 +32,7 @@ codeunit 50556 "Test Count SetFilter"
     var
         Rec: Record "CountSF Probe";
     begin
+        Initialize();
         Rec.DeleteAll();
         // Positive: '<' comparator filter.
         Seed();
@@ -36,6 +46,7 @@ codeunit 50556 "Test Count SetFilter"
     var
         Rec: Record "CountSF Probe";
     begin
+        Initialize();
         Rec.DeleteAll();
         // Positive: '<>' filter.
         Seed();
@@ -49,6 +60,7 @@ codeunit 50556 "Test Count SetFilter"
     var
         Rec: Record "CountSF Probe";
     begin
+        Initialize();
         Rec.DeleteAll();
         // Positive: 'a|b' OR-list filter.
         Seed();
@@ -62,6 +74,7 @@ codeunit 50556 "Test Count SetFilter"
     var
         Rec: Record "CountSF Probe";
     begin
+        Initialize();
         Rec.DeleteAll();
         // Positive: 'a..b' range expression.
         Seed();
@@ -75,6 +88,7 @@ codeunit 50556 "Test Count SetFilter"
     var
         Rec: Record "CountSF Probe";
     begin
+        Initialize();
         Rec.DeleteAll();
         // Negative: filter that matches nothing.
         Seed();
@@ -88,6 +102,7 @@ codeunit 50556 "Test Count SetFilter"
     var
         Rec: Record "CountSF Probe";
     begin
+        Initialize();
         // Positive/reset: Reset returns to the full table count.
         Seed();
         Rec.SetFilter(Status, '>1');

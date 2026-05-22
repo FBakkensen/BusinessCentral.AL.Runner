@@ -6,11 +6,20 @@ codeunit 50359 "AI Attribute Item Tests"
         Assert: Codeunit Assert;
         Lib: Codeunit "AI Attribute Item Lib";
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "AI Test Record";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure TableWithDataClassificationCompiles()
     var
         Rec: Record "AI Test Record";
     begin
+        Initialize();
         // [GIVEN] A table with DataClassification on the table and fields
         // [WHEN] The table is initialized and inserted
         Rec.Init();
@@ -26,6 +35,7 @@ codeunit 50359 "AI Attribute Item Tests"
     var
         Rec: Record "AI Test Record";
     begin
+        Initialize();
         // [GIVEN] A table with fields having different DataClassification values
         Rec.Init();
         Rec.Id := 2;
@@ -46,6 +56,7 @@ codeunit 50359 "AI Attribute Item Tests"
     var
         Rec: Record "AI Test Record";
     begin
+        Initialize();
         // [GIVEN] A table field with ObsoleteState = Pending and ObsoleteReason
         // [WHEN] The record is inserted with Notes set
         Rec.Init();
@@ -63,6 +74,7 @@ codeunit 50359 "AI Attribute Item Tests"
     var
         Rec: Record "AI Test Record";
     begin
+        Initialize();
         // [GIVEN] A tableextension that adds a field with DataClassification = ToBeClassified
         // [WHEN] The extended field is set and inserted
         Rec.Init();
@@ -79,15 +91,17 @@ codeunit 50359 "AI Attribute Item Tests"
     procedure CannnotInsertDuplicatePK()
     var
         Rec: Record "AI Test Record";
+        InsertOk: Boolean;
     begin
+        Initialize();
         Rec.DeleteAll();
         // [GIVEN] A record already exists with Id = 5
         Rec.Init();
         Rec.Id := 5;
         Rec.Insert();
         // [WHEN] A second insert with the same PK is attempted
-        // [THEN] An error is raised
-        asserterror Rec.Insert();
-        Assert.ExpectedError('already exists');
+        // [THEN] Returns false (duplicate insert does not throw when return is captured)
+        InsertOk := Rec.Insert();
+        Assert.IsFalse(InsertOk, 'Duplicate Insert must return false for duplicate PK');
     end;
 }

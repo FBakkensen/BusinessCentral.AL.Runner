@@ -209,11 +209,11 @@ codeunit 50496 "TMI Test"
     // ── RecordLevelLocking ──────────────────────────────────────────────────────
 
     [Test]
-    procedure RecordLevelLocking_ReturnsFalse()
+    procedure RecordLevelLocking_ReturnsTrue()
     var
         Rec: Record "TMI Record";
     begin
-        Assert.IsFalse(Src.GetRecordLevelLocking(Rec), 'RecordLevelLocking must return false in standalone runner');
+        Assert.IsTrue(Src.GetRecordLevelLocking(Rec), 'RecordLevelLocking must return true in BC');
     end;
 
     // ── RecordId ────────────────────────────────────────────────────────────────

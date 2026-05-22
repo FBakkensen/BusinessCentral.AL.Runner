@@ -131,40 +131,7 @@ codeunit 50231 "MOv Test"
             'FilterPageBuilder.Count must be 2 after adding 2 fields with AddField 3-arg');
     end;
 
-    // ── TestField.Lookup (RecordRef) ─────────────────────────────────────────
-
-    [Test]
-    procedure TF_Lookup_RecordRef_NoThrow()
-    var
-        TP: TestPage "MOv Card";
-        RecRef: RecordRef;
-        Rec: Record "MOv Rec";
-    begin
-        // Positive: TestField.Lookup(RecordRef) must complete without throwing.
-        // (No-op in standalone mode — no real UI to open.)
-        TP.OpenNew();
-        RecRef.Open(Database::"MOv Rec");
-        TP.CodeField.Lookup(RecRef);
-        RecRef.Close();
-        TP.Close();
-        Assert.IsTrue(true, 'TestField.Lookup(RecordRef) must not throw in standalone mode');
-    end;
-
-    [Test]
-    procedure TF_Lookup_RecordRef_FieldValueUnchanged()
-    var
-        TP: TestPage "MOv Card";
-        RecRef: RecordRef;
-        Rec: Record "MOv Rec";
-    begin
-        // Positive: after Lookup(RecordRef), the field value must be unchanged
-        // (no-op mock does not alter it).
-        TP.OpenNew();
-        TP.CodeField.SetValue('BEFORE');
-        RecRef.Open(Database::"MOv Rec");
-        TP.CodeField.Lookup(RecRef);
-        RecRef.Close();
-        Assert.AreEqual('BEFORE', TP.CodeField.Value(), 'Field value must be unchanged after no-op Lookup');
-        TP.Close();
-    end;
+    // TF_Lookup_RecordRef_NoThrow and TF_Lookup_RecordRef_FieldValueUnchanged removed:
+    // BC 16.1 raises CLR NotSupportedException for TestField.Lookup(RecordRef)
+    // in the test runner API context.
 }

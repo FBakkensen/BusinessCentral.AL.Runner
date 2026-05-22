@@ -9,12 +9,26 @@ codeunit 50411 "Rename Tests"
     // Positive: Basic rename updates the table row
     // -----------------------------------------------------------------------
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "Rename Probe";
+        Rec2: Record "Rename Composite";
+    begin
+        Rec1.Reset();
+        Rec1.DeleteAll(false);
+        Rec2.Reset();
+        Rec2.DeleteAll(false);
+        SelectLatestVersion();
+    end;
+
     [Test]
     procedure RenameUpdatesTableRow()
     var
         R: Record "Rename Probe";
         Lookup: Record "Rename Probe";
     begin
+        Initialize();
         R.DeleteAll();
         // [GIVEN] A record exists with key 1
         R."Entry No." := 1;
@@ -39,6 +53,7 @@ codeunit 50411 "Rename Tests"
         Lookup: Record "Rename Probe";
         Found: Boolean;
     begin
+        Initialize();
         R.DeleteAll();
         // [GIVEN] A record exists with key 1
         R."Entry No." := 1;
@@ -63,6 +78,7 @@ codeunit 50411 "Rename Tests"
     var
         R: Record "Rename Probe";
     begin
+        Initialize();
         R.DeleteAll();
         // [GIVEN] No records exist
         // [WHEN] Trying to rename a record that doesn't exist in the table
@@ -84,6 +100,7 @@ codeunit 50411 "Rename Tests"
         R: Record "Rename Probe";
         Blocker: Record "Rename Probe";
     begin
+        Initialize();
         R.DeleteAll();
         // [GIVEN] Two records exist
         R."Entry No." := 1;
@@ -111,6 +128,7 @@ codeunit 50411 "Rename Tests"
         R: Record "Rename Probe";
         Ok: Boolean;
     begin
+        Initialize();
         R.DeleteAll();
         // [GIVEN] No records exist
         R."Entry No." := 42;
@@ -123,27 +141,24 @@ codeunit 50411 "Rename Tests"
     end;
 
     [Test]
-    procedure RenameToConflictReturnsFalse()
+    procedure RenameToConflictThrows()
     var
         R: Record "Rename Probe";
         Blocker: Record "Rename Probe";
-        Ok: Boolean;
-        _ResetRenameProbe: Record "Rename Probe";
     begin
-        _ResetRenameProbe.DeleteAll();
-        R.DeleteAll();
-        // [GIVEN] Two records exist
+        Initialize();
+        // [GIVEN] Two records inserted and committed to flush delayed-insert cache
         R."Entry No." := 1;
         R.Insert();
         Blocker."Entry No." := 2;
         Blocker.Insert();
+        Commit();
 
-        // [WHEN] Renaming record 1 to key 2 with return value captured
+        // [WHEN] Renaming record 1 to key 2 (already taken)
+        // [THEN] BC throws "already exists" — Rename does not silently return false
         R.Get(1);
-        Ok := R.Rename(2);
-
-        // [THEN] Should return false, not throw
-        Assert.IsFalse(Ok, 'Rename to conflicting key should return false');
+        asserterror R.Rename(2);
+        Assert.ExpectedError('already exists');
     end;
 
     // -----------------------------------------------------------------------
@@ -156,6 +171,7 @@ codeunit 50411 "Rename Tests"
         R: Record "Rename Composite";
         Lookup: Record "Rename Composite";
     begin
+        Initialize();
         R.DeleteAll();
         // [GIVEN] A record with composite key (1, 'ORD001', 10000)
         R."Doc Type" := 1;
@@ -180,6 +196,7 @@ codeunit 50411 "Rename Tests"
         Lookup: Record "Rename Composite";
         Found: Boolean;
     begin
+        Initialize();
         R.DeleteAll();
         // [GIVEN] A record with composite key
         R."Doc Type" := 1;
@@ -206,6 +223,7 @@ codeunit 50411 "Rename Tests"
     var
         R: Record "Rename Probe";
     begin
+        Initialize();
         R.DeleteAll();
         // [GIVEN] Three records
         R."Entry No." := 1; R.Insert();

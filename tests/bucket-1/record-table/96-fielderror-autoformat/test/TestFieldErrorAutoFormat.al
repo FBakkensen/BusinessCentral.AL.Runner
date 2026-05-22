@@ -2,11 +2,20 @@ codeunit 50626 "Test FieldError AutoFormat"
 {
     Subtype = Test;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "Field Error AutoFormat";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure FieldError_InTrigger_RaisesError()
     var
         Rec: Record "Field Error AutoFormat";
     begin
+        Initialize();
         // [GIVEN] A record with Code but no Description
         Rec.Code := 'TEST';
         // Description is blank
@@ -22,6 +31,7 @@ codeunit 50626 "Test FieldError AutoFormat"
     var
         Rec: Record "Field Error AutoFormat";
     begin
+        Initialize();
         // [GIVEN] A record with Code but no Description
         Rec.Code := 'TEST2';
 
@@ -36,6 +46,7 @@ codeunit 50626 "Test FieldError AutoFormat"
     var
         Rec: Record "Field Error AutoFormat";
     begin
+        Initialize();
         // [GIVEN] A record with blank Code
         // Code is blank by default
 
@@ -50,6 +61,7 @@ codeunit 50626 "Test FieldError AutoFormat"
     var
         Rec: Record "Field Error AutoFormat";
     begin
+        Initialize();
         // [GIVEN] A record with blank Code
 
         // [WHEN] ValidateCode is called
@@ -63,6 +75,7 @@ codeunit 50626 "Test FieldError AutoFormat"
     var
         Rec: Record "Field Error AutoFormat";
     begin
+        Initialize();
         // [GIVEN] A record with all required fields filled
         Rec.Code := 'VALID';
         Rec.Description := 'Valid description';

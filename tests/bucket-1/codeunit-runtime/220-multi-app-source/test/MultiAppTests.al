@@ -5,11 +5,20 @@ codeunit 50173 "Multi App Tests"
         Assert: Codeunit Assert;
 
     // Positive: helper codeunit from the same compilation returns expected value.
+
+    local procedure Initialize()
+    var
+        Rec1: Record "Multi App Entry";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure GetAnswerToEverything_Returns42()
     var
         Helper: Codeunit "Multi App Helper";
     begin
+        Initialize();
         Assert.AreEqual(42, Helper.GetAnswerToEverything(), 'Multi App Helper should return 42');
     end;
 
@@ -19,6 +28,7 @@ codeunit 50173 "Multi App Tests"
     var
         Helper: Codeunit "Multi App Helper";
     begin
+        Initialize();
         Assert.AreEqual('Hello, World!', Helper.GetGreeting('World'), 'Greeting should include name');
     end;
 
@@ -28,6 +38,7 @@ codeunit 50173 "Multi App Tests"
     var
         Helper: Codeunit "Multi App Helper";
     begin
+        Initialize();
         Assert.AreEqual('Hello, !', Helper.GetGreeting(''), 'Empty name should produce "Hello, !"');
     end;
 
@@ -37,6 +48,7 @@ codeunit 50173 "Multi App Tests"
     var
         Entry: Record "Multi App Entry";
     begin
+        Initialize();
         Entry.Id := 1;
         Entry.Value := 'test';
         Entry.Insert();

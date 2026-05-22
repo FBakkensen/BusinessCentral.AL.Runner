@@ -6,11 +6,20 @@ codeunit 50492 "Validate Trigger Tests"
         ValidateHelper: Codeunit "Validate Helper";
         Assert: Codeunit Assert;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "Validate Demo";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure TestNameUppercased()
     var
         Rec: Record "Validate Demo";
     begin
+        Initialize();
         // [GIVEN] An entry created with lowercase name via Validate
         ValidateHelper.CreateEntry(1, 'john doe', 1, 10);
 
@@ -26,6 +35,7 @@ codeunit 50492 "Validate Trigger Tests"
     var
         Rec: Record "Validate Demo";
     begin
+        Initialize();
         // [GIVEN] An entry with price 25 and quantity 4
         ValidateHelper.CreateEntry(2, 'Widget', 4, 25);
 
@@ -41,6 +51,7 @@ codeunit 50492 "Validate Trigger Tests"
     var
         Rec: Record "Validate Demo";
     begin
+        Initialize();
         // [GIVEN] A record inserted without Validate
         Rec.Init();
         Rec."Entry No." := 3;
@@ -65,6 +76,7 @@ codeunit 50492 "Validate Trigger Tests"
     var
         Rec: Record "Validate Demo";
     begin
+        Initialize();
         // [GIVEN] A record where Name is assigned directly (not via Validate)
         Rec.Init();
         Rec."Entry No." := 4;
@@ -88,6 +100,7 @@ codeunit 50492 "Validate Trigger Tests"
     var
         Rec: Record "Validate Demo";
     begin
+        Initialize();
         // [GIVEN] An entry with price 50 and quantity 0
         ValidateHelper.CreateEntry(5, 'Zero Qty', 0, 50);
 

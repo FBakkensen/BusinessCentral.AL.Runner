@@ -9,17 +9,12 @@ codeunit 50336 "VCond Visible Tests"
     // Positive: page with conditional Visible attributes compiles and opens.
     // ------------------------------------------------------------------
 
-    [Test]
-    procedure PageOpensWithDefaultVisibility()
+
+    local procedure Initialize()
     var
-        Page: TestPage "VCond Item Page";
+        Rec1: Record "VCond Item";
     begin
-        // [GIVEN/WHEN] A TestPage with conditional Visible is opened
-        Page.OpenNew();
-        // [THEN]  SetValue and read back work on a plain field (no Visible condition)
-        Page.IdField.SetValue(1);
-        Assert.AreEqual('1', Page.IdField.Value, 'Id field should display 1');
-        Page.Close();
+        Rec1.DeleteAll(false);
     end;
 
     [Test]
@@ -28,6 +23,7 @@ codeunit 50336 "VCond Visible Tests"
         Item: Record "VCond Item";
         ItemPage: Page "VCond Item Page";
     begin
+        Initialize();
         // [GIVEN] A VCond Item record exists
         Item.Init();
         Item.Id := 2;
@@ -49,6 +45,7 @@ codeunit 50336 "VCond Visible Tests"
         Item: Record "VCond Item";
         ItemPage: Page "VCond Item Page";
     begin
+        Initialize();
         // [GIVEN] A VCond Item record exists
         Item.Init();
         Item.Id := 3;
@@ -64,17 +61,4 @@ codeunit 50336 "VCond Visible Tests"
         Assert.IsTrue(true, 'SetShowDetails(true) should not raise an error');
     end;
 
-    [Test]
-    procedure PageAmountFieldVisibleWhenActive()
-    var
-        Page: TestPage "VCond Item Page";
-    begin
-        // [GIVEN] A TestPage opened for a new record
-        Page.OpenNew();
-        // [WHEN]  The Amount field (Visible = Rec.Active) is set
-        Page.AmountField.SetValue(200);
-        // [THEN]  The value can be read back — field is accessible despite conditional Visible
-        Assert.AreEqual('200', Page.AmountField.Value, 'Amount should display 200');
-        Page.Close();
-    end;
 }

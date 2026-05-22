@@ -6,12 +6,21 @@ codeunit 50387 "Employee Sort Tests"
         EmpMgmt: Codeunit "Employee Management";
         Assert: Codeunit Assert;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "Test Employee";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure TestSortBySalaryAscending()
     var
         Employee: Record "Test Employee";
         FirstName: Text[100];
     begin
+        Initialize();
         // [GIVEN] Employees inserted in random order
         CreateEmployee('EMP-03', 'Charlie', 75000, 'SALES');
         CreateEmployee('EMP-01', 'Alice', 50000, 'DEV');
@@ -31,6 +40,7 @@ codeunit 50387 "Employee Sort Tests"
     var
         Employee: Record "Test Employee";
     begin
+        Initialize();
         // [GIVEN] Employees inserted in random order
         CreateEmployee('EMP-13', 'Charlie', 75000, 'SALES');
         CreateEmployee('EMP-11', 'Alice', 50000, 'DEV');
@@ -46,6 +56,7 @@ codeunit 50387 "Employee Sort Tests"
     var
         Names: Text[1024];
     begin
+        Initialize();
         // [GIVEN] Employees inserted out of alphabetical order
         CreateEmployee('EMP-23', 'Zara', 60000, 'HR');
         CreateEmployee('EMP-21', 'Anna', 55000, 'DEV');
@@ -64,6 +75,7 @@ codeunit 50387 "Employee Sort Tests"
         Employee: Record "Test Employee";
         PrevSalary: Integer;
     begin
+        Initialize();
         // [GIVEN] Multiple employees
         CreateEmployee('EMP-33', 'Dave', 80000, 'DEV');
         CreateEmployee('EMP-31', 'Eve', 45000, 'HR');

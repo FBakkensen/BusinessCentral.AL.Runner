@@ -31,16 +31,16 @@ codeunit 50176 "Notification Gaps Tests"
     // ── Gap 2: Recall() returns Boolean ──────────────────────────
 
     [Test]
-    procedure Recall_ReturnsBooleanTrue()
+    procedure Recall_ReturnsBooleanFalse()
     var
         N: Notification;
         Recalled: Boolean;
     begin
-        // Positive: Recall() must return a boolean (used in if-statement);
-        // standalone mode always returns true
+        // Positive: Recall() must return a boolean (used in if-statement).
+        // In BC, Recall() returns false when there is no sent notification to recall.
         N.Message := 'recall me';
         Recalled := Helper.RecallNotification(N);
-        Assert.IsTrue(Recalled, 'Recall() should return true');
+        Assert.IsFalse(Recalled, 'Recall() should return false when no notification was sent');
     end;
 
     [Test]
@@ -49,12 +49,14 @@ codeunit 50176 "Notification Gaps Tests"
         N: Notification;
         Hit: Boolean;
     begin
-        // Positive: prove that if Notification.Recall() then ... compiles and executes
+        // Positive: prove that if Notification.Recall() then ... compiles and executes.
+        // In BC, Recall() returns false — the else branch is what executes.
         N.Message := 'if test';
         Hit := false;
         if N.Recall() then
             Hit := true;
-        Assert.IsTrue(Hit, 'Branch inside if Recall() should be taken');
+        // Hit remains false because Recall() returns false
+        Assert.IsFalse(Hit, 'Branch inside if Recall() should not be taken when recall returns false');
     end;
 
     // ── Gap 3: Clear(Notification) resets message ─────────────────

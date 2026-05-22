@@ -12,6 +12,7 @@ codeunit 50030 "FR Validate NoArg Tests"
         Rr: RecordRef;
         Fr: FieldRef;
     begin
+        Initialize();
         ReproRec.Init();
         ReproRec."No." := 1;
         ReproRec.Insert();
@@ -35,6 +36,7 @@ codeunit 50030 "FR Validate NoArg Tests"
         Rr: RecordRef;
         Fr: FieldRef;
     begin
+        Initialize();
         ReproRec.Init();
         ReproRec."No." := 2;
         ReproRec.Insert();
@@ -52,6 +54,7 @@ codeunit 50030 "FR Validate NoArg Tests"
         ReproRec: Record "FR Validate NoArg";
         Rr: RecordRef;
     begin
+        Initialize();
         ReproRec.Init();
         ReproRec."No." := 3;
         ReproRec.Insert();
@@ -73,5 +76,12 @@ codeunit 50030 "FR Validate NoArg Tests"
     begin
         Fr := RecRef.Field(FieldNo);
         exit(Fr);
+    end;
+
+    local procedure Initialize()
+    var
+        Rec1: Record "FR Validate NoArg";
+    begin
+        Rec1.DeleteAll(false);
     end;
 }

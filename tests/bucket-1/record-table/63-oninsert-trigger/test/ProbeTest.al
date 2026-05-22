@@ -4,11 +4,24 @@ codeunit 50585 "OI Probe Tests"
     var
         Assert: Codeunit Assert;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "OI Probe Row";
+        Rec2: Record "OI Counter";
+        Rec3: Record "OI With Side Effect";
+    begin
+        Rec1.DeleteAll(false);
+        Rec2.DeleteAll(false);
+        Rec3.DeleteAll(false);
+    end;
+
     [Test]
     procedure OnInsertSetsTraceField()
     var
         R: Record "OI Probe Row";
     begin
+        Initialize();
         R.Id := 1;
         R.Insert(true);
         Assert.AreEqual('touched', R.Trace, 'OnInsert must populate Trace');
@@ -19,6 +32,7 @@ codeunit 50585 "OI Probe Tests"
     var
         R: Record "OI Probe Row";
     begin
+        Initialize();
         // Insert(false) — explicitly skip the trigger
         R.Id := 2;
         R.Insert(false);
@@ -32,6 +46,7 @@ codeunit 50585 "OI Probe Tests"
         B: Record "OI With Side Effect";
         Counter: Record "OI Counter";
     begin
+        Initialize();
         A.Id := 1; A.Insert(true);
         B.Id := 2; B.Insert(true);
         Counter.Get(1);

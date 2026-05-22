@@ -6,12 +6,21 @@ codeunit 50294 "VG Test"
         Assert: Codeunit Assert;
         Src: Codeunit "VG Src";
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "VG Table";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure GetBySystemId_FromVariant_ReturnsTrue()
     var
         rec: Record "VG Table";
         v: Variant;
     begin
+        Initialize();
         rec.Init();
         rec.Id := 1;
         rec.Insert();
@@ -26,6 +35,7 @@ codeunit 50294 "VG Test"
     var
         v: Variant;
     begin
+        Initialize();
         v := CreateGuid();
 
         Assert.IsFalse(Src.GetBySystemIdFromVariant(v),

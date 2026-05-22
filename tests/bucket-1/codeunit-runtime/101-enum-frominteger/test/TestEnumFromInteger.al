@@ -56,12 +56,15 @@ codeunit 50040 "Test EFI From Integer"
     end;
 
     [Test]
-    procedure FromInteger_OutOfRange_RaisesError()
+    procedure FromInteger_OutOfRange_ReturnsDefault()
+    var
+        Result: Enum "EFI Status";
     begin
         // [GIVEN] An ordinal that has no enum value
         // [WHEN] FromInteger is called with 99
-        // [THEN] A runtime error is raised
-        asserterror Conv.FromInt(99);
-        Assert.ExpectedError('');
+        // [THEN] In BC, no error is raised — returns the integer cast directly (ordinal 99)
+        Result := Conv.FromInt(99);
+        Assert.AreEqual(99, Result.AsInteger(),
+            'FromInteger with out-of-range ordinal must return the integer cast (99) in BC');
     end;
 }

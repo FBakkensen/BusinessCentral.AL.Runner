@@ -5,12 +5,21 @@ codeunit 50587 "Test Record GetPosition"
     var
         Assert: Codeunit Assert;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "Pos Test Table";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure GetPosition_ReturnsNonEmptyString()
     var
         Rec: Record "Pos Test Table";
         Pos: Text;
     begin
+        Initialize();
         Rec.Init();
         Rec."No." := 'GP001';
         Rec.Insert();
@@ -27,6 +36,7 @@ codeunit 50587 "Test Record GetPosition"
         Pos: Text;
         FirstNo: Code[20];
     begin
+        Initialize();
         // Insert two rows
         Rec.Init();
         Rec."No." := 'SP001';
@@ -56,6 +66,7 @@ codeunit 50587 "Test Record GetPosition"
         Pos: Text;
         SavedNo: Code[20];
     begin
+        Initialize();
         Rec.Init();
         Rec."No." := 'RT001';
         Rec.Insert();
@@ -85,6 +96,7 @@ codeunit 50587 "Test Record GetPosition"
     var
         Rec: Record "Pos Test Table";
     begin
+        Initialize();
         Rec.Init();
         Rec."No." := 'INV001';
         Rec.Insert();

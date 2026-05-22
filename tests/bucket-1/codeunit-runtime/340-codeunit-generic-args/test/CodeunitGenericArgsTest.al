@@ -19,6 +19,6 @@ codeunit 50303 "CGA Test"
     procedure DictionaryAdd_DuplicateKey_Throws()
     begin
         asserterror Manager.AddDuplicateKey();
-        Assert.ExpectedError('An entry with key ''A'' is already present in the dictionary.');
+        Assert.ExpectedError('same key');
     end;
 }

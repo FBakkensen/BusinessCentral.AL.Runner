@@ -9,11 +9,20 @@ codeunit 50576 "IsEmpty Tests"
     // IsEmpty on a table with no records
     // -----------------------------------------------------------------------
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "IE Test Table";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure IsEmptyReturnsTrueOnEmptyTable()
     var
         Rec: Record "IE Test Table";
     begin
+        Initialize();
         // [GIVEN] Table has no records (clean test isolation)
         // [WHEN] IsEmpty called with no filters
         // [THEN] Returns true
@@ -29,6 +38,7 @@ codeunit 50576 "IsEmpty Tests"
     var
         Rec: Record "IE Test Table";
     begin
+        Initialize();
         // [GIVEN] Table has one record
         InsertRow('A001', 1);
 
@@ -46,6 +56,7 @@ codeunit 50576 "IsEmpty Tests"
     var
         Rec: Record "IE Test Table";
     begin
+        Initialize();
         // [GIVEN] Table has records but filter matches none
         InsertRow('B001', 1);
         InsertRow('B002', 2);
@@ -65,6 +76,7 @@ codeunit 50576 "IsEmpty Tests"
     var
         Rec: Record "IE Test Table";
     begin
+        Initialize();
         // [GIVEN] Table has records, filter matches at least one
         InsertRow('C001', 1);
         InsertRow('C002', 2);
@@ -85,6 +97,7 @@ codeunit 50576 "IsEmpty Tests"
     var
         Rec: Record "IE Test Table";
     begin
+        Initialize();
         // [GIVEN] Table has records; filter set to exclude all; then Reset
         InsertRow('D001', 1);
         Rec.SetRange(Status, 99);

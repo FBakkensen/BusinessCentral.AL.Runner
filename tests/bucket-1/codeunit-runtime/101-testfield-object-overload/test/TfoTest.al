@@ -11,11 +11,20 @@ codeunit 50045 "TFO Test"
     // Integer field — no-value form (Rec.TestField("Table No."))
     // -----------------------------------------------------------------------
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "TFO Table";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure TableNo_NonZero_TestFieldPasses()
     var
         Tbl: Record "TFO Table";
     begin
+        Initialize();
         // [GIVEN] Record with Table No. = 42
         Tbl.Init();
         Tbl."No." := 'A';
@@ -31,6 +40,7 @@ codeunit 50045 "TFO Test"
     var
         Tbl: Record "TFO Table";
     begin
+        Initialize();
         // [GIVEN] Record with Table No. = 0 (default)
         Tbl.Init();
         Tbl."No." := 'B';
@@ -51,6 +61,7 @@ codeunit 50045 "TFO Test"
     var
         Tbl: Record "TFO Table";
     begin
+        Initialize();
         // [GIVEN] Record with Table No. = 99
         Tbl.Init();
         Tbl."No." := 'C';
@@ -66,6 +77,7 @@ codeunit 50045 "TFO Test"
     var
         Tbl: Record "TFO Table";
     begin
+        Initialize();
         // [GIVEN] Record with Table No. = 99
         Tbl.Init();
         Tbl."No." := 'D';
@@ -87,6 +99,7 @@ codeunit 50045 "TFO Test"
     var
         Tbl: Record "TFO Table";
     begin
+        Initialize();
         // [GIVEN] Record with Name = 'Widget'
         Tbl.Init();
         Tbl."No." := 'E';
@@ -102,6 +115,7 @@ codeunit 50045 "TFO Test"
     var
         Tbl: Record "TFO Table";
     begin
+        Initialize();
         // [GIVEN] Record with Name = 'Widget'
         Tbl.Init();
         Tbl."No." := 'F';
@@ -122,6 +136,7 @@ codeunit 50045 "TFO Test"
     var
         Tbl: Record "TFO Table";
     begin
+        Initialize();
         // [GIVEN] Record with Name = 'Test'
         Tbl.Init();
         Tbl."No." := 'G';
@@ -137,6 +152,7 @@ codeunit 50045 "TFO Test"
     var
         Tbl: Record "TFO Table";
     begin
+        Initialize();
         // [GIVEN] Record with Name = '' (empty)
         Tbl.Init();
         Tbl."No." := 'H';

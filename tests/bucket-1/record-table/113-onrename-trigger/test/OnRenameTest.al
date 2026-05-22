@@ -12,11 +12,22 @@ codeunit 50423 "ORT Tests"
     var
         Assert: Codeunit Assert;
 
+
+    local procedure Initialize()
+    var
+        ExtraRec: Record "ORT Counter";
+        Rec1: Record "ORT Source";
+    begin
+        ExtraRec.DeleteAll(false);
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure OnRenameTrigger_SetsFlag_AfterRename()
     var
         Src: Record "ORT Source";
     begin
+        Initialize();
         // Positive: Rename must fire the OnRename trigger which sets TriggerRan.
         Src.PK := 1;
         Src.Insert(false);
@@ -33,6 +44,7 @@ codeunit 50423 "ORT Tests"
         Src: Record "ORT Source";
         Counter: Record "ORT Counter";
     begin
+        Initialize();
         // Rec-state: inside OnRename, Rec.PK holds the NEW primary key.
         // The trigger inserts Counter keyed by Rec.PK (new), so Counter.Get(new PK)
         // must succeed and Counter.Get(old PK) must fail.
@@ -50,6 +62,7 @@ codeunit 50423 "ORT Tests"
         Src: Record "ORT Source";
         Counter: Record "ORT Counter";
     begin
+        Initialize();
         // Rec-state: trigger stores Rec.Val into Counter.Hits.
         // Verify Counter.Hits = 33, proving the trigger could read non-PK fields.
         Src.PK := 3;

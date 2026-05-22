@@ -1,0 +1,195 @@
+[
+  {
+    "id": 50088,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50099,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "DataTransfer is only usable during upgrade and installation code."
+      },
+      {
+        "method": "UpdateAuditFields_DefaultFalse_NoThrow",
+        "error": "Assert.IsFalse failed. UpdateAuditFields default must be false"
+      }
+    ]
+  },
+  {
+    "id": 50139,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50145,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50149,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50149.ErrorType_Default_Throws()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      },
+      {
+        "method": "ErrorType_Default_Throws",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50149.ErrorType_Default_Throws()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      },
+      {
+        "method": "ErrorType_RoundTrips_Client_Throws",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50149.ErrorType_RoundTrips_Client_Throws()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      }
+    ]
+  },
+  {
+    "id": 50157,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50157.GetUrl_PageObject1_NotPublished()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      },
+      {
+        "method": "GetUrl_PageObject1_NotPublished",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50157.GetUrl_PageObject1_NotPublished()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      }
+    ]
+  },
+  {
+    "id": 50196,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50196.Clear_ResetsUpdateAuditFields_Throws()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      },
+      {
+        "method": "Clear_ResetsUpdateAuditFields_Throws",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50196.Clear_ResetsUpdateAuditFields_Throws()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      }
+    ]
+  },
+  {
+    "id": 50200,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50221,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50231,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50282,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50381,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50476,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50511,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50530,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50543,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50580,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table Fixed Section Test Table already exists. Identification fields and values: Id='4'"
+      },
+      {
+        "method": "FixedSection_DuplicateKey_NoThrow",
+        "error": "The record in table Fixed Section Test Table already exists. Identification fields and values: Id='4'"
+      }
+    ]
+  },
+  {
+    "id": 50590,
+    "status": "Error",
+    "message": "5 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "deliberate failure"
+      },
+      {
+        "method": "CodeunitRun_WithRecord_InMemoryRecReflectsChanges",
+        "error": "An error occurred and the transaction is stopped. Contact your administrator or partner for further assistance."
+      },
+      {
+        "method": "CodeunitRun_WithRecord_ModificationsVisibleAfterRun",
+        "error": "An error occurred and the transaction is stopped. Contact your administrator or partner for further assistance."
+      },
+      {
+        "method": "CodeunitRun_WithRecord_ReturnsFalseOnError",
+        "error": "An error occurred and the transaction is stopped. Contact your administrator or partner for further assistance."
+      },
+      {
+        "method": "CodeunitRun_WithRecord_ReturnsTrueOnSuccess",
+        "error": "An error occurred and the transaction is stopped. Contact your administrator or partner for further assistance."
+      }
+    ]
+  },
+  {
+    "id": 50598,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The RF Test Item does not exist. Identification fields and values: Id='999'"
+      },
+      {
+        "method": "InsertDuplicateViaRecRefNoThrow",
+        "error": "The record in table RF Test Item already exists. Identification fields and values: Id='1'"
+      }
+    ]
+  }
+]

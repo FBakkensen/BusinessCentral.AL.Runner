@@ -96,10 +96,11 @@ codeunit 50435 "Metadata Tests"
     end;
 
     [Test]
-    procedure UnknownFieldFallsBackToFieldNNCaption()
+    procedure UnknownField_Throws()
+    // BC 16.1: RecRef.Field(999) on a table that has no field 999 throws
     begin
-        // Field 999 is not declared in table 50097 — caption should fall back to 'Field999'
-        Assert.AreEqual('Field999', Probe.GetFieldCaption(50097, 999), 'Unknown field should fall back to FieldNN');
+        asserterror Probe.GetFieldCaption(50097, 999);
+        Assert.ExpectedError('999');
     end;
 
     [Test]

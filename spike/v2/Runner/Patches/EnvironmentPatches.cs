@@ -40,6 +40,20 @@ public static partial class BcRuntime
     public static string GetServiceAccountNameReplacement() => "SYSTEM";
 
     [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void ExecutionListenerCctorReplacement()
+    {
+        // Safely initialise the two static fields that the real cctor sets.
+        // syncRoot is used for lock(syncRoot) in AddListener/RemoveListener.
+        // Instance remains null — ALFunctionTimingExecutionListener.Start/Exit are
+        // already no-op'd, so no caller will dereference Instance.
+        var t = _navEnvironmentType!.Assembly
+            .GetType("Microsoft.Dynamics.Nav.Runtime.ExecutionListener");
+        if (t == null) return;
+        FieldPoke.SetStatic(t, "syncRoot", new object());
+        // Leave <Instance>k__BackingField null — safe because Start/Exit are no-op'd.
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
     public static object? GetInstanceReplacement()
     {
         var f = _navEnvironmentType!.GetField("instance", BindingFlags.NonPublic | BindingFlags.Static);

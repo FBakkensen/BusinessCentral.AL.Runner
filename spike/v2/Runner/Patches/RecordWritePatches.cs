@@ -191,6 +191,12 @@ public static partial class BcRuntime
             if (isGlobalTrigger != null)
                 Hook(isGlobalTrigger, nameof(ReturnFalse2), "NavRecord.IsGlobalTriggerImplemented");
 
+            // NOTE: NavRecord.get_ALReadPermission / get_ALWritePermission / get_ALReadConsistency
+            // and ALAddLoadFields / ALSetBaseLoadFields / AddLoadFields hooks are disabled —
+            // JmpHook on these R2R-compiled NavRecord methods causes SIGSEGV in
+            // ExecutionListener..cctor() during first test run. Needs Cecil-rewrite workaround.
+            // TODO: re-enable when a Cecil-safe approach is found.
+
             // NavRecord.InsertAsync(DataError, bool, bool, bool) — full body NREs through
             // NavCurrentThread.ResolveAppGroup / metaTable.IsEventSubscribed / DataModificationListener
             // before reaching the storage layer. Replace the whole body with a minimal call that
@@ -236,6 +242,25 @@ public static partial class BcRuntime
             // Modify/Delete/Rename remain bypassed for PR1 scope; W-8 follow-on PR
             // will drain those in lockstep once the Insert path is validated.
 
+            // AutoIncrement: ALInsertAsync(DataError,bool,bool) is an async ValueTask<bool> method.
+            // JmpHook is unreliable on async ValueTask under R2R — hooking it causes SIGSEGV.
+            // The Cecil-rewrite workaround is needed; skipping this hook for now.
+            _mNavRecordALInsertAsync3 = navRecordType.GetMethods(
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                .FirstOrDefault(m => m.Name == "ALInsertAsync"
+                    && m.GetParameters() is { Length: 3 } ps3
+                    && ps3[0].ParameterType.Name == "DataError");
+            // NOTE: hook intentionally NOT installed — see above comment.
+
+            // ALInit: hook ALInit() to also zero PK fields (BC v28+ behavior).
+            _mNavRecordALInit = navRecordType.GetMethod("ALInit",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance,
+                null, Type.EmptyTypes, null);
+            if (_mNavRecordALInit != null)
+            {
+                // NOTE: temporarily disabled — investigating intermittent SIGSEGV in bucket-2.
+                // Hook(_mNavRecordALInit, nameof(NavRecord_ALInit), "NavRecord.ALInit()");
+            }
             // W-8a PR3: bypass-drain for ModifyAsync. Safe to land now that f8367536's
             // bounded-depth recursion guard (NavMethodScope depth counter, 500 frames) catches
             // Codeunit108002.Modify_WithRecursiveTrigger_DoesNotStackOverflow before the
@@ -494,6 +519,19 @@ public static partial class BcRuntime
             if (reportChange != null)
                 Hook(reportChange, nameof(NoOp4), "TempTableStatistics.ReportIncrementChange");
         }
+
+        // NavTextBuilder.ALInsert(DataError, int, string) — BC v28+: position 0 = prepend
+        // (equivalent to position 1). BC v27 throws for position=0.
+        // NOTE: JmpHook is intermittently unreliable for this method under R2R.
+        // Disabled until a Cecil-rewrite workaround is in place.
+        var navTextBuilderType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavTextBuilder");
+        if (navTextBuilderType != null)
+        {
+            _mNavTextBuilderALInsert = navTextBuilderType.GetMethods(
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                .FirstOrDefault(m => m.Name == "ALInsert" && m.GetParameters().Length == 3);
+            // Hook intentionally NOT installed — see above comment.
+        }
         // ── END RECORD PATCHES ────────────────────────────────────────────────────────
     }
 
@@ -685,5 +723,114 @@ public static partial class BcRuntime
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static void NavRecord_BeginEndInitialization(object self)
     {
+    }
+
+    /// <summary>
+    /// Register a tableId + fieldNo pair as an AutoIncrement-enabled field.
+    /// Called by NclMetaTableBuilder after constructing an NCLMetaTable that has an
+    /// AutoIncrement field, so <see cref="NavRecord_ALInsertAsync3"/> can assign the counter.
+    /// </summary>
+    public static void RegisterAutoIncrementField(int tableId, int fieldNo)
+        => _aiFieldIds[tableId] = fieldNo;
+
+    /// <summary>
+    /// Replacement for NavRecord.ALInsertAsync(DataError, bool, bool).
+    /// Assigns the next AutoIncrement counter value to the AI field when it is zero,
+    /// then calls the real ALInsertAsync body via MethodInfo.Invoke (bypasses the hook).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static System.Threading.Tasks.ValueTask<bool> NavRecord_ALInsertAsync3(
+        Microsoft.Dynamics.Nav.Runtime.NavRecord self,
+        Microsoft.Dynamics.Nav.Types.DataError errorLevel,
+        bool runApplicationTrigger,
+        bool insertWithSystemId)
+    {
+        try
+        {
+            int tableId = self.MetaTable.TableId;
+            if (_aiFieldIds.TryGetValue(tableId, out int aiFieldNo)
+                && self.MetaTable.TryGetFieldByNo(aiFieldNo, out var aiField))
+            {
+                var currentVal = self.GetFieldValue(aiField);
+                if (currentVal.IsZeroOrEmpty)
+                {
+                    long next = _aiCounters.AddOrUpdate(tableId, 1L, (_, v) => v + 1L);
+                    var newVal = Microsoft.Dynamics.Nav.Runtime.NavValue
+                        .CreateNavValueFromObject(aiField, (object)(int)next);
+                    self.SetFieldValue(aiField, newVal);
+                }
+            }
+        }
+        catch { /* don't block insert if AI counter assignment fails */ }
+
+        try
+        {
+            var result = _mNavRecordALInsertAsync3!.Invoke(self,
+                new object[] { errorLevel, runApplicationTrigger, insertWithSystemId });
+            if (result is System.Threading.Tasks.ValueTask<bool> vt) return vt;
+            if (result is System.Threading.Tasks.Task<bool> t)
+                return new System.Threading.Tasks.ValueTask<bool>(t);
+            return new System.Threading.Tasks.ValueTask<bool>(true);
+        }
+        catch (TargetInvocationException tie) when (tie.InnerException != null)
+        {
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(tie.InnerException);
+            return default;
+        }
+    }
+
+    /// <summary>
+    /// Replacement for NavRecord.ALInit().
+    /// Calls the real ALInit() body (which resets non-PK fields) then also zeroes PK
+    /// fields to match BC v28+ behavior where Init() resets all fields including PK.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void NavRecord_ALInit(Microsoft.Dynamics.Nav.Runtime.NavRecord self)
+    {
+        try
+        {
+            _mNavRecordALInit!.Invoke(self, null);
+        }
+        catch (TargetInvocationException tie) when (tie.InnerException != null)
+        {
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(tie.InnerException);
+        }
+        // Zero PK fields — BC v28+ resets them too on Init()
+        try
+        {
+            var key = self.MetaTable.GetKeyByIndex(0);
+            for (int i = 0; i < key.KeyFieldCount; i++)
+            {
+                var field = key.GetKeyFieldByIndex(i);
+                self.SetFieldValue(field, field.EmptyValue);
+            }
+        }
+        catch { /* don't fail Init() if PK zeroing encounters issues */ }
+    }
+
+    /// <summary>
+    /// Replacement for NavTextBuilder.ALInsert(DataError, int, string).
+    /// BC v28+: position 0 means prepend (equivalent to position 1). BC v27 throws.
+    /// Convert position 0 → 1, then call the real body via MethodInfo.Invoke.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static bool NavTextBuilder_ALInsert(
+        object self,
+        Microsoft.Dynamics.Nav.Types.DataError errorLevel,
+        int position,
+        string str)
+    {
+        if (position == 0) position = 1;
+        try
+        {
+            var result = _mNavTextBuilderALInsert!.Invoke(self,
+                new object[] { errorLevel, position, str });
+            return result is bool b && b;
+        }
+        catch (TargetInvocationException tie) when (tie.InnerException != null)
+        {
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(tie.InnerException);
+            return false;
+        }
     }
 }

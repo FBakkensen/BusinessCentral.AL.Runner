@@ -206,11 +206,9 @@ codeunit 50071 "Util Tests"
     end;
 
     [Test]
-    procedure NormalDateOnZeroDateReturnsZero()
-    var
-        d: Date;
+    procedure NormalDateOnZeroDateThrows()
     begin
-        d := Helper.GetNormalDate(0D);
-        Assert.AreEqual(0D, d, 'NormalDate(0D) should return 0D');
+        asserterror Helper.GetNormalDate(0D);
+        Assert.ExpectedError('date is not valid');
     end;
 }

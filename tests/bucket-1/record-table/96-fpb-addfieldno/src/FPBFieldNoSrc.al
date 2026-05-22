@@ -7,6 +7,8 @@ codeunit 50627 "FPB FieldNo Src"
         Rec: Record "FPB FieldNo Table";
         FPB: FilterPageBuilder;
     begin
+        // In BC, AddFieldNo requires the table to be registered in the FilterPageBuilder first.
+        FPB.AddRecord(Rec.TableName(), Rec);
         FPB.AddFieldNo(Rec.TableName(), Rec.FieldNo("Task No."));
         exit(FPB.Count);
     end;

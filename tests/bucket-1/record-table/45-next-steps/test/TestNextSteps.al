@@ -5,12 +5,21 @@ codeunit 50554 "Test Next Steps"
     var
         Assert: Codeunit Assert;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "Next Probe";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure NextOneMovesToNextRecord()
     var
         Rec: Record "Next Probe";
         Steps: Integer;
     begin
+        Initialize();
         Rec.DeleteAll();
         Seed();
         Rec.FindFirst();
@@ -27,6 +36,7 @@ codeunit 50554 "Test Next Steps"
         Rec: Record "Next Probe";
         Steps: Integer;
     begin
+        Initialize();
         Rec.DeleteAll();
         Seed();
         Rec.FindFirst();
@@ -41,6 +51,7 @@ codeunit 50554 "Test Next Steps"
         Rec: Record "Next Probe";
         Steps: Integer;
     begin
+        Initialize();
         Rec.DeleteAll();
         // Negative/boundary: asking for more steps than remain returns actual moves.
         Seed();
@@ -59,6 +70,7 @@ codeunit 50554 "Test Next Steps"
     var
         Rec: Record "Next Probe";
     begin
+        Initialize();
         // Negative: at last record, Next returns 0.
         Seed();
         Rec.FindLast();
@@ -73,6 +85,7 @@ codeunit 50554 "Test Next Steps"
         Rec: Record "Next Probe";
         Steps: Integer;
     begin
+        Initialize();
         Rec.DeleteAll();
         // Positive: negative step count moves backward.
         Seed();
@@ -90,6 +103,7 @@ codeunit 50554 "Test Next Steps"
         Rec: Record "Next Probe";
         Steps: Integer;
     begin
+        Initialize();
         Rec.DeleteAll();
         // Negative/boundary: asking to go before first returns what's possible.
         Seed();
@@ -108,6 +122,7 @@ codeunit 50554 "Test Next Steps"
     var
         Rec: Record "Next Probe";
     begin
+        Initialize();
         Rec.DeleteAll();
         // Positive: Next advances within the filtered result set.
         Seed();

@@ -5,11 +5,20 @@ codeunit 50550 "Test Count Filtered"
     var
         Assert: Codeunit Assert;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "Count Probe";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure CountReturnsTotalOnEmptyTable()
     var
         Rec: Record "Count Probe";
     begin
+        Initialize();
         // Negative: empty table has 0 count.
         Assert.AreEqual(0, Rec.Count, 'Empty table must have Count 0');
     end;
@@ -19,6 +28,7 @@ codeunit 50550 "Test Count Filtered"
     var
         Rec: Record "Count Probe";
     begin
+        Initialize();
         Rec.DeleteAll();
         Seed();
         Assert.AreEqual(5, Rec.Count,
@@ -30,6 +40,7 @@ codeunit 50550 "Test Count Filtered"
     var
         Rec: Record "Count Probe";
     begin
+        Initialize();
         Rec.DeleteAll();
         // Positive: SetRange filters Count to matching subset.
         Seed();
@@ -47,6 +58,7 @@ codeunit 50550 "Test Count Filtered"
     var
         Rec: Record "Count Probe";
     begin
+        Initialize();
         // Negative: filter with no matches yields Count 0.
         Seed();
         Rec.SetRange(Status, 999);
@@ -59,6 +71,7 @@ codeunit 50550 "Test Count Filtered"
     var
         Rec: Record "Count Probe";
     begin
+        Initialize();
         Rec.DeleteAll();
         // Positive/reset: clearing filters restores the full count.
         Seed();
@@ -75,6 +88,7 @@ codeunit 50550 "Test Count Filtered"
     var
         Rec: Record "Count Probe";
     begin
+        Initialize();
         Rec.DeleteAll();
         // Positive: range-style SetRange is honoured.
         Seed();

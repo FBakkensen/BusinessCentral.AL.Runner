@@ -9,12 +9,21 @@ codeunit 50535 "RecRef Insert Test"
     // RecordRef.Insert(Boolean) — 1-arg overload
     // -------------------------------------------------------------------------
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "RecRef Insert Row";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure RecRefInsert_Bool_TriggerTrue_RecordExistsAndMarkerSet()
     // Proves Insert(true) persists the record and fires OnInsert (which sets Marker).
     var
         Helper: Codeunit "RecRef Insert Helper";
     begin
+        Initialize();
         Helper.InsertViaRecRefBool(1, true);
 
         Assert.IsTrue(Helper.RecordExists(1), 'Record should exist after RecordRef.Insert(true)');
@@ -27,6 +36,7 @@ codeunit 50535 "RecRef Insert Test"
     var
         Helper: Codeunit "RecRef Insert Helper";
     begin
+        Initialize();
         Helper.InsertViaRecRefBool(2, false);
 
         Assert.IsTrue(Helper.RecordExists(2), 'Record should exist after RecordRef.Insert(false)');
@@ -43,6 +53,7 @@ codeunit 50535 "RecRef Insert Test"
     var
         Helper: Codeunit "RecRef Insert Helper";
     begin
+        Initialize();
         Helper.InsertViaRecRefBoolBool(3, true, false);
 
         Assert.IsTrue(Helper.RecordExists(3), 'Record should exist after RecordRef.Insert(true, false)');
@@ -55,6 +66,7 @@ codeunit 50535 "RecRef Insert Test"
     var
         Helper: Codeunit "RecRef Insert Helper";
     begin
+        Initialize();
         Helper.InsertViaRecRefBoolBool(4, false, true);
 
         Assert.IsTrue(Helper.RecordExists(4), 'Record should exist after RecordRef.Insert(false, true)');

@@ -11,26 +11,26 @@ codeunit 50221 "ViewFromStream Tests"
     /// ALViewFromStream(parent, inStream, fileName, isEditable).
     /// </summary>
     [Test]
-    procedure ViewFromStream_4Arg_NoThrow()
+    procedure ViewFromStream_4Arg_ErrorOrNoThrow()
     var
         Helper: Codeunit "ViewFromStream Helper";
     begin
-        // Verifies that ALViewFromStream with 4 C# args compiles and runs without error.
-        // The entire claim is "this does not crash" — the overload is a no-op in standalone mode.
-        Helper.CallViewFromStream4Arg();
+        // BC 16.1: ViewFromStream with an uninitialized InStream raises
+        // "NavInStream variable not initialized." Capture the error.
+        asserterror Helper.CallViewFromStream4Arg();
     end;
 
     /// <summary>
-    /// Positive: ViewFromStream(InStream, FileName) is a no-op in standalone mode
-    /// — it must not throw. This is the 2-arg AL form which BC transpiles to the 3-arg C# call
-    /// ALViewFromStream(parent, inStream, fileName).
+    /// Positive: ViewFromStream(InStream, FileName) — BC 16.1 raises
+    /// "NavInStream variable not initialized." when InStream is uninitialized.
     /// </summary>
     [Test]
-    procedure ViewFromStream_3Arg_NoThrow()
+    procedure ViewFromStream_3Arg_ErrorOrNoThrow()
     var
         Helper: Codeunit "ViewFromStream Helper";
     begin
-        // Verifies that ALViewFromStream with 3 C# args compiles and runs without error.
-        Helper.CallViewFromStream3Arg();
+        // BC 16.1: ViewFromStream with an uninitialized InStream raises
+        // "NavInStream variable not initialized." Capture the error.
+        asserterror Helper.CallViewFromStream3Arg();
     end;
 }

@@ -6,9 +6,18 @@ codeunit 50095 "ADM Add Dataset Test"
         Assert: Codeunit Assert;
         Helper: Codeunit "ADM Helper";
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "ADM Item";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure ReportExtAddDataset_CompilesAndHelperRuns()
     begin
+        Initialize();
         // Positive: the compilation unit containing reportextensions with `add()`
         // in the dataset section must compile, and codeunits defined alongside
         // them must be callable. This is what issue #449 says currently fails.
@@ -19,6 +28,7 @@ codeunit 50095 "ADM Add Dataset Test"
     [Test]
     procedure ReportExtAddDataset_LineTotal()
     begin
+        Initialize();
         // Proving: helper performs real work, not a no-op stub (issue #203 standard).
         Assert.AreEqual(50, Helper.LineTotal(5, 10), 'LineTotal(5,10) must be 50');
         Assert.AreEqual(0, Helper.LineTotal(0, 99), 'LineTotal(0,99) must be 0');
@@ -28,6 +38,7 @@ codeunit 50095 "ADM Add Dataset Test"
     [Test]
     procedure ReportExtAddDataset_LineTotal_NotJustSum()
     begin
+        Initialize();
         // Negative: guard against a no-op returning qty+price.
         Assert.AreNotEqual(15, Helper.LineTotal(5, 10), 'LineTotal must not just return qty+price');
     end;
@@ -35,6 +46,7 @@ codeunit 50095 "ADM Add Dataset Test"
     [Test]
     procedure ReportExtAddDataset_Brackets()
     begin
+        Initialize();
         // Proving Brackets runs in same compilation unit as reportextensions.
         Assert.AreEqual('{hi}', Helper.Brackets('hi'), 'Brackets must wrap with {}');
         Assert.AreEqual('{}', Helper.Brackets(''), 'Brackets of empty must be just {}');
@@ -43,6 +55,7 @@ codeunit 50095 "ADM Add Dataset Test"
     [Test]
     procedure ReportExtAddDataset_Brackets_BracesPresent()
     begin
+        Initialize();
         // Negative: Brackets must NOT return the raw string.
         Assert.AreNotEqual('hi', Helper.Brackets('hi'), 'Brackets must not return the raw string');
     end;
@@ -52,6 +65,7 @@ codeunit 50095 "ADM Add Dataset Test"
     var
         Item: Record "ADM Item";
     begin
+        Initialize();
         // Positive: the source table in the same compilation unit as the
         // reportextensions must be usable — proves the whole compilation unit is live.
         Item.Init();

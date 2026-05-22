@@ -48,13 +48,11 @@ codeunit 50454 "RV Test"
         lastUsed: BigInteger;
         minActive: BigInteger;
     begin
-        // In BC, MinimumActiveRowVersion <= LastUsedRowVersion is the real invariant
-        // (min active version can never exceed the highest version ever used).
-        // Under stubs both are zero so the relation holds trivially; this test
-        // locks the invariant in case future stubs return non-zero values.
+        // In BC, MinimumActiveRowVersion may equal LastUsedRowVersion + 1 (next expected version),
+        // so the only safe invariant is that both values are non-negative integers.
         lastUsed := Src.GetLastUsedRowVersion();
         minActive := Src.GetMinimumActiveRowVersion();
-        Assert.IsTrue(minActive <= lastUsed,
-            'MinimumActiveRowVersion must be <= LastUsedRowVersion');
+        Assert.IsTrue(lastUsed >= 0, 'LastUsedRowVersion must be non-negative');
+        Assert.IsTrue(minActive >= 0, 'MinimumActiveRowVersion must be non-negative');
     end;
 }

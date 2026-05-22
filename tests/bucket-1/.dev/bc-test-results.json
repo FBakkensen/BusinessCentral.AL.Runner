@@ -1,0 +1,27 @@
+[
+  {
+    "id": 50541,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50543,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Unhandled UI: ModalPage 50012"
+      },
+      {
+        "method": "TestPageRunModalWithRecordCompiles",
+        "error": "Unhandled UI: ModalPage 50012"
+      },
+      {
+        "method": "TestPageRunWithRecord_ThrowsOutOfScope",
+        "error": "Assert.ExpectedError failed. Expected: out-of-scope: NavForm.RunAsync. Actual: Unhandled UI: Page 50012."
+      }
+    ]
+  }
+]

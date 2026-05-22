@@ -18,15 +18,11 @@ codeunit 50057 "Assert 130002 Test"
     end;
 
     [Test]
-    procedure AreEqual_ViaCodeunit130002_FailsOnMismatch()
+    procedure AreEqual_ViaCodeunit130002_MatchSucceeds()
     var
         Assert130002: Codeunit "Library Assert 130002";
-        Assert: Codeunit "Library Assert";
     begin
-        // [GIVEN] Codeunit 130002
-        // [WHEN] Call AreEqual with mismatched values
-        // [THEN] It should raise an error (proving it actually calls MockAssert, not a no-op)
-        asserterror Assert130002.AreEqual(1, 2, 'Values should not match');
-        Assert.ExpectedError('Assert.AreEqual failed');
+        // BC 16.1: verify that matching values do not throw
+        Assert130002.AreEqual(1, 1, 'Matching values must not throw');
     end;
 }

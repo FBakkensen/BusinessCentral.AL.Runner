@@ -5,12 +5,23 @@ codeunit 50540 "Test Lookup Formula"
     var
         Assert: Codeunit Assert;
 
+
+    local procedure Initialize()
+    var
+        ExtraRec: Record "LF Child";
+        Rec1: Record "LF Parent";
+    begin
+        ExtraRec.DeleteAll(false);
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure LookupReturnsTextFromRelatedRow()
     var
         Parent: Record "LF Parent";
         Child: Record "LF Child";
     begin
+        Initialize();
         // Positive: lookup FlowField returns the Name of the matching child row.
         Parent.Init();
         Parent."No." := 'P1';
@@ -36,6 +47,7 @@ codeunit 50540 "Test Lookup Formula"
         Parent: Record "LF Parent";
         Child: Record "LF Child";
     begin
+        Initialize();
         // Positive: lookup FlowField returns the numeric Amount of the matching child row.
         Parent.Init();
         Parent."No." := 'P2';
@@ -61,6 +73,7 @@ codeunit 50540 "Test Lookup Formula"
         Parent: Record "LF Parent";
         Child: Record "LF Child";
     begin
+        Initialize();
         // Positive/disambiguation: multiple children — lookup returns the first match.
         Parent.Init();
         Parent."No." := 'P3';
@@ -89,6 +102,7 @@ codeunit 50540 "Test Lookup Formula"
     var
         Parent: Record "LF Parent";
     begin
+        Initialize();
         // Negative: no matching child — lookup should clear the field to default.
         Parent.Init();
         Parent."No." := 'P4';

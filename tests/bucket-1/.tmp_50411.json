@@ -1,0 +1,17 @@
+[
+  {
+    "id": 50411,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table Rename Probe already exists. Identification fields and values: Entry No.='2'"
+      },
+      {
+        "method": "RenameToConflictReturnsFalse",
+        "error": "The record in table Rename Probe already exists. Identification fields and values: Entry No.='2'"
+      }
+    ]
+  }
+]

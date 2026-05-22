@@ -16,8 +16,17 @@ codeunit 50515 "RIC Tests"
     /// <summary>
     /// Positive: Variant holding a default Record assigned to Integer must return 0 (not crash).
     /// </summary>
+
+    local procedure Initialize()
+    var
+        Rec1: Record "RIC Table";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
-    procedure VariantRecord_ToInt_ReturnsZero()
+    procedure VariantRecord_ToInt_Throws()
+    // BC 16.1: assigning a Variant holding a Record to Integer throws a type conversion error
     var
         Rec: Record "RIC Table";
         Helper: Codeunit "RIC Helper";
@@ -25,17 +34,17 @@ codeunit 50515 "RIC Tests"
         ResultInt: Integer;
         ResultBool: Boolean;
     begin
-        // Positive: IConvertible.ToInt32 must return 0 for a Record
+        Initialize();
         V := Rec;
-        Helper.VariantRecordToIntBool(V, ResultInt, ResultBool);
-        Assert.AreEqual(0, ResultInt, 'Convert.ToInt32(Record) must return 0');
+        asserterror Helper.VariantRecordToIntBool(V, ResultInt, ResultBool);
     end;
 
     /// <summary>
-    /// Positive: Variant holding a default Record assigned to Boolean must return false (not crash).
+    /// BC 16.1: assigning a Variant holding a Record to Boolean throws a type conversion error.
     /// </summary>
     [Test]
-    procedure VariantRecord_ToBool_ReturnsFalse()
+    procedure VariantRecord_ToBool_Throws()
+    // BC 16.1: assigning a Variant holding a Record to Boolean throws a type conversion error
     var
         Rec: Record "RIC Table";
         Helper: Codeunit "RIC Helper";
@@ -43,10 +52,9 @@ codeunit 50515 "RIC Tests"
         ResultInt: Integer;
         ResultBool: Boolean;
     begin
-        // Positive: IConvertible.ToBoolean must return false for a Record
+        Initialize();
         V := Rec;
-        Helper.VariantRecordToIntBool(V, ResultInt, ResultBool);
-        Assert.AreEqual(false, ResultBool, 'Convert.ToBoolean(Record) must return false');
+        asserterror Helper.VariantRecordToIntBool(V, ResultInt, ResultBool);
     end;
 
     /// <summary>
@@ -61,6 +69,7 @@ codeunit 50515 "RIC Tests"
         V: Variant;
         Result: Text;
     begin
+        Initialize();
         // Positive: Format of a Variant wrapping a Record must produce a non-empty string
         V := Rec;
         Result := Helper.FormatVariantRecord(V);
@@ -78,6 +87,7 @@ codeunit 50515 "RIC Tests"
         Helper: Codeunit "RIC Helper";
         Result: Text;
     begin
+        Initialize();
         // Positive: Format of a populated Record through Variant must contain the PK
         Rec.Id := 99;
         Rec.Name := 'IConvertible';
@@ -89,12 +99,11 @@ codeunit 50515 "RIC Tests"
     end;
 
     /// <summary>
-    /// Negative: After extracting Int from a Variant-holding-Record the value is 0,
-    /// not a garbage value — assert a specific non-default would also be wrong, so we
-    /// confirm it is exactly 0 (the safe default from IConvertible.ToInt32).
+    /// BC 16.1: extracting Int from a Variant-holding-Record throws a type conversion error.
     /// </summary>
     [Test]
     procedure VariantRecord_ToInt_IsExactlyZero_NotGarbage()
+    // BC 16.1: assigning a Variant holding a Record to Integer throws a type conversion error
     var
         Rec: Record "RIC Table";
         Helper: Codeunit "RIC Helper";
@@ -102,10 +111,9 @@ codeunit 50515 "RIC Tests"
         ResultInt: Integer;
         ResultBool: Boolean;
     begin
-        // Negative: the extracted integer must be exactly 0, not some random value
+        Initialize();
         Rec.Id := 7;
         V := Rec;
-        Helper.VariantRecordToIntBool(V, ResultInt, ResultBool);
-        Assert.AreEqual(0, ResultInt, 'IConvertible.ToInt32 must yield 0, not the record key');
+        asserterror Helper.VariantRecordToIntBool(V, ResultInt, ResultBool);
     end;
 }

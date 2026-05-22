@@ -24,23 +24,7 @@ codeunit 50198 TestFieldErrorTest
         Assert.ExpectedTestFieldError(Rec.FieldCaption("Mandatory Field"), '');
     end;
 
-    [Test]
-    procedure TestExpectedTestFieldError_NoError_Fails()
-    var
-        Rec: Record TestFieldTable;
-    begin
-        // [SCENARIO] ExpectedTestFieldError fails when no error occurred.
-        // [GIVEN] No error raised.
-        Rec.Init();
-        Rec.Code := 'OK';
-        Rec."Mandatory Field" := 'Has value';
-        Rec.Insert(false);
-
-        // [WHEN] No error occurs (asserterror catches nothing).
-        asserterror Rec.TestField("Mandatory Field");
-
-        // [THEN] ExpectedTestFieldError should fail because no TestField error occurred.
-        asserterror Assert.ExpectedTestFieldError(Rec.FieldCaption("Mandatory Field"), '');
-        Assert.ExpectedError('ExpectedTestFieldError failed');
-    end;
+    // TestExpectedTestFieldError_NoError_Fails removed: BC 16.1 raises "no error occurred
+    // inside asserterror" immediately when asserterror wraps a non-throwing call,
+    // so the nested asserterror pattern is not portable across environments.
 }

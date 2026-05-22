@@ -6,11 +6,20 @@ codeunit 50500 "Option Field Tests"
         Processor: Codeunit "Order Status Processor";
         Assert: Codeunit Assert;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "Demo Order";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure TestCreateOrderDefaultStatus()
     var
         Ord: Record "Demo Order";
     begin
+        Initialize();
         // [GIVEN] A new order is created
         Processor.CreateOrder('ORD-001', 'Test Order');
 
@@ -26,6 +35,7 @@ codeunit 50500 "Option Field Tests"
     var
         Ord: Record "Demo Order";
     begin
+        Initialize();
         // [GIVEN] An existing order
         Processor.CreateOrder('ORD-002', 'Approval Test');
 
@@ -42,6 +52,7 @@ codeunit 50500 "Option Field Tests"
     var
         Ord: Record "Demo Order";
     begin
+        Initialize();
         Processor.CreateOrder('ORD-003', 'Rejection Test');
         Processor.RejectOrder('ORD-003');
 
@@ -52,6 +63,7 @@ codeunit 50500 "Option Field Tests"
     [Test]
     procedure TestIsFinalized_Approved()
     begin
+        Initialize();
         Processor.CreateOrder('ORD-004', 'Finalized Approved');
         Processor.ApproveOrder('ORD-004');
 
@@ -61,6 +73,7 @@ codeunit 50500 "Option Field Tests"
     [Test]
     procedure TestIsFinalized_Draft()
     begin
+        Initialize();
         Processor.CreateOrder('ORD-005', 'Not Finalized');
 
         Assert.IsFalse(Processor.IsFinalized('ORD-005'), 'Draft order should not be finalized');
@@ -72,6 +85,7 @@ codeunit 50500 "Option Field Tests"
         Status: Enum "Order Status";
         Ord: Record "Demo Order";
     begin
+        Initialize();
         Processor.CreateOrder('ORD-006', 'Status Check');
         Processor.ApproveOrder('ORD-006');
 

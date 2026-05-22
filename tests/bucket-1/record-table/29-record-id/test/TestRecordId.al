@@ -5,12 +5,21 @@ codeunit 50527 "Test Record Id"
     var
         Assert: Codeunit Assert;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "RecId Table";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure RecordIdCanBeAssigned()
     var
         Rec: Record "RecId Table";
         RecId: RecordId;
     begin
+        Initialize();
         // Positive: RecordId can be read from a record without crashing
         Rec.Init();
         Rec."No." := 'R001';
@@ -28,6 +37,7 @@ codeunit 50527 "Test Record Id"
         Rec: Record "RecId Table";
         RecId: RecordId;
     begin
+        Initialize();
         // Positive: RecordId on an uninserted record also works
         Rec.Init();
         RecId := Rec.RecordId;
@@ -40,12 +50,13 @@ codeunit 50527 "Test Record Id"
         Rec: Record "RecId Table";
         RecIdFormatted: Text;
     begin
+        Initialize();
         // Positive: Format(RecordId) runs without crashing
         Rec.Init();
         Rec."No." := 'R002';
         RecIdFormatted := Format(Rec.RecordId);
-        // In standalone mode, RecordId returns Default which formats as empty
-        Assert.AreEqual('', RecIdFormatted, 'Format of default RecordId should be empty in standalone mode');
+        // In BC, Format(RecordId) on an uninserted record returns a formatted string like "RecId Table: R002"
+        Assert.IsTrue(RecIdFormatted <> '', 'Format(RecordId) must return a non-empty string in BC');
     end;
 
     [Test]
@@ -56,6 +67,7 @@ codeunit 50527 "Test Record Id"
         RecId1: RecordId;
         RecId2: RecordId;
     begin
+        Initialize();
         // Negative: verify RecordId can be obtained from multiple records
         Rec1.Init();
         Rec1."No." := 'R003';

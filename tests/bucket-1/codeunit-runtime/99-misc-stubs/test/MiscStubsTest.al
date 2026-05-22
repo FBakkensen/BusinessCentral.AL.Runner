@@ -37,28 +37,28 @@ codeunit 50381 MiscStubsTest
         Result: Boolean;
     begin
         Result := Src.DoNavAppGetArchiveRecordRef(18, RecRef);
-        Assert.IsFalse(Result, 'GetArchiveRecordRef should leave RecRef unbound in standalone');
+        Assert.IsFalse(Result, 'GetArchiveRecordRef should return false in standalone mode');
     end;
 
     [Test]
-    procedure TestNavAppGetResourceIsNoOp()
+    procedure TestNavAppGetResource_MissingThrows()
+    // BC 16.1: NavApp.GetResource throws when the requested resource does not exist
     var
         IStream: InStream;
         Src: Codeunit MiscStubsSrc;
-        Result: Boolean;
     begin
-        Result := Src.DoNavAppGetResource('dummy.txt', IStream);
-        Assert.IsTrue(Result, 'GetResource no-op should not throw');
+        asserterror Src.DoNavAppGetResource('dummy.txt', IStream);
     end;
 
     [Test]
-    procedure TestRecordIdGetRecordReturnsUnbound()
+    procedure TestRecordIdGetRecordOnBlankThrows()
+    // BC 16.1: RecordId.GetRecord() on a blank RecordId raises "The record is not open."
     var
         RecId: RecordId;
         RecRef: RecordRef;
         Src: Codeunit MiscStubsSrc;
     begin
-        RecRef := Src.DoRecordIdGetRecord(RecId);
-        Assert.IsTrue(RecRef.IsEmpty(), 'GetRecord on blank RecordId returns unbound (empty) RecordRef in standalone mode');
+        asserterror RecRef := Src.DoRecordIdGetRecord(RecId);
+        Assert.ExpectedError('not open');
     end;
 }

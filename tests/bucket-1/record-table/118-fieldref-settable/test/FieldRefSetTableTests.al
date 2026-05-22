@@ -6,6 +6,14 @@ codeunit 50427 "FieldRef SetTable Tests"
     var
         Assert: Codeunit Assert;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "FieldRef Test Table";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure TestSetTableCopiesEntryNo()
     var
@@ -14,6 +22,7 @@ codeunit 50427 "FieldRef SetTable Tests"
         Desc: Text[100];
         _ResetFieldRefTestTable: Record "FieldRef Test Table";
     begin
+        Initialize();
         _ResetFieldRefTestTable.DeleteAll();
         Helper.SetTableCopiesData(EntryNo, Desc);
         Assert.AreEqual(42, EntryNo, 'SetTable should copy Entry No. from RecRef');
@@ -26,6 +35,7 @@ codeunit 50427 "FieldRef SetTable Tests"
         EntryNo: Integer;
         Desc: Text[100];
     begin
+        Initialize();
         Helper.SetTableCopiesData(EntryNo, Desc);
         Assert.AreEqual('SetTableTest', Desc, 'SetTable should copy Description from RecRef');
     end;

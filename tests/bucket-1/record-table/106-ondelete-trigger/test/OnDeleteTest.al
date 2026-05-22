@@ -9,12 +9,21 @@ codeunit 50410 "ODT Tests"
     var
         Assert: Codeunit Assert;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "ODT Counter";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure OnDeleteTrigger_CounterCreated_AfterDelete()
     var
         Src: Record "ODT Source";
         Counter: Record "ODT Counter";
     begin
+        Initialize();
         // Positive: Delete(true) must fire OnDelete which inserts Counter(PK=1).
         Src.PK := 1;
         Src.Val := 0;
@@ -30,6 +39,7 @@ codeunit 50410 "ODT Tests"
         Src: Record "ODT Source";
         Counter: Record "ODT Counter";
     begin
+        Initialize();
         // Negative: Delete(false) must NOT fire the AL trigger.
         Src.PK := 2;
         Src.Insert(false);
@@ -45,6 +55,7 @@ codeunit 50410 "ODT Tests"
         Src: Record "ODT Source";
         Counter: Record "ODT Counter";
     begin
+        Initialize();
         // Rec-state: trigger stores Rec.Val into Counter.Hits.
         // Verify Counter.Hits = 55, proving the trigger could read the field value
         // from the record at the point it was deleted.

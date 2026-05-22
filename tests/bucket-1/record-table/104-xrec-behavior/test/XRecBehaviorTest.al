@@ -4,12 +4,21 @@ codeunit 50407 "XR Tests"
     var
         Assert: Codeunit Assert;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "XR Source";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure XRecFromCodeHasNewValues()
     var
         Src: Record "XR Source";
         Log: Record "XR EventLog";
     begin
+        Initialize();
         Src.DeleteAll();
         // In BC, when modifying from code (Rec.Modify()), xRec has the SAME
         // values as Rec (new values). This is a known BC behavior — xRec is
@@ -38,6 +47,7 @@ codeunit 50407 "XR Tests"
         BeforeLog: Record "XR EventLog";
         AfterLog: Record "XR EventLog";
     begin
+        Initialize();
         // Both OnBefore and OnAfter should see the same xRec behavior.
         Src.PK := 1;
         Src.Name := 'Start';
@@ -62,6 +72,7 @@ codeunit 50407 "XR Tests"
         Src: Record "XR Source";
         Log: Record "XR EventLog";
     begin
+        Initialize();
         Src.DeleteAll();
         // Verify that ALL fields in xRec match Rec (not just Name).
         Src.PK := 1;

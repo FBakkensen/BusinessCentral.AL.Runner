@@ -1,0 +1,84 @@
+[
+  {
+    "id": 50099,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "DataTransfer is only usable during upgrade and installation code."
+      },
+      {
+        "method": "UpdateAuditFields_DefaultFalse_Throws",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50099.UpdateAuditFields_DefaultFalse_Throws()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      }
+    ]
+  },
+  {
+    "id": 50149,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50157,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50196,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50580,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50580.FixedSection_DuplicateKey_Errors()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      },
+      {
+        "method": "FixedSection_DuplicateKey_Errors",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50580.FixedSection_DuplicateKey_Errors()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      }
+    ]
+  },
+  {
+    "id": 50590,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "deliberate failure"
+      },
+      {
+        "method": "CodeunitRun_WithRecord_ReturnsFalseOnError",
+        "error": "An error occurred and the transaction is stopped. Contact your administrator or partner for further assistance."
+      },
+      {
+        "method": "CodeunitRun_WithRecord_ReturnsTrueOnSuccess",
+        "error": "An error occurred and the transaction is stopped. Contact your administrator or partner for further assistance."
+      }
+    ]
+  },
+  {
+    "id": 50598,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The RF Test Item does not exist. Identification fields and values: Id='999'"
+      },
+      {
+        "method": "InsertDuplicateViaRecRefFails",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50598.InsertDuplicateViaRecRefFails()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      }
+    ]
+  }
+]

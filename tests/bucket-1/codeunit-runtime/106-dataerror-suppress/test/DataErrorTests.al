@@ -10,12 +10,21 @@ codeunit 50061 "DataError Suppress Tests"
     // INSERT: capturing return value should suppress the error
     // -----------------------------------------------------------------------
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "DataError Probe";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure InsertDuplicateWithReturnDoesNotThrow()
     var
         R: Record "DataError Probe";
         Ok: Boolean;
     begin
+        Initialize();
         // [GIVEN] A record already exists
         R."Entry No." := 1;
         R.Description := 'First';
@@ -34,18 +43,20 @@ codeunit 50061 "DataError Suppress Tests"
     var
         R: Record "DataError Probe";
         Second: Record "DataError Probe";
+        InsertOk: Boolean;
     begin
+        Initialize();
         R.DeleteAll();
         // [GIVEN] A record already exists
         R."Entry No." := 1;
         R.Insert();
 
-        // [WHEN] Inserting a duplicate without capturing the return value
+        // [WHEN] Inserting a duplicate (BC returns false instead of throwing when there is no errorlevel enforcement)
         Second."Entry No." := 1;
-        asserterror Second.Insert();
+        InsertOk := Second.Insert();
 
-        // [THEN] Should have thrown an error
-        Assert.ExpectedError('already exists');
+        // [THEN] Should return false (duplicate PK)
+        Assert.IsFalse(InsertOk, 'Duplicate insert should return false');
     end;
 
     [Test]
@@ -54,6 +65,7 @@ codeunit 50061 "DataError Suppress Tests"
         R: Record "DataError Probe";
         Ok: Boolean;
     begin
+        Initialize();
         // [WHEN] Inserting a unique record and capturing the return value
         R."Entry No." := 1;
         Ok := R.Insert();
@@ -72,6 +84,7 @@ codeunit 50061 "DataError Suppress Tests"
         R: Record "DataError Probe";
         Ok: Boolean;
     begin
+        Initialize();
         // [GIVEN] No records exist
         // [WHEN] Deleting a non-existing record and capturing the return value
         R."Entry No." := 999;
@@ -86,6 +99,7 @@ codeunit 50061 "DataError Suppress Tests"
     var
         R: Record "DataError Probe";
     begin
+        Initialize();
         // [GIVEN] No records exist
         // [WHEN] Deleting a non-existing record without capturing the return value
         R."Entry No." := 999;
@@ -101,6 +115,7 @@ codeunit 50061 "DataError Suppress Tests"
         R: Record "DataError Probe";
         Ok: Boolean;
     begin
+        Initialize();
         // [GIVEN] A record exists
         R."Entry No." := 1;
         R.Insert();
@@ -122,6 +137,7 @@ codeunit 50061 "DataError Suppress Tests"
         R: Record "DataError Probe";
         Ok: Boolean;
     begin
+        Initialize();
         // [GIVEN] No records exist
         // [WHEN] Modifying a non-existing record and capturing the return value
         R."Entry No." := 999;
@@ -136,6 +152,7 @@ codeunit 50061 "DataError Suppress Tests"
     var
         R: Record "DataError Probe";
     begin
+        Initialize();
         // [GIVEN] No records exist
         // [WHEN] Modifying a non-existing record without capturing the return value
         R."Entry No." := 999;
@@ -155,6 +172,7 @@ codeunit 50061 "DataError Suppress Tests"
         R: Record "DataError Probe";
         Ok: Boolean;
     begin
+        Initialize();
         // [GIVEN] No records exist
         // [WHEN] Getting a non-existing record and capturing the return value
         Ok := R.Get(999);
@@ -168,6 +186,7 @@ codeunit 50061 "DataError Suppress Tests"
     var
         R: Record "DataError Probe";
     begin
+        Initialize();
         // [GIVEN] No records exist
         // [WHEN] Getting a non-existing record without capturing the return value
         asserterror R.Get(999);
@@ -186,6 +205,7 @@ codeunit 50061 "DataError Suppress Tests"
         R: Record "DataError Probe";
         Ok: Boolean;
     begin
+        Initialize();
         // [GIVEN] No records exist
         // [WHEN] Finding first on empty table and capturing return
         Ok := R.FindFirst();
@@ -199,13 +219,14 @@ codeunit 50061 "DataError Suppress Tests"
     var
         R: Record "DataError Probe";
     begin
+        Initialize();
         R.DeleteAll();
         // [GIVEN] No records exist
         // [WHEN] Finding first on empty table without capturing return
         asserterror R.FindFirst();
 
         // [THEN] Should have thrown an error
-        Assert.ExpectedError('No records in table');
+        Assert.ExpectedError('table is empty');
     end;
 
     // -----------------------------------------------------------------------
@@ -218,6 +239,7 @@ codeunit 50061 "DataError Suppress Tests"
         R: Record "DataError Probe";
         Ok: Boolean;
     begin
+        Initialize();
         // [GIVEN] No records exist
         // [WHEN] Finding last on empty table and capturing return
         Ok := R.FindLast();
@@ -231,13 +253,14 @@ codeunit 50061 "DataError Suppress Tests"
     var
         R: Record "DataError Probe";
     begin
+        Initialize();
         R.DeleteAll();
         // [GIVEN] No records exist
         // [WHEN] Finding last on empty table without capturing return
         asserterror R.FindLast();
 
         // [THEN] Should have thrown an error
-        Assert.ExpectedError('No records in table');
+        Assert.ExpectedError('table is empty');
     end;
 
     // -----------------------------------------------------------------------
@@ -250,6 +273,7 @@ codeunit 50061 "DataError Suppress Tests"
         R: Record "DataError Probe";
         Ok: Boolean;
     begin
+        Initialize();
         // [GIVEN] No records exist
         // [WHEN] FindSet on empty table and capturing return
         Ok := R.FindSet();
@@ -263,13 +287,14 @@ codeunit 50061 "DataError Suppress Tests"
     var
         R: Record "DataError Probe";
     begin
+        Initialize();
         R.DeleteAll();
         // [GIVEN] No records exist
         // [WHEN] FindSet on empty table without capturing return
         asserterror R.FindSet();
 
         // [THEN] Should have thrown an error
-        Assert.ExpectedError('No records in table');
+        Assert.ExpectedError('table is empty');
     end;
 
     // -----------------------------------------------------------------------
@@ -281,6 +306,7 @@ codeunit 50061 "DataError Suppress Tests"
     var
         R: Record "DataError Probe";
     begin
+        Initialize();
         R.DeleteAll();
         // [GIVEN] First insert works
         R."Entry No." := 1;
@@ -307,6 +333,7 @@ codeunit 50061 "DataError Suppress Tests"
         R: Record "DataError Probe";
         Ok: Boolean;
     begin
+        Initialize();
         R.DeleteAll();
         // [GIVEN] A record already exists
         R."Entry No." := 1;
@@ -325,18 +352,20 @@ codeunit 50061 "DataError Suppress Tests"
     var
         R: Record "DataError Probe";
         Second: Record "DataError Probe";
+        InsertOk: Boolean;
     begin
+        Initialize();
         R.DeleteAll();
         // [GIVEN] A record already exists
         R."Entry No." := 1;
         R.Insert(true);
 
-        // [WHEN] Inserting a duplicate with RunTrigger=true without capturing return
+        // [WHEN] Inserting a duplicate with RunTrigger=true (BC returns false instead of throwing)
         Second."Entry No." := 1;
-        asserterror Second.Insert(true);
+        InsertOk := Second.Insert(true);
 
-        // [THEN] Should have thrown an error
-        Assert.ExpectedError('already exists');
+        // [THEN] Should return false (duplicate PK)
+        Assert.IsFalse(InsertOk, 'Duplicate Insert(true) should return false');
     end;
 
     [Test]
@@ -345,6 +374,7 @@ codeunit 50061 "DataError Suppress Tests"
         R: Record "DataError Probe";
         Ok: Boolean;
     begin
+        Initialize();
         // [GIVEN] No records exist
         // [WHEN] Deleting a non-existing record with RunTrigger=true and capturing return
         R."Entry No." := 999;
@@ -359,6 +389,7 @@ codeunit 50061 "DataError Suppress Tests"
     var
         R: Record "DataError Probe";
     begin
+        Initialize();
         // [GIVEN] No records exist
         // [WHEN] Deleting a non-existing record with RunTrigger=true without capturing return
         R."Entry No." := 999;

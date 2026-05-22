@@ -46,6 +46,7 @@ codeunit 50631 "DTE Tests"
         C: Record "DTE Counter";
     begin
         Src.DeleteAll();
+        C.DeleteAll();
         // Positive: deleting a record fires OnAfterDeleteEvent subscriber
         Src.PK := 1;
         Src.Name := 'ToDelete';

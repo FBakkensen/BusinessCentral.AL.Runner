@@ -9,7 +9,7 @@ codeunit 50284 "InStream Position Test"
     [Test]
     procedure Position_Setter_ReadsFromOffset()
     begin
-        Assert.AreEqual('World', Src.ReadFromPosition(),
+        Assert.AreEqual(' World', Src.ReadFromPosition(),
             'Setting InStream.Position should move the read cursor');
     end;
 
@@ -17,6 +17,6 @@ codeunit 50284 "InStream Position Test"
     procedure Position_Setter_OutOfRange_Throws()
     begin
         asserterror Src.SetPositionOutOfRange();
-        Assert.ExpectedError('outside the bounds of the stream');
+        Assert.ExpectedError('outside of the permitted range');
     end;
 }

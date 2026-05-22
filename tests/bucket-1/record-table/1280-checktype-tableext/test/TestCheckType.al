@@ -5,6 +5,14 @@ codeunit 50441 "Test CheckType"
     var
         Assert: Codeunit Assert;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "CheckType Base Table";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure CheckType_DiscountNonZero_ReturnsAmount()
     var
@@ -12,6 +20,7 @@ codeunit 50441 "Test CheckType"
         Logic: Codeunit "CheckType Logic";
         Result: Decimal;
     begin
+        Initialize();
         // Positive: non-zero discount % returns computed discount amount
         Rec.Init();
         Rec."No." := 'CT01';
@@ -31,6 +40,7 @@ codeunit 50441 "Test CheckType"
         Logic: Codeunit "CheckType Logic";
         Result: Decimal;
     begin
+        Initialize();
         // Positive: zero discount % returns 0
         Rec.Init();
         Rec."No." := 'CT02';
@@ -49,6 +59,7 @@ codeunit 50441 "Test CheckType"
         Rec: Record "CheckType Base Table";
         Logic: Codeunit "CheckType Logic";
     begin
+        Initialize();
         // Positive: non-empty Extra Code returns true
         Rec.Init();
         Rec."No." := 'CT03';
@@ -65,6 +76,7 @@ codeunit 50441 "Test CheckType"
         Rec: Record "CheckType Base Table";
         Logic: Codeunit "CheckType Logic";
     begin
+        Initialize();
         // Negative: empty Extra Code returns false
         Rec.Init();
         Rec."No." := 'CT04';

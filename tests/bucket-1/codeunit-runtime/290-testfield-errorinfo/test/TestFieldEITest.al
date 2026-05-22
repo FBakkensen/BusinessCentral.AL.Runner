@@ -18,12 +18,21 @@ codeunit 50210 "TFEi Test"
     // TestField(Field, Value, ErrorInfo) — 4-arg form (issue #1083)
     // -----------------------------------------------------------------------
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "TFEi Record";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure TestField_BoolValue_ErrorInfo_Passes()
     var
         Rec: Record "TFEi Record";
         EI: ErrorInfo;
     begin
+        Initialize();
         // [GIVEN] A record with Flag = true
         Rec.Init();
         Rec.Id := 1;
@@ -44,6 +53,7 @@ codeunit 50210 "TFEi Test"
         Rec: Record "TFEi Record";
         EI: ErrorInfo;
     begin
+        Initialize();
         // [GIVEN] A record with Flag = false
         Rec.Init();
         Rec.Id := 2;
@@ -64,6 +74,7 @@ codeunit 50210 "TFEi Test"
         Rec: Record "TFEi Record";
         EI: ErrorInfo;
     begin
+        Initialize();
         // [GIVEN] A record with Name = 'Alpha'
         Rec.Init();
         Rec.Id := 3;
@@ -84,6 +95,7 @@ codeunit 50210 "TFEi Test"
         Rec: Record "TFEi Record";
         EI: ErrorInfo;
     begin
+        Initialize();
         // [GIVEN] A record with Name = 'Alpha'
         Rec.Init();
         Rec.Id := 4;
@@ -104,6 +116,7 @@ codeunit 50210 "TFEi Test"
         Rec: Record "TFEi Record";
         EI: ErrorInfo;
     begin
+        Initialize();
         // [GIVEN] A record with Qty = 42
         Rec.Init();
         Rec.Id := 5;
@@ -124,6 +137,7 @@ codeunit 50210 "TFEi Test"
         Rec: Record "TFEi Record";
         EI: ErrorInfo;
     begin
+        Initialize();
         // [GIVEN] A record with Qty = 42
         Rec.Init();
         Rec.Id := 6;
@@ -148,6 +162,7 @@ codeunit 50210 "TFEi Test"
         Rec: Record "TFEi Record";
         EI: ErrorInfo;
     begin
+        Initialize();
         // [GIVEN] A record with Name = 'Beta' (non-empty)
         Rec.Init();
         Rec.Id := 7;
@@ -168,6 +183,7 @@ codeunit 50210 "TFEi Test"
         Rec: Record "TFEi Record";
         EI: ErrorInfo;
     begin
+        Initialize();
         // [GIVEN] A record with empty Name
         Rec.Init();
         Rec.Id := 8;
@@ -187,6 +203,7 @@ codeunit 50210 "TFEi Test"
         Rec: Record "TFEi Record";
         EI: ErrorInfo;
     begin
+        Initialize();
         // [GIVEN] A record with Flag = true
         Rec.Init();
         Rec.Id := 9;

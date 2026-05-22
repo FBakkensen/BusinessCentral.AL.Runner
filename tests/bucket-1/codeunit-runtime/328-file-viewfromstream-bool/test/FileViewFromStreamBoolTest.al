@@ -6,23 +6,25 @@ codeunit 50278 "File ViewFromStream Bool Test"
         Assert: Codeunit Assert;
 
     [Test]
-    procedure ViewFromStream_ReturnsTrue()
+    procedure ViewFromStream_ReturnsFalse()
     var
         Helper: Codeunit "File ViewFromStream Bool Src";
     begin
-        Assert.AreEqual(true, Helper.ViewFromStreamInIf(),
-            'File.ViewFromStream (2-arg) must return true in bool context');
-        Assert.AreEqual(true, Helper.ViewFromStreamEditableInIf(),
-            'File.ViewFromStream (3-arg) must return true in bool context');
+        // In BC, File.ViewFromStream returns false when there is no UI to display the content.
+        Assert.AreEqual(false, Helper.ViewFromStreamInIf(),
+            'File.ViewFromStream (2-arg) must return false in test context (no UI)');
+        Assert.AreEqual(false, Helper.ViewFromStreamEditableInIf(),
+            'File.ViewFromStream (3-arg) must return false in test context (no UI)');
     end;
 
     [Test]
-    procedure ViewFromStream_WrongExpectationFails()
+    procedure ViewFromStream_TrueExpectationFails()
     var
         Helper: Codeunit "File ViewFromStream Bool Src";
     begin
-        asserterror Assert.AreEqual(false, Helper.ViewFromStreamInIf(),
-            'ViewFromStream should not return false');
+        // Negative trap: expecting true should fail since ViewFromStream returns false.
+        asserterror Assert.AreEqual(true, Helper.ViewFromStreamInIf(),
+            'ViewFromStream should not return true in test context');
         Assert.ExpectedError('AreEqual');
     end;
 }

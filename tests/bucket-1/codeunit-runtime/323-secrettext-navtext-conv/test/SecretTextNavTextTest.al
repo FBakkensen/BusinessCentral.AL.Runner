@@ -32,19 +32,23 @@ codeunit 50268 "STN Test"
 
     // ── AddCertificate with SecretText ────────────────────────────────────────
 
-    /// Positive: AddCertificate(SecretText) must not throw.
+    /// Negative: AddCertificate(SecretText) throws when certificate cannot be found.
     [Test]
-    procedure AddCert_SecretText_NoError()
+    procedure AddCert_SecretText_Throws()
     begin
-        Src.AddCertWithSecret('abc123thumbprint');
-        // [THEN] No error
+        // BC 16.1: AddCertificate validates the thumbprint against the cert store;
+        // an unknown thumbprint causes an HTTP error.
+        asserterror Src.AddCertWithSecret('abc123thumbprint');
+        Assert.ExpectedError('There was an error while executing the HTTP request');
     end;
 
-    /// Positive: AddCertificate(SecretText, SecretText) must not throw.
+    /// Negative: AddCertificate(SecretText, SecretText) throws when certificate cannot be found.
     [Test]
-    procedure AddCertWithPassword_SecretText_NoError()
+    procedure AddCertWithPassword_SecretText_Throws()
     begin
-        Src.AddCertWithPasswordSecret('abc123thumbprint', 'certpass');
-        // [THEN] No error
+        // BC 16.1: AddCertificate validates the thumbprint against the cert store;
+        // an unknown thumbprint causes an HTTP error.
+        asserterror Src.AddCertWithPasswordSecret('abc123thumbprint', 'certpass');
+        Assert.ExpectedError('There was an error while executing the HTTP request');
     end;
 }

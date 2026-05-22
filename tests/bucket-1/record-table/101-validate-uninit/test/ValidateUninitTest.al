@@ -2,12 +2,21 @@ codeunit 50402 "Validate Uninit Test"
 {
     Subtype = Test;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "Validate Uninit Table";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure OnValidate_WithGlobalVar_DoesNotCrash()
     var
         Rec: Record "Validate Uninit Table";
         Assert: Codeunit "Library Assert";
     begin
+        Initialize();
         // [GIVEN] A record in the table
         Rec.PK := 'TEST';
         Rec.Insert(false);
@@ -28,6 +37,7 @@ codeunit 50402 "Validate Uninit Test"
         Rec: Record "Validate Uninit Table";
         Assert: Codeunit "Library Assert";
     begin
+        Initialize();
         // [GIVEN] A record
         Rec.PK := 'TEST2';
         Rec.Insert(false);

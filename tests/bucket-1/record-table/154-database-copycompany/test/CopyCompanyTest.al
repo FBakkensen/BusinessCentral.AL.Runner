@@ -7,13 +7,14 @@ codeunit 50468 "CCP CopyCompany Test"
         Assert: Codeunit Assert;
 
     [Test]
-    procedure CopyCompany_NoOp_TypicalCompanyNames()
+    procedure CopyCompany_NonExistentCompany_Throws()
     var
         Helper: Codeunit "CCP Helper";
     begin
-        // Positive: Database.CopyCompany must execute without error (no-op stub).
-        Helper.CallCopyCompany('Source Company', 'Destination Company');
-        Assert.IsTrue(true, 'CopyCompany must complete without error');
+        // In BC, Database.CopyCompany validates that the source company exists.
+        // Passing a non-existent source company must throw an error.
+        asserterror Helper.CallCopyCompany('Source Company', 'Destination Company');
+        Assert.IsTrue(true, 'CopyCompany with non-existent source company must throw');
     end;
 
     [Test]
@@ -21,9 +22,10 @@ codeunit 50468 "CCP CopyCompany Test"
     var
         Helper: Codeunit "CCP Helper";
     begin
-        // Positive: CopyCompany with empty strings must also be a no-op.
-        Helper.CallCopyCompany('', '');
-        Assert.IsTrue(true, 'CopyCompany with empty names must complete without error');
+        // In BC, CopyCompany validates that the source company exists.
+        // Passing empty names is expected to throw a "company does not exist" error.
+        asserterror Helper.CallCopyCompany('', '');
+        Assert.IsTrue(true, 'CopyCompany with non-existent company must throw (BC validates company)');
     end;
 
     [Test]
@@ -31,10 +33,11 @@ codeunit 50468 "CCP CopyCompany Test"
     var
         Helper: Codeunit "CCP Helper";
     begin
-        // Edge case: calling CopyCompany multiple times must not error.
-        Helper.CallCopyCompany('A', 'B');
-        Helper.CallCopyCompany('C', 'D');
-        Assert.IsTrue(true, 'CopyCompany called twice must complete without error');
+        // In BC, CopyCompany validates that the source company exists.
+        // Passing non-existent company names is expected to throw.
+        asserterror Helper.CallCopyCompany('A', 'B');
+        asserterror Helper.CallCopyCompany('C', 'D');
+        Assert.IsTrue(true, 'CopyCompany with non-existent companies must throw on each call');
     end;
 
     [Test]

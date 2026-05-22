@@ -6,11 +6,20 @@ codeunit 50385 "Document Line Tests"
         DocLineMgmt: Codeunit "Document Line Management";
         Assert: Codeunit Assert;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "Test Document Line";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure TestInsertAndGetWithCompositeKey()
     var
         DocLine: Record "Test Document Line";
     begin
+        Initialize();
         // [GIVEN] A document line with composite PK (Document No. + Line No.)
         DocLine.Init();
         DocLine."Document No." := 'ORD-001';
@@ -36,6 +45,7 @@ codeunit 50385 "Document Line Tests"
     var
         Total: Decimal;
     begin
+        Initialize();
         // [GIVEN] Three lines under the same document
         CreateDocLine('ORD-010', 10000, 'ITEM-X', 2, 25.00, 50.00);
         CreateDocLine('ORD-010', 20000, 'ITEM-Y', 1, 75.00, 75.00);
@@ -53,6 +63,7 @@ codeunit 50385 "Document Line Tests"
     var
         Count: Integer;
     begin
+        Initialize();
         // [GIVEN] Lines across two different documents
         CreateDocLine('ORD-020', 10000, 'ITEM-A', 1, 10.00, 10.00);
         CreateDocLine('ORD-020', 20000, 'ITEM-B', 1, 20.00, 20.00);
@@ -70,6 +81,7 @@ codeunit 50385 "Document Line Tests"
     var
         DocLine: Record "Test Document Line";
     begin
+        Initialize();
         // [GIVEN] An existing document line
         CreateDocLine('ORD-030', 10000, 'ITEM-M', 3, 20.00, 60.00);
 

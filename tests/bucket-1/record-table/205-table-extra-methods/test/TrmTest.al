@@ -147,11 +147,13 @@ codeunit 50504 "TRM Test"
     // ── Relation ──────────────────────────────────────────────────────────────
 
     [Test]
-    procedure Relation_NoRelation_ReturnsZero()
+    procedure Relation_NoRelation_Throws()
+    // BC 16.1: Relation() throws when the field has no table relation defined
     var
         Rec: Record "TRM Table";
     begin
-        Assert.AreEqual(0, H.GetRelation(Rec), 'Relation on non-related field must return 0');
+        asserterror H.GetRelation(Rec);
+        Assert.ExpectedError('No relationship');
     end;
 
     // ── ReadIsolation ─────────────────────────────────────────────────────────

@@ -7,11 +7,20 @@ codeunit 50399 "UIF Tests"
     var
         Assert: Codeunit Assert;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "UIF Source";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure OnInsertTrigger_SetsFlag_AfterInsert()
     var
         Src: Record "UIF Source";
     begin
+        Initialize();
         // Positive: the OnInsert trigger sets TriggerRan = true and calls Modify.
         // If GetUninitializedObject fields are not initialized this crashes with NullRef.
         Src.PK := 1;
@@ -29,6 +38,7 @@ codeunit 50399 "UIF Tests"
     var
         Src: Record "UIF Source";
     begin
+        Initialize();
         // Positive: the automatic event subscriber on OnBeforeInsertEvent sets
         // SubscriberRan = true and EventFieldValue = 42 on the Rec parameter.
         // If FireEvent creates the subscriber instance via GetUninitializedObject without
@@ -48,6 +58,7 @@ codeunit 50399 "UIF Tests"
         Src: Record "UIF Source";
         Counter: Record "UIF Counter";
     begin
+        Initialize();
         // Negative: Insert without runTrigger=true must NOT fire the AL trigger.
         Src.PK := 3;
         Src.Insert(false);  // runTrigger=false

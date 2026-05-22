@@ -5,12 +5,21 @@ codeunit 50602 "RecRef Assign Test"
     var
         Assert: Codeunit Assert;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "RecRef Assign Data";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure AssignCopiesFieldValues()
     var
         Helper: Codeunit "RecRef Assign Helper";
         Result: Text[100];
     begin
+        Initialize();
         // [SCENARIO] RecordRef := OtherRecordRef copies field data
         Result := Helper.InsertAndAssign(1, 'Hello');
         Assert.AreEqual('Hello', Result, 'Assigned RecordRef should have same field values');
@@ -22,6 +31,7 @@ codeunit 50602 "RecRef Assign Test"
         Helper: Codeunit "RecRef Assign Helper";
         TableNo: Integer;
     begin
+        Initialize();
         // [SCENARIO] RecordRef := OtherRecordRef copies the table number
         TableNo := Helper.AssignedTableNo();
         Assert.AreNotEqual(0, TableNo, 'Assigned RecordRef should have non-zero table number');
@@ -33,6 +43,7 @@ codeunit 50602 "RecRef Assign Test"
         Helper: Codeunit "RecRef Assign Helper";
         Result: Text[100];
     begin
+        Initialize();
         // [SCENARIO] After assignment, modifying one RecordRef field should NOT
         // automatically reflect in the other (they are separate handles).
         // This is a negative test: verifying that the copy is independent.

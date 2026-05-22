@@ -4,12 +4,23 @@ codeunit 50405 "BDE Tests"
     var
         Assert: Codeunit Assert;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "BDE Source";
+        Log1: Record "BDE EventLog";
+    begin
+        Rec1.DeleteAll(false);
+        Log1.DeleteAll(false);
+    end;
+
     [Test]
     procedure OnBeforeInsertEventFires()
     var
         Src: Record "BDE Source";
         Log: Record "BDE EventLog";
     begin
+        Initialize();
         Src.DeleteAll();
         // Positive: OnBeforeInsertEvent fires when Insert() is called.
         Src.PK := 1;
@@ -27,6 +38,7 @@ codeunit 50405 "BDE Tests"
         Src: Record "BDE Source";
         Log: Record "BDE EventLog";
     begin
+        Initialize();
         Src.DeleteAll();
         // Positive: OnBeforeModifyEvent fires when Modify() is called.
         Src.PK := 1;
@@ -47,6 +59,7 @@ codeunit 50405 "BDE Tests"
         Src: Record "BDE Source";
         Log: Record "BDE EventLog";
     begin
+        Initialize();
         Src.DeleteAll();
         // Positive: OnBeforeDeleteEvent fires when Delete() is called.
         Src.PK := 1;
@@ -66,6 +79,7 @@ codeunit 50405 "BDE Tests"
         BeforeLog: Record "BDE EventLog";
         AfterLog: Record "BDE EventLog";
     begin
+        Initialize();
         // Positive: both OnBefore and OnAfter fire for Insert.
         Src.PK := 1;
         Src.Name := 'Both';
@@ -85,6 +99,7 @@ codeunit 50405 "BDE Tests"
         BeforeLog: Record "BDE EventLog";
         AfterLog: Record "BDE EventLog";
     begin
+        Initialize();
         Src.DeleteAll();
         Src.PK := 1;
         Src.Name := 'Orig';
@@ -107,6 +122,7 @@ codeunit 50405 "BDE Tests"
         BeforeLog: Record "BDE EventLog";
         AfterLog: Record "BDE EventLog";
     begin
+        Initialize();
         Src.PK := 1;
         Src.Name := 'Del';
         Src.Insert();
@@ -125,6 +141,7 @@ codeunit 50405 "BDE Tests"
         Src: Record "BDE Source";
         Log: Record "BDE EventLog";
     begin
+        Initialize();
         Src.DeleteAll();
         // Negative: only events with subscribers produce log entries.
         Src.PK := 1;

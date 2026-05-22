@@ -50,4 +50,18 @@ codeunit 50138 "MG Src"
         FirstVal := NumberSequence.Range(SeqName, Count, false);
         exit(FirstVal);
     end;
+
+    procedure NumberSequenceEnsureClean(SeqName: Text)
+    begin
+        // Delete a leftover sequence before (re)creating it in a test.
+        if NumberSequence.Exists(SeqName) then
+            NumberSequence.Delete(SeqName);
+        NumberSequence.Insert(SeqName, 1, 1, false);
+    end;
+
+    procedure NumberSequenceRangeOnly(SeqName: Text; Count: BigInteger): BigInteger
+    begin
+        // Call Range without creating — sequence must already exist.
+        exit(NumberSequence.Range(SeqName, Count, false));
+    end;
 }

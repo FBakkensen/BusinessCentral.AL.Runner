@@ -5,6 +5,14 @@ codeunit 50180 "Test Ref Processor"
     var
         Assert: Codeunit Assert;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "Error Map Item";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure SumQuantities_Works()
     var
@@ -12,6 +20,7 @@ codeunit 50180 "Test Ref Processor"
         Proc: Codeunit "Ref Processor";
         Result: Decimal;
     begin
+        Initialize();
         // The Ref Processor codeunit has GetRecordId which uses
         // RecordId (unsupported → ALRecordId error). The codeunit
         // should be excluded but this test on the table itself passes.

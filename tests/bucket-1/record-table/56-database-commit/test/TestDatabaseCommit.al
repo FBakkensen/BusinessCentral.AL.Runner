@@ -5,9 +5,18 @@ codeunit 50573 "Test Database Commit"
     var
         Assert: Codeunit Assert;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "Commit Test Table";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure Commit_DoesNotError()
     begin
+        Initialize();
         // Commit() is a no-op in the runner — must not raise any error
         Commit();
         Assert.IsTrue(true, 'Commit() must complete without error');
@@ -18,6 +27,7 @@ codeunit 50573 "Test Database Commit"
     var
         Rec: Record "Commit Test Table";
     begin
+        Initialize();
         // Insert, commit, then verify the record still exists
         Rec.Id := 1;
         Rec.Value := 'Before Commit';
@@ -34,6 +44,7 @@ codeunit 50573 "Test Database Commit"
     [Test]
     procedure Commit_MultipleTimes_NoError()
     begin
+        Initialize();
         // Multiple commits in a row must all be no-ops
         Commit();
         Commit();
@@ -46,6 +57,7 @@ codeunit 50573 "Test Database Commit"
     var
         Rec: Record "Commit Test Table";
     begin
+        Initialize();
         // Insert + modify + commit — record must retain the modified value
         Rec.Id := 2;
         Rec.Value := 'Original';

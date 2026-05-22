@@ -6,11 +6,22 @@ codeunit 50383 "Inventory Management Tests"
         InvMgmt: Codeunit "Inventory Management";
         Assert: Codeunit Assert;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "Sample Item";
+        Rec2: Record "Sample Order Line";
+    begin
+        Rec1.DeleteAll(false);
+        Rec2.DeleteAll(false);
+    end;
+
     [Test]
     procedure TestAddStock()
     var
         Item: Record "Sample Item";
     begin
+        Initialize();
         // [GIVEN] An item with 10 in stock
         Item.Init();
         Item."No." := 'ITEM-001';
@@ -32,6 +43,7 @@ codeunit 50383 "Inventory Management Tests"
     var
         Item: Record "Sample Item";
     begin
+        Initialize();
         Item.Init();
         Item."No." := 'ITEM-002';
         Item."Inventory" := 20;
@@ -49,6 +61,7 @@ codeunit 50383 "Inventory Management Tests"
         OrderLine: Record "Sample Order Line";
         Total: Decimal;
     begin
+        Initialize();
         // [GIVEN] Three order lines for order ORD-001
         OrderLine.Init();
         OrderLine."Order No." := 'ORD-001';
@@ -87,6 +100,7 @@ codeunit 50383 "Inventory Management Tests"
         Item: Record "Sample Item";
         Count: Integer;
     begin
+        Initialize();
         // [GIVEN] Items with various prices
         CreateItem('CHEAP-1', 'Cheap Widget', 5.00, 100);
         CreateItem('MID-1', 'Mid Widget', 50.00, 50);
@@ -104,6 +118,7 @@ codeunit 50383 "Inventory Management Tests"
     var
         Item: Record "Sample Item";
     begin
+        Initialize();
         // [GIVEN] An item with only 3 in stock
         Item.Init();
         Item."No." := 'ITEM-LOW';
@@ -122,6 +137,7 @@ codeunit 50383 "Inventory Management Tests"
     var
         Total: Decimal;
     begin
+        Initialize();
         // [WHEN] Calculating total for an order with no lines
         Total := InvMgmt.CalculateOrderTotal('NO-SUCH-ORDER');
 

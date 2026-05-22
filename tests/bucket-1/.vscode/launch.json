@@ -2,21 +2,21 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Your own server",
-            "request": "launch",
+            "name": "Publish: Microsoft cloud sandbox",
             "type": "al",
-            "environmentType": "OnPrem",
-            "server": "http://bcserver",
-            "serverInstance": "BC",
-            "authentication": "UserPassword",
-            "startupObjectId": 22,
-            "startupObjectType": "Page",
+            "request": "launch",
+            "environmentType": "Sandbox",
+            "tenant": "4a8e15d4-f2a0-4e26-b0c5-a8215c9b5fc0",
+            "environmentName": "dev",
+            "startupObjectId": 130451,
             "breakOnError": "All",
+            "breakOnRecordWrite": "None",
             "launchBrowser": true,
-            "enableLongRunningSqlStatements": true,
             "enableSqlInformationDebugger": true,
-            "tenant": "default",
-            "usePublicURLFromServer": true
+            "enableLongRunningSqlStatements": true,
+            "longRunningSqlStatementsThreshold": 500,
+            "numberOfSqlStatements": 10,
+            "useMcpServerForDebugging": true
         }
     ]
 }

@@ -101,14 +101,14 @@ codeunit 50546 "Test LockTable"
     end;
 
     [Test]
-    procedure LockTableWaitFalseIsNoOp()
+    procedure LockTableWaitFalse_Throws()
     var
         Rec: Record "Lock Probe";
     begin
         Rec.DeleteAll();
-        // Positive: LockTable(Wait: Boolean) overload is a no-op — must not raise an error.
-        Rec.LockTable(false);
-        Assert.AreEqual(0, Rec.Count, 'LockTable(false) must not alter the table or throw');
+        // BC 16.1: LockTable(false) throws "Wait parameter of FALSE is not supported".
+        asserterror Rec.LockTable(false);
+        Assert.ExpectedError('Wait parameter of FALSE is not supported');
     end;
 
     [Test]
@@ -123,23 +123,13 @@ codeunit 50546 "Test LockTable"
     end;
 
     [Test]
-    procedure LockTableWaitFalseDoesNotBlockInsert()
+    procedure LockTableWaitFalseDoesNotBlockInsert_Throws()
     var
         Rec: Record "Lock Probe";
     begin
         Rec.DeleteAll();
-        // Positive: Insert still works after LockTable(false).
-        Rec.LockTable(false);
-        Rec.Init();
-        Rec."No." := 'E';
-        Rec.Name := 'WithWait';
-        Rec.Amount := 99;
-        Rec.Insert(true);
-
-        Rec.Get('E');
-        Assert.AreEqual('WithWait', Rec.Name,
-            'Record inserted after LockTable(false) must be retrievable');
-        Assert.AreEqual(99, Rec.Amount,
-            'Amount must match after LockTable(false) + Insert');
+        // BC 16.1: LockTable(false) throws before any insert can happen.
+        asserterror Rec.LockTable(false);
+        Assert.ExpectedError('Wait parameter of FALSE is not supported');
     end;
 }

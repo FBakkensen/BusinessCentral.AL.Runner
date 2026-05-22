@@ -17,6 +17,13 @@ codeunit 50212 "NullOpt Tests"
     // Positive: reading an uninitialized enum field yields ordinal 0 (default)
     // -------------------------------------------------------------------------
 
+    local procedure Initialize()
+    var
+        Rec1: Record "NullOpt Record";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure ReadUninitializedEnumField_ReturnsDefaultOrdinal()
     var
@@ -24,6 +31,7 @@ codeunit 50212 "NullOpt Tests"
         Helper: Codeunit "NullOpt Helper";
         Result: Integer;
     begin
+        Initialize();
         // [GIVEN] A record created with Init() — Status field never assigned
         Rec.Init();
         Rec.Id := 1;
@@ -48,6 +56,7 @@ codeunit 50212 "NullOpt Tests"
         Helper: Codeunit "NullOpt Helper";
         Result: Integer;
     begin
+        Initialize();
         // [GIVEN] A freshly Init()ed record (Status null)
         Rec.Init();
         Rec.Id := 2;
@@ -72,6 +81,7 @@ codeunit 50212 "NullOpt Tests"
         Helper: Codeunit "NullOpt Helper";
         Result: Integer;
     begin
+        Initialize();
         Rec.Init();
         Rec.Id := 3;
         Rec.Insert(false);

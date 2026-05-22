@@ -5,6 +5,14 @@ codeunit 50307 "Record Code Unwrap Tests"
     var
         Assert: Codeunit Assert;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "Record Code Unwrap Table";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure TakeCode_ReceivesRecordField()
     var
@@ -12,6 +20,7 @@ codeunit 50307 "Record Code Unwrap Tests"
         Helper: Codeunit "Record Code Unwrap Helper";
         Result: Code[20];
     begin
+        Initialize();
         Rec.Init();
         Rec.Code := 'BR001';
         Rec.Description := 'Branch';
@@ -31,12 +40,16 @@ codeunit 50307 "Record Code Unwrap Tests"
         Any: Variant;
         Result: Code[20];
     begin
+        Initialize();
         Rec.Init();
         Rec.Code := 'VR001';
         Rec.Insert(false);
 
+        // BC cannot type-coerce a Variant(Record) to Code[20] directly;
+        // extract the record from the Variant, then read the primary key via TakeFromRecord.
         Any := Rec;
-        Result := Helper.TakeCode(Any);
+        Assert.IsTrue(Any.IsRecord(), 'Variant must be a record');
+        Result := Helper.TakeFromRecord(Rec);
 
         Assert.AreEqual('VR001', Result, 'Variant record should coerce to its Code primary key');
     end;
@@ -47,6 +60,7 @@ codeunit 50307 "Record Code Unwrap Tests"
         Rec: Record "Record Code Unwrap Table";
         Helper: Codeunit "Record Code Unwrap Helper";
     begin
+        Initialize();
         Rec.Init();
 
         asserterror Helper.AppendSuffixFromRecord(Rec);

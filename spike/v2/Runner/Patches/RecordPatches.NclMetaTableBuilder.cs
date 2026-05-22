@@ -63,16 +63,22 @@ public static partial class RecordPatches
         try
         {
             // Build MetaField[] — include a synthetic timestamp field (id=0, BigInteger)
-            // and the SystemId system field (id=2000000000, Guid), which is required by
-            // MutableRecordBuffer.get_SystemId → NCLMetaTable.SystemIdField.
-            var timestampParsed = new ParsedField(0, "timestamp", "BigInteger", 0);
-            var systemIdParsed = new ParsedField(2000000000, "SystemId", "Guid", 0);
+            // and the BC system fields: SystemId (2000000000), SystemCreatedAt (2000000001),
+            // SystemCreatedBy (2000000002), SystemModifiedAt (2000000003), SystemModifiedBy
+            // (2000000004). These are required for system-field access via FieldRef and RecordRef.
+            var timestampParsed       = new ParsedField(0,          "timestamp",         "BigInteger", 0);
+            var systemIdParsed        = new ParsedField(2000000000, "SystemId",          "Guid",       0);
+            var systemCreatedAtParsed = new ParsedField(2000000001, "SystemCreatedAt",   "DateTime",   0);
+            var systemCreatedByParsed = new ParsedField(2000000002, "SystemCreatedBy",   "Guid",       0);
+            var systemModifiedAtParsed= new ParsedField(2000000003, "SystemModifiedAt",  "DateTime",   0);
+            var systemModifiedByParsed= new ParsedField(2000000004, "SystemModifiedBy",  "Guid",       0);
             // Merge any tableextension fields for this base table.
             var extFields = _parsedExtensionFields.TryGetValue(parsed.TableName.ToLowerInvariant(), out var ef)
                 ? ef : Enumerable.Empty<ParsedField>();
             var allParsed = new[] { timestampParsed }.Concat(parsed.Fields)
                 .Concat(extFields)
-                .Concat(new[] { systemIdParsed }).ToArray();
+                .Concat(new[] { systemIdParsed, systemCreatedAtParsed, systemCreatedByParsed,
+                                systemModifiedAtParsed, systemModifiedByParsed }).ToArray();
             var fields = allParsed.Select((f, idx) =>
                 BuildMetaField(f, idx, parsed.PkFieldIds.Contains(f.FieldId), parsed)).ToArray();
 
@@ -82,9 +88,23 @@ public static partial class RecordPatches
                 .ToArray();
             var pkKey = BuildMetaKey("PK", pkRelations, clustered: true);
 
+            // Build secondary key MetaKey objects
+            var allKeys = new List<object> { pkKey };
+            if (parsed.SecondaryKeys != null)
+            {
+                foreach (var sk in parsed.SecondaryKeys)
+                {
+                    var skRelations = sk.FieldIds
+                        .Select(fid => BuildFieldMetadataRelation(fid))
+                        .ToArray();
+                    if (skRelations.Length > 0)
+                        allKeys.Add(BuildMetaKey(sk.Name, skRelations, clustered: false));
+                }
+            }
+
             // Build MetaTable via named-parameter ctor.  The public ctor takes many
             // named params with defaults; we resolve by name and fall back to defaults.
-            var defaultMetaTable = CallMetaTableCtor(tableId, parsed.TableName, fields, pkKey);
+            var defaultMetaTable = CallMetaTableCtor(tableId, parsed.TableName, fields, allKeys.ToArray());
             if (defaultMetaTable == null) return null;
 
             // NavAppGroup.BaseGroup
@@ -143,6 +163,11 @@ public static partial class RecordPatches
                 // mirrors NCLEnumMetadata semantics (search indexes[] for matching
                 // ordinal) using data captured by BcCompiler at AL emit time.
                 FixupEnumFieldOptionMetadata(built, parsed, extFields);
+
+                // Register any AutoIncrement fields so NavRecord_ALInsertAsync3 assigns counters.
+                foreach (var f in parsed.Fields)
+                    if (f.IsAutoIncrement)
+                        AlRunnerV2.BcRuntime.RegisterAutoIncrementField(tableId, f.FieldId);
             }
             return built;
         }
@@ -156,7 +181,7 @@ public static partial class RecordPatches
         }
     }
 
-    private static object? CallMetaTableCtor(int id, string name, object[] fields, object pkKey)
+    private static object? CallMetaTableCtor(int id, string name, object[] fields, object[] allKeys)
     {
         if (_tMetaTable == null) return null;
         var ctor = _tMetaTable.GetConstructors()
@@ -179,7 +204,7 @@ public static partial class RecordPatches
             }
             if (p.Name == "keys")
             {
-                args[i] = MakeImmutableArray(_tMetaKey!, new[] { pkKey });
+                args[i] = MakeImmutableArray(_tMetaKey!, allKeys);
                 continue;
             }
             if (p.Name == "fieldsById")
@@ -246,6 +271,7 @@ public static partial class RecordPatches
             if (p.Name == "name") { args[i] = f.FieldName; continue; }
             if (p.Name == "type") { args[i] = MapNavType(f.TypeName); continue; }
             if (p.Name == "length") { args[i] = f.Length; continue; }
+            if (p.Name == "autoIncrement" && f.IsAutoIncrement) { args[i] = true; continue; }
             if (p.Name == "enabled") { args[i] = (bool?)true; continue; }
             if (p.Name == "fieldClass" && f.IsFlowField && _tFieldClass != null)
             {

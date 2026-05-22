@@ -9,11 +9,20 @@ codeunit 50414 "CurrentKey Tests"
     // CurrentKey — positive tests
     // -----------------------------------------------------------------------
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "Key Probe";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure CurrentKeyReturnsKeyAfterSetCurrentKey()
     var
         Rec: Record "Key Probe";
     begin
+        Initialize();
         // [GIVEN] A record with SetCurrentKey("Name")
         Rec.SetCurrentKey("Name");
 
@@ -31,6 +40,7 @@ codeunit 50414 "CurrentKey Tests"
         Rec: Record "Key Probe";
         KeyText: Text;
     begin
+        Initialize();
         // [GIVEN] A record with no explicit SetCurrentKey
         // [WHEN] CurrentKey is read, [THEN] returns the PK field name (non-empty)
         KeyText := Rec.CurrentKey();
@@ -46,6 +56,7 @@ codeunit 50414 "CurrentKey Tests"
     var
         Rec: Record "Key Probe";
     begin
+        Initialize();
         // [GIVEN] A record with default sort order
         Rec.SetCurrentKey("Name");
 
@@ -58,6 +69,7 @@ codeunit 50414 "CurrentKey Tests"
     var
         Rec: Record "Key Probe";
     begin
+        Initialize();
         // [GIVEN] A record with descending sort
         Rec.SetCurrentKey("Name");
         Rec.SetAscending("Name", false);
@@ -75,6 +87,7 @@ codeunit 50414 "CurrentKey Tests"
     var
         Rec: Record "Key Probe";
     begin
+        Initialize();
         Rec.DeleteAll();
         // [GIVEN] Records inserted in PK (Code) order: AAA/Zoe, BBB/Anna, CCC/Mike
         InsertKeyProbe('AAA', 'Zoe', 3);
@@ -98,6 +111,7 @@ codeunit 50414 "CurrentKey Tests"
     var
         Rec: Record "Key Probe";
     begin
+        Initialize();
         // [GIVEN] Records inserted in PK order: P1/Seq=30, P2/Seq=10, P3/Seq=20
         InsertKeyProbe('P1', 'Beta', 30);
         InsertKeyProbe('P2', 'Alpha', 10);
@@ -121,6 +135,7 @@ codeunit 50414 "CurrentKey Tests"
     var
         Rec: Record "Key Probe";
     begin
+        Initialize();
         // [GIVEN] Records inserted out of PK order intent: CCC, AAA, BBB
         InsertKeyProbe('CCC', 'Zara', 3);
         InsertKeyProbe('AAA', 'Anna', 1);
@@ -149,6 +164,7 @@ codeunit 50414 "CurrentKey Tests"
         Rec: Record "Key Probe";
         FirstCode: Code[20];
     begin
+        Initialize();
         // [GIVEN] Records where Name-order differs from PK order: X1/Bob, X2/Alice
         InsertKeyProbe('X1', 'Bob', 2);
         InsertKeyProbe('X2', 'Alice', 1);
@@ -168,6 +184,7 @@ codeunit 50414 "CurrentKey Tests"
     var
         Rec: Record "Key Probe";
     begin
+        Initialize();
         // [GIVEN] Records: D1/Seq=5, D2/Seq=15, D3/Seq=10
         InsertKeyProbe('D1', 'Alpha', 5);
         InsertKeyProbe('D2', 'Beta', 15);

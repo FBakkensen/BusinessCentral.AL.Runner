@@ -15,29 +15,32 @@ codeunit 50530 "RecRef Perm Test"
     end;
 
     [Test]
-    procedure ReadPermission_OnClosedRef_ReturnsTrue()
-    // Even on a closed RecordRef, ReadPermission should be true (no permission enforcement)
+    procedure ReadPermission_OnClosedRef_Throws()
+    // BC 16.1: ReadPermission on a closed/unopen RecordRef raises "The record is not open."
     var
         Helper: Codeunit "RecRef Perm Helper";
     begin
-        Assert.IsTrue(Helper.TestReadPermissionOnClosedRef(), 'ReadPermission on closed RecordRef should return true');
+        asserterror Helper.TestReadPermissionOnClosedRef();
+        Assert.ExpectedError('not open');
     end;
 
     [Test]
-    procedure SetAutoCalcFields_SingleField_NoThrow()
-    // Proves SetAutoCalcFields(FldRef.Number) compiles and runs without error
+    procedure SetAutoCalcFields_SingleField_Throws()
+    // BC: SetAutoCalcFields requires a FlowField; Amount (Decimal) is a regular field.
     var
         Helper: Codeunit "RecRef Perm Helper";
     begin
-        Assert.IsTrue(Helper.TestSetAutoCalcFieldsNoThrow(), 'SetAutoCalcFields with one field number should not throw');
+        asserterror Helper.TestSetAutoCalcFieldsNoThrow();
+        Assert.ExpectedError('must be a FlowField');
     end;
 
     [Test]
-    procedure SetAutoCalcFields_MultipleFields_NoThrow()
-    // Proves SetAutoCalcFields(n, m) compiles and runs without error
+    procedure SetAutoCalcFields_MultipleFields_Throws()
+    // BC: SetAutoCalcFields requires a FlowField; Amount and Description are regular fields.
     var
         Helper: Codeunit "RecRef Perm Helper";
     begin
-        Assert.IsTrue(Helper.TestSetAutoCalcFieldsMultiple(), 'SetAutoCalcFields with multiple field numbers should not throw');
+        asserterror Helper.TestSetAutoCalcFieldsMultiple();
+        Assert.ExpectedError('must be a FlowField');
     end;
 }

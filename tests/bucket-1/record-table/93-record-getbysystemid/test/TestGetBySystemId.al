@@ -5,6 +5,14 @@ codeunit 50623 "GBS GetBySystemId Tests"
     var
         Assert: Codeunit Assert;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "GBS Test Record";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure GetBySystemIdFindsInsertedRecord()
     var
@@ -12,6 +20,7 @@ codeunit 50623 "GBS GetBySystemId Tests"
         LookupRec: Record "GBS Test Record";
         RecordSystemId: Guid;
     begin
+        Initialize();
         // [GIVEN] A record inserted into the table
         Rec.Id := 1;
         Rec.Name := 'Alpha';
@@ -32,6 +41,7 @@ codeunit 50623 "GBS GetBySystemId Tests"
         Rec: Record "GBS Test Record";
         FakeId: Guid;
     begin
+        Initialize();
         // [GIVEN] An empty table and a random GUID
         FakeId := CreateGuid();
 

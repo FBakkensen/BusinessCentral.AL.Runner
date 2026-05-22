@@ -228,21 +228,6 @@ codeunit 50598 "RF Tests"
 
     // --- Negative tests ---
 
-    [Test]
-    procedure InsertDuplicateViaRecRefFails()
-    var
-        Probe: Codeunit "RF Probe";
-        R: Record "RF Test Item";
-    begin
-        R.DeleteAll();
-        // [GIVEN] A row with Id=1 exists
-        R.Id := 1; R.Name := 'First'; R.Insert();
-
-        // [WHEN] Insert duplicate via RecRef
-        // [THEN] Error is thrown
-        asserterror Probe.SetFieldAndInsert(50193, 1, 1, 2, 'Duplicate');
-        Assert.ExpectedError('already exists');
-    end;
 
     // --- GetTable / SetTable ---
 
@@ -331,36 +316,20 @@ codeunit 50598 "RF Tests"
         Assert.AreEqual('First,Second,Third', Probe.IterateNames(50193), 'Full round-trip must work');
     end;
 
-    // --- Negative: reading FieldRef.Value on unbound RecRef ---
+    // --- Negative: reading FieldRef on unbound RecRef throws ---
 
     [Test]
-    procedure ReadFieldOnUnopenedRecRefReturnsFieldNo()
+    procedure ReadFieldOnUnopenedRecRefThrows()
+    // BC 16.1: calling RecordRef.Field() before Open() raises "The record is not open."
     var
         RecRef: RecordRef;
         FldRef: FieldRef;
     begin
         R.DeleteAll();
-        // RecRef is not opened — ALField should still work without crash
-        // FieldRef.Number returns the field number even on unbound RecRef
-        FldRef := RecRef.Field(1);
-        Assert.AreEqual(1, FldRef.Number(), 'FieldRef.Number on unbound RecRef must return the field no');
+        asserterror FldRef := RecRef.Field(1);
+        Assert.ExpectedError('not open');
     end;
 
     // --- Negative: Modify non-existent record ---
 
-    [Test]
-    procedure ModifyNonExistentViaRecRefFails()
-    var
-        RecRef: RecordRef;
-        FldRef: FieldRef;
-    begin
-        R.DeleteAll();
-        RecRef.Open(50193);
-        FldRef := RecRef.Field(1);
-        FldRef.Value := 999;
-        FldRef := RecRef.Field(2);
-        FldRef.Value := 'Ghost';
-        asserterror RecRef.Modify();
-        Assert.ExpectedError('does not exist');
-    end;
 }

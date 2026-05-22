@@ -28,11 +28,22 @@ codeunit 50522 "CF Test"
 
     // ── Sum FlowField ─────────────────────────────────────────────────────────
 
+
+    local procedure Initialize()
+    var
+        ExtraRec: Record "CF Child";
+        Rec1: Record "CF Parent";
+    begin
+        ExtraRec.DeleteAll(false);
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure CalcFields_Sum_SumsChildAmounts()
     var
         P: Record "CF Parent";
     begin
+        Initialize();
         // [GIVEN] A parent with two children summing to 42
         InsertParent(1);
         InsertChild(1, 1, 20);
@@ -51,6 +62,7 @@ codeunit 50522 "CF Test"
     var
         P: Record "CF Parent";
     begin
+        Initialize();
         // [GIVEN] A parent with no children
         InsertParent(2);
 
@@ -67,6 +79,7 @@ codeunit 50522 "CF Test"
     var
         P: Record "CF Parent";
     begin
+        Initialize();
         // Negative: a no-op CalcFields that always returns 0 would fail this.
         InsertParent(3);
         InsertChild(10, 3, 100);
@@ -85,6 +98,7 @@ codeunit 50522 "CF Test"
     var
         P: Record "CF Parent";
     begin
+        Initialize();
         // [GIVEN] A parent with three children
         InsertParent(4);
         InsertChild(20, 4, 1);
@@ -104,6 +118,7 @@ codeunit 50522 "CF Test"
     var
         P: Record "CF Parent";
     begin
+        Initialize();
         InsertParent(5);
 
         P.Get(5);
@@ -119,6 +134,7 @@ codeunit 50522 "CF Test"
     var
         P: Record "CF Parent";
     begin
+        Initialize();
         // [GIVEN] A parent with a child
         InsertParent(6);
         InsertChild(30, 6, 5);
@@ -136,6 +152,7 @@ codeunit 50522 "CF Test"
     var
         P: Record "CF Parent";
     begin
+        Initialize();
         InsertParent(7);
 
         P.Get(7);
@@ -151,6 +168,7 @@ codeunit 50522 "CF Test"
     var
         P: Record "CF Parent";
     begin
+        Initialize();
         // [GIVEN] Parent with two children summing 15
         InsertParent(8);
         InsertChild(40, 8, 7);
@@ -173,6 +191,7 @@ codeunit 50522 "CF Test"
         P1: Record "CF Parent";
         P2: Record "CF Parent";
     begin
+        Initialize();
         // [GIVEN] Two parents each with their own children
         InsertParent(9);
         InsertParent(10);

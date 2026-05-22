@@ -4,20 +4,31 @@ codeunit 50335 "PK Probe Tests"
     var
         Assert: Codeunit Assert;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "PK Probe Row";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure DuplicateInsertFails()
     var
         R: Record "PK Probe Row";
         Second: Record "PK Probe Row";
+        InsertOk: Boolean;
     begin
+        Initialize();
         R.DeleteAll();
         R.Id := 1; R.Name := 'a'; R.Insert();
 
         Second.Id := 1;
         Second.Name := 'b';
-        asserterror Second.Insert();
+        InsertOk := Second.Insert();
 
-        // Only one row should remain
+        // Duplicate insert must return false and not create a second row
+        Assert.IsFalse(InsertOk, 'Duplicate Insert must return false');
         Assert.AreEqual(1, R.Count(), 'Duplicate Insert should not have created a second row');
     end;
 
@@ -26,6 +37,7 @@ codeunit 50335 "PK Probe Tests"
     var
         R: Record "PK Probe Row";
     begin
+        Initialize();
         R.Id := 1; R.Insert();
         R.Init();
         R.Id := 2; R.Insert();

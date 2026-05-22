@@ -5,12 +5,23 @@ codeunit 50574 "FFM Tests"
     var
         Assert: Codeunit Assert;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "FFM Child";
+        Rec2: Record "FFM Master";
+    begin
+        Rec1.DeleteAll(false);
+        Rec2.DeleteAll(false);
+    end;
+
     [Test]
     procedure MultiFieldExistFalseThenTrue()
     var
         M: Record "FFM Master";
         C: Record "FFM Child";
     begin
+        Initialize();
         M.Code1 := 'A'; M.Code2 := 'B'; M.Insert();
         M.CalcFields("Exists Flag");
         Assert.IsFalse(M."Exists Flag", 'no matching child yet');
@@ -26,6 +37,7 @@ codeunit 50574 "FFM Tests"
         M: Record "FFM Master";
         C: Record "FFM Child";
     begin
+        Initialize();
         M.Code1 := 'X'; M.Code2 := 'Y'; M.Insert();
         C.C1 := 'X'; C.C2 := 'OTHER'; C.Insert();
 

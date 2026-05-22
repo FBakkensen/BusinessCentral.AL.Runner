@@ -5,12 +5,23 @@ codeunit 50544 "Test RecordRef FieldCount"
     var
         Assert: Codeunit Assert;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "FC Five";
+        Rec2: Record "FC Three";
+    begin
+        Rec1.DeleteAll(false);
+        Rec2.DeleteAll(false);
+    end;
+
     [Test]
     procedure FieldCountReturnsSchemaCountForEmptyRecord()
     var
         Rec: Record "FC Three";
         RecRef: RecordRef;
     begin
+        Initialize();
         // Positive: RecordRef on a freshly-opened table reports schema field count,
         // even though no fields have been assigned values.
         RecRef.Open(Database::"FC Three");
@@ -26,6 +37,7 @@ codeunit 50544 "Test RecordRef FieldCount"
         RecRef: RecordRef;
         Count: Integer;
     begin
+        Initialize();
         // Negative/invariance: setting field values must NOT change FieldCount.
         // (In BC, FieldCount is a schema property, not a runtime write count.)
         Rec.Init();
@@ -46,6 +58,7 @@ codeunit 50544 "Test RecordRef FieldCount"
     var
         RecRef: RecordRef;
     begin
+        Initialize();
         // Positive: a 5-field table reports 5, proving the count is per-table schema.
         RecRef.Open(Database::"FC Five");
         Assert.AreEqual(5, RecRef.FieldCount,
@@ -59,6 +72,7 @@ codeunit 50544 "Test RecordRef FieldCount"
         Rec: Record "FC Five";
         RecRef: RecordRef;
     begin
+        Initialize();
         // Negative: assigning only a subset must not lower FieldCount to that subset.
         Rec.Init();
         Rec.Code := 'X';

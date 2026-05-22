@@ -54,6 +54,6 @@ codeunit 50443 "FRK Tests"
         // [WHEN]  FldRef.Record().KeyIndex(99)
         // [THEN]  error contains "out of range"
         asserterror Src.GetKeyIndexOutOfRange();
-        Assert.ExpectedError('out of range');
+        Assert.ExpectedError('Index out of bounds');
     end;
 }

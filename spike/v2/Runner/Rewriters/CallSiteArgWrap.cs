@@ -48,7 +48,7 @@ public static class CallSiteArgWrap
                 new CSharpCompilationOptions(
                     OutputKind.DynamicallyLinkedLibrary,
                     allowUnsafe: true,
-                    concurrentBuild: true));
+                    concurrentBuild: false));
 
             var targets = new List<(SyntaxTree Tree, TextSpan Span, string ByRefType)>();
             foreach (var d in comp.GetDiagnostics())

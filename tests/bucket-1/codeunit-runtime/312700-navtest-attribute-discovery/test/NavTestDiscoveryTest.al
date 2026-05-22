@@ -25,11 +25,19 @@ codeunit 50241 "NAD Discovery Tests"
     // reaching this line, failing the whole suite.
     // -----------------------------------------------------------------
 
+    local procedure Initialize()
+    var
+        Rec1: Record "NAD Demo Table";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure InsertViaOnInsert_ReturnsCorrectNo()
     var
         Rec: Record "NAD Demo Table";
     begin
+        Initialize();
         // [GIVEN] A fresh record with a valid No.
         Rec.Init();
         Rec."No." := 'X001';
@@ -52,6 +60,7 @@ codeunit 50241 "NAD Discovery Tests"
     var
         Rec: Record "NAD Demo Table";
     begin
+        Initialize();
         // [GIVEN] A record with an empty No.
         Rec.Init();
         Rec."No." := '';
@@ -72,6 +81,7 @@ codeunit 50241 "NAD Discovery Tests"
         Helper: Codeunit "NAD Helper";
         Result: Integer;
     begin
+        Initialize();
         // [GIVEN] Two positive integers
         // [WHEN] Called through the helper codeunit
         Result := Helper.TestComputeSum(3, 4);
@@ -86,6 +96,7 @@ codeunit 50241 "NAD Discovery Tests"
         Helper: Codeunit "NAD Helper";
         Result: Integer;
     begin
+        Initialize();
         // [GIVEN] Two integers whose sum is known (3+4=7)
         Result := Helper.TestComputeSum(3, 4);
 

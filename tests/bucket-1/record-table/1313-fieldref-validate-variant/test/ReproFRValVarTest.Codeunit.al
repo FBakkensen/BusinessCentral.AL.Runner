@@ -5,6 +5,14 @@ codeunit 50446 "Repro FRValVar Test"
     var
         Assert: Codeunit Assert;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "Repro FRValVar Tab";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure FieldRef_Validate_Variant_PositiveValue_Persists()
     var
@@ -13,6 +21,7 @@ codeunit 50446 "Repro FRValVar Test"
         Fr: FieldRef;
         V: Variant;
     begin
+        Initialize();
         ReproRec.Init();
         ReproRec."No." := 1;
         ReproRec.Insert();
@@ -36,6 +45,7 @@ codeunit 50446 "Repro FRValVar Test"
         Fr: FieldRef;
         V: Variant;
     begin
+        Initialize();
         ReproRec.Init();
         ReproRec."No." := 2;
         ReproRec.Insert();

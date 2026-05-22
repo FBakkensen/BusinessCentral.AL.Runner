@@ -48,11 +48,27 @@ public static partial class BcRuntime
     private static MethodInfo? _mRecordImplementationDeleteRecordAsync;  // RecordImplementation.DeleteRecordAsync
     private static MethodInfo? _mRecordImplementationRenameRecordAsync;  // RecordImplementation.RenameRecordAsync
     private static MethodInfo? _mNavRecordCloneRecord;                   // NavRecord.CloneRecord(ITreeObject,bool,bool)
+    private static MethodInfo? _mNavRecordALInsertAsync3;  // NavRecord.ALInsertAsync(DataError,bool,bool) — hooked for AI
+    private static MethodInfo? _mNavRecordALInit;           // NavRecord.ALInit() — hooked for PK reset
+    private static MethodInfo? _mNavTextBuilderALInsert;    // NavTextBuilder.ALInsert(DataError,int,string)
+    // AutoIncrement: tableId → AI fieldNo; tableId → last assigned counter value
+    private static readonly ConcurrentDictionary<int, int>  _aiFieldIds  = new();
+    private static readonly ConcurrentDictionary<int, long> _aiCounters  = new();
     private static FieldInfo? _fRecordImplementationDataAccess;          // RecordImplementation.dataAccess
     private static FieldInfo? _fRecordImplementationMutableRecordBuffer; // RecordImplementation.mutableRecordBuffer
     private static MethodInfo? _mDataAccessTryGetByPrimaryKeyAsync;
     private static PropertyInfo? _pMrbResultResult;     // MutableRecordBufferResult<bool>.Result
     private static PropertyInfo? _pMrbResultRecordBuffer;
+
+    // Current bundle app info for the NavApp.GetCurrentModuleInfo polyfill shim.
+    private static (Guid AppId, string Name, string Publisher, string Version) _currentBundleInfo
+        = (Guid.Empty, "Unknown", "Unknown", "1.0.0.0");
+
+    public static void SetCurrentBundleInfo(Guid appId, string name, string publisher, string version)
+        => _currentBundleInfo = (appId, name, publisher, version);
+
+    public static (Guid AppId, string Name, string Publisher, string Version) GetCurrentModuleAppInfo()
+        => _currentBundleInfo;
 
     // Set to the currently-loaded test assembly so CreateTarget looks up codeunit types there.
     private static Assembly? _currentTestAssembly;
@@ -292,6 +308,52 @@ public static partial class BcRuntime
                 var noop = ps switch { 1 => nameof(NoOp_OneArg), 2 => nameof(NoOp2), 3 => nameof(NoOp3), 4 => nameof(NoOp4), _ => null };
                 if (noop != null) Hook(c, noop, $"NavOpenTelemetryLogger..ctor/{ps}");
             }
+        }
+
+        // ExecutionListener..cctor — static constructor accesses thread-local/service-tier
+        // state on first invocation via NavMethodScope.Run(). Under R2R, the PrestubMethodFrame
+        // dispatch races with hooks on adjacent methods and causes SIGSEGV when the test bundle
+        // is large (many suites in a combined bucket). Replace the cctor with a safe initialiser
+        // that just sets the syncRoot and leaves Instance null — ALFunctionTimingExecutionListener
+        // Start/Exit are already no-op'd below, so null Instance is safe.
+        var execListenerType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.ExecutionListener");
+        if (execListenerType?.TypeInitializer != null)
+            Hook(execListenerType.TypeInitializer, nameof(ExecutionListenerCctorReplacement), "ExecutionListener..cctor");
+
+        // ExecutionListener — static methods (AsArray, AddListener, RemoveListener etc.)
+        // also crash via R2R PrestubMethodFrame in large bundles. No-op the static
+        // methods that have no AL semantic effect in headless mode. AsArray is called
+        // by CodeCoverageManager; AddListener/RemoveListener are called by
+        // ALFunctionTimingExecutionListener registration paths.
+        if (execListenerType != null)
+        {
+            foreach (var m in execListenerType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static))
+            {
+                if (m.Name is not ("AsArray" or "AddListener" or "RemoveListener" or "AsSingleInstanceOrNull")) continue;
+                var ps = m.GetParameters().Length;
+                var noop = ps switch { 0 => nameof(NoOp_0Args), 1 => nameof(ReturnNull_OneArg), _ => null };
+                if (noop != null) Hook(m, noop, $"ExecutionListener.{m.Name}({ps})");
+            }
+        }
+
+        // CodeCoverageManager — LoadTableDataIntoCounters and CodeCoverageRecorderForSession
+        // access the execution listener and session infrastructure. No-op them; code
+        // coverage tracking is not available in headless mode.
+        var ccMgrType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.CodeCoverageManager");
+        if (ccMgrType != null)
+        {
+            // LoadTableDataIntoCounters(NavSession) → void — no-op to prevent ExecutionListener.AsArray crash
+            var loadTdc = ccMgrType.GetMethod("LoadTableDataIntoCounters", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
+            if (loadTdc != null) Hook(loadTdc, nameof(NoOp_OneArg), "CodeCoverageManager.LoadTableDataIntoCounters");
+            // StartCodeCoverage(NavSession) → void
+            var startCov = ccMgrType.GetMethod("StartCodeCoverage", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
+            if (startCov != null) Hook(startCov, nameof(NoOp_OneArg), "CodeCoverageManager.StartCodeCoverage");
+            // StopCodeCoverageRecording(NavSession) → void
+            var stopCov = ccMgrType.GetMethod("StopCodeCoverageRecording", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
+            if (stopCov != null) Hook(stopCov, nameof(NoOp_OneArg), "CodeCoverageManager.StopCodeCoverageRecording");
+            // RefreshTable(NavSession) → void
+            var refresh = ccMgrType.GetMethod("RefreshTable", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
+            if (refresh != null) Hook(refresh, nameof(NoOp_OneArg), "CodeCoverageManager.RefreshTable");
         }
 
         // No-op `ALFunctionTimingExecutionListener.EnsureRegistered()` — the real env ctor
@@ -2097,6 +2159,29 @@ public static partial class BcRuntime
                 BindingFlags.NonPublic | BindingFlags.Instance)?.GetGetMethod(true);
             if (targetGetter != null)
                 Hook(targetGetter, nameof(NavHttpClient_get_Target), "NavHttpClient.get_Target");
+        }
+
+        // SharedNavHttpClient.CreateFactoryClient() — triggered by UseServerCertificateValidation
+        // and other methods that need a real HTTP factory. Initialises a LazyEx<> that internally
+        // calls AddHttpClient(IServiceCollection) → AddLogging(IServiceCollection), which crashes
+        // via R2R PrestubMethodFrame on Linux in headless mode. Return null: the callers
+        // (ALSend, ALUseTls etc.) are separately stubbed or no-op'd so null is safe.
+        var sharedNavHttpClientType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.SharedNavHttpClient");
+        if (sharedNavHttpClientType != null)
+        {
+            var createFactory = sharedNavHttpClientType.GetMethod("CreateFactoryClient",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            if (createFactory != null)
+                Hook(createFactory, nameof(ReturnNull_OneArg), "SharedNavHttpClient.CreateFactoryClient");
+
+            // UseServerCertificateValidation(bool) — sets SSL validation flag; no-op in headless.
+            foreach (var m in sharedNavHttpClientType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
+            {
+                if (m.Name != "ALUseServerCertificateValidation" && m.Name != "UseServerCertificateValidation") continue;
+                var ps = m.GetParameters().Length;
+                var noop = ps switch { 1 => nameof(NoOp2), 2 => nameof(NoOp3), _ => null };
+                if (noop != null) Hook(m, noop, $"SharedNavHttpClient.{m.Name}({ps})");
+            }
         }
 
         // NavStream.get_Target — same shape as NavRecordRef. Construct SharedNavStream

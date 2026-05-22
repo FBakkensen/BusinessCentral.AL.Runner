@@ -6,7 +6,7 @@ codeunit 50618 "RF Find Probe"
         Found: Boolean;
     begin
         RecRef.Open(TableId);
-        Found := RecRef.Find();
+        Found := RecRef.Find('-');
         RecRef.Close();
         exit(Found);
     end;

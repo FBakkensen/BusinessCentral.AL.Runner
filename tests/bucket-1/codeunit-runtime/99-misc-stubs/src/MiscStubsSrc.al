@@ -22,8 +22,10 @@ codeunit 50380 MiscStubsSrc
 
     procedure DoNavAppGetArchiveRecordRef(TableId: Integer; var RecRef: RecordRef): Boolean
     begin
+        // BC 16.1: GetArchiveRecordRef leaves RecRef unbound (deprecated V1→V2 migration API).
+        // Do not call RecRef.IsEmpty() — unbound RecordRef throws "record is not open".
         NavApp.GetArchiveRecordRef(TableId, RecRef);
-        exit(not RecRef.IsEmpty());
+        exit(false); // always false — archive data not available in standalone
     end;
 
     procedure DoNavAppGetResource(ResName: Text; var IStream: InStream): Boolean

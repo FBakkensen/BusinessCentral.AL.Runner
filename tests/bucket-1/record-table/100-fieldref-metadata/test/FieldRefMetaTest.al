@@ -75,8 +75,8 @@ codeunit 50393 FieldRefMetaTest
         Src: Codeunit FieldRefMetaSrc;
         FieldName: Text;
     begin
-        // Field 10 is added by tableextension; Name should be "Extended Field"
-        FieldName := Src.GetFieldName(50063, 10);
+        // Field 50000 is added by tableextension; Name should be "Extended Field"
+        FieldName := Src.GetFieldName(50063, 50000);
         Assert.AreEqual('Extended Field', FieldName, 'FieldRef.Name for tableextension field should return actual name, not stub');
     end;
 
@@ -86,8 +86,8 @@ codeunit 50393 FieldRefMetaTest
         Src: Codeunit FieldRefMetaSrc;
         Caption: Text;
     begin
-        // Field 10 from tableextension has Caption = 'Extended Field Caption'
-        Caption := Src.GetFieldCaption(50063, 10);
+        // Field 50000 from tableextension has Caption = 'Extended Field Caption'
+        Caption := Src.GetFieldCaption(50063, 50000);
         Assert.AreEqual('Extended Field Caption', Caption, 'FieldRef.Caption for tableextension field should return actual caption');
     end;
 }

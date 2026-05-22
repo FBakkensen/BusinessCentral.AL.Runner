@@ -2,7 +2,18 @@ codeunit 50432 "FlowField Formula Tests"
 {
     Subtype = Test;
 
-    var Assert: Codeunit Assert;
+    var
+        Assert: Codeunit Assert;
+
+
+    local procedure Initialize()
+    var
+        Rec1: Record "FF Order Header";
+        Rec2: Record "FF Order Line";
+    begin
+        Rec1.DeleteAll(false);
+        Rec2.DeleteAll(false);
+    end;
 
     [Test]
     procedure CountFlowFieldReturnsCorrectCount()
@@ -10,6 +21,7 @@ codeunit 50432 "FlowField Formula Tests"
         Header: Record "FF Order Header";
         Line: Record "FF Order Line";
     begin
+        Initialize();
         Header.Init();
         Header."No." := 'ORD001';
         Header.Insert();
@@ -39,6 +51,7 @@ codeunit 50432 "FlowField Formula Tests"
         Header: Record "FF Order Header";
         Line: Record "FF Order Line";
     begin
+        Initialize();
         Header.Init();
         Header."No." := 'ORD002';
         Header.Insert();
@@ -66,6 +79,7 @@ codeunit 50432 "FlowField Formula Tests"
         Header: Record "FF Order Header";
         Line: Record "FF Order Line";
     begin
+        Initialize();
         Header.Init();
         Header."No." := 'ORD003';
         Header.Insert();
@@ -92,6 +106,7 @@ codeunit 50432 "FlowField Formula Tests"
     var
         Header: Record "FF Order Header";
     begin
+        Initialize();
         Header.Init();
         Header."No." := 'ORD-EMPTY';
         Header.Insert();
@@ -105,6 +120,7 @@ codeunit 50432 "FlowField Formula Tests"
     var
         Header: Record "FF Order Header";
     begin
+        Initialize();
         Header.Init();
         Header."No." := 'ORD-EMPTY2';
         Header.Insert();
@@ -120,6 +136,7 @@ codeunit 50432 "FlowField Formula Tests"
         Header2: Record "FF Order Header";
         Line: Record "FF Order Line";
     begin
+        Initialize();
         Header1.Init();
         Header1."No." := 'H1';
         Header1.Insert();
@@ -149,6 +166,7 @@ codeunit 50432 "FlowField Formula Tests"
         Header: Record "FF Order Header";
         Line: Record "FF Order Line";
     begin
+        Initialize();
         Header.DeleteAll();
         Line.DeleteAll();
         Header.Init();
@@ -161,12 +179,21 @@ codeunit 50432 "FlowField Formula Tests"
         Line.Amount := 50.00;
         Line.Insert();
 
-        Line.Init();
-        Line."Order No." := 'DUP-HDR';
-        Line."Line No." := 10000;
-        Line.Amount := 75.00;
-        asserterror Line.Insert();
-
+        // [WHEN] Insert duplicate + Commit to flush delayed-insert cache
+        // [THEN] Either insert or commit throws "already exists"
+        asserterror InsertDuplicateLine();
         Assert.ExpectedError('already exists');
+    end;
+
+    local procedure InsertDuplicateLine()
+    var
+        DupLine: Record "FF Order Line";
+    begin
+        DupLine.Init();
+        DupLine."Order No." := 'DUP-HDR';
+        DupLine."Line No." := 10000;
+        DupLine.Amount := 75.00;
+        DupLine.Insert();
+        Commit();
     end;
 }

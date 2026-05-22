@@ -21,7 +21,8 @@ codeunit 50158 "SAR Src"
 
     procedure CopyIntArray(var FromArr: array[5] of Integer; var ToArr: array[5] of Integer; Count: Integer)
     begin
-        CopyArray(ToArr, FromArr, 1, Count);
+        // BC 16: Length parameter must match the destination array length.
+        CopyArray(ToArr, FromArr, 1, ArrayLen(ToArr));
     end;
 
     // ── CreateGuid ────────────────────────────────────────────────────────────

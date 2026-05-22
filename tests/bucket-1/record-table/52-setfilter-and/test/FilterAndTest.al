@@ -18,11 +18,20 @@ codeunit 50569 "RWK Filter Tests"
         R.Id := 12; R.Name := 'delta'; R.Insert();
     end;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "RWK Row";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure SetFilterAndWithNotEqualExclusion()
     var
         R: Record "RWK Row";
     begin
+        Initialize();
         R.DeleteAll();
         SeedFour();
         // Id <> 2 AND Id <> 12 — should match Id=1 and Id=7.
@@ -35,6 +44,7 @@ codeunit 50569 "RWK Filter Tests"
     var
         R: Record "RWK Row";
     begin
+        Initialize();
         SeedFour();
         // Id >= 5 AND Id <= 10 — should match Id=7 only.
         R.SetFilter(Id, '>=5&<=10');
@@ -46,6 +56,7 @@ codeunit 50569 "RWK Filter Tests"
     var
         R: Record "RWK Row";
     begin
+        Initialize();
         R.DeleteAll();
         SeedFour();
         R.SetFilter(Id, '1|7');
@@ -57,6 +68,7 @@ codeunit 50569 "RWK Filter Tests"
     var
         R: Record "RWK Row";
     begin
+        Initialize();
         R.DeleteAll();
         SeedFour();
         // BC precedence: AND binds tighter than OR.
@@ -70,6 +82,7 @@ codeunit 50569 "RWK Filter Tests"
     var
         R: Record "RWK Row";
     begin
+        Initialize();
         R.DeleteAll();
         SeedFour();
         R.SetFilter(Id, '2..10');
@@ -81,6 +94,7 @@ codeunit 50569 "RWK Filter Tests"
     var
         R: Record "RWK Row";
     begin
+        Initialize();
         R.DeleteAll();
         SeedFour();
         R.SetFilter(Name, '@*a*');
@@ -93,6 +107,7 @@ codeunit 50569 "RWK Filter Tests"
     var
         R: Record "RWK Row";
     begin
+        Initialize();
         R.DeleteAll();
         SeedFour();
         R.SetFilter(Name, '@ALPHA');
@@ -104,6 +119,7 @@ codeunit 50569 "RWK Filter Tests"
     var
         R: Record "RWK Row";
     begin
+        Initialize();
         R.DeleteAll();
         SeedFour();
         // Per-field filters AND-combine: Id >= 5 AND Name starts with g*.
@@ -117,6 +133,7 @@ codeunit 50569 "RWK Filter Tests"
     var
         R: Record "RWK Row";
     begin
+        Initialize();
         R.DeleteAll();
         SeedFour();
         R.SetFilter(Name, '');
@@ -130,6 +147,7 @@ codeunit 50569 "RWK Filter Tests"
         Low: Integer;
         High: Integer;
     begin
+        Initialize();
         R.DeleteAll();
         SeedFour();
         Low := 2;
@@ -145,6 +163,7 @@ codeunit 50569 "RWK Filter Tests"
         R: Record "RWK Row";
         Target: Text;
     begin
+        Initialize();
         R.DeleteAll();
         SeedFour();
         Target := 'beta';
@@ -157,6 +176,7 @@ codeunit 50569 "RWK Filter Tests"
     var
         R: Record "RWK Row";
     begin
+        Initialize();
         R.DeleteAll();
         SeedFour();
         // Four placeholders in an OR chain — %1|%2|%3|%4.
@@ -170,6 +190,7 @@ codeunit 50569 "RWK Filter Tests"
     var
         R: Record "RWK Row";
     begin
+        Initialize();
         R.DeleteAll();
         // #19 regression: AL filter literals like `<>Red&<>Blue` must
         // resolve option member names to ordinals, not compare against the
@@ -188,6 +209,7 @@ codeunit 50569 "RWK Filter Tests"
     var
         R: Record "RWK Row";
     begin
+        Initialize();
         R.DeleteAll();
         SeedFour();
         // Mixes placeholders with precedence: %1 | (>=%2 & <=%3).

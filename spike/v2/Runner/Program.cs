@@ -158,6 +158,9 @@ foreach (var bundle in bundles)
                 // case spike-a-baseapp's Currency-init scenario depends on.
                 foreach (var (_, appPath) in ordered)
                     AlRunnerV2.Patches.RecordPatches.AddBcAppPath(appPath);
+                // Populate BcRuntime with this bundle's identity for the
+                // NavApp.GetCurrentModuleInfo polyfill shim.
+                SetBundleInfoFromAppJson(appJsonPath);
             }
             catch (Exception ex)
             {
@@ -168,6 +171,11 @@ foreach (var bundle in bundles)
         {
             Console.Error.WriteLine($"  [{rel}] WARN: no {appJsonPath} — skipping dep loading");
         }
+    }
+    // If there's no bucketRoot app.json but the bundle itself has one, use it.
+    else if (File.Exists(Path.Combine(bundleAbs, "app.json")))
+    {
+        SetBundleInfoFromAppJson(Path.Combine(bundleAbs, "app.json"));
     }
 
     var suites = EnumerateSuites(bundleAbs).ToList();
@@ -601,6 +609,23 @@ static string? FindBucketRoot(string bundlePath)
         cur = parent;
     }
     return null;
+}
+
+static void SetBundleInfoFromAppJson(string appJsonPath)
+{
+    try
+    {
+        using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(appJsonPath));
+        var root = doc.RootElement;
+        var idStr = root.TryGetProperty("id", out var pid) ? pid.GetString() : null;
+        var name = root.TryGetProperty("name", out var pn) ? pn.GetString() ?? "Unknown" : "Unknown";
+        var pub = root.TryGetProperty("publisher", out var pp) ? pp.GetString() ?? "Unknown" : "Unknown";
+        var ver = root.TryGetProperty("version", out var pv) ? pv.GetString() ?? "1.0.0.0" : "1.0.0.0";
+        Guid appId = Guid.Empty;
+        if (!string.IsNullOrEmpty(idStr)) Guid.TryParse(idStr, out appId);
+        AlRunnerV2.BcRuntime.SetCurrentBundleInfo(appId, name, pub, ver);
+    }
+    catch { /* non-fatal */ }
 }
 
 static IEnumerable<DependencyRef> ReadDependencies(string appJsonPath)

@@ -7,9 +7,18 @@ codeunit 50437 "API Tests"
 
     // === 1. Ascending ===
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "API Test Entry";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure AscendingDefaultIsTrue()
     begin
+        Initialize();
         // [GIVEN] A freshly opened RecRef
         // [THEN] Ascending defaults to true
         Assert.IsTrue(Probe.GetAscendingDefault(), 'Default Ascending must be true');
@@ -20,6 +29,7 @@ codeunit 50437 "API Tests"
     var
         _ResetAPITestEntry: Record "API Test Entry";
     begin
+        Initialize();
         _ResetAPITestEntry.DeleteAll();
         // [GIVEN] 3 entries with Entry No. 1, 2, 3
         Probe.InsertEntry(1, 'A', 'First', 10.0, true);
@@ -41,6 +51,7 @@ codeunit 50437 "API Tests"
         FldRef: FieldRef;
         _ResetAPITestEntry: Record "API Test Entry";
     begin
+        Initialize();
         _ResetAPITestEntry.DeleteAll();
         // [GIVEN] 2 entries
         Probe.InsertEntry(1, 'A', 'Alpha', 10.0, true);
@@ -68,6 +79,7 @@ codeunit 50437 "API Tests"
     var
         _ResetAPITestEntry: Record "API Test Entry";
     begin
+        Initialize();
         _ResetAPITestEntry.DeleteAll();
         // [GIVEN] 3 entries
         Probe.InsertEntry(1, 'A', 'Alpha', 10.0, true);
@@ -83,6 +95,7 @@ codeunit 50437 "API Tests"
     [Test]
     procedure ClearMarksResetsAll()
     begin
+        Initialize();
         // [GIVEN] An entry exists and is marked
         Probe.InsertEntry(1, 'A', 'Alpha', 10.0, true);
 
@@ -97,6 +110,7 @@ codeunit 50437 "API Tests"
     [Test]
     procedure GetFilterReturnsRangeExpression()
     begin
+        Initialize();
         // [WHEN] SetRange(10, 50) on Entry No.
         // [THEN] GetFilter returns "10..50"
         Assert.AreEqual('10..50', Probe.GetFilterAfterSetRange(),
@@ -106,6 +120,7 @@ codeunit 50437 "API Tests"
     [Test]
     procedure GetFilterReturnsSingleValue()
     begin
+        Initialize();
         // [WHEN] SetRange(42) on Entry No.
         // [THEN] GetFilter returns "42"
         Assert.AreEqual('42', Probe.GetFilterAfterSetRangeSingle(),
@@ -115,6 +130,7 @@ codeunit 50437 "API Tests"
     [Test]
     procedure GetFilterReturnsFilterExpression()
     begin
+        Initialize();
         // [WHEN] SetFilter('*test*') on Description
         // [THEN] GetFilter returns "*test*"
         Assert.AreEqual('*test*', Probe.GetFilterAfterSetFilter(),
@@ -126,6 +142,7 @@ codeunit 50437 "API Tests"
     [Test]
     procedure GetRangeMinMax()
     begin
+        Initialize();
         // [WHEN] SetRange(10, 50) on Entry No.
         // [THEN] GetRangeMin=10, GetRangeMax=50
         Assert.AreEqual(10, Probe.GetRangeMinAfterSetRange(),
@@ -137,6 +154,7 @@ codeunit 50437 "API Tests"
     [Test]
     procedure GetRangeMinMaxSingleValue()
     begin
+        Initialize();
         // [WHEN] SetRange(10) on Entry No. (single value => from=to=10)
         // [THEN] Both min and max return 10
         Assert.AreEqual('10,10', Probe.GetRangeMinMaxSingle(),
@@ -148,9 +166,10 @@ codeunit 50437 "API Tests"
     [Test]
     procedure FieldRefRecordReturnsOwner()
     begin
+        Initialize();
         // [WHEN] Get FieldRef from RecRef on API Test Entry
         // [THEN] FieldRef.Record().Number matches the table ID
-        Assert.AreEqual(56270, Probe.FieldRefRecordOwner(),
+        Assert.AreEqual(50098, Probe.FieldRefRecordOwner(),
             'FieldRef.Record must return the owning RecordRef with correct table number');
     end;
 
@@ -159,6 +178,7 @@ codeunit 50437 "API Tests"
     [Test]
     procedure KeyCountReturnsOne()
     begin
+        Initialize();
         // [THEN] KeyCount >= 1 (we expose at least the PK)
         Assert.IsTrue(Probe.GetKeyCount() >= 1,
             'KeyCount must be at least 1');
@@ -167,6 +187,7 @@ codeunit 50437 "API Tests"
     [Test]
     procedure KeyRefFieldCountMatchesPK()
     begin
+        Initialize();
         // [GIVEN] Table has composite PK (Entry No., Category) = 2 fields
         // [THEN] KeyIndex(1).FieldCount = 2
         Assert.AreEqual(2, Probe.GetKeyFieldCount(),
@@ -176,6 +197,7 @@ codeunit 50437 "API Tests"
     [Test]
     procedure KeyRefFieldIndexReturnsCorrectField()
     begin
+        Initialize();
         // [GIVEN] PK fields are Entry No. (1) and Category (2)
         // [THEN] FieldIndex(1).Number = 1, FieldIndex(2).Number = 2
         Assert.AreEqual(1, Probe.GetKeyFieldNo(1),
@@ -189,6 +211,7 @@ codeunit 50437 "API Tests"
     [Test]
     procedure CurrentKeyIndexReturnsOne()
     begin
+        Initialize();
         // [THEN] CurrentKeyIndex defaults to 1
         Assert.AreEqual(1, Probe.GetCurrentKeyIndex(),
             'CurrentKeyIndex must return 1');
@@ -202,6 +225,7 @@ codeunit 50437 "API Tests"
         RecRef: RecordRef;
         FldRef: FieldRef;
     begin
+        Initialize();
         // [GIVEN] No filter set
         RecRef.Open(Database::"API Test Entry");
         FldRef := RecRef.Field(1);
@@ -216,20 +240,22 @@ codeunit 50437 "API Tests"
     var
         RecRef: RecordRef;
         FldRef: FieldRef;
-        Val: Integer;
+        Dummy: Integer;
     begin
+        Initialize();
         // [GIVEN] No range set
         RecRef.Open(Database::"API Test Entry");
         FldRef := RecRef.Field(1);
-        // [THEN] GetRangeMin returns 0 (default for integer)
-        Val := FldRef.GetRangeMin();
-        Assert.AreEqual(0, Val, 'GetRangeMin with no range must return default');
+        // [THEN] In BC, GetRangeMin throws "Specify a filter" when no filter is set
+        asserterror Dummy := FldRef.GetRangeMin();
+        Assert.ExpectedError('Specify a filter');
         RecRef.Close();
     end;
 
     [Test]
     procedure RecRefGetFilterDelegatesToHandle()
     begin
+        Initialize();
         // [WHEN] SetRange on a field via FieldRef, then read via FieldRef.GetFilter
         // [THEN] Returns the same range expression — exercises MockRecordRef's delegation to handle
         Assert.AreEqual('5..15', Probe.GetRecRefGetFilter(1),
@@ -239,6 +265,7 @@ codeunit 50437 "API Tests"
     [Test]
     procedure RecRefGetFilterReturnsEmptyWhenNoFilter()
     begin
+        Initialize();
         // [GIVEN] No filter set on the field
         // [THEN] FieldRef.GetFilter returns empty string (via MockRecordRef delegation)
         Assert.AreEqual('', Probe.GetRecRefGetFilterNoFilter(1),
@@ -250,6 +277,7 @@ codeunit 50437 "API Tests"
     var
         _ResetAPITestEntry: Record "API Test Entry";
     begin
+        Initialize();
         _ResetAPITestEntry.DeleteAll();
         // [GIVEN] 3 entries (Entry No. 1, 2, 3); the probe marks only entry 2 via RecordRef.Mark
         // Note: the last parameter to InsertEntry is the 'Active' field, not the mark flag
@@ -269,6 +297,7 @@ codeunit 50437 "API Tests"
         FldRef: FieldRef;
         _ResetAPITestEntry: Record "API Test Entry";
     begin
+        Initialize();
         _ResetAPITestEntry.DeleteAll();
         // [GIVEN] An entry exists but is not marked
         Probe.InsertEntry(1, 'A', 'Alpha', 10.0, true);

@@ -27,7 +27,7 @@ codeunit 50439 "RecRef Implicit Tests"
         Rec: Record "Implicit Conv Table";
         Helper: Codeunit "RecRef Implicit Helper";
     begin
-        // [GIVEN] A Record variable for table 1275001 (2 fields)
+        // [GIVEN] A Record variable for table 50099 (2 fields)
         // [WHEN]  Passed to a RecordRef parameter in a different codeunit
         // [THEN]  Returns 2
         Assert.AreEqual(2, Helper.GetFieldCountFromRef(Rec),
@@ -40,11 +40,11 @@ codeunit 50439 "RecRef Implicit Tests"
         Rec: Record "Implicit Conv Table";
         Helper: Codeunit "RecRef Implicit Helper";
     begin
-        // [GIVEN] A Record variable bound to table 1275001
+        // [GIVEN] A Record variable bound to table 50099
         // [WHEN]  Passed to a RecordRef parameter in a different codeunit
         // [THEN]  Number returns the table ID
-        Assert.AreEqual(1275001, Helper.GetTableNoFromRef(Rec),
-            'Cross-CU: Table number from Record passed as RecordRef must be 1275001');
+        Assert.AreEqual(50099, Helper.GetTableNoFromRef(Rec),
+            'Cross-CU: Table number from Record passed as RecordRef must be 50099');
     end;
 
     // ---------------------------------------------------------------
@@ -57,11 +57,11 @@ codeunit 50439 "RecRef Implicit Tests"
     var
         Rec: Record "Implicit Conv Table";
     begin
-        // [GIVEN] A Record variable bound to table 1275001
+        // [GIVEN] A Record variable bound to table 50099
         // [WHEN]  Passed to a RecordRef parameter in the same codeunit
         // [THEN]  Number returns the table ID
-        Assert.AreEqual(1275001, GetTableNoFromRef(Rec),
-            'Same-CU: Table number from Record passed as RecordRef must be 1275001');
+        Assert.AreEqual(50099, GetTableNoFromRef(Rec),
+            'Same-CU: Table number from Record passed as RecordRef must be 50099');
     end;
 
     // ---------------------------------------------------------------

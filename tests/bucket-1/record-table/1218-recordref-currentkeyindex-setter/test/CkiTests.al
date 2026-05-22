@@ -66,8 +66,8 @@ codeunit 50429 "CKI Tests"
     begin
         SeedRecords();
         RecRef.Open(Database::"CKI Table");
-        Assert.AreEqual(2, Src.GetKeyCount(RecRef),
-            'KeyCount should match the number of declared keys (PK + BySortVal)');
+        Assert.AreEqual(3, Src.GetKeyCount(RecRef),
+            'KeyCount should match the number of declared keys (PK + BySortVal + SystemId)');
     end;
 
     // ------------------------------------------------------------------
@@ -110,7 +110,7 @@ codeunit 50429 "CKI Tests"
         RecRef.Open(Database::"CKI Table");
 
         asserterror Src.SetCurrentKeyIndex(RecRef, 99);
-        Assert.ExpectedError('out of range');
+        Assert.ExpectedError('does not have an active key at index');
     end;
 
     // ------------------------------------------------------------------
@@ -125,6 +125,6 @@ codeunit 50429 "CKI Tests"
         RecRef.Open(Database::"CKI Table");
 
         asserterror Src.SetCurrentKeyIndex(RecRef, 0);
-        Assert.ExpectedError('out of range');
+        Assert.ExpectedError('does not have an active key at index');
     end;
 }

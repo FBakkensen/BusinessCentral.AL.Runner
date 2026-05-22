@@ -6,11 +6,20 @@ codeunit 50490 "FREO Test"
         Assert: Codeunit Assert;
         Src: Codeunit "FREO Src";
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "FREO Order";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure GetEnumValueCaptionFromOrdinal_Zero()
     var
         _ResetFREOOrder: Record "FREO Order";
     begin
+        Initialize();
         _ResetFREOOrder.DeleteAll();
         // Enum: 0 → Open; 5 → InProgress; 10 → Closed.
         Assert.AreEqual('Open', Src.CaptionForOrdinal(0),
@@ -22,17 +31,17 @@ codeunit 50490 "FREO Test"
     var
         _ResetFREOOrder: Record "FREO Order";
     begin
+        Initialize();
         _ResetFREOOrder.DeleteAll();
-        // Note: EnumRegistry captures names, not captions, so standalone Caption
-        // returns the AL identifier ("InProgress"), not the display caption
-        // ("In Progress"). Documenting the runner behaviour.
-        Assert.AreEqual('InProgress', Src.CaptionForOrdinal(5),
-            'Caption for ordinal 5 must be "InProgress" (standalone treats caption=name)');
+        // In BC, Caption returns the display caption ("In Progress"), not the AL identifier.
+        Assert.AreEqual('In Progress', Src.CaptionForOrdinal(5),
+            'Caption for ordinal 5 must be "In Progress" (the declared caption)');
     end;
 
     [Test]
     procedure GetEnumValueCaptionFromOrdinal_Last()
     begin
+        Initialize();
         Assert.AreEqual('Closed', Src.CaptionForOrdinal(10),
             'Caption for ordinal 10 must be "Closed"');
     end;
@@ -42,6 +51,7 @@ codeunit 50490 "FREO Test"
     var
         _ResetFREOOrder: Record "FREO Order";
     begin
+        Initialize();
         _ResetFREOOrder.DeleteAll();
         // Enum member names (distinct from captions).
         Assert.AreEqual('Open', Src.NameForOrdinal(0),
@@ -51,6 +61,7 @@ codeunit 50490 "FREO Test"
     [Test]
     procedure GetEnumValueNameFromOrdinal_Middle()
     begin
+        Initialize();
         // Name uses the AL identifier ("InProgress"), while Caption is the display text.
         Assert.AreEqual('InProgress', Src.NameForOrdinal(5),
             'Name for ordinal 5 must be "InProgress"');
@@ -61,6 +72,7 @@ codeunit 50490 "FREO Test"
     var
         _ResetFREOOrder: Record "FREO Order";
     begin
+        Initialize();
         _ResetFREOOrder.DeleteAll();
         // Negative: guard against accidentally using 1-based INDEX instead of ORDINAL.
         // Ordinals are 0, 5, 10 — if the impl mistakenly treats the arg as a 1-based

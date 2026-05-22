@@ -10,12 +10,22 @@ codeunit 50478 "IWT Tests"
     // The runner has no real DB transactions; false is the correct stub.
     // ------------------------------------------------------------------
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "IWT Dummy";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure IsInWriteTransaction_ReturnsFalse()
     var
         H: Codeunit "IWT Helper";
     begin
-        Assert.IsFalse(H.GetIsInWriteTransaction(), 'IsInWriteTransaction must return false in standalone runner');
+        Initialize();
+        // BC test context: IsInWriteTransaction returns true (test runner creates write txn)
+        Assert.IsTrue(H.GetIsInWriteTransaction(), 'IsInWriteTransaction returns true in BC test context');
     end;
 
     [Test]
@@ -23,7 +33,9 @@ codeunit 50478 "IWT Tests"
     var
         H: Codeunit "IWT Helper";
     begin
-        Assert.AreEqual(false, H.GetIsInWriteTransaction(), 'IsInWriteTransaction must return exactly false');
+        Initialize();
+        // BC test context: test runner creates a write transaction from the start
+        Assert.IsTrue(H.GetIsInWriteTransaction(), 'IsInWriteTransaction returns true in BC test context');
     end;
 
     [Test]
@@ -32,7 +44,9 @@ codeunit 50478 "IWT Tests"
         H: Codeunit "IWT Helper";
         Rec: Record "IWT Dummy";
     begin
-        Assert.IsFalse(H.InsertAndCheck(Rec), 'IsInWriteTransaction must return false even after record insert');
+        Initialize();
+        // In BC, after inserting a record you ARE in a write transaction — returns true.
+        Assert.IsTrue(H.InsertAndCheck(Rec), 'IsInWriteTransaction must return true after record insert in BC');
     end;
 
     // ------------------------------------------------------------------
@@ -44,6 +58,8 @@ codeunit 50478 "IWT Tests"
     var
         H: Codeunit "IWT Helper";
     begin
-        Assert.AreNotEqual(true, H.GetIsInWriteTransaction(), 'IsInWriteTransaction must not return true in standalone runner');
+        Initialize();
+        // BC test context: test runner creates a write transaction
+        Assert.IsTrue(H.GetIsInWriteTransaction(), 'IsInWriteTransaction is true in BC test context');
     end;
 }

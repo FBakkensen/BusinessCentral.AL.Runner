@@ -5,11 +5,20 @@ codeunit 50067 "MaxStrLen Test"
     var
         Assert: Codeunit "Library Assert";
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "MaxStrLen InitValue Test";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure MaxStrLen_TextField_ReturnsFieldLength()
     var
         Rec: Record "MaxStrLen Test";
     begin
+        Initialize();
         // [GIVEN] A table with Text[50] field
         // [WHEN] MaxStrLen is called on the field
         // [THEN] Returns 50, not Int32.MaxValue
@@ -21,6 +30,7 @@ codeunit 50067 "MaxStrLen Test"
     var
         Rec: Record "MaxStrLen Test";
     begin
+        Initialize();
         Assert.AreEqual(20, MaxStrLen(Rec.MediumCode), 'MaxStrLen(Code[20]) should be 20');
     end;
 
@@ -29,6 +39,7 @@ codeunit 50067 "MaxStrLen Test"
     var
         Rec: Record "MaxStrLen Test";
     begin
+        Initialize();
         Assert.AreEqual(250, MaxStrLen(Rec.LongText), 'MaxStrLen(Text[250]) should be 250');
     end;
 
@@ -37,6 +48,7 @@ codeunit 50067 "MaxStrLen Test"
     var
         BoundedVar: Text[100];
     begin
+        Initialize();
         // [GIVEN] A local variable declared as Text[100]
         // [WHEN] MaxStrLen is called on it
         // [THEN] Returns 100
@@ -53,6 +65,7 @@ codeunit 50067 "MaxStrLen Test"
     var
         Rec: Record "MaxStrLen InitValue Test";
     begin
+        Initialize();
         // [GIVEN] A table with Text[100] field that has InitValue = 'default'
         // [WHEN] Init() is called and MaxStrLen is evaluated on the field
         // [THEN] Returns 100, not Int32.MaxValue (2147483647)
@@ -65,6 +78,7 @@ codeunit 50067 "MaxStrLen Test"
     var
         Rec: Record "MaxStrLen InitValue Test";
     begin
+        Initialize();
         // [GIVEN] A table with Code[10] field that has InitValue = 'INIT'
         // [WHEN] Init() is called and MaxStrLen is evaluated on the field
         // [THEN] Returns 10
@@ -77,6 +91,7 @@ codeunit 50067 "MaxStrLen Test"
     var
         Rec: Record "MaxStrLen InitValue Test";
     begin
+        Initialize();
         // [GIVEN] A record inserted with a Text[100] field value then re-read via Get
         // [WHEN] MaxStrLen is evaluated on the field from the retrieved record
         // [THEN] Returns 100 — not the MaxLength of the stored NavText value

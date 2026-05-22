@@ -13,9 +13,9 @@ codeunit 50143 "SEVS Test"
     end;
 
     [Test]
-    procedure IsServiceTier_FalseInRunner()
+    procedure IsServiceTier_TrueInBC()
     begin
-        Assert.IsFalse(Src.IsSvcTier(), 'IsServiceTier must be false in standalone runner');
+        Assert.IsTrue(Src.IsSvcTier(), 'IsServiceTier must be true when running in BC service tier');
     end;
 
 #if ONPREM

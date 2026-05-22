@@ -19,18 +19,7 @@ codeunit 50184 ErrorCodeTest
         Assert.ExpectedErrorCode('Dialog');
     end;
 
-    [Test]
-    procedure TestExpectedErrorCode_NoError_Fails()
-    var
-        Producer: Codeunit ErrorProducer;
-    begin
-        // [SCENARIO] ExpectedErrorCode fails when no error was raised.
-        // [GIVEN] A codeunit that does NOT raise an error.
-        // [WHEN] We wrap it in asserterror (no error occurs).
-        asserterror Producer.NoError();
-
-        // [THEN] ExpectedErrorCode should fail because no error occurred.
-        asserterror Assert.ExpectedErrorCode('Dialog');
-        Assert.ExpectedError('Assert.ExpectedErrorCode failed');
-    end;
+    // TestExpectedErrorCode_NoError_Fails removed: BC 16.1 raises "no error occurred
+    // inside asserterror" immediately when asserterror wraps a non-throwing call,
+    // so the nested asserterror pattern is not portable across environments.
 }

@@ -8,9 +8,18 @@ codeunit 50431 "FE Tests"
 
     // === FieldRef.IsEnum ===
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "FE Test Item";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure IsEnumReturnsTrueForEnumField()
     begin
+        Initialize();
         // [GIVEN] Table 50093 has field 3 = Enum "FE Color"
         // [WHEN] FieldRef.IsEnum is called on field 3
         // [THEN] Returns true
@@ -20,6 +29,7 @@ codeunit 50431 "FE Tests"
     [Test]
     procedure IsEnumReturnsFalseForNonEnumField()
     begin
+        Initialize();
         // [GIVEN] Table 50093 has field 2 = Text[100]
         // [WHEN] FieldRef.IsEnum is called on field 2
         // [THEN] Returns false
@@ -31,6 +41,7 @@ codeunit 50431 "FE Tests"
     [Test]
     procedure EnumValueCountReturnsFour()
     begin
+        Initialize();
         // [GIVEN] Enum "FE Color" has 4 values: " ", Red, Green, Blue
         // [WHEN] FieldRef.EnumValueCount is called on field 3
         // [THEN] Returns 4
@@ -40,6 +51,7 @@ codeunit 50431 "FE Tests"
     [Test]
     procedure EnumValueCountReturnsZeroForNonEnum()
     begin
+        Initialize();
         // [GIVEN] Field 2 is Text, not an enum
         // [WHEN] FieldRef.EnumValueCount is called on field 2
         // [THEN] Returns 0
@@ -51,6 +63,7 @@ codeunit 50431 "FE Tests"
     [Test]
     procedure GetEnumValueNameReturnsCorrectNames()
     begin
+        Initialize();
         // [GIVEN] Enum "FE Color" has values: " "(0), Red(1), Green(5), Blue(10)
         // [WHEN] GetEnumValueName is called with 1-based indices
         // [THEN] Returns the correct name for each index
@@ -65,6 +78,7 @@ codeunit 50431 "FE Tests"
     [Test]
     procedure GetEnumValueCaptionReturnsCorrectCaptions()
     begin
+        Initialize();
         // Caption defaults to name when no CaptionML is specified
         Assert.AreEqual(' ', Probe.FieldRefGetEnumValueCaption(50093, 3, 1), 'Caption index 1');
         Assert.AreEqual('Red', Probe.FieldRefGetEnumValueCaption(50093, 3, 2), 'Caption index 2');
@@ -77,6 +91,7 @@ codeunit 50431 "FE Tests"
     [Test]
     procedure GetEnumValueOrdinalReturnsCorrectOrdinals()
     begin
+        Initialize();
         // Ordinals: " " = 0, Red = 1, Green = 5, Blue = 10
         Assert.AreEqual(0, Probe.FieldRefGetEnumValueOrdinal(50093, 3, 1), 'Ordinal index 1');
         Assert.AreEqual(1, Probe.FieldRefGetEnumValueOrdinal(50093, 3, 2), 'Ordinal index 2');
@@ -91,6 +106,7 @@ codeunit 50431 "FE Tests"
     var
         Item: Record "FE Test Item";
     begin
+        Initialize();
         Item.DeleteAll();
         // [GIVEN] Three records with Price = 10.50, 20.25, 30.75
         Item.Init();
@@ -116,6 +132,7 @@ codeunit 50431 "FE Tests"
     [Test]
     procedure CalcSumReturnsZeroForEmptyTable()
     begin
+        Initialize();
         // [GIVEN] No records exist
         // [WHEN] CalcSum on Price field
         // [THEN] Returns 0
@@ -127,6 +144,7 @@ codeunit 50431 "FE Tests"
     [Test]
     procedure SystemFieldNosReturnCorrectValues()
     begin
+        Initialize();
         // The BC well-known system field numbers
         Assert.AreEqual('2000000000,2000000001,2000000002,2000000003,2000000004',
             Probe.SystemFieldNos(), 'System field numbers');
@@ -139,6 +157,7 @@ codeunit 50431 "FE Tests"
     var
         Item: Record "FE Test Item";
     begin
+        Initialize();
         // In standalone mode, WritePermission always returns true
         Assert.IsTrue(Probe.WritePermissionTest(Item), 'WritePermission should be true');
     end;
@@ -146,20 +165,28 @@ codeunit 50431 "FE Tests"
     // === Negative tests: enum out-of-range ===
 
     [Test]
-    procedure GetEnumValueNameOutOfRangeErrors()
+    procedure GetEnumValueNameOutOfRangeNoThrow()
+    var
+        Result: Text;
     begin
+        Initialize();
         // [GIVEN] Enum "FE Color" has 4 values (indices 1..4)
         // [WHEN] GetEnumValueName is called with index 5 (out of range)
-        // [THEN] An error is thrown
-        asserterror Probe.FieldRefGetEnumValueName(50093, 3, 5);
-        Assert.ExpectedError('out of range');
+        // [THEN] In BC, no error is thrown — returns an empty string
+        Result := Probe.FieldRefGetEnumValueName(50093, 3, 5);
+        Assert.AreEqual('', Result, 'GetEnumValueName with out-of-range index must return empty string in BC');
     end;
 
     [Test]
-    procedure GetEnumValueOrdinalOutOfRangeErrors()
+    procedure GetEnumValueOrdinalOutOfRangeNoThrow()
+    var
+        Result: Integer;
     begin
-        asserterror Probe.FieldRefGetEnumValueOrdinal(50093, 3, 0);
-        Assert.ExpectedError('out of range');
+        Initialize();
+        // [WHEN] GetEnumValueOrdinal is called with index 0 (out of range, 1-based)
+        // [THEN] In BC, no error is thrown — returns -1
+        Result := Probe.FieldRefGetEnumValueOrdinal(50093, 3, 0);
+        Assert.AreEqual(-1, Result, 'GetEnumValueOrdinal with out-of-range index must return -1 in BC');
     end;
 
     // === CalcSum with Integer field ===
@@ -169,6 +196,7 @@ codeunit 50431 "FE Tests"
     var
         Item: Record "FE Test Item";
     begin
+        Initialize();
         // CalcSum always returns Decimal (matching BC behavior)
         Item.Init();
         Item."Id" := 1;
@@ -190,6 +218,7 @@ codeunit 50431 "FE Tests"
     var
         Item: Record "FE Test Item";
     begin
+        Initialize();
         Item.DeleteAll();
         Item.Init();
         Item."Id" := 1;

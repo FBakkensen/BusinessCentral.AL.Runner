@@ -5,11 +5,20 @@ codeunit 50629 "Validate No Value Test"
     var
         Assert: Codeunit "Library Assert";
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "Validate No Value Table";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure ValidateNoValue_InOnInsert_FiresTrigger()
     var
         Rec: Record "Validate No Value Table";
     begin
+        Initialize();
         // [GIVEN] A record with Quantity set directly (bypassing trigger)
         Rec.Init();
         Rec."Entry No." := 1;
@@ -27,6 +36,7 @@ codeunit 50629 "Validate No Value Test"
     var
         Rec: Record "Validate No Value Table";
     begin
+        Initialize();
         // [GIVEN] A record with no Quantity
         Rec.Init();
         Rec."Entry No." := 2;

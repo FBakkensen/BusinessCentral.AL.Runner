@@ -5,11 +5,20 @@ codeunit 50524 "Test Ext Fields"
     var
         Assert: Codeunit Assert;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "Base Table";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure SetAndReadExtensionField()
     var
         BaseRec: Record "Base Table";
     begin
+        Initialize();
         // Positive: extension field can be written and read back
         BaseRec.Init();
         BaseRec."No." := 'T001';
@@ -27,6 +36,7 @@ codeunit 50524 "Test Ext Fields"
     var
         BaseRec: Record "Base Table";
     begin
+        Initialize();
         // Positive: unset extension field defaults to type default
         BaseRec.Init();
         BaseRec."No." := 'T002';
@@ -44,6 +54,7 @@ codeunit 50524 "Test Ext Fields"
         Logic: Codeunit "Ext Field Logic";
         Result: Decimal;
     begin
+        Initialize();
         // Positive: extension fields work across codeunit calls
         BaseRec.Init();
         BaseRec."No." := 'T003';
@@ -60,6 +71,7 @@ codeunit 50524 "Test Ext Fields"
     var
         BaseRec: Record "Base Table";
     begin
+        Initialize();
         // Negative: verify extension field holds actual value, not default
         BaseRec.Init();
         BaseRec."No." := 'T004';

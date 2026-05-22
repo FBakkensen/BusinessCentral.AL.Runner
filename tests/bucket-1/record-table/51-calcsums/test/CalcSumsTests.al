@@ -9,11 +9,20 @@ codeunit 50565 "CalcSums Tests"
     // Record.CalcSums — positive tests
     // -----------------------------------------------------------------------
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "CalcSums Entry";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure CalcSums_DecimalField_ReturnsCorrectSum()
     var
         Entry: Record "CalcSums Entry";
     begin
+        Initialize();
         // [GIVEN] Three entries with Amount 10.5, 20.0, 30.75
         InsertEntry(1, 1, 10.5, 0);
         InsertEntry(2, 1, 20.0, 0);
@@ -31,6 +40,7 @@ codeunit 50565 "CalcSums Tests"
     var
         Entry: Record "CalcSums Entry";
     begin
+        Initialize();
         // [GIVEN] Three entries with Quantity 5, 10, 15
         InsertEntry(4, 1, 0, 5);
         InsertEntry(5, 1, 0, 10);
@@ -48,6 +58,7 @@ codeunit 50565 "CalcSums Tests"
     var
         Entry: Record "CalcSums Entry";
     begin
+        Initialize();
         // [GIVEN] Two status=1 entries (Amount 100, 200) and one status=2 (Amount 999)
         InsertEntry(10, 1, 100, 0);
         InsertEntry(11, 1, 200, 0);
@@ -66,6 +77,7 @@ codeunit 50565 "CalcSums Tests"
     var
         Entry: Record "CalcSums Entry";
     begin
+        Initialize();
         // [GIVEN] Two entries
         InsertEntry(20, 1, 50.5, 3);
         InsertEntry(21, 1, 49.5, 7);
@@ -87,6 +99,7 @@ codeunit 50565 "CalcSums Tests"
     var
         Entry: Record "CalcSums Entry";
     begin
+        Initialize();
         // [GIVEN] No records exist matching Status = 999
         // (table is empty for this value — no inserts)
 
@@ -103,6 +116,7 @@ codeunit 50565 "CalcSums Tests"
     var
         Entry: Record "CalcSums Entry";
     begin
+        Initialize();
         // [GIVEN] One entry with Status=1
         InsertEntry(30, 1, 42, 7);
 

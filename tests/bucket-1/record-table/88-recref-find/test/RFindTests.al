@@ -4,6 +4,13 @@ codeunit 50619 "RF Find Tests"
     var
         Assert: Codeunit Assert;
 
+    local procedure Initialize()
+    var
+        R: Record "RF Find Item";
+    begin
+        R.DeleteAll(false);
+    end;
+
     // --- RecRef.Find() with no argument ---
 
     [Test]
@@ -13,18 +20,19 @@ codeunit 50619 "RF Find Tests"
         RecRef: RecordRef;
         Found: Boolean;
     begin
+        Initialize();
         // [GIVEN] A record exists in the table
         R.Id := 1;
         R.Name := 'Alpha';
         R.Insert();
 
-        // [WHEN] RecRef.Find() is called and result stored in a Boolean
+        // [WHEN] RecRef.Find('-') is called and result stored in a Boolean
         RecRef.Open(Database::"RF Find Item");
-        Found := RecRef.Find();
+        Found := RecRef.Find('-');
         RecRef.Close();
 
         // [THEN] The result passed to Assert.IsTrue compiles and succeeds
-        Assert.IsTrue(Found, 'RecRef.Find() must return true when records exist');
+        Assert.IsTrue(Found, 'RecRef.Find(''-'') must return true when records exist');
     end;
 
     [Test]
@@ -33,14 +41,15 @@ codeunit 50619 "RF Find Tests"
         RecRef: RecordRef;
         Found: Boolean;
     begin
+        Initialize();
         // [GIVEN] No records exist
-        // [WHEN] RecRef.Find() is called on empty table
+        // [WHEN] RecRef.Find('-') is called on empty table
         RecRef.Open(Database::"RF Find Item");
-        Found := RecRef.Find();
+        Found := RecRef.Find('-');
         RecRef.Close();
 
         // [THEN] Result is false
-        Assert.IsFalse(Found, 'RecRef.Find() must return false on empty table');
+        Assert.IsFalse(Found, 'RecRef.Find(''-'') must return false on empty table');
     end;
 
     [Test]
@@ -49,14 +58,15 @@ codeunit 50619 "RF Find Tests"
         R: Record "RF Find Item";
         RecRef: RecordRef;
     begin
+        Initialize();
         // [GIVEN] A record exists
-        R.Id := 2;
-        R.Name := 'Bravo';
+        R.Id := 1;
+        R.Name := 'test';
         R.Insert();
 
-        // [WHEN/THEN] RecRef.Find() result used directly in Assert.IsTrue
+        // [WHEN/THEN] RecRef.Find('-') result used directly in Assert.IsTrue
         RecRef.Open(Database::"RF Find Item");
-        Assert.IsTrue(RecRef.Find(), 'RecRef.Find() direct in Assert.IsTrue must compile and succeed');
+        Assert.IsTrue(RecRef.Find('-'), 'RecRef.Find(''-'') direct in Assert.IsTrue must compile and succeed');
         RecRef.Close();
     end;
 
@@ -65,10 +75,11 @@ codeunit 50619 "RF Find Tests"
     var
         RecRef: RecordRef;
     begin
+        Initialize();
         // [GIVEN] No records
-        // [WHEN/THEN] RecRef.Find() used directly in Assert.IsFalse on empty table
+        // [WHEN/THEN] RecRef.Find('-') used directly in Assert.IsFalse on empty table
         RecRef.Open(Database::"RF Find Item");
-        Assert.IsFalse(RecRef.Find(), 'RecRef.Find() direct in Assert.IsFalse must compile and return false');
+        Assert.IsFalse(RecRef.Find('-'), 'RecRef.Find(''-'') direct in Assert.IsFalse must compile and return false');
         RecRef.Close();
     end;
 
@@ -78,9 +89,10 @@ codeunit 50619 "RF Find Tests"
         R: Record "RF Find Item";
         Probe: Codeunit "RF Find Probe";
     begin
+        Initialize();
         // [GIVEN] A record exists
-        R.Id := 3;
-        R.Name := 'Charlie';
+        R.Id := 1;
+        R.Name := 'test';
         R.Insert();
 
         // [WHEN] Find via probe codeunit (tests cross-codeunit RecRef.Find usage)
@@ -93,6 +105,7 @@ codeunit 50619 "RF Find Tests"
     var
         Probe: Codeunit "RF Find Probe";
     begin
+        Initialize();
         // [GIVEN] No records
         // [WHEN] Find via probe
         // [THEN] Returns false

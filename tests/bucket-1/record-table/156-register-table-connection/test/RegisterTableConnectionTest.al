@@ -7,47 +7,42 @@ codeunit 50476 "RTC Test"
         Src: Codeunit "RTC Src";
 
     [Test]
-    procedure RegisterTableConnection_NoOp()
+    procedure RegisterTableConnection_Throws()
+    // BC 16.1: RegisterTableConnection requires admin permissions and throws in test context.
     begin
-        // Positive: standalone stub must complete without error.
-        Src.CallRegister(TableConnectionType::ExternalSQL, 'MyConn', 'Server=localhost');
-        Assert.IsTrue(true, 'RegisterTableConnection must not throw');
+        asserterror Src.CallRegister(TableConnectionType::ExternalSQL, 'MyConn', 'Server=localhost');
     end;
 
     [Test]
-    procedure RegisterTableConnection_EmptyArgs()
+    procedure RegisterTableConnection_EmptyArgs_Throws()
+    // BC 16.1: RegisterTableConnection requires admin permissions and throws in test context.
     begin
-        // Edge: empty strings must not crash the stub.
-        Src.CallRegister(TableConnectionType::ExternalSQL, '', '');
-        Assert.IsTrue(true, 'RegisterTableConnection with empty args must not throw');
+        asserterror Src.CallRegister(TableConnectionType::ExternalSQL, '', '');
     end;
 
     [Test]
-    procedure RegisterTableConnection_ExecutionContinues()
+    procedure RegisterTableConnection_CRM_NoThrow()
+    // BC 16.1: RegisterTableConnection with CRM type does NOT throw in test context
+    // (unlike ExternalSQL which requires admin permissions). No-throw contract.
     begin
-        // Proving: execution continues past the call (flag gets set).
-        Assert.IsTrue(
-            Src.CallRegisterAndReturnFlag(TableConnectionType::CRM, 'CRMConn', 'Endpoint=crm.example'),
-            'Caller must reach `exit(true)` after RegisterTableConnection');
+        Src.CallRegister(TableConnectionType::CRM, 'CRMConn', 'Endpoint=crm.example');
+        Assert.IsTrue(true, 'RegisterTableConnection with CRM type must not throw');
     end;
 
     [Test]
-    procedure RegisterTableConnection_DifferentTypes()
+    procedure RegisterTableConnection_DifferentTypes_Throws()
+    // BC 16.1: RegisterTableConnection requires admin permissions and throws in test context.
     begin
-        // Both available TableConnectionType enum values must complete.
-        Src.CallRegister(TableConnectionType::ExternalSQL, 'SqlConn', 'sql-cs');
-        Src.CallRegister(TableConnectionType::CRM, 'CrmConn', 'crm-cs');
-        Assert.IsTrue(true, 'Calls with both connection types must not throw');
+        asserterror Src.CallRegister(TableConnectionType::ExternalSQL, 'SqlConn', 'sql-cs');
     end;
 
     [Test]
-    procedure RegisterTableConnection_LongConnectionString_NegativeTrap()
+    procedure RegisterTableConnection_LongConnectionString_Throws()
+    // BC 16.1: RegisterTableConnection requires admin permissions and throws in test context.
     begin
-        // Negative trap: guard against crashing on large input.
-        Src.CallRegister(
+        asserterror Src.CallRegister(
             TableConnectionType::ExternalSQL,
             'VeryLongConnectionName_123456789',
             'Server=verylonghostname.example.com;Database=db;User=dbuser;Password=pwd;MultipleActiveResultSets=true');
-        Assert.IsTrue(true, 'RegisterTableConnection with long strings must not throw');
     end;
 }

@@ -29,12 +29,9 @@ codeunit 50452 "LT Test"
     var
         result: Boolean;
     begin
-        // In the runner there is no real DB, so setting LockTimeout is a no-op.
-        // The setter call must not throw, and the read afterward must still
-        // be defined. Under the current stub contract the default (true) is
-        // preserved regardless of what's passed to the setter.
+        // In BC, setting LockTimeout(false) takes effect and the getter returns false.
         result := Src.SetAndGetLockTimeout(false);
-        Assert.IsTrue(result, 'After no-op setter, LockTimeout must still read as true (default)');
+        Assert.IsFalse(result, 'After setting LockTimeout to false, read-back must return false');
     end;
 
     [Test]

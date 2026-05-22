@@ -5,11 +5,22 @@ codeunit 50559 "Test Record Get"
     var
         Assert: Codeunit Assert;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "Record Get Composite";
+        Rec2: Record "Record Get Table";
+    begin
+        Rec1.DeleteAll(false);
+        Rec2.DeleteAll(false);
+    end;
+
     [Test]
     procedure GetRetrievesRecordByPrimaryKey()
     var
         Rec: Record "Record Get Table";
     begin
+        Initialize();
         // Insert a record, then Get it by PK — must load the correct row
         Rec.Init();
         Rec.Code := 'ABC';
@@ -30,6 +41,7 @@ codeunit 50559 "Test Record Get"
         Rec: Record "Record Get Table";
         Found: Boolean;
     begin
+        Initialize();
         Rec.Init();
         Rec.Code := 'EXIST';
         Rec.Insert();
@@ -43,6 +55,7 @@ codeunit 50559 "Test Record Get"
     var
         Rec: Record "Record Get Table";
     begin
+        Initialize();
         // Get on a key that was never inserted must throw
         asserterror Rec.Get('NONEXIST');
         Assert.ExpectedError('does not exist');
@@ -53,6 +66,7 @@ codeunit 50559 "Test Record Get"
     var
         Rec: Record "Record Get Table";
     begin
+        Initialize();
         // Insert two records, Get should load the one matching the key
         Rec.Init();
         Rec.Code := 'A';
@@ -76,6 +90,7 @@ codeunit 50559 "Test Record Get"
     var
         Rec: Record "Record Get Composite";
     begin
+        Initialize();
         // Composite PK: (CompanyNo, EntryNo)
         Rec.Init();
         Rec."CompanyNo" := 'COMP1';
@@ -102,6 +117,7 @@ codeunit 50559 "Test Record Get"
     var
         Rec: Record "Record Get Composite";
     begin
+        Initialize();
         asserterror Rec.Get('NOCOMP', 999);
         Assert.ExpectedError('does not exist');
     end;

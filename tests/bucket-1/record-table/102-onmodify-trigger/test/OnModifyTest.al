@@ -9,12 +9,23 @@ codeunit 50403 "OMT Tests"
     var
         Assert: Codeunit Assert;
 
+
+    local procedure Initialize()
+    var
+        ExtraRec: Record "OMT Counter";
+        Rec1: Record "OMT Source";
+    begin
+        ExtraRec.DeleteAll(false);
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure OnModifyTrigger_CounterCreated_AfterModify()
     var
         Src: Record "OMT Source";
         Counter: Record "OMT Counter";
     begin
+        Initialize();
         // Positive: Modify(true) must fire OnModify which inserts Counter(PK=1).
         Src.PK := 1;
         Src.Val := 0;
@@ -31,6 +42,7 @@ codeunit 50403 "OMT Tests"
         Src: Record "OMT Source";
         Counter: Record "OMT Counter";
     begin
+        Initialize();
         // Negative: Modify(false) must NOT fire the AL trigger.
         Src.PK := 2;
         Src.Val := 0;
@@ -48,6 +60,7 @@ codeunit 50403 "OMT Tests"
         Src: Record "OMT Source";
         Counter: Record "OMT Counter";
     begin
+        Initialize();
         // Rec-state: trigger stores Rec.Val into Counter.Hits.
         // Verify Counter.Hits = 77, proving the trigger sees the updated value
         // (Rec holds the new state at the point the trigger fires).

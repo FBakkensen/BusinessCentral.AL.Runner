@@ -5,12 +5,21 @@ codeunit 50541 "Test TransferFields"
     var
         Assert: Codeunit Assert;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "TF Src";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure TransferFieldsCopiesMatchingFieldsByNumber()
     var
         Src: Record "TF Src";
         Tgt: Record "TF Tgt";
     begin
+        Initialize();
         // Positive: fields with identical numbers are copied from source to target.
         Src.Init();
         Src."Entry No." := 7;
@@ -32,6 +41,7 @@ codeunit 50541 "Test TransferFields"
         Src: Record "TF Src";
         Tgt: Record "TF Tgt";
     begin
+        Initialize();
         // Positive: default overload (InitializeCommon omitted) copies the PK too.
         Src.Init();
         Src."Entry No." := 42;
@@ -52,6 +62,7 @@ codeunit 50541 "Test TransferFields"
         Src: Record "TF Src";
         Tgt: Record "TF Tgt";
     begin
+        Initialize();
         // Negative: InitializeCommon=false must NOT overwrite the target's PK.
         Src.Init();
         Src."Entry No." := 11;
@@ -77,6 +88,7 @@ codeunit 50541 "Test TransferFields"
         Src: Record "TF Src";
         Tgt: Record "TF Tgt";
     begin
+        Initialize();
         // Negative: a field that only exists on the target (Extra, field 5)
         // must retain its pre-transfer value since the source has no field 5.
         Src.Init();

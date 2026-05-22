@@ -9,6 +9,7 @@ codeunit 50633 TableLinksTest
         Rec: Record "Links Test Table";
         Src: Codeunit TableLinksSrc;
     begin
+        Rec.DeleteLinks();
         Assert.IsFalse(Src.HasLinks(Rec), 'new record should have no links');
     end;
 

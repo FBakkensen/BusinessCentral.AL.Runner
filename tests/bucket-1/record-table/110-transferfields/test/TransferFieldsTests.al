@@ -9,12 +9,21 @@ codeunit 50415 "TransferFields Tests"
     // TransferFields — positive: copies matching field values
     // -----------------------------------------------------------------------
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "Transfer Source";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure TransferFieldsCopiesMatchingFields()
     var
         Src: Record "Transfer Source";
         Tgt: Record "Transfer Target";
     begin
+        Initialize();
         // [GIVEN] A source record with values
         Src.Init();
         Src."Entry No." := 1;
@@ -42,6 +51,7 @@ codeunit 50415 "TransferFields Tests"
         Src: Record "Transfer Source";
         Tgt: Record "Transfer Target";
     begin
+        Initialize();
         // [GIVEN] Source with Active=true (field 4, not in Target)
         Src.Init();
         Src."Entry No." := 2;
@@ -75,6 +85,7 @@ codeunit 50415 "TransferFields Tests"
         Src: Record "Transfer Source";
         Tgt: Record "Transfer Target";
     begin
+        Initialize();
         // [GIVEN] Source with Entry No. = 10, Target with Entry No. = 99
         Src.Init();
         Src."Entry No." := 10;

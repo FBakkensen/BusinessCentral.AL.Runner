@@ -14,8 +14,8 @@ codeunit 50582 "Test CurrentTransactionType"
         // [WHEN] CurrentTransactionType() is called
         TxType := CurrentTransactionType();
 
-        // [THEN] Returns TransactionType::Update (the stable stub value)
-        Assert.AreEqual(TransactionType::Update, TxType, 'CurrentTransactionType() must return Update in runner');
+        // [THEN] Returns TransactionType::UpdateNoLocks (the BC default transaction type)
+        Assert.AreEqual(Format(TransactionType::UpdateNoLocks), Format(TxType), 'CurrentTransactionType() must return UpdateNoLocks in BC');
     end;
 
     [Test]
@@ -29,7 +29,7 @@ codeunit 50582 "Test CurrentTransactionType"
         T2 := CurrentTransactionType();
 
         // [THEN] Always returns the same value
-        Assert.AreEqual(T1, T2, 'CurrentTransactionType() must return a stable value');
+        Assert.AreEqual(Format(T1), Format(T2), 'CurrentTransactionType() must return a stable value');
     end;
 
     [Test]
@@ -41,6 +41,6 @@ codeunit 50582 "Test CurrentTransactionType"
         TxType := CurrentTransactionType();
 
         // [THEN] It does not return Browse (proves it is not defaulting to ordinal 0)
-        Assert.AreNotEqual(TransactionType::Browse, TxType, 'CurrentTransactionType() must not return Browse');
+        Assert.AreNotEqual(Format(TransactionType::Browse), Format(TxType), 'CurrentTransactionType() must not return Browse');
     end;
 }

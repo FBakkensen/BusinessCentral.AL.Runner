@@ -1,0 +1,2963 @@
+[
+  {
+    "id": 50014,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50018,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50021,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50023,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50026,
+    "status": "Error",
+    "message": "4 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.AreEqual failed. Expected:<1> (Integer). Actual:<2> (Integer). Counter should be 1 from bound call."
+      },
+      {
+        "method": "ManualSubscriberNotCalledAfterUnbind",
+        "error": "Assert.AreEqual failed. Expected:<1> (Integer). Actual:<2> (Integer). Counter should be 1 from bound call."
+      },
+      {
+        "method": "ManualSubscriberCalledAfterBind",
+        "error": "Assert.AreEqual failed. Expected:<1> (Integer). Actual:<2> (Integer). Subscriber should have been called once."
+      },
+      {
+        "method": "ManualSubscriberNotCalledBeforeBind",
+        "error": "Assert.IsFalse failed. Manual subscriber must NOT fire before BindSubscription"
+      }
+    ]
+  },
+  {
+    "id": 50029,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50030,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table FR Validate NoArg already exists. Identification fields and values: No.='3'"
+      },
+      {
+        "method": "FieldRef_Validate_NoArg_ChainedCall_UsesCurrentValue",
+        "error": "The record in table FR Validate NoArg already exists. Identification fields and values: No.='3'"
+      },
+      {
+        "method": "FieldRef_Validate_NoArg_UsesCurrentValue",
+        "error": "The record in table FR Validate NoArg already exists. Identification fields and values: No.='1'"
+      }
+    ]
+  },
+  {
+    "id": 50035,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50040,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50040.FromInteger_OutOfRange_RaisesError()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      },
+      {
+        "method": "FromInteger_OutOfRange_RaisesError",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50040.FromInteger_OutOfRange_RaisesError()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      }
+    ]
+  },
+  {
+    "id": 50044,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50045,
+    "status": "Error",
+    "message": "5 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Name must have a value in TFO Table: No.=H. It cannot be zero or empty."
+      },
+      {
+        "method": "Name_NonEmpty_TestFieldPasses",
+        "error": "The record in table TFO Table already exists. Identification fields and values: No.='G'"
+      },
+      {
+        "method": "Name_MatchingValue_TestFieldPasses",
+        "error": "The record in table TFO Table already exists. Identification fields and values: No.='E'"
+      },
+      {
+        "method": "TableNo_MatchingValue_TestFieldPasses",
+        "error": "The record in table TFO Table already exists. Identification fields and values: No.='C'"
+      },
+      {
+        "method": "TableNo_NonZero_TestFieldPasses",
+        "error": "The record in table TFO Table already exists. Identification fields and values: No.='A'"
+      }
+    ]
+  },
+  {
+    "id": 50061,
+    "status": "Error",
+    "message": "11 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The DataError Probe does not exist. Identification fields and values: Entry No.='999'"
+      },
+      {
+        "method": "InsertDuplicateWithRunTriggerWithoutReturnThrows",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50061.InsertDuplicateWithRunTriggerWithoutReturnThrows()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      },
+      {
+        "method": "FindSetEmptyWithoutReturnThrows",
+        "error": "Assert.ExpectedError failed. Expected: No records in table. Actual: The DataError Probe table is empty.."
+      },
+      {
+        "method": "FindSetEmptyWithReturnDoesNotThrow",
+        "error": "Assert.IsFalse failed. FindSet on empty table should return false when return captured"
+      },
+      {
+        "method": "FindLastEmptyWithoutReturnThrows",
+        "error": "Assert.ExpectedError failed. Expected: No records in table. Actual: The DataError Probe table is empty.."
+      },
+      {
+        "method": "FindLastEmptyWithReturnDoesNotThrow",
+        "error": "Assert.IsFalse failed. FindLast on empty table should return false when return captured"
+      },
+      {
+        "method": "FindFirstEmptyWithoutReturnThrows",
+        "error": "Assert.ExpectedError failed. Expected: No records in table. Actual: The DataError Probe table is empty.."
+      },
+      {
+        "method": "FindFirstEmptyWithReturnDoesNotThrow",
+        "error": "Assert.IsFalse failed. FindFirst on empty table should return false when return captured"
+      },
+      {
+        "method": "DeleteExistingReturnsTrue",
+        "error": "The record in table DataError Probe already exists. Identification fields and values: Entry No.='1'"
+      },
+      {
+        "method": "InsertUniqueWithReturnReturnsTrue",
+        "error": "Assert.IsTrue failed. Insert of unique record should return true"
+      },
+      {
+        "method": "InsertDuplicateWithoutReturnThrows",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50061.InsertDuplicateWithoutReturnThrows()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      }
+    ]
+  },
+  {
+    "id": 50067,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table MaxStrLen InitValue Test already exists. Identification fields and values: PK='9999'"
+      },
+      {
+        "method": "MaxStrLen_TextFieldAfterInsertGet_ReturnsFieldLength",
+        "error": "The record in table MaxStrLen InitValue Test already exists. Identification fields and values: PK='9999'"
+      }
+    ]
+  },
+  {
+    "id": 50069,
+    "status": "Error",
+    "message": "5 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "must throw"
+      },
+      {
+        "method": "ClearCollectedErrorsWorks",
+        "error": "Assert.IsFalse failed. HasCollectedErrors should be false after ClearCollectedErrors"
+      },
+      {
+        "method": "CollectMultipleErrors",
+        "error": "Multiple errors occurred during the operation the first of which is: err1. All errors can be found under 'Detailed Information'."
+      },
+      {
+        "method": "CollectSingleErrorBasic",
+        "error": "err1"
+      },
+      {
+        "method": "ErrorInfoDetailedMessage",
+        "error": "Main error"
+      }
+    ]
+  },
+  {
+    "id": 50088,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.AreEqual failed. Expected:<Data notification> (Text). Actual:<> (Text). Handler should receive message."
+      },
+      {
+        "method": "HandlerReceivesData",
+        "error": "Assert.AreEqual failed. Expected:<Data notification> (Text). Actual:<> (Text). Handler should receive message."
+      },
+      {
+        "method": "HandlerReceivesMessage",
+        "error": "Assert.AreEqual failed. Expected:<Hello from notification> (Text). Actual:<> (Text). Handler should receive notification message."
+      }
+    ]
+  },
+  {
+    "id": 50090,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50095,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table ADM Item already exists. Identification fields and values: No.='I1'"
+      },
+      {
+        "method": "ReportExtAddDataset_TableInCompilationUnit_Usable",
+        "error": "The record in table ADM Item already exists. Identification fields and values: No.='I1'"
+      }
+    ]
+  },
+  {
+    "id": 50099,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "DataTransfer is only usable during upgrade and installation code."
+      },
+      {
+        "method": "UpdateAuditFields_DefaultFalse",
+        "error": "Assert.IsFalse failed. DataTransfer.UpdateAuditFields must default to false"
+      }
+    ]
+  },
+  {
+    "id": 50118,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table NSU Payment already exists. Identification fields and values: No.='P001'"
+      },
+      {
+        "method": "FindSet_NavScopeUsing_SumsCorrectly",
+        "error": "The record in table NSU Payment already exists. Identification fields and values: No.='P001'"
+      },
+      {
+        "method": "FindSet_NavScopeUsing_Compiles",
+        "error": "Assert.AreEqual failed. Expected:<0> (Integer). Actual:<350> (Decimal). Empty table should sum to 0."
+      }
+    ]
+  },
+  {
+    "id": 50120,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table VCA Item already exists. Identification fields and values: No.='I1'"
+      },
+      {
+        "method": "VisibleCondition_TableInCompilationUnit_Usable",
+        "error": "The record in table VCA Item already exists. Identification fields and values: No.='I1'"
+      }
+    ]
+  },
+  {
+    "id": 50133,
+    "status": "Error",
+    "message": "4 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Unexpected CLR exception thrown.: System.NotSupportedException: Specified method is not supported.\\   at Microsoft.Dynamics.Nav.Runtime.NavSession.CreateNavTestService()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_Server()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_ClientApi()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.GetClientApiOrThrow()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.<>c__DisplayClass49_0`1.<CallServer>b__0()\\   at Microsoft.Dynamics.Nav.Client.ServerInvocationHandler.CallServerSync[T](Func`1 callServer, Nullable`1 options)\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.OpenForm(NavOpenFormArguments& mainForm, NavOpenFormArguments[]& subForms, Guid mainFormHandle)\\   at Microsoft.Dynamics.Nav.Client.DataBinder.NstDataAccess.OpenForm(LogicalForm mainForm, ICollection`1 subForms)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.TryOpenForm(LogicalForm form, Boolean retry)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.OnFormOpened(Object sender, EventArgs e)\\   at Microsoft.Dynamics.Framework.UI.LogicalForm.BuildForm(Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.Builder.NavSessionHelper.BuildForm(LogicalForm form, Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.CompleteBuildDependingOnPageDefinition(MasterPage definition, LogicalForm form, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.Build(MasterPage definition, BindingManager bindingManager, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalForm(MasterPage metadata, FormState formState)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.<>c__DisplayClass39_0.<CreateLogicalForm>b__0(Boolean isRetry)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalFormWithErrorHandling(Int32 formId, Int32 retryCounter, Func`2 action)\\   at Microsoft.Dynamics.Nav.Client.TestPage"
+      },
+      {
+        "method": "TestAction_Invoke_DoesNotThrow",
+        "error": "Unexpected CLR exception thrown.: System.NotSupportedException: Specified method is not supported.\\   at Microsoft.Dynamics.Nav.Runtime.NavSession.CreateNavTestService()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_Server()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_ClientApi()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.GetClientApiOrThrow()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.<>c__DisplayClass49_0`1.<CallServer>b__0()\\   at Microsoft.Dynamics.Nav.Client.ServerInvocationHandler.CallServerSync[T](Func`1 callServer, Nullable`1 options)\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.OpenForm(NavOpenFormArguments& mainForm, NavOpenFormArguments[]& subForms, Guid mainFormHandle)\\   at Microsoft.Dynamics.Nav.Client.DataBinder.NstDataAccess.OpenForm(LogicalForm mainForm, ICollection`1 subForms)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.TryOpenForm(LogicalForm form, Boolean retry)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.OnFormOpened(Object sender, EventArgs e)\\   at Microsoft.Dynamics.Framework.UI.LogicalForm.BuildForm(Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.Builder.NavSessionHelper.BuildForm(LogicalForm form, Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.CompleteBuildDependingOnPageDefinition(MasterPage definition, LogicalForm form, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.Build(MasterPage definition, BindingManager bindingManager, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalForm(MasterPage metadata, FormState formState)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.<>c__DisplayClass39_0.<CreateLogicalForm>b__0(Boolean isRetry)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalFormWithErrorHandling(Int32 formId, Int32 retryCounter, Func`2 action)\\   at Microsoft.Dynamics.Nav.Client.TestPage"
+      },
+      {
+        "method": "TestAction_Visible_ReturnsTrue",
+        "error": "Unexpected CLR exception thrown.: System.NotSupportedException: Specified method is not supported.\\   at Microsoft.Dynamics.Nav.Runtime.NavSession.CreateNavTestService()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_Server()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_ClientApi()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.GetClientApiOrThrow()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.<>c__DisplayClass49_0`1.<CallServer>b__0()\\   at Microsoft.Dynamics.Nav.Client.ServerInvocationHandler.CallServerSync[T](Func`1 callServer, Nullable`1 options)\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.OpenForm(NavOpenFormArguments& mainForm, NavOpenFormArguments[]& subForms, Guid mainFormHandle)\\   at Microsoft.Dynamics.Nav.Client.DataBinder.NstDataAccess.OpenForm(LogicalForm mainForm, ICollection`1 subForms)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.TryOpenForm(LogicalForm form, Boolean retry)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.OnFormOpened(Object sender, EventArgs e)\\   at Microsoft.Dynamics.Framework.UI.LogicalForm.BuildForm(Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.Builder.NavSessionHelper.BuildForm(LogicalForm form, Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.CompleteBuildDependingOnPageDefinition(MasterPage definition, LogicalForm form, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.Build(MasterPage definition, BindingManager bindingManager, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalForm(MasterPage metadata, FormState formState)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.<>c__DisplayClass39_0.<CreateLogicalForm>b__0(Boolean isRetry)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalFormWithErrorHandling(Int32 formId, Int32 retryCounter, Func`2 action)\\   at Microsoft.Dynamics.Nav.Client.TestPage"
+      },
+      {
+        "method": "TestAction_Enabled_ReturnsTrue",
+        "error": "Unexpected CLR exception thrown.: System.NotSupportedException: Specified method is not supported.\\   at Microsoft.Dynamics.Nav.Runtime.NavSession.CreateNavTestService()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_Server()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_ClientApi()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.GetClientApiOrThrow()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.<>c__DisplayClass49_0`1.<CallServer>b__0()\\   at Microsoft.Dynamics.Nav.Client.ServerInvocationHandler.CallServerSync[T](Func`1 callServer, Nullable`1 options)\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.OpenForm(NavOpenFormArguments& mainForm, NavOpenFormArguments[]& subForms, Guid mainFormHandle)\\   at Microsoft.Dynamics.Nav.Client.DataBinder.NstDataAccess.OpenForm(LogicalForm mainForm, ICollection`1 subForms)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.TryOpenForm(LogicalForm form, Boolean retry)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.OnFormOpened(Object sender, EventArgs e)\\   at Microsoft.Dynamics.Framework.UI.LogicalForm.BuildForm(Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.Builder.NavSessionHelper.BuildForm(LogicalForm form, Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.CompleteBuildDependingOnPageDefinition(MasterPage definition, LogicalForm form, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.Build(MasterPage definition, BindingManager bindingManager, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalForm(MasterPage metadata, FormState formState)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.<>c__DisplayClass39_0.<CreateLogicalForm>b__0(Boolean isRetry)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalFormWithErrorHandling(Int32 formId, Int32 retryCounter, Func`2 action)\\   at Microsoft.Dynamics.Nav.Client.TestPage"
+      }
+    ]
+  },
+  {
+    "id": 50139,
+    "status": "Error",
+    "message": "5 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The name 'MG_RangeAdv_2026-05-22T07:44:27.003Z' is not a valid sequence name."
+      },
+      {
+        "method": "NumberSequence_Range_AdvancesCounter",
+        "error": "The name 'MG_RangeAdv_2026-05-22T07:44:27.003Z' is not a valid sequence name."
+      },
+      {
+        "method": "NumberSequence_Range_ReturnsFirstValue",
+        "error": "The name 'MG_RangeTest_2026-05-22T07:44:27.002Z' is not a valid sequence name."
+      },
+      {
+        "method": "JsonToken_Path_ObjectField",
+        "error": "Assert.AreEqual failed. Expected:<$.name> (Text). Actual:<name> (Text). field token path must be $.name."
+      },
+      {
+        "method": "JsonToken_Path_RootValue",
+        "error": "Assert.AreEqual failed. Expected:<$> (Text). Actual:<> (Text). root token path must be $."
+      }
+    ]
+  },
+  {
+    "id": 50141,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.IsFalse failed. HasCollectedErrors must be false after ClearCollectedErrors"
+      },
+      {
+        "method": "ClearCollectedErrors_DoesNotCrash",
+        "error": "Assert.IsFalse failed. HasCollectedErrors must be false after ClearCollectedErrors"
+      },
+      {
+        "method": "HasCollectedErrors_FalseByDefault",
+        "error": "Assert.IsFalse failed. HasCollectedErrors must be false when not collecting"
+      }
+    ]
+  },
+  {
+    "id": 50143,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.IsFalse failed. IsServiceTier must be false in standalone runner"
+      },
+      {
+        "method": "IsServiceTier_FalseInRunner",
+        "error": "Assert.IsFalse failed. IsServiceTier must be false in standalone runner"
+      }
+    ]
+  },
+  {
+    "id": 50145,
+    "status": "Error",
+    "message": "7 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.IsTrue failed. AreFieldsLoaded on Self must return true (all fields always loaded standalone)"
+      },
+      {
+        "method": "AreFieldsLoadedOnSelf_ReturnsTrue",
+        "error": "Assert.IsTrue failed. AreFieldsLoaded on Self must return true (all fields always loaded standalone)"
+      },
+      {
+        "method": "RecRef_AreFieldsLoaded_WithAddLoadFields",
+        "error": "Assert.IsTrue failed. RecordRef.AreFieldsLoaded must remain true even for fields not in the load set"
+      },
+      {
+        "method": "RecRef_AreFieldsLoaded_AllFields_True",
+        "error": "Assert.IsTrue failed. RecordRef.AreFieldsLoaded must return true in standalone mode"
+      },
+      {
+        "method": "AddLoadFields_NotCorruptingFilterState",
+        "error": "The record in table LF Row already exists. Identification fields and values: Id='10'"
+      },
+      {
+        "method": "AddLoadFieldsMultiple_FieldReachable",
+        "error": "The record in table LF Row already exists. Identification fields and values: Id='2'"
+      },
+      {
+        "method": "DataReadsAfterLoadFields_Work",
+        "error": "The record in table LF Row already exists. Identification fields and values: Id='1'"
+      }
+    ]
+  },
+  {
+    "id": 50147,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Equality assertions only support Boolean, Option, Integer, BigInteger, Decimal, Code, Text, Date, DateFormula, Time, Duration, and DateTime values. Current value:Unsupported Type."
+      },
+      {
+        "method": "DefaultClientType_IsBackground",
+        "error": "Equality assertions only support Boolean, Option, Integer, BigInteger, Decimal, Code, Text, Date, DateFormula, Time, Duration, and DateTime values. Current value:Unsupported Type."
+      },
+      {
+        "method": "CurrentClientType_IsBackground",
+        "error": "Equality assertions only support Boolean, Option, Integer, BigInteger, Decimal, Code, Text, Date, DateFormula, Time, Duration, and DateTime values. Current value:Unsupported Type."
+      }
+    ]
+  },
+  {
+    "id": 50149,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The type NavALErrorType is unknown."
+      },
+      {
+        "method": "ErrorType_Default_IsClient",
+        "error": "The type NavALErrorType is unknown."
+      },
+      {
+        "method": "ErrorType_RoundTrips_Client",
+        "error": "The type NavALErrorType is unknown."
+      }
+    ]
+  },
+  {
+    "id": 50153,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.AreNotEqual failed. Expected any value except:<No> (Boolean). Actual:<No> (Boolean). ProfileSystemScope setter must not be a no-op \u2014 true must not equal default false."
+      },
+      {
+        "method": "ProfileSystemScope_Setter_NotANoop",
+        "error": "Assert.AreNotEqual failed. Expected any value except:<No> (Boolean). Actual:<No> (Boolean). ProfileSystemScope setter must not be a no-op \u2014 true must not equal default false."
+      },
+      {
+        "method": "SetAndGet_ProfileSystemScope",
+        "error": "Assert.IsTrue failed. SessionSettings.ProfileSystemScope setter + getter must round-trip"
+      }
+    ]
+  },
+  {
+    "id": 50157,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The Page object, 1, that is specified for the GetUrl function has not been published as a Web Service."
+      },
+      {
+        "method": "Format_WithPrecisionMask_NonEmpty",
+        "error": "Assert.AreNotEqual failed. Expected any value except:<> (Text). Actual:<> (Text). Format with precision mask must return non-empty text."
+      }
+    ]
+  },
+  {
+    "id": 50159,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "CopyArray: The length parameter 2 does not match the length of the destination array 5."
+      },
+      {
+        "method": "CopyArray_DestZeroAfterCount",
+        "error": "CopyArray: The length parameter 2 does not match the length of the destination array 5."
+      },
+      {
+        "method": "CopyArray_CopiesElements",
+        "error": "CopyArray: The length parameter 3 does not match the length of the destination array 5."
+      }
+    ]
+  },
+  {
+    "id": 50173,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table Multi App Entry already exists. Identification fields and values: Id='1'"
+      },
+      {
+        "method": "MultiAppEntry_InsertAndFind",
+        "error": "The record in table Multi App Entry already exists. Identification fields and values: Id='1'"
+      }
+    ]
+  },
+  {
+    "id": 50176,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.IsTrue failed. Branch inside if Recall() should be taken"
+      },
+      {
+        "method": "Recall_CanBeUsedInIfStatement",
+        "error": "Assert.IsTrue failed. Branch inside if Recall() should be taken"
+      },
+      {
+        "method": "Recall_ReturnsBooleanTrue",
+        "error": "Assert.IsTrue failed. Recall() should return true"
+      }
+    ]
+  },
+  {
+    "id": 50180,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table Error Map Item already exists. Identification fields and values: Entry No.='1'"
+      },
+      {
+        "method": "SumQuantities_Works",
+        "error": "The record in table Error Map Item already exists. Identification fields and values: Entry No.='1'"
+      }
+    ]
+  },
+  {
+    "id": 50184,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50184.TestExpectedErrorCode_NoError_Fails()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      },
+      {
+        "method": "TestExpectedErrorCode_NoError_Fails",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50184.TestExpectedErrorCode_NoError_Fails()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      }
+    ]
+  },
+  {
+    "id": 50194,
+    "status": "Error",
+    "message": "4 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "A resource matching 'a.txt' could not be found in app 'AL Runner v2 Tests \u2014 Bucket 1 by AL Runner 1.0.0.0'."
+      },
+      {
+        "method": "GetResourceAsText_CalledTwice_BothReturnEmpty",
+        "error": "A resource matching 'a.txt' could not be found in app 'AL Runner v2 Tests \u2014 Bucket 1 by AL Runner 1.0.0.0'."
+      },
+      {
+        "method": "GetResourceAsJson_MissingResource_ReturnsDefault",
+        "error": "A resource matching 'nonexistent.json' could not be found in app 'AL Runner v2 Tests \u2014 Bucket 1 by AL Runner 1.0.0.0'."
+      },
+      {
+        "method": "GetResourceAsText_MissingResource_ReturnsEmpty",
+        "error": "A resource matching 'nonexistent.txt' could not be found in app 'AL Runner v2 Tests \u2014 Bucket 1 by AL Runner 1.0.0.0'."
+      }
+    ]
+  },
+  {
+    "id": 50196,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.IsFalse failed. UpdateAuditFields must be false after Clear"
+      },
+      {
+        "method": "Clear_ResetsUpdateAuditFields",
+        "error": "Assert.IsFalse failed. UpdateAuditFields must be false after Clear"
+      }
+    ]
+  },
+  {
+    "id": 50198,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50198.TestExpectedTestFieldError_NoError_Fails()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      },
+      {
+        "method": "TestExpectedTestFieldError_NoError_Fails",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50198.TestExpectedTestFieldError_NoError_Fails()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      }
+    ]
+  },
+  {
+    "id": 50200,
+    "status": "Error",
+    "message": "7 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "to be cleared"
+      },
+      {
+        "method": "ClearCollectedErrors_EmptiesCollection",
+        "error": "to be cleared"
+      },
+      {
+        "method": "HasCollectedErrors_FalseByDefault",
+        "error": "Assert.IsFalse failed. HasCollectedErrors must be false before any collection"
+      },
+      {
+        "method": "TestSideCollect_MessagePreserved",
+        "error": "Multiple errors occurred during the operation the first of which is: First error. All errors can be found under 'Detailed Information'."
+      },
+      {
+        "method": "TestSideCollect_CollectsTwoErrors",
+        "error": "Multiple errors occurred during the operation the first of which is: First error. All errors can be found under 'Detailed Information'."
+      },
+      {
+        "method": "SourceSideCollect_MessagePreserved",
+        "error": "specific-value"
+      },
+      {
+        "method": "SourceSideCollect_CollectsError",
+        "error": "hello"
+      }
+    ]
+  },
+  {
+    "id": 50210,
+    "status": "Error",
+    "message": "6 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table TFEi Record already exists. Identification fields and values: Id='9'"
+      },
+      {
+        "method": "TestField_Bool_NonEmpty_ErrorInfo_Passes",
+        "error": "The record in table TFEi Record already exists. Identification fields and values: Id='9'"
+      },
+      {
+        "method": "TestField_NonEmpty_ErrorInfo_Passes",
+        "error": "The record in table TFEi Record already exists. Identification fields and values: Id='7'"
+      },
+      {
+        "method": "TestField_IntValue_ErrorInfo_Passes",
+        "error": "The record in table TFEi Record already exists. Identification fields and values: Id='5'"
+      },
+      {
+        "method": "TestField_TextValue_ErrorInfo_Passes",
+        "error": "The record in table TFEi Record already exists. Identification fields and values: Id='3'"
+      },
+      {
+        "method": "TestField_BoolValue_ErrorInfo_Passes",
+        "error": "The record in table TFEi Record already exists. Identification fields and values: Id='1'"
+      }
+    ]
+  },
+  {
+    "id": 50221,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Microsoft.Dynamics.Nav.Runtime.NavInStream variable not initialized."
+      },
+      {
+        "method": "ViewFromStream_3Arg_NoThrow",
+        "error": "Microsoft.Dynamics.Nav.Runtime.NavInStream variable not initialized."
+      },
+      {
+        "method": "ViewFromStream_4Arg_NoThrow",
+        "error": "Microsoft.Dynamics.Nav.Runtime.NavInStream variable not initialized."
+      }
+    ]
+  },
+  {
+    "id": 50223,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50229,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50231,
+    "status": "Error",
+    "message": "6 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Unexpected CLR exception thrown.: System.NotSupportedException: Specified method is not supported.\\   at Microsoft.Dynamics.Nav.Runtime.NavSession.CreateNavTestService()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_Server()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_ClientApi()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.GetClientApiOrThrow()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.<>c__DisplayClass49_0`1.<CallServer>b__0()\\   at Microsoft.Dynamics.Nav.Client.ServerInvocationHandler.CallServerSync[T](Func`1 callServer, Nullable`1 options)\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.OpenForm(NavOpenFormArguments& mainForm, NavOpenFormArguments[]& subForms, Guid mainFormHandle)\\   at Microsoft.Dynamics.Nav.Client.DataBinder.NstDataAccess.OpenForm(LogicalForm mainForm, ICollection`1 subForms)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.TryOpenForm(LogicalForm form, Boolean retry)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.OnFormOpened(Object sender, EventArgs e)\\   at Microsoft.Dynamics.Framework.UI.LogicalForm.BuildForm(Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.Builder.NavSessionHelper.BuildForm(LogicalForm form, Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.CompleteBuildDependingOnPageDefinition(MasterPage definition, LogicalForm form, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.Build(MasterPage definition, BindingManager bindingManager, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalForm(MasterPage metadata, FormState formState)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.<>c__DisplayClass39_0.<CreateLogicalForm>b__0(Boolean isRetry)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalFormWithErrorHandling(Int32 formId, Int32 retryCounter, Func`2 action)\\   at Microsoft.Dynamics.Nav.Client.TestPage"
+      },
+      {
+        "method": "TF_Lookup_RecordRef_FieldValueUnchanged",
+        "error": "Unexpected CLR exception thrown.: System.NotSupportedException: Specified method is not supported.\\   at Microsoft.Dynamics.Nav.Runtime.NavSession.CreateNavTestService()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_Server()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_ClientApi()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.GetClientApiOrThrow()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.<>c__DisplayClass49_0`1.<CallServer>b__0()\\   at Microsoft.Dynamics.Nav.Client.ServerInvocationHandler.CallServerSync[T](Func`1 callServer, Nullable`1 options)\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.OpenForm(NavOpenFormArguments& mainForm, NavOpenFormArguments[]& subForms, Guid mainFormHandle)\\   at Microsoft.Dynamics.Nav.Client.DataBinder.NstDataAccess.OpenForm(LogicalForm mainForm, ICollection`1 subForms)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.TryOpenForm(LogicalForm form, Boolean retry)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.OnFormOpened(Object sender, EventArgs e)\\   at Microsoft.Dynamics.Framework.UI.LogicalForm.BuildForm(Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.Builder.NavSessionHelper.BuildForm(LogicalForm form, Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.CompleteBuildDependingOnPageDefinition(MasterPage definition, LogicalForm form, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.Build(MasterPage definition, BindingManager bindingManager, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalForm(MasterPage metadata, FormState formState)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.<>c__DisplayClass39_0.<CreateLogicalForm>b__0(Boolean isRetry)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalFormWithErrorHandling(Int32 formId, Int32 retryCounter, Func`2 action)\\   at Microsoft.Dynamics.Nav.Client.TestPage"
+      },
+      {
+        "method": "TF_Lookup_RecordRef_NoThrow",
+        "error": "Unexpected CLR exception thrown.: System.NotSupportedException: Specified method is not supported.\\   at Microsoft.Dynamics.Nav.Runtime.NavSession.CreateNavTestService()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_Server()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_ClientApi()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.GetClientApiOrThrow()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.<>c__DisplayClass49_0`1.<CallServer>b__0()\\   at Microsoft.Dynamics.Nav.Client.ServerInvocationHandler.CallServerSync[T](Func`1 callServer, Nullable`1 options)\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.OpenForm(NavOpenFormArguments& mainForm, NavOpenFormArguments[]& subForms, Guid mainFormHandle)\\   at Microsoft.Dynamics.Nav.Client.DataBinder.NstDataAccess.OpenForm(LogicalForm mainForm, ICollection`1 subForms)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.TryOpenForm(LogicalForm form, Boolean retry)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.OnFormOpened(Object sender, EventArgs e)\\   at Microsoft.Dynamics.Framework.UI.LogicalForm.BuildForm(Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.Builder.NavSessionHelper.BuildForm(LogicalForm form, Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.CompleteBuildDependingOnPageDefinition(MasterPage definition, LogicalForm form, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.Build(MasterPage definition, BindingManager bindingManager, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalForm(MasterPage metadata, FormState formState)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.<>c__DisplayClass39_0.<CreateLogicalForm>b__0(Boolean isRetry)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalFormWithErrorHandling(Int32 formId, Int32 retryCounter, Func`2 action)\\   at Microsoft.Dynamics.Nav.Client.TestPage"
+      },
+      {
+        "method": "FPB_AddField_3Arg_IncreasesCount",
+        "error": "Filter control Code is not defined in the FilterPageBuilder variable."
+      },
+      {
+        "method": "FPB_AddField_3Arg_EmptyFilter_NoThrow",
+        "error": "Filter control Code is not defined in the FilterPageBuilder variable."
+      },
+      {
+        "method": "FPB_AddField_3Arg_NoThrow",
+        "error": "Filter control Code is not defined in the FilterPageBuilder variable."
+      }
+    ]
+  },
+  {
+    "id": 50268,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "There was an error while executing the HTTP request. Make sure you are connecting to a valid endpoint."
+      },
+      {
+        "method": "AddCertWithPassword_SecretText_NoError",
+        "error": "There was an error while executing the HTTP request. Make sure you are connecting to a valid endpoint."
+      },
+      {
+        "method": "AddCert_SecretText_NoError",
+        "error": "There was an error while executing the HTTP request. Make sure you are connecting to a valid endpoint."
+      }
+    ]
+  },
+  {
+    "id": 50278,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50278.ViewFromStream_WrongExpectationFails()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      },
+      {
+        "method": "ViewFromStream_WrongExpectationFails",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50278.ViewFromStream_WrongExpectationFails()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      },
+      {
+        "method": "ViewFromStream_ReturnsTrue",
+        "error": "Assert.AreEqual failed. Expected:<Yes> (Boolean). Actual:<No> (Boolean). File.ViewFromStream (2-arg) must return true in bool context."
+      }
+    ]
+  },
+  {
+    "id": 50280,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50280.CurrPage_GetRecord_And_Part_SetRecord_WrongExpectationFails()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      },
+      {
+        "method": "CurrPage_GetRecord_And_Part_SetRecord_WrongExpectationFails",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50280.CurrPage_GetRecord_And_Part_SetRecord_WrongExpectationFails()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      },
+      {
+        "method": "CurrPage_GetRecord_And_Part_SetRecord_NoOp",
+        "error": "Assert.IsTrue failed. CurrPage.GetRecord and CurrPage.Part.Page.SetRecord should compile and not change record"
+      }
+    ]
+  },
+  {
+    "id": 50282,
+    "status": "Error",
+    "message": "5 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "There is no property with the 'missing' key on the JSON object."
+      },
+      {
+        "method": "GetArray_Missing_ReturnsEmptyArray",
+        "error": "There is no property with the 'missing' key on the JSON object."
+      },
+      {
+        "method": "GetArray_RequireExists_MissingThrows",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50282.GetArray_RequireExists_MissingThrows()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      },
+      {
+        "method": "GetObject_Missing_ReturnsEmptyObject",
+        "error": "There is no property with the 'missing' key on the JSON object."
+      },
+      {
+        "method": "GetObject_RequireExists_MissingThrows",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50282.GetObject_RequireExists_MissingThrows()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      }
+    ]
+  },
+  {
+    "id": 50284,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.ExpectedError failed. Expected: outside the bounds of the stream. Actual: The value of Position parameter 1 is outside of the permitted range. The current value is: 100. The permitted range is: from 1 to 2.."
+      },
+      {
+        "method": "Position_Setter_OutOfRange_Throws",
+        "error": "Assert.ExpectedError failed. Expected: outside the bounds of the stream. Actual: The value of Position parameter 1 is outside of the permitted range. The current value is: 100. The permitted range is: from 1 to 2.."
+      },
+      {
+        "method": "Position_Setter_ReadsFromOffset",
+        "error": "Assert.AreEqual failed. Expected:<World> (Text). Actual:< World> (Text). Setting InStream.Position should move the read cursor."
+      }
+    ]
+  },
+  {
+    "id": 50294,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table VG Table already exists. Identification fields and values: Id='1'"
+      },
+      {
+        "method": "GetBySystemId_FromVariant_ReturnsTrue",
+        "error": "The record in table VG Table already exists. Identification fields and values: Id='1'"
+      }
+    ]
+  },
+  {
+    "id": 50305,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.ExpectedError failed. Expected: HTTP calls are not supported by al-runner. Actual: The request was blocked by the runtime to prevent accidental use of production services.."
+      },
+      {
+        "method": "SendDefaultResponse_ThrowsNotSupported",
+        "error": "Assert.ExpectedError failed. Expected: HTTP calls are not supported by al-runner. Actual: The request was blocked by the runtime to prevent accidental use of production services.."
+      },
+      {
+        "method": "SendTimeout_ThrowsErrorEnvelope",
+        "error": "Assert.IsTrue failed. Error should start with the standard HTTP failure prefix"
+      }
+    ]
+  },
+  {
+    "id": 50307,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Code must be provided"
+      },
+      {
+        "method": "TakeCode_VariantRecord_UsesPrimaryKey",
+        "error": "The expression Microsoft.Dynamics.Nav.Runtime.NavIndirectValue cannot be type-converted to a Microsoft.Dynamics.Nav.Runtime.NavCode value."
+      },
+      {
+        "method": "TakeCode_ReceivesRecordField",
+        "error": "The record in table Record Code Unwrap Table already exists. Identification fields and values: Code='BR001'"
+      }
+    ]
+  },
+  {
+    "id": 50328,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50330,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.AreEqual failed. Expected:<<unknown>> (Text). Actual:<W1> (Text). Unknown GUID must return <unknown>."
+      },
+      {
+        "method": "GetModuleInfoDoesNotCrash",
+        "error": "Assert.AreEqual failed. Expected:<<unknown>> (Text). Actual:<W1> (Text). Unknown GUID must return <unknown>."
+      }
+    ]
+  },
+  {
+    "id": 50335,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table PK Probe Row already exists. Identification fields and values: Id='1'"
+      },
+      {
+        "method": "DistinctInsertSucceeds",
+        "error": "The record in table PK Probe Row already exists. Identification fields and values: Id='1'"
+      },
+      {
+        "method": "DuplicateInsertFails",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50335.DuplicateInsertFails()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      }
+    ]
+  },
+  {
+    "id": 50346,
+    "status": "Error",
+    "message": "6 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record is not open."
+      },
+      {
+        "method": "RecRefNameBeforeOpenIsEmpty",
+        "error": "The record is not open."
+      },
+      {
+        "method": "RecRefSetLoadFieldsDoesNotFilter",
+        "error": "Assert.AreEqual failed. Expected:<10> (Integer). Actual:<1> (Integer). Field 1 should still be readable."
+      },
+      {
+        "method": "RecRefSetLoadFieldsNoOp",
+        "error": "The record in table Stub Test Table already exists. Identification fields and values: Id='1'"
+      },
+      {
+        "method": "TestPageFieldCaptionIsNotError",
+        "error": "Unexpected CLR exception thrown.: System.NotSupportedException: Specified method is not supported.\\   at Microsoft.Dynamics.Nav.Runtime.NavSession.CreateNavTestService()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_Server()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_ClientApi()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.GetClientApiOrThrow()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.<>c__DisplayClass49_0`1.<CallServer>b__0()\\   at Microsoft.Dynamics.Nav.Client.ServerInvocationHandler.CallServerSync[T](Func`1 callServer, Nullable`1 options)\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.OpenForm(NavOpenFormArguments& mainForm, NavOpenFormArguments[]& subForms, Guid mainFormHandle)\\   at Microsoft.Dynamics.Nav.Client.DataBinder.NstDataAccess.OpenForm(LogicalForm mainForm, ICollection`1 subForms)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.TryOpenForm(LogicalForm form, Boolean retry)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.OnFormOpened(Object sender, EventArgs e)\\   at Microsoft.Dynamics.Framework.UI.LogicalForm.BuildForm(Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.Builder.NavSessionHelper.BuildForm(LogicalForm form, Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.CompleteBuildDependingOnPageDefinition(MasterPage definition, LogicalForm form, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.Build(MasterPage definition, BindingManager bindingManager, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalForm(MasterPage metadata, FormState formState)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.<>c__DisplayClass39_0.<CreateLogicalForm>b__0(Boolean isRetry)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalFormWithErrorHandling(Int32 formId, Int32 retryCounter, Func`2 action)\\   at Microsoft.Dynamics.Nav.Client.TestPage"
+      },
+      {
+        "method": "TestPageFieldCaptionReturnsText",
+        "error": "Unexpected CLR exception thrown.: System.NotSupportedException: Specified method is not supported.\\   at Microsoft.Dynamics.Nav.Runtime.NavSession.CreateNavTestService()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_Server()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_ClientApi()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.GetClientApiOrThrow()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.<>c__DisplayClass49_0`1.<CallServer>b__0()\\   at Microsoft.Dynamics.Nav.Client.ServerInvocationHandler.CallServerSync[T](Func`1 callServer, Nullable`1 options)\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.OpenForm(NavOpenFormArguments& mainForm, NavOpenFormArguments[]& subForms, Guid mainFormHandle)\\   at Microsoft.Dynamics.Nav.Client.DataBinder.NstDataAccess.OpenForm(LogicalForm mainForm, ICollection`1 subForms)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.TryOpenForm(LogicalForm form, Boolean retry)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.OnFormOpened(Object sender, EventArgs e)\\   at Microsoft.Dynamics.Framework.UI.LogicalForm.BuildForm(Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.Builder.NavSessionHelper.BuildForm(LogicalForm form, Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.CompleteBuildDependingOnPageDefinition(MasterPage definition, LogicalForm form, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.Build(MasterPage definition, BindingManager bindingManager, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalForm(MasterPage metadata, FormState formState)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.<>c__DisplayClass39_0.<CreateLogicalForm>b__0(Boolean isRetry)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalFormWithErrorHandling(Int32 formId, Int32 retryCounter, Func`2 action)\\   at Microsoft.Dynamics.Nav.Client.TestPage"
+      }
+    ]
+  },
+  {
+    "id": 50348,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.AreEqual failed. Expected:<Wrong> (Text). Actual:<Auto> (Text). Should not match."
+      },
+      {
+        "method": "TestCrossCuRecordReturn",
+        "error": "The record in table NS Item already exists. Identification fields and values: Code='Y1'"
+      },
+      {
+        "method": "TestSameCuRecordReturn",
+        "error": "The record in table NS Item already exists. Identification fields and values: Code='X1'"
+      }
+    ]
+  },
+  {
+    "id": 50352,
+    "status": "Error",
+    "message": "4 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.AreEqual failed. Expected:<> (Text). Actual:<Form Stub Page> (Text). Caption still empty after exercise."
+      },
+      {
+        "method": "TestExerciseAllStubsTogether",
+        "error": "Assert.AreEqual failed. Expected:<> (Text). Actual:<Form Stub Page> (Text). Caption still empty after exercise."
+      },
+      {
+        "method": "TestCustomActionInvoke",
+        "error": "Unexpected CLR exception thrown.: System.NotSupportedException: Specified method is not supported.\\   at Microsoft.Dynamics.Nav.Runtime.NavSession.CreateNavTestService()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_Server()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_ClientApi()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.GetClientApiOrThrow()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.<>c__DisplayClass49_0`1.<CallServer>b__0()\\   at Microsoft.Dynamics.Nav.Client.ServerInvocationHandler.CallServerSync[T](Func`1 callServer, Nullable`1 options)\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.OpenForm(NavOpenFormArguments& mainForm, NavOpenFormArguments[]& subForms, Guid mainFormHandle)\\   at Microsoft.Dynamics.Nav.Client.DataBinder.NstDataAccess.OpenForm(LogicalForm mainForm, ICollection`1 subForms)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.TryOpenForm(LogicalForm form, Boolean retry)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.OnFormOpened(Object sender, EventArgs e)\\   at Microsoft.Dynamics.Framework.UI.LogicalForm.BuildForm(Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.Builder.NavSessionHelper.BuildForm(LogicalForm form, Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.CompleteBuildDependingOnPageDefinition(MasterPage definition, LogicalForm form, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.Build(MasterPage definition, BindingManager bindingManager, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalForm(MasterPage metadata, FormState formState)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.<>c__DisplayClass39_0.<CreateLogicalForm>b__0(Boolean isRetry)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalFormWithErrorHandling(Int32 formId, Int32 retryCounter, Func`2 action)\\   at Microsoft.Dynamics.Nav.Client.TestPage"
+      },
+      {
+        "method": "TestPageCaptionDefaultEmpty",
+        "error": "Assert.AreEqual failed. Expected:<> (Text). Actual:<Form Stub Page> (Text). Caption should default to empty."
+      }
+    ]
+  },
+  {
+    "id": 50359,
+    "status": "Error",
+    "message": "6 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50359.CannnotInsertDuplicatePK()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      },
+      {
+        "method": "CannnotInsertDuplicatePK",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50359.CannnotInsertDuplicatePK()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      },
+      {
+        "method": "TableExtensionWithDataClassificationCompiles",
+        "error": "The record in table AI Test Record already exists. Identification fields and values: Id='4'"
+      },
+      {
+        "method": "FieldWithObsoleteStatePendingCompiles",
+        "error": "The record in table AI Test Record already exists. Identification fields and values: Id='3'"
+      },
+      {
+        "method": "FieldsWithVariousDataClassificationsWork",
+        "error": "The record in table AI Test Record already exists. Identification fields and values: Id='2'"
+      },
+      {
+        "method": "TableWithDataClassificationCompiles",
+        "error": "The record in table AI Test Record already exists. Identification fields and values: Id='1'"
+      }
+    ]
+  },
+  {
+    "id": 50369,
+    "status": "Error",
+    "message": "5 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.IsTrue failed. Must be entitled"
+      },
+      {
+        "method": "StatusFlags_AreConsistent",
+        "error": "Assert.IsTrue failed. Must be entitled"
+      },
+      {
+        "method": "IsEntitled_StringLiteral_ReturnsTrue",
+        "error": "Assert.IsTrue failed. NavApp.IsEntitled with a string literal must return true in standalone mode"
+      },
+      {
+        "method": "IsEntitled_EmptyId_ReturnsTrue",
+        "error": "Assert.IsTrue failed. NavApp.IsEntitled with empty id must return true in standalone mode"
+      },
+      {
+        "method": "IsEntitled_ReturnsTrue",
+        "error": "Assert.IsTrue failed. NavApp.IsEntitled(id) must return true in standalone mode"
+      }
+    ]
+  },
+  {
+    "id": 50381,
+    "status": "Error",
+    "message": "4 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record is not open."
+      },
+      {
+        "method": "TestRecordIdGetRecordReturnsUnbound",
+        "error": "The record is not open."
+      },
+      {
+        "method": "TestNavAppGetResourceIsNoOp",
+        "error": "A resource matching 'dummy.txt' could not be found in app 'AL Runner v2 Tests \u2014 Bucket 1 by AL Runner 1.0.0.0'."
+      },
+      {
+        "method": "TestNavAppGetArchiveRecordRefIsNoOp",
+        "error": "The record is not open."
+      }
+    ]
+  },
+  {
+    "id": 50383,
+    "status": "Error",
+    "message": "5 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Insufficient inventory for item ITEM-LOW. Available: 3, Requested: 10"
+      },
+      {
+        "method": "TestSetRangeFiltering",
+        "error": "The record in table Sample Item already exists. Identification fields and values: No.='CHEAP-1'"
+      },
+      {
+        "method": "TestCalculateOrderTotal",
+        "error": "The record in table Sample Order Line already exists. Identification fields and values: Order No.='ORD-001',Line No.='10000'"
+      },
+      {
+        "method": "TestRemoveStock",
+        "error": "The record in table Sample Item already exists. Identification fields and values: No.='ITEM-002'"
+      },
+      {
+        "method": "TestAddStock",
+        "error": "The record in table Sample Item already exists. Identification fields and values: No.='ITEM-001'"
+      }
+    ]
+  },
+  {
+    "id": 50385,
+    "status": "Error",
+    "message": "5 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table Test Document Line already exists. Identification fields and values: Document No.='ORD-030',Line No.='10000'"
+      },
+      {
+        "method": "TestModifyLineWithCompositeKey",
+        "error": "The record in table Test Document Line already exists. Identification fields and values: Document No.='ORD-030',Line No.='10000'"
+      },
+      {
+        "method": "TestLineCountPerDocument",
+        "error": "The record in table Test Document Line already exists. Identification fields and values: Document No.='ORD-020',Line No.='10000'"
+      },
+      {
+        "method": "TestMultipleLinesPerDocument",
+        "error": "The record in table Test Document Line already exists. Identification fields and values: Document No.='ORD-010',Line No.='10000'"
+      },
+      {
+        "method": "TestInsertAndGetWithCompositeKey",
+        "error": "The record in table Test Document Line already exists. Identification fields and values: Document No.='ORD-001',Line No.='10000'"
+      }
+    ]
+  },
+  {
+    "id": 50387,
+    "status": "Error",
+    "message": "5 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.AreEqual failed. Expected:<60000> (Integer). Actual:<50000> (Integer). Second should be 60000."
+      },
+      {
+        "method": "TestSortWithFindSetIteration",
+        "error": "Assert.AreEqual failed. Expected:<60000> (Integer). Actual:<50000> (Integer). Second should be 60000."
+      },
+      {
+        "method": "TestSortByNameAlphabetical",
+        "error": "Assert.AreEqual failed. Expected:<Anna,Mike,Zara> (Text). Actual:<Alice,Alice,Anna,Bob,Bob,Charlie,Charlie,Mike,Zara> (Text). Names should be sorted alphabetically."
+      },
+      {
+        "method": "TestSortBySalaryDescending",
+        "error": "The record in table Test Employee already exists. Identification fields and values: No.='EMP-13'"
+      },
+      {
+        "method": "TestSortBySalaryAscending",
+        "error": "The record in table Test Employee already exists. Identification fields and values: No.='EMP-03'"
+      }
+    ]
+  },
+  {
+    "id": 50389,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table Test Product already exists. Identification fields and values: Code='WIDGET-A'"
+      },
+      {
+        "method": "TestCaseInsensitiveFilter",
+        "error": "The record in table Test Product already exists. Identification fields and values: Code='WIDGET-A'"
+      }
+    ]
+  },
+  {
+    "id": 50391,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50393,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The supplied field number '10' cannot be found in the 'Field Ref Meta Table' table."
+      },
+      {
+        "method": "TestTableExtensionFieldCaption",
+        "error": "The supplied field number '10' cannot be found in the 'Field Ref Meta Table' table."
+      },
+      {
+        "method": "TestTableExtensionFieldName",
+        "error": "The supplied field number '10' cannot be found in the 'Field Ref Meta Table' table."
+      }
+    ]
+  },
+  {
+    "id": 50395,
+    "status": "Error",
+    "message": "6 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Name must be equal to 'WrongExpected'  in RRC Table: No.=TF4. Current value is 'Actual'."
+      },
+      {
+        "method": "TestField_MatchingValue_Passes",
+        "error": "The record in table RRC Table already exists. Identification fields and values: No.='TF3'"
+      },
+      {
+        "method": "TestField_FilledField_Passes",
+        "error": "The record in table RRC Table already exists. Identification fields and values: No.='TF1'"
+      },
+      {
+        "method": "RecordId_Builtin_DoesNotThrow",
+        "error": "The record in table RRC Table already exists. Identification fields and values: No.='BRI1'"
+      },
+      {
+        "method": "RecordId_AfterInsert_DoesNotThrow",
+        "error": "The record in table RRC Table already exists. Identification fields and values: No.='REC1'"
+      },
+      {
+        "method": "RecordId_Fresh_IsDefaultRecordId",
+        "error": "Assert.AreEqual failed. Expected:<> (Text). Actual:<RRC Table: \"\"> (Text). RecordId on fresh record must equal default RecordId."
+      }
+    ]
+  },
+  {
+    "id": 50399,
+    "status": "Error",
+    "message": "4 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table UIF Source already exists. Identification fields and values: PK='3'"
+      },
+      {
+        "method": "OnInsertTrigger_WithoutRunTrigger_DoesNotSetFlag",
+        "error": "The record in table UIF Source already exists. Identification fields and values: PK='3'"
+      },
+      {
+        "method": "OnBeforeInsertEvent_SubscriberSetsFields",
+        "error": "The record in table UIF Source already exists. Identification fields and values: PK='2'"
+      },
+      {
+        "method": "OnInsertTrigger_SetsFlag_AfterInsert",
+        "error": "The record in table UIF Source already exists. Identification fields and values: PK='1'"
+      }
+    ]
+  },
+  {
+    "id": 50401,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50402,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table Validate Uninit Table already exists. Identification fields and values: PK='TEST2'"
+      },
+      {
+        "method": "OnValidate_SpecialCode_SetsPosition99",
+        "error": "The record in table Validate Uninit Table already exists. Identification fields and values: PK='TEST2'"
+      },
+      {
+        "method": "OnValidate_WithGlobalVar_DoesNotCrash",
+        "error": "The record in table Validate Uninit Table already exists. Identification fields and values: PK='TEST'"
+      }
+    ]
+  },
+  {
+    "id": 50403,
+    "status": "Error",
+    "message": "4 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table OMT Source already exists. Identification fields and values: PK='3'"
+      },
+      {
+        "method": "OnModifyTrigger_Rec_HasCorrectFieldValues",
+        "error": "The record in table OMT Source already exists. Identification fields and values: PK='3'"
+      },
+      {
+        "method": "OnModifyTrigger_WithoutRunTrigger_DoesNotFire",
+        "error": "The record in table OMT Source already exists. Identification fields and values: PK='2'"
+      },
+      {
+        "method": "OnModifyTrigger_CounterCreated_AfterModify",
+        "error": "The record in table OMT Source already exists. Identification fields and values: PK='1'"
+      }
+    ]
+  },
+  {
+    "id": 50405,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.IsFalse failed. No Modify happened \u2014 no BeforeModify log"
+      },
+      {
+        "method": "NoEventLogForUnsubscribedEvent",
+        "error": "Assert.IsFalse failed. No Modify happened \u2014 no BeforeModify log"
+      },
+      {
+        "method": "DeleteFiresBothBeforeAndAfter",
+        "error": "The record in table BDE Source already exists. Identification fields and values: PK='1'"
+      }
+    ]
+  },
+  {
+    "id": 50407,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Error code: 85132273"
+      },
+      {
+        "method": "XRecConsistentBetweenBeforeAndAfter",
+        "error": "The record in table XR Source already exists. Identification fields and values: PK='1'"
+      }
+    ]
+  },
+  {
+    "id": 50409,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table Case Validate Table already exists. Identification fields and values: PK='T2'"
+      },
+      {
+        "method": "Validate_RateCode8_Position2",
+        "error": "The record in table Case Validate Table already exists. Identification fields and values: PK='T2'"
+      },
+      {
+        "method": "Validate_RateCode22_Position1",
+        "error": "The record in table Case Validate Table already exists. Identification fields and values: PK='T1'"
+      }
+    ]
+  },
+  {
+    "id": 50410,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table ODT Counter already exists. Identification fields and values: PK='3'"
+      },
+      {
+        "method": "OnDeleteTrigger_Rec_HasCorrectFieldValues",
+        "error": "The record in table ODT Counter already exists. Identification fields and values: PK='3'"
+      },
+      {
+        "method": "OnDeleteTrigger_CounterCreated_AfterDelete",
+        "error": "The record in table ODT Counter already exists. Identification fields and values: PK='1'"
+      }
+    ]
+  },
+  {
+    "id": 50412,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table Filter Probe already exists. Identification fields and values: Entry No.='1'"
+      },
+      {
+        "method": "GetFilterReturnsEmptyAfterReset",
+        "error": "The record in table Filter Probe already exists. Identification fields and values: Entry No.='1'"
+      }
+    ]
+  },
+  {
+    "id": 50413,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50414,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table Key Probe already exists. Identification fields and values: Code='CCC'"
+      },
+      {
+        "method": "ResettingToPrimaryKeyRestoresPKOrder",
+        "error": "The record in table Key Probe already exists. Identification fields and values: Code='CCC'"
+      },
+      {
+        "method": "SetCurrentKeyBySequenceChangesTraversalOrder",
+        "error": "Assert.AreEqual failed. Expected:<10> (Integer). Actual:<1> (Integer). First by Sequence should be 10."
+      }
+    ]
+  },
+  {
+    "id": 50423,
+    "status": "Error",
+    "message": "4 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table ORT Source already exists. Identification fields and values: PK='30'"
+      },
+      {
+        "method": "OnRenameTrigger_Rec_HasCorrectFieldValues",
+        "error": "The record in table ORT Source already exists. Identification fields and values: PK='30'"
+      },
+      {
+        "method": "OnRenameTrigger_Counter_KeyedByNewPK",
+        "error": "The record in table ORT Source already exists. Identification fields and values: PK='20'"
+      },
+      {
+        "method": "OnRenameTrigger_SetsFlag_AfterRename",
+        "error": "The record in table ORT Source already exists. Identification fields and values: PK='10'"
+      }
+    ]
+  },
+  {
+    "id": 50425,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table RecRef Method Table already exists. Identification fields and values: Entry No.='1'"
+      },
+      {
+        "method": "TestClearMarksAfterMark",
+        "error": "The record in table RecRef Method Table already exists. Identification fields and values: Entry No.='1'"
+      }
+    ]
+  },
+  {
+    "id": 50427,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table FieldRef Test Table already exists. Identification fields and values: Entry No.='42'"
+      },
+      {
+        "method": "TestSetTableCopiesDescription",
+        "error": "The record in table FieldRef Test Table already exists. Identification fields and values: Entry No.='42'"
+      }
+    ]
+  },
+  {
+    "id": 50429,
+    "status": "Error",
+    "message": "4 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.ExpectedError failed. Expected: out of range. Actual: The CKI Table table does not have an active key at index 0.."
+      },
+      {
+        "method": "RecordRef_CurrentKeyIndex_Zero_Throws",
+        "error": "Assert.ExpectedError failed. Expected: out of range. Actual: The CKI Table table does not have an active key at index 0.."
+      },
+      {
+        "method": "RecordRef_CurrentKeyIndex_OutOfRange_Throws",
+        "error": "Assert.ExpectedError failed. Expected: out of range. Actual: The CKI Table table does not have an active key at index 99.."
+      },
+      {
+        "method": "RecordRef_KeyCount_ReturnsDeclaredKeyCount",
+        "error": "Assert.AreEqual failed. Expected:<2> (Integer). Actual:<3> (Integer). KeyCount should match the number of declared keys (PK + BySortVal)."
+      }
+    ]
+  },
+  {
+    "id": 50431,
+    "status": "Error",
+    "message": "5 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table FE Test Item already exists. Identification fields and values: Id='1'"
+      },
+      {
+        "method": "CalcSumIntegerFieldReturnsDecimal",
+        "error": "The record in table FE Test Item already exists. Identification fields and values: Id='1'"
+      },
+      {
+        "method": "GetEnumValueOrdinalOutOfRangeErrors",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50431.GetEnumValueOrdinalOutOfRangeErrors()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      },
+      {
+        "method": "GetEnumValueNameOutOfRangeErrors",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50431.GetEnumValueNameOutOfRangeErrors()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      },
+      {
+        "method": "CalcSumReturnsZeroForEmptyTable",
+        "error": "Assert.AreEqual failed. Expected:<0> (Integer). Actual:<61.5> (Decimal). Empty table sum should be 0."
+      }
+    ]
+  },
+  {
+    "id": 50435,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "You tried to invoke the Table object with the ID 99999 from the object Metadata Tests. An object with that ID does not exist in the current application compiled with emit version 27024."
+      },
+      {
+        "method": "UnknownFieldFallsBackToFieldNNCaption",
+        "error": "The supplied field number '999' cannot be found in the 'Test Item' table."
+      }
+    ]
+  },
+  {
+    "id": 50437,
+    "status": "Error",
+    "message": "6 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.AreEqual failed. Expected:<2> (Text). Actual:<> (Text). FindLast with MarkedOnly must return the last marked record."
+      },
+      {
+        "method": "FindLastWithMarkedOnlyReturnsLastMarkedRecord",
+        "error": "Assert.AreEqual failed. Expected:<2> (Text). Actual:<> (Text). FindLast with MarkedOnly must return the last marked record."
+      },
+      {
+        "method": "GetRangeMinReturnsDefaultWhenNoRange",
+        "error": "Specify a filter for the Entry No. field in the API Test Entry table."
+      },
+      {
+        "method": "FieldRefRecordReturnsOwner",
+        "error": "Assert.AreEqual failed. Expected:<56270> (Integer). Actual:<50098> (Integer). FieldRef.Record must return the owning RecordRef with correct table number."
+      },
+      {
+        "method": "ClearMarksResetsAll",
+        "error": "The record in table API Test Entry already exists. Identification fields and values: Entry No.='1',Category='A'"
+      },
+      {
+        "method": "MarkedOnlyFiltersIteration",
+        "error": "Assert.AreEqual failed. Expected:<1,3> (Text). Actual:<> (Text). MarkedOnly must filter to only marked records."
+      }
+    ]
+  },
+  {
+    "id": 50439,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.AreEqual failed. Expected:<1275001> (Integer). Actual:<50099> (Integer). Same-CU: Table number from Record passed as RecordRef must be 1275001."
+      },
+      {
+        "method": "SameCU_RecordToRecordRef_TableNo",
+        "error": "Assert.AreEqual failed. Expected:<1275001> (Integer). Actual:<50099> (Integer). Same-CU: Table number from Record passed as RecordRef must be 1275001."
+      },
+      {
+        "method": "CrossCU_RecordToRecordRef_TableNo",
+        "error": "Assert.AreEqual failed. Expected:<1275001> (Integer). Actual:<50099> (Integer). Cross-CU: Table number from Record passed as RecordRef must be 1275001."
+      }
+    ]
+  },
+  {
+    "id": 50441,
+    "status": "Error",
+    "message": "5 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table CheckType Base Table already exists. Identification fields and values: No.='CT04'"
+      },
+      {
+        "method": "CheckType_ExtraCodeEmpty_ReturnsFalse",
+        "error": "The record in table CheckType Base Table already exists. Identification fields and values: No.='CT04'"
+      },
+      {
+        "method": "CheckType_ExtraCodeNonEmpty_ReturnsTrue",
+        "error": "The record in table CheckType Base Table already exists. Identification fields and values: No.='CT03'"
+      },
+      {
+        "method": "CheckType_DiscountZero_ReturnsZero",
+        "error": "The record in table CheckType Base Table already exists. Identification fields and values: No.='CT02'"
+      },
+      {
+        "method": "CheckType_DiscountNonZero_ReturnsAmount",
+        "error": "The record in table CheckType Base Table already exists. Identification fields and values: No.='CT01'"
+      }
+    ]
+  },
+  {
+    "id": 50443,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.ExpectedError failed. Expected: out of range. Actual: Index out of bounds.."
+      },
+      {
+        "method": "FieldRef_Record_KeyIndex_OutOfRange_Throws",
+        "error": "Assert.ExpectedError failed. Expected: out of range. Actual: Index out of bounds.."
+      }
+    ]
+  },
+  {
+    "id": 50446,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Amount must be non-negative"
+      },
+      {
+        "method": "FieldRef_Validate_Variant_PositiveValue_Persists",
+        "error": "The record in table Repro FRValVar Tab already exists. Identification fields and values: No.='1'"
+      }
+    ]
+  },
+  {
+    "id": 50452,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.IsTrue failed. After no-op setter, LockTimeout must still read as true (default)"
+      },
+      {
+        "method": "LockTimeout_SetFalseReadBack",
+        "error": "Assert.IsTrue failed. After no-op setter, LockTimeout must still read as true (default)"
+      }
+    ]
+  },
+  {
+    "id": 50454,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.IsTrue failed. MinimumActiveRowVersion must be <= LastUsedRowVersion"
+      },
+      {
+        "method": "RowVersions_InvariantRelationship",
+        "error": "Assert.IsTrue failed. MinimumActiveRowVersion must be <= LastUsedRowVersion"
+      }
+    ]
+  },
+  {
+    "id": 50464,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50466,
+    "status": "Error",
+    "message": "6 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "expected error"
+      },
+      {
+        "method": "SetAutoCalcFields_FindSetNext_SumsAllLineCountsCorrectly",
+        "error": "The record in table SACF Line already exists. Identification fields and values: Order No.='FSN005',Line No.='1'"
+      },
+      {
+        "method": "NoAutoCalcFields_Get_FlowFieldIsZero",
+        "error": "The record in table SACF Order already exists. Identification fields and values: No.='ORD003'"
+      },
+      {
+        "method": "SetAutoCalcFields_FindFirst_AutoCalculatesFlowField",
+        "error": "The record in table SACF Line already exists. Identification fields and values: Order No.='ORD002',Line No.='1'"
+      },
+      {
+        "method": "SetAutoCalcFields_Get_ZeroLines_ReturnsZero",
+        "error": "The record in table SACF Order already exists. Identification fields and values: No.='ORD004'"
+      },
+      {
+        "method": "SetAutoCalcFields_Get_AutoCalculatesFlowField",
+        "error": "The record in table SACF Order already exists. Identification fields and values: No.='ORD001'"
+      }
+    ]
+  },
+  {
+    "id": 50468,
+    "status": "Error",
+    "message": "4 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The \u516c\u53f8 does not exist. Identification fields and values: \u540d\u7a31='A'"
+      },
+      {
+        "method": "CopyCompany_CalledTwice_NoError",
+        "error": "The \u516c\u53f8 does not exist. Identification fields and values: \u540d\u7a31='A'"
+      },
+      {
+        "method": "CopyCompany_NoOp_EmptyNames",
+        "error": "The \u516c\u53f8 does not exist. Identification fields and values: \u540d\u7a31=''"
+      },
+      {
+        "method": "CopyCompany_NoOp_TypicalCompanyNames",
+        "error": "The \u516c\u53f8 does not exist. Identification fields and values: \u540d\u7a31='Source Company'"
+      }
+    ]
+  },
+  {
+    "id": 50476,
+    "status": "Error",
+    "message": "5 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "You do not have permission to register a table connection of type ExternalSQL. Please contact your administrator."
+      },
+      {
+        "method": "RegisterTableConnection_LongConnectionString_NegativeTrap",
+        "error": "You do not have permission to register a table connection of type ExternalSQL. Please contact your administrator."
+      },
+      {
+        "method": "RegisterTableConnection_DifferentTypes",
+        "error": "You do not have permission to register a table connection of type ExternalSQL. Please contact your administrator."
+      },
+      {
+        "method": "RegisterTableConnection_EmptyArgs",
+        "error": "You do not have permission to register a table connection of type ExternalSQL. Please contact your administrator."
+      },
+      {
+        "method": "RegisterTableConnection_NoOp",
+        "error": "You do not have permission to register a table connection of type ExternalSQL. Please contact your administrator."
+      }
+    ]
+  },
+  {
+    "id": 50478,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.IsFalse failed. IsInWriteTransaction must return false even after record insert"
+      },
+      {
+        "method": "IsInWriteTransaction_AfterInsert_StillFalse",
+        "error": "Assert.IsFalse failed. IsInWriteTransaction must return false even after record insert"
+      }
+    ]
+  },
+  {
+    "id": 50490,
+    "status": "Error",
+    "message": "4 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table FREO Order already exists. Identification fields and values: No.='O2'"
+      },
+      {
+        "method": "GetEnumValueNameFromOrdinal_Middle",
+        "error": "The record in table FREO Order already exists. Identification fields and values: No.='O2'"
+      },
+      {
+        "method": "GetEnumValueCaptionFromOrdinal_Last",
+        "error": "The record in table FREO Order already exists. Identification fields and values: No.='O1'"
+      },
+      {
+        "method": "GetEnumValueCaptionFromOrdinal_Middle",
+        "error": "Assert.AreEqual failed. Expected:<InProgress> (Text). Actual:<In Progress> (Text). Caption for ordinal 5 must be \"InProgress\" (standalone treats caption=name)."
+      }
+    ]
+  },
+  {
+    "id": 50492,
+    "status": "Error",
+    "message": "6 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table Validate Demo already exists. Identification fields and values: Entry No.='5'"
+      },
+      {
+        "method": "TestZeroQuantityValidate",
+        "error": "The record in table Validate Demo already exists. Identification fields and values: Entry No.='5'"
+      },
+      {
+        "method": "TestDirectAssignSkipsValidateTrigger",
+        "error": "The record in table Validate Demo already exists. Identification fields and values: Entry No.='4'"
+      },
+      {
+        "method": "TestDirectValidateOnRecord",
+        "error": "The record in table Validate Demo already exists. Identification fields and values: Entry No.='3'"
+      },
+      {
+        "method": "TestQuantityCalculatesAmount",
+        "error": "The record in table Validate Demo already exists. Identification fields and values: Entry No.='2'"
+      },
+      {
+        "method": "TestNameUppercased",
+        "error": "The record in table Validate Demo already exists. Identification fields and values: Entry No.='1'"
+      }
+    ]
+  },
+  {
+    "id": 50494,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50496,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.IsFalse failed. RecordLevelLocking must return false in standalone runner"
+      },
+      {
+        "method": "RecordLevelLocking_ReturnsFalse",
+        "error": "Assert.IsFalse failed. RecordLevelLocking must return false in standalone runner"
+      }
+    ]
+  },
+  {
+    "id": 50498,
+    "status": "Error",
+    "message": "9 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table Product already exists. Identification fields and values: Code='P008'"
+      },
+      {
+        "method": "TestIsOverLimit_EqualToLimit",
+        "error": "The record in table Product already exists. Identification fields and values: Code='P008'"
+      },
+      {
+        "method": "TestRemainingCapacity_ZeroLimit",
+        "error": "The record in table Product already exists. Identification fields and values: Code='P007'"
+      },
+      {
+        "method": "TestIsOverLimit_ZeroLimit",
+        "error": "The record in table Product already exists. Identification fields and values: Code='P006'"
+      },
+      {
+        "method": "TestRemainingCapacityAtLimit",
+        "error": "The record in table Product already exists. Identification fields and values: Code='P005'"
+      },
+      {
+        "method": "TestRemainingCapacity",
+        "error": "The record in table Product already exists. Identification fields and values: Code='P004'"
+      },
+      {
+        "method": "TestIsOverLimit_True",
+        "error": "The record in table Product already exists. Identification fields and values: Code='P003'"
+      },
+      {
+        "method": "TestIsOverLimit_False",
+        "error": "The record in table Product already exists. Identification fields and values: Code='P002'"
+      },
+      {
+        "method": "TestGetDisplayName",
+        "error": "The record in table Product already exists. Identification fields and values: Code='P001'"
+      }
+    ]
+  },
+  {
+    "id": 50500,
+    "status": "Error",
+    "message": "7 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table Demo Order already exists. Identification fields and values: Order No.='ORD-006'"
+      },
+      {
+        "method": "TestGetStatus",
+        "error": "The record in table Demo Order already exists. Identification fields and values: Order No.='ORD-006'"
+      },
+      {
+        "method": "TestIsFinalized_Draft",
+        "error": "The record in table Demo Order already exists. Identification fields and values: Order No.='ORD-005'"
+      },
+      {
+        "method": "TestIsFinalized_Approved",
+        "error": "The record in table Demo Order already exists. Identification fields and values: Order No.='ORD-004'"
+      },
+      {
+        "method": "TestRejectOrder",
+        "error": "The record in table Demo Order already exists. Identification fields and values: Order No.='ORD-003'"
+      },
+      {
+        "method": "TestApproveOrder",
+        "error": "The record in table Demo Order already exists. Identification fields and values: Order No.='ORD-002'"
+      },
+      {
+        "method": "TestCreateOrderDefaultStatus",
+        "error": "The record in table Demo Order already exists. Identification fields and values: Order No.='ORD-001'"
+      }
+    ]
+  },
+  {
+    "id": 50504,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "No relationship has been associated with the field No. in TRM Table."
+      },
+      {
+        "method": "Relation_NoRelation_ReturnsZero",
+        "error": "No relationship has been associated with the field No. in TRM Table."
+      }
+    ]
+  },
+  {
+    "id": 50511,
+    "status": "Error",
+    "message": "4 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.AreEqual failed. Expected:<1> (Integer). Actual:<0> (Integer). User table must contain exactly one pre-seeded row."
+      },
+      {
+        "method": "UserTable_ContainsExactlyOneRow",
+        "error": "Assert.AreEqual failed. Expected:<1> (Integer). Actual:<0> (Integer). User table must contain exactly one pre-seeded row."
+      },
+      {
+        "method": "UserGet_BySecurityId_HasCorrectUserName",
+        "error": "The User does not exist. Identification fields and values: User Security ID='{00000000-0000-0000-0000-000000000001}'"
+      },
+      {
+        "method": "UserGet_BySecurityId_Succeeds",
+        "error": "Assert.IsTrue failed. User.Get(UserSecurityId()) must succeed in al-runner"
+      }
+    ]
+  },
+  {
+    "id": 50515,
+    "status": "Error",
+    "message": "5 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Unable to convert from Microsoft.Dynamics.Nav.Runtime.NavRecordHandle to System.Int32."
+      },
+      {
+        "method": "VariantRecord_ToInt_IsExactlyZero_NotGarbage",
+        "error": "Unable to convert from Microsoft.Dynamics.Nav.Runtime.NavRecordHandle to System.Int32."
+      },
+      {
+        "method": "PopulatedRecord_ToVariant_FormatContainsKey",
+        "error": "The record in table RIC Table already exists. Identification fields and values: Id='99'"
+      },
+      {
+        "method": "VariantRecord_ToBool_ReturnsFalse",
+        "error": "Unable to convert from Microsoft.Dynamics.Nav.Runtime.NavRecordHandle to System.Int32."
+      },
+      {
+        "method": "VariantRecord_ToInt_ReturnsZero",
+        "error": "Unable to convert from Microsoft.Dynamics.Nav.Runtime.NavRecordHandle to System.Int32."
+      }
+    ]
+  },
+  {
+    "id": 50522,
+    "status": "Error",
+    "message": "10 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table CF Parent already exists. Identification fields and values: Id='9'"
+      },
+      {
+        "method": "CalcFields_Sum_OnlyCountsOwnChildren",
+        "error": "The record in table CF Parent already exists. Identification fields and values: Id='9'"
+      },
+      {
+        "method": "CalcFields_MultipleFields_AllComputed",
+        "error": "The record in table CF Parent already exists. Identification fields and values: Id='8'"
+      },
+      {
+        "method": "CalcFields_Exist_FalseWhenNoChildren",
+        "error": "The record in table CF Parent already exists. Identification fields and values: Id='7'"
+      },
+      {
+        "method": "CalcFields_Exist_TrueWhenChildrenExist",
+        "error": "The record in table CF Parent already exists. Identification fields and values: Id='6'"
+      },
+      {
+        "method": "CalcFields_Count_ZeroWhenNoChildren",
+        "error": "The record in table CF Parent already exists. Identification fields and values: Id='5'"
+      },
+      {
+        "method": "CalcFields_Count_CountsChildren",
+        "error": "The record in table CF Parent already exists. Identification fields and values: Id='4'"
+      },
+      {
+        "method": "CalcFields_Sum_NotDefaultAfterInsertingChildren",
+        "error": "The record in table CF Parent already exists. Identification fields and values: Id='3'"
+      },
+      {
+        "method": "CalcFields_Sum_EmptyChildren_ReturnsZero",
+        "error": "The record in table CF Parent already exists. Identification fields and values: Id='2'"
+      },
+      {
+        "method": "CalcFields_Sum_SumsChildAmounts",
+        "error": "The record in table CF Parent already exists. Identification fields and values: Id='1'"
+      }
+    ]
+  },
+  {
+    "id": 50524,
+    "status": "Error",
+    "message": "5 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table Base Table already exists. Identification fields and values: No.='T004'"
+      },
+      {
+        "method": "ExtensionFieldWrongValue",
+        "error": "The record in table Base Table already exists. Identification fields and values: No.='T004'"
+      },
+      {
+        "method": "CrossCodeunitExtensionFieldAccess",
+        "error": "The record in table Base Table already exists. Identification fields and values: No.='T003'"
+      },
+      {
+        "method": "ExtensionFieldDefaultsToZero",
+        "error": "The record in table Base Table already exists. Identification fields and values: No.='T002'"
+      },
+      {
+        "method": "SetAndReadExtensionField",
+        "error": "The record in table Base Table already exists. Identification fields and values: No.='T001'"
+      }
+    ]
+  },
+  {
+    "id": 50527,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.AreEqual failed. Expected:<> (Text). Actual:<RecId Table: R002> (Text). Format of default RecordId should be empty in standalone mode."
+      },
+      {
+        "method": "RecordIdFormatsWithoutCrash",
+        "error": "Assert.AreEqual failed. Expected:<> (Text). Actual:<RecId Table: R002> (Text). Format of default RecordId should be empty in standalone mode."
+      },
+      {
+        "method": "RecordIdCanBeAssigned",
+        "error": "The record in table RecId Table already exists. Identification fields and values: No.='R001'"
+      }
+    ]
+  },
+  {
+    "id": 50530,
+    "status": "Error",
+    "message": "4 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The Amount field in the RecRef Perm Table table must be a FlowField."
+      },
+      {
+        "method": "SetAutoCalcFields_MultipleFields_NoThrow",
+        "error": "The Amount field in the RecRef Perm Table table must be a FlowField."
+      },
+      {
+        "method": "SetAutoCalcFields_SingleField_NoThrow",
+        "error": "The Amount field in the RecRef Perm Table table must be a FlowField."
+      },
+      {
+        "method": "ReadPermission_OnClosedRef_ReturnsTrue",
+        "error": "The record is not open."
+      }
+    ]
+  },
+  {
+    "id": 50531,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50531.TransferFields3ArgValidatesFieldsWhenValidateTrue()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      },
+      {
+        "method": "TransferFields3ArgValidatesFieldsWhenValidateTrue",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50531.TransferFields3ArgValidatesFieldsWhenValidateTrue()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      }
+    ]
+  },
+  {
+    "id": 50533,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record is not open."
+      },
+      {
+        "method": "WritePermission_AfterClose_ReturnsTrue",
+        "error": "The record is not open."
+      },
+      {
+        "method": "WritePermission_ClosedRef_ReturnsTrue",
+        "error": "The record is not open."
+      }
+    ]
+  },
+  {
+    "id": 50535,
+    "status": "Error",
+    "message": "5 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table RecRef Insert Row already exists. Identification fields and values: Id='4'"
+      },
+      {
+        "method": "RecRefInsert_BoolBool_TriggerFalse_RecordExistsMarkerBlank",
+        "error": "The record in table RecRef Insert Row already exists. Identification fields and values: Id='4'"
+      },
+      {
+        "method": "RecRefInsert_BoolBool_TriggerTrue_RecordExistsAndMarkerSet",
+        "error": "The record in table RecRef Insert Row already exists. Identification fields and values: Id='3'"
+      },
+      {
+        "method": "RecRefInsert_Bool_TriggerFalse_RecordExistsMarkerBlank",
+        "error": "The record in table RecRef Insert Row already exists. Identification fields and values: Id='2'"
+      },
+      {
+        "method": "RecRefInsert_Bool_TriggerTrue_RecordExistsAndMarkerSet",
+        "error": "The record in table RecRef Insert Row already exists. Identification fields and values: Id='1'"
+      }
+    ]
+  },
+  {
+    "id": 50539,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50540,
+    "status": "Error",
+    "message": "5 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table LF Parent already exists. Identification fields and values: No.='P4'"
+      },
+      {
+        "method": "LookupWithNoMatchClearsField",
+        "error": "The record in table LF Parent already exists. Identification fields and values: No.='P4'"
+      },
+      {
+        "method": "LookupReturnsFirstMatchingRow",
+        "error": "The record in table LF Parent already exists. Identification fields and values: No.='P3'"
+      },
+      {
+        "method": "LookupReturnsDecimalFromRelatedRow",
+        "error": "The record in table LF Parent already exists. Identification fields and values: No.='P2'"
+      },
+      {
+        "method": "LookupReturnsTextFromRelatedRow",
+        "error": "The record in table LF Parent already exists. Identification fields and values: No.='P1'"
+      }
+    ]
+  },
+  {
+    "id": 50541,
+    "status": "Error",
+    "message": "5 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table TF Src already exists. Identification fields and values: Entry No.='3'"
+      },
+      {
+        "method": "TransferFieldsLeavesTargetOnlyFieldUntouched",
+        "error": "The record in table TF Src already exists. Identification fields and values: Entry No.='3'"
+      },
+      {
+        "method": "TransferFieldsWithFalsePreservesPrimaryKey",
+        "error": "The record in table TF Src already exists. Identification fields and values: Entry No.='11'"
+      },
+      {
+        "method": "TransferFieldsDefaultCopiesPrimaryKey",
+        "error": "The record in table TF Src already exists. Identification fields and values: Entry No.='42'"
+      },
+      {
+        "method": "TransferFieldsCopiesMatchingFieldsByNumber",
+        "error": "The record in table TF Src already exists. Identification fields and values: Entry No.='7'"
+      }
+    ]
+  },
+  {
+    "id": 50543,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Unhandled UI: ModalPage 50012"
+      },
+      {
+        "method": "TestPageRunModalWithRecordCompiles",
+        "error": "Unhandled UI: ModalPage 50012"
+      },
+      {
+        "method": "TestPageRunWithRecord_ThrowsOutOfScope",
+        "error": "Assert.ExpectedError failed. Expected: out-of-scope: NavForm.RunAsync. Actual: Unhandled UI: Page 50012."
+      }
+    ]
+  },
+  {
+    "id": 50546,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The request to lock the Lock Probe table with a Wait parameter of FALSE is not supported."
+      },
+      {
+        "method": "LockTableWaitFalseDoesNotBlockInsert",
+        "error": "The request to lock the Lock Probe table with a Wait parameter of FALSE is not supported."
+      },
+      {
+        "method": "LockTableWaitFalseIsNoOp",
+        "error": "The request to lock the Lock Probe table with a Wait parameter of FALSE is not supported."
+      }
+    ]
+  },
+  {
+    "id": 50549,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50550,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table Count Probe already exists. Identification fields and values: No.='A'"
+      },
+      {
+        "method": "CountFilteredToZeroWhenNoMatch",
+        "error": "The record in table Count Probe already exists. Identification fields and values: No.='A'"
+      },
+      {
+        "method": "CountReturnsTotalOnEmptyTable",
+        "error": "Assert.AreEqual failed. Expected:<0> (Integer). Actual:<5> (Integer). Empty table must have Count 0."
+      }
+    ]
+  },
+  {
+    "id": 50551,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table SalesLine Stub already exists. Identification fields and values: Entry No.='1'"
+      },
+      {
+        "method": "SetFilterPlaceholderEqualityMatch",
+        "error": "The record in table SalesLine Stub already exists. Identification fields and values: Entry No.='1'"
+      },
+      {
+        "method": "SetFilterPlaceholderWildcard",
+        "error": "Assert.AreEqual failed. Expected:<1> (Integer). Actual:<0> (Integer). SetFilter(%1*, 'B') should match 1 description starting with B."
+      }
+    ]
+  },
+  {
+    "id": 50553,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Price must not be negative"
+      },
+      {
+        "method": "SingleArgValidateOnDateFormulaField",
+        "error": "The record in table SAV Product already exists. Identification fields and values: No.='D'"
+      },
+      {
+        "method": "SingleArgValidateFiresTrigger",
+        "error": "The record in table SAV Product already exists. Identification fields and values: No.='A'"
+      }
+    ]
+  },
+  {
+    "id": 50556,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table CountSF Probe already exists. Identification fields and values: No.='A'"
+      },
+      {
+        "method": "CountRestoredAfterReset",
+        "error": "The record in table CountSF Probe already exists. Identification fields and values: No.='A'"
+      }
+    ]
+  },
+  {
+    "id": 50558,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table CopyFilters Probe already exists. Identification fields and values: Code='A'"
+      },
+      {
+        "method": "CopyFilters_AffectsCount",
+        "error": "The record in table CopyFilters Probe already exists. Identification fields and values: Code='A'"
+      }
+    ]
+  },
+  {
+    "id": 50559,
+    "status": "Error",
+    "message": "5 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The Record Get Composite does not exist. Identification fields and values: CompanyNo='NOCOMP',EntryNo='999'"
+      },
+      {
+        "method": "GetWithCompositePrimaryKey",
+        "error": "The record in table Record Get Composite already exists. Identification fields and values: CompanyNo='COMP1',EntryNo='10'"
+      },
+      {
+        "method": "GetDistinguishesBetweenDifferentKeys",
+        "error": "The record in table Record Get Table already exists. Identification fields and values: Code='A'"
+      },
+      {
+        "method": "GetReturnsTrueWhenRecordExists",
+        "error": "The record in table Record Get Table already exists. Identification fields and values: Code='EXIST'"
+      },
+      {
+        "method": "GetRetrievesRecordByPrimaryKey",
+        "error": "The record in table Record Get Table already exists. Identification fields and values: Code='ABC'"
+      }
+    ]
+  },
+  {
+    "id": 50563,
+    "status": "Error",
+    "message": "6 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table TR Child already exists. Identification fields and values: Entry No.='99'"
+      },
+      {
+        "method": "TableRelation_InsertWithoutParentDoesNotError",
+        "error": "The record in table TR Child already exists. Identification fields and values: Entry No.='99'"
+      },
+      {
+        "method": "TableRelation_CountReflectsInsertedRecords",
+        "error": "The record in table TR Child already exists. Identification fields and values: Entry No.='10'"
+      },
+      {
+        "method": "TableRelation_ModifyWorks",
+        "error": "The record in table TR Child already exists. Identification fields and values: Entry No.='3'"
+      },
+      {
+        "method": "TableRelation_InsertWithExistingParentWorks",
+        "error": "The record in table TR Child already exists. Identification fields and values: Entry No.='2'"
+      },
+      {
+        "method": "TableRelation_TableCompilesAndInsertWorks",
+        "error": "The record in table TR Child already exists. Identification fields and values: Entry No.='1'"
+      }
+    ]
+  },
+  {
+    "id": 50564,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table Delete All Table already exists. Identification fields and values: Id='2'"
+      },
+      {
+        "method": "DeleteAll_WithSetFilter_DeletesOnlyMatchingRecords",
+        "error": "The record in table Delete All Table already exists. Identification fields and values: Id='2'"
+      },
+      {
+        "method": "DeleteAll_NoFilters_DeletesAllRecords",
+        "error": "The record in table Delete All Table already exists. Identification fields and values: Id='1'"
+      }
+    ]
+  },
+  {
+    "id": 50565,
+    "status": "Error",
+    "message": "6 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table CalcSums Entry already exists. Identification fields and values: Entry No.='30'"
+      },
+      {
+        "method": "CalcSums_FilterExcludesAll_QuantityZero",
+        "error": "The record in table CalcSums Entry already exists. Identification fields and values: Entry No.='30'"
+      },
+      {
+        "method": "CalcSums_MultipleFields_BothUpdated",
+        "error": "Assert.AreEqual failed. Expected:<100> (Integer). Actual:<203.25> (Decimal). CalcSums multi: Amount should be 100."
+      },
+      {
+        "method": "CalcSums_WithFilter_SumsOnlyMatchingRecords",
+        "error": "Assert.AreEqual failed. Expected:<300> (Integer). Actual:<403.25> (Decimal). CalcSums with filter: should sum only Status=1 records."
+      },
+      {
+        "method": "CalcSums_IntegerField_ReturnsCorrectSum",
+        "error": "The record in table CalcSums Entry already exists. Identification fields and values: Entry No.='4'"
+      },
+      {
+        "method": "CalcSums_DecimalField_ReturnsCorrectSum",
+        "error": "The record in table CalcSums Entry already exists. Identification fields and values: Entry No.='1'"
+      }
+    ]
+  },
+  {
+    "id": 50567,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.AreEqual failed. Expected:<1> (Integer). Actual:<0> (Integer). ShareTable=false: Target gets a deep copy of Source rows."
+      },
+      {
+        "method": "CopyShareTableFalseIndependentTempData",
+        "error": "Assert.AreEqual failed. Expected:<1> (Integer). Actual:<0> (Integer). ShareTable=false: Target gets a deep copy of Source rows."
+      },
+      {
+        "method": "CopyTransfersFiltersCount",
+        "error": "The record in table RC Test Table already exists. Identification fields and values: No.='B01'"
+      }
+    ]
+  },
+  {
+    "id": 50568,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.AreEqual failed. Expected:<ONLY> (Text). Actual:<A> (Text). FindFirst on single record must return it."
+      },
+      {
+        "method": "FindFirst_SingleRecord_ReturnsThatRecord",
+        "error": "Assert.AreEqual failed. Expected:<ONLY> (Text). Actual:<A> (Text). FindFirst on single record must return it."
+      }
+    ]
+  },
+  {
+    "id": 50569,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table RWK Row already exists. Identification fields and values: Id='1'"
+      },
+      {
+        "method": "SetFilterAndOnIntegerFieldBounds",
+        "error": "The record in table RWK Row already exists. Identification fields and values: Id='1'"
+      }
+    ]
+  },
+  {
+    "id": 50570,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50571,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table FF Child already exists. Identification fields and values: Id='1'"
+      },
+      {
+        "method": "CalcFieldsExistsTrueAfterChildInsert",
+        "error": "The record in table FF Child already exists. Identification fields and values: Id='1'"
+      },
+      {
+        "method": "CalcFieldsExistsFalseWhenNoChild",
+        "error": "The record in table FF Master already exists. Identification fields and values: Id='1'"
+      }
+    ]
+  },
+  {
+    "id": 50572,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50573,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table Commit Test Table already exists. Identification fields and values: Id='2'"
+      },
+      {
+        "method": "Commit_AfterModify_RecordHasNewValue",
+        "error": "The record in table Commit Test Table already exists. Identification fields and values: Id='2'"
+      },
+      {
+        "method": "Commit_AfterInsert_RecordStillExists",
+        "error": "The record in table Commit Test Table already exists. Identification fields and values: Id='1'"
+      }
+    ]
+  },
+  {
+    "id": 50576,
+    "status": "Error",
+    "message": "6 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table IE Test Table already exists. Identification fields and values: No.='D001'"
+      },
+      {
+        "method": "IsEmptyAfterResetReflectsAllRows",
+        "error": "The record in table IE Test Table already exists. Identification fields and values: No.='D001'"
+      },
+      {
+        "method": "IsEmptyReturnsFalseWhenFilterMatchesSome",
+        "error": "The record in table IE Test Table already exists. Identification fields and values: No.='C001'"
+      },
+      {
+        "method": "IsEmptyReturnsTrueWhenFilterExcludesAll",
+        "error": "The record in table IE Test Table already exists. Identification fields and values: No.='B001'"
+      },
+      {
+        "method": "IsEmptyReturnsFalseWhenRecordsExist",
+        "error": "The record in table IE Test Table already exists. Identification fields and values: No.='A001'"
+      },
+      {
+        "method": "IsEmptyReturnsTrueOnEmptyTable",
+        "error": "Assert.IsTrue failed. IsEmpty must return true on a table with no rows"
+      }
+    ]
+  },
+  {
+    "id": 50580,
+    "status": "Error",
+    "message": "7 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Unexpected CLR exception thrown.: System.NotSupportedException: Specified method is not supported.\\   at Microsoft.Dynamics.Nav.Runtime.NavSession.CreateNavTestService()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_Server()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_ClientApi()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.GetClientApiOrThrow()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.<>c__DisplayClass49_0`1.<CallServer>b__0()\\   at Microsoft.Dynamics.Nav.Client.ServerInvocationHandler.CallServerSync[T](Func`1 callServer, Nullable`1 options)\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.OpenForm(NavOpenFormArguments& mainForm, NavOpenFormArguments[]& subForms, Guid mainFormHandle)\\   at Microsoft.Dynamics.Nav.Client.DataBinder.NstDataAccess.OpenForm(LogicalForm mainForm, ICollection`1 subForms)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.TryOpenForm(LogicalForm form, Boolean retry)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.OnFormOpened(Object sender, EventArgs e)\\   at Microsoft.Dynamics.Framework.UI.LogicalForm.BuildForm(Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.Builder.NavSessionHelper.BuildForm(LogicalForm form, Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.CompleteBuildDependingOnPageDefinition(MasterPage definition, LogicalForm form, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.Build(MasterPage definition, BindingManager bindingManager, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalForm(MasterPage metadata, FormState formState)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.<>c__DisplayClass39_0.<CreateLogicalForm>b__0(Boolean isRetry)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalFormWithErrorHandling(Int32 formId, Int32 retryCounter, Func`2 action)\\   at Microsoft.Dynamics.Nav.Client.TestPage"
+      },
+      {
+        "method": "FixedLayoutGroup_FieldValue_NotDefaultAfterSet",
+        "error": "Unexpected CLR exception thrown.: System.NotSupportedException: Specified method is not supported.\\   at Microsoft.Dynamics.Nav.Runtime.NavSession.CreateNavTestService()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_Server()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_ClientApi()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.GetClientApiOrThrow()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.<>c__DisplayClass49_0`1.<CallServer>b__0()\\   at Microsoft.Dynamics.Nav.Client.ServerInvocationHandler.CallServerSync[T](Func`1 callServer, Nullable`1 options)\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.OpenForm(NavOpenFormArguments& mainForm, NavOpenFormArguments[]& subForms, Guid mainFormHandle)\\   at Microsoft.Dynamics.Nav.Client.DataBinder.NstDataAccess.OpenForm(LogicalForm mainForm, ICollection`1 subForms)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.TryOpenForm(LogicalForm form, Boolean retry)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.OnFormOpened(Object sender, EventArgs e)\\   at Microsoft.Dynamics.Framework.UI.LogicalForm.BuildForm(Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.Builder.NavSessionHelper.BuildForm(LogicalForm form, Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.CompleteBuildDependingOnPageDefinition(MasterPage definition, LogicalForm form, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.Build(MasterPage definition, BindingManager bindingManager, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalForm(MasterPage metadata, FormState formState)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.<>c__DisplayClass39_0.<CreateLogicalForm>b__0(Boolean isRetry)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalFormWithErrorHandling(Int32 formId, Int32 retryCounter, Func`2 action)\\   at Microsoft.Dynamics.Nav.Client.TestPage"
+      },
+      {
+        "method": "FixedLayoutGroup_SetAndReadRight",
+        "error": "Unexpected CLR exception thrown.: System.NotSupportedException: Specified method is not supported.\\   at Microsoft.Dynamics.Nav.Runtime.NavSession.CreateNavTestService()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_Server()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_ClientApi()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.GetClientApiOrThrow()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.<>c__DisplayClass49_0`1.<CallServer>b__0()\\   at Microsoft.Dynamics.Nav.Client.ServerInvocationHandler.CallServerSync[T](Func`1 callServer, Nullable`1 options)\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.OpenForm(NavOpenFormArguments& mainForm, NavOpenFormArguments[]& subForms, Guid mainFormHandle)\\   at Microsoft.Dynamics.Nav.Client.DataBinder.NstDataAccess.OpenForm(LogicalForm mainForm, ICollection`1 subForms)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.TryOpenForm(LogicalForm form, Boolean retry)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.OnFormOpened(Object sender, EventArgs e)\\   at Microsoft.Dynamics.Framework.UI.LogicalForm.BuildForm(Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.Builder.NavSessionHelper.BuildForm(LogicalForm form, Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.CompleteBuildDependingOnPageDefinition(MasterPage definition, LogicalForm form, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.Build(MasterPage definition, BindingManager bindingManager, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalForm(MasterPage metadata, FormState formState)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.<>c__DisplayClass39_0.<CreateLogicalForm>b__0(Boolean isRetry)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalFormWithErrorHandling(Int32 formId, Int32 retryCounter, Func`2 action)\\   at Microsoft.Dynamics.Nav.Client.TestPage"
+      },
+      {
+        "method": "FixedLayoutGroup_SetAndReadLeft",
+        "error": "Unexpected CLR exception thrown.: System.NotSupportedException: Specified method is not supported.\\   at Microsoft.Dynamics.Nav.Runtime.NavSession.CreateNavTestService()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_Server()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_ClientApi()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.GetClientApiOrThrow()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.<>c__DisplayClass49_0`1.<CallServer>b__0()\\   at Microsoft.Dynamics.Nav.Client.ServerInvocationHandler.CallServerSync[T](Func`1 callServer, Nullable`1 options)\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.OpenForm(NavOpenFormArguments& mainForm, NavOpenFormArguments[]& subForms, Guid mainFormHandle)\\   at Microsoft.Dynamics.Nav.Client.DataBinder.NstDataAccess.OpenForm(LogicalForm mainForm, ICollection`1 subForms)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.TryOpenForm(LogicalForm form, Boolean retry)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.OnFormOpened(Object sender, EventArgs e)\\   at Microsoft.Dynamics.Framework.UI.LogicalForm.BuildForm(Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.Builder.NavSessionHelper.BuildForm(LogicalForm form, Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.CompleteBuildDependingOnPageDefinition(MasterPage definition, LogicalForm form, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.Build(MasterPage definition, BindingManager bindingManager, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalForm(MasterPage metadata, FormState formState)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.<>c__DisplayClass39_0.<CreateLogicalForm>b__0(Boolean isRetry)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalFormWithErrorHandling(Int32 formId, Int32 retryCounter, Func`2 action)\\   at Microsoft.Dynamics.Nav.Client.TestPage"
+      },
+      {
+        "method": "FixedSection_DuplicateKey_Errors",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50580.FixedSection_DuplicateKey_Errors()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      },
+      {
+        "method": "FixedSection_Modify",
+        "error": "The record in table Fixed Section Test Table already exists. Identification fields and values: Id='2'"
+      },
+      {
+        "method": "FixedSection_InsertAndGet",
+        "error": "The record in table Fixed Section Test Table already exists. Identification fields and values: Id='1'"
+      }
+    ]
+  },
+  {
+    "id": 50581,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50582,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Equality assertions only support Boolean, Option, Integer, BigInteger, Decimal, Code, Text, Date, DateFormula, Time, Duration, and DateTime values. Current value:Unsupported Type."
+      },
+      {
+        "method": "CurrentTransactionType_ReturnsUpdate",
+        "error": "Equality assertions only support Boolean, Option, Integer, BigInteger, Decimal, Code, Text, Date, DateFormula, Time, Duration, and DateTime values. Current value:Unsupported Type."
+      }
+    ]
+  },
+  {
+    "id": 50587,
+    "status": "Error",
+    "message": "4 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Invalid expression of type: position.\r\\totally-invalid-position-string"
+      },
+      {
+        "method": "GetSetPosition_Roundtrip",
+        "error": "The record in table Pos Test Table already exists. Identification fields and values: No.='RT001'"
+      },
+      {
+        "method": "SetPosition_RestoresPrimaryKeyRow",
+        "error": "The record in table Pos Test Table already exists. Identification fields and values: No.='SP001'"
+      },
+      {
+        "method": "GetPosition_ReturnsNonEmptyString",
+        "error": "The record in table Pos Test Table already exists. Identification fields and values: No.='GP001'"
+      }
+    ]
+  },
+  {
+    "id": 50590,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "deliberate failure"
+      },
+      {
+        "method": "CodeunitRun_WithRecord_ReturnsFalseOnError",
+        "error": "An error occurred and the transaction is stopped. Contact your administrator or partner for further assistance."
+      },
+      {
+        "method": "CodeunitRun_WithRecord_ReturnsTrueOnSuccess",
+        "error": "An error occurred and the transaction is stopped. Contact your administrator or partner for further assistance."
+      }
+    ]
+  },
+  {
+    "id": 50598,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The RF Test Item does not exist. Identification fields and values: Id='999'"
+      },
+      {
+        "method": "ReadFieldOnUnopenedRecRefReturnsFieldNo",
+        "error": "The record is not open."
+      },
+      {
+        "method": "InsertDuplicateViaRecRefFails",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50598.InsertDuplicateViaRecRefFails()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      }
+    ]
+  },
+  {
+    "id": 50600,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50602,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.AreEqual failed. Expected:<Wrong> (Text). Actual:<Original> (Text). ."
+      },
+      {
+        "method": "AssignCopiesFieldValues",
+        "error": "The record in table RecRef Assign Data already exists. Identification fields and values: Entry No.='1'"
+      }
+    ]
+  },
+  {
+    "id": 50610,
+    "status": "Error",
+    "message": "10 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table Test Item already exists. Identification fields and values: No.='N1'"
+      },
+      {
+        "method": "FieldRefSetRangeWithVariantNegative",
+        "error": "The record in table Test Item already exists. Identification fields and values: No.='N1'"
+      },
+      {
+        "method": "FieldRefSetRangeWithVariant",
+        "error": "The record in table Test Item already exists. Identification fields and values: No.='V1'"
+      },
+      {
+        "method": "TestPageFieldDrillDownNoError",
+        "error": "Unexpected CLR exception thrown.: System.NotSupportedException: Specified method is not supported.\\   at Microsoft.Dynamics.Nav.Runtime.NavSession.CreateNavTestService()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_Server()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_ClientApi()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.GetClientApiOrThrow()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.<>c__DisplayClass49_0`1.<CallServer>b__0()\\   at Microsoft.Dynamics.Nav.Client.ServerInvocationHandler.CallServerSync[T](Func`1 callServer, Nullable`1 options)\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.OpenForm(NavOpenFormArguments& mainForm, NavOpenFormArguments[]& subForms, Guid mainFormHandle)\\   at Microsoft.Dynamics.Nav.Client.DataBinder.NstDataAccess.OpenForm(LogicalForm mainForm, ICollection`1 subForms)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.TryOpenForm(LogicalForm form, Boolean retry)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.OnFormOpened(Object sender, EventArgs e)\\   at Microsoft.Dynamics.Framework.UI.LogicalForm.BuildForm(Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.Builder.NavSessionHelper.BuildForm(LogicalForm form, Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.CompleteBuildDependingOnPageDefinition(MasterPage definition, LogicalForm form, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.Build(MasterPage definition, BindingManager bindingManager, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalForm(MasterPage metadata, FormState formState)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.<>c__DisplayClass39_0.<CreateLogicalForm>b__0(Boolean isRetry)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalFormWithErrorHandling(Int32 formId, Int32 retryCounter, Func`2 action)\\   at Microsoft.Dynamics.Nav.Client.TestPage"
+      },
+      {
+        "method": "TestPageFieldLookupNoError",
+        "error": "Unexpected CLR exception thrown.: System.NotSupportedException: Specified method is not supported.\\   at Microsoft.Dynamics.Nav.Runtime.NavSession.CreateNavTestService()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_Server()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_ClientApi()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.GetClientApiOrThrow()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.<>c__DisplayClass49_0`1.<CallServer>b__0()\\   at Microsoft.Dynamics.Nav.Client.ServerInvocationHandler.CallServerSync[T](Func`1 callServer, Nullable`1 options)\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.OpenForm(NavOpenFormArguments& mainForm, NavOpenFormArguments[]& subForms, Guid mainFormHandle)\\   at Microsoft.Dynamics.Nav.Client.DataBinder.NstDataAccess.OpenForm(LogicalForm mainForm, ICollection`1 subForms)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.TryOpenForm(LogicalForm form, Boolean retry)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.OnFormOpened(Object sender, EventArgs e)\\   at Microsoft.Dynamics.Framework.UI.LogicalForm.BuildForm(Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.Builder.NavSessionHelper.BuildForm(LogicalForm form, Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.CompleteBuildDependingOnPageDefinition(MasterPage definition, LogicalForm form, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.Build(MasterPage definition, BindingManager bindingManager, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalForm(MasterPage metadata, FormState formState)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.<>c__DisplayClass39_0.<CreateLogicalForm>b__0(Boolean isRetry)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalFormWithErrorHandling(Int32 formId, Int32 retryCounter, Func`2 action)\\   at Microsoft.Dynamics.Nav.Client.TestPage"
+      },
+      {
+        "method": "TestPageFieldVisibleNegative",
+        "error": "Unexpected CLR exception thrown.: System.NotSupportedException: Specified method is not supported.\\   at Microsoft.Dynamics.Nav.Runtime.NavSession.CreateNavTestService()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_Server()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_ClientApi()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.GetClientApiOrThrow()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.<>c__DisplayClass49_0`1.<CallServer>b__0()\\   at Microsoft.Dynamics.Nav.Client.ServerInvocationHandler.CallServerSync[T](Func`1 callServer, Nullable`1 options)\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.OpenForm(NavOpenFormArguments& mainForm, NavOpenFormArguments[]& subForms, Guid mainFormHandle)\\   at Microsoft.Dynamics.Nav.Client.DataBinder.NstDataAccess.OpenForm(LogicalForm mainForm, ICollection`1 subForms)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.TryOpenForm(LogicalForm form, Boolean retry)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.OnFormOpened(Object sender, EventArgs e)\\   at Microsoft.Dynamics.Framework.UI.LogicalForm.BuildForm(Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.Builder.NavSessionHelper.BuildForm(LogicalForm form, Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.CompleteBuildDependingOnPageDefinition(MasterPage definition, LogicalForm form, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.Build(MasterPage definition, BindingManager bindingManager, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalForm(MasterPage metadata, FormState formState)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.<>c__DisplayClass39_0.<CreateLogicalForm>b__0(Boolean isRetry)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalFormWithErrorHandling(Int32 formId, Int32 retryCounter, Func`2 action)\\   at Microsoft.Dynamics.Nav.Client.TestPage"
+      },
+      {
+        "method": "TestPageFieldVisibleReturnsTrue",
+        "error": "Unexpected CLR exception thrown.: System.NotSupportedException: Specified method is not supported.\\   at Microsoft.Dynamics.Nav.Runtime.NavSession.CreateNavTestService()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_Server()\\   at Microsoft.Dynamics.Nav.Runtime.TestServiceConnection.get_ClientApi()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.GetClientApiOrThrow()\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.<>c__DisplayClass49_0`1.<CallServer>b__0()\\   at Microsoft.Dynamics.Nav.Client.ServerInvocationHandler.CallServerSync[T](Func`1 callServer, Nullable`1 options)\\   at Microsoft.Dynamics.Nav.Client.ServiceConnectionBase.OpenForm(NavOpenFormArguments& mainForm, NavOpenFormArguments[]& subForms, Guid mainFormHandle)\\   at Microsoft.Dynamics.Nav.Client.DataBinder.NstDataAccess.OpenForm(LogicalForm mainForm, ICollection`1 subForms)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.TryOpenForm(LogicalForm form, Boolean retry)\\   at Microsoft.Dynamics.Nav.Client.UIPatterns.OnFormOpeningPattern.OnFormOpened(Object sender, EventArgs e)\\   at Microsoft.Dynamics.Framework.UI.LogicalForm.BuildForm(Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.Builder.NavSessionHelper.BuildForm(LogicalForm form, Action customBuild)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.CompleteBuildDependingOnPageDefinition(MasterPage definition, LogicalForm form, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.PageBuilder.Build(MasterPage definition, BindingManager bindingManager, UIBuilderContext context)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalForm(MasterPage metadata, FormState formState)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.<>c__DisplayClass39_0.<CreateLogicalForm>b__0(Boolean isRetry)\\   at Microsoft.Dynamics.Nav.Client.FormBuilder.BuilderSession.CreateLogicalFormWithErrorHandling(Int32 formId, Int32 retryCounter, Func`2 action)\\   at Microsoft.Dynamics.Nav.Client.TestPage"
+      },
+      {
+        "method": "FieldIndexOutOfRangeReturnsStub",
+        "error": "Index out of bounds."
+      },
+      {
+        "method": "FieldIndexSecondField",
+        "error": "The record in table Test Item already exists. Identification fields and values: No.='ITEM2'"
+      },
+      {
+        "method": "FieldIndexReturnsFieldRef",
+        "error": "The record in table Test Item already exists. Identification fields and values: No.='ITEM1'"
+      }
+    ]
+  },
+  {
+    "id": 50615,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50615.DuplicateInsertErrors()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      },
+      {
+        "method": "DuplicateInsertErrors",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50615.DuplicateInsertErrors()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      },
+      {
+        "method": "DistinctInsertsSucceed",
+        "error": "The record in table No Key Table already exists. Identification fields and values: Entry No.='1'"
+      }
+    ]
+  },
+  {
+    "id": 50619,
+    "status": "Error",
+    "message": "4 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.IsTrue failed. Probe RecRef.Find must return true"
+      },
+      {
+        "method": "FindViaProbeReturnsTrue",
+        "error": "Assert.IsTrue failed. Probe RecRef.Find must return true"
+      },
+      {
+        "method": "FindDirectlyInAssertIsTrue",
+        "error": "Assert.IsTrue failed. RecRef.Find() direct in Assert.IsTrue must compile and succeed"
+      },
+      {
+        "method": "FindOnNonEmptyTableReturnsTrue",
+        "error": "Assert.IsTrue failed. RecRef.Find() must return true when records exist"
+      }
+    ]
+  },
+  {
+    "id": 50621,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.IsTrue failed. AreFieldsLoaded should return true after LoadFields"
+      },
+      {
+        "method": "RecordRef_LoadFields_IsNoOp",
+        "error": "Assert.IsTrue failed. AreFieldsLoaded should return true after LoadFields"
+      }
+    ]
+  },
+  {
+    "id": 50623,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The GBS Test Record does not exist. Identification fields and values: {049B801E-BCB2-4B69-8F5C-0E65050004A0}"
+      },
+      {
+        "method": "GetBySystemIdFindsInsertedRecord",
+        "error": "The record in table GBS Test Record already exists. Identification fields and values: Id='1'"
+      }
+    ]
+  },
+  {
+    "id": 50626,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table Field Error AutoFormat already exists. Identification fields and values: Code='VALID'"
+      },
+      {
+        "method": "FieldError_SuccessPath_NoError",
+        "error": "The record in table Field Error AutoFormat already exists. Identification fields and values: Code='VALID'"
+      }
+    ]
+  },
+  {
+    "id": 50628,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Filter control FPB FieldNo Table is not defined in the FilterPageBuilder variable."
+      },
+      {
+        "method": "AddFieldNo_Compiles_CountIsOne",
+        "error": "Filter control FPB FieldNo Table is not defined in the FilterPageBuilder variable."
+      }
+    ]
+  },
+  {
+    "id": 50629,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table Validate No Value Table already exists. Identification fields and values: Entry No.='1'"
+      },
+      {
+        "method": "ValidateNoValue_InOnInsert_FiresTrigger",
+        "error": "The record in table Validate No Value Table already exists. Identification fields and values: Entry No.='1'"
+      }
+    ]
+  },
+  {
+    "id": 50631,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.AreEqual failed. Expected:<1> (Integer). Actual:<3> (Integer). Delete subscriber should have fired once."
+      },
+      {
+        "method": "OnAfterDeleteEventFires",
+        "error": "Assert.AreEqual failed. Expected:<1> (Integer). Actual:<3> (Integer). Delete subscriber should have fired once."
+      }
+    ]
+  },
+  {
+    "id": 50633,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Assert.IsFalse failed. new record should have no links"
+      },
+      {
+        "method": "TestHasLinksDefaultFalse",
+        "error": "Assert.IsFalse failed. new record should have no links"
+      }
+    ]
+  }
+]

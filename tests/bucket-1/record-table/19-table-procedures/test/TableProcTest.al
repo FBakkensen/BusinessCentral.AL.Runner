@@ -5,11 +5,20 @@ codeunit 50498 "Table Procedure Tests"
     var
         Assert: Codeunit Assert;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "Product";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure TestGetDisplayName()
     var
         Prod: Record "Product";
     begin
+        Initialize();
         // [GIVEN] A product with first and last name
         Prod.Init();
         Prod."Code" := 'P001';
@@ -31,6 +40,7 @@ codeunit 50498 "Table Procedure Tests"
     var
         Prod: Record "Product";
     begin
+        Initialize();
         Prod.Init();
         Prod."Code" := 'P002';
         Prod."First Name" := 'Jane';
@@ -48,6 +58,7 @@ codeunit 50498 "Table Procedure Tests"
     var
         Prod: Record "Product";
     begin
+        Initialize();
         Prod.Init();
         Prod."Code" := 'P003';
         Prod."First Name" := 'Bob';
@@ -65,6 +76,7 @@ codeunit 50498 "Table Procedure Tests"
     var
         Prod: Record "Product";
     begin
+        Initialize();
         Prod.Init();
         Prod."Code" := 'P004';
         Prod."First Name" := 'Alice';
@@ -82,6 +94,7 @@ codeunit 50498 "Table Procedure Tests"
     var
         Prod: Record "Product";
     begin
+        Initialize();
         Prod.Init();
         Prod."Code" := 'P005';
         Prod."First Name" := 'Eve';
@@ -99,6 +112,7 @@ codeunit 50498 "Table Procedure Tests"
     var
         Prod: Record "Product";
     begin
+        Initialize();
         // [GIVEN] A product with zero limit and positive quantity
         Prod.Init();
         Prod."Code" := 'P006';
@@ -120,6 +134,7 @@ codeunit 50498 "Table Procedure Tests"
     var
         Prod: Record "Product";
     begin
+        Initialize();
         // [GIVEN] A product with zero limit
         Prod.Init();
         Prod."Code" := 'P007';
@@ -141,6 +156,7 @@ codeunit 50498 "Table Procedure Tests"
     var
         Prod: Record "Product";
     begin
+        Initialize();
         // [GIVEN] A product where quantity exactly equals limit
         Prod.Init();
         Prod."Code" := 'P008';

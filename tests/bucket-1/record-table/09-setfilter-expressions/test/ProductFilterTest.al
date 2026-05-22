@@ -16,11 +16,20 @@ codeunit 50389 "Product Filter Tests"
         CreateProduct('TOOL-B', 'Hand Tool', 'TOOLS', 5.00, 500);
     end;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "Test Product";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure TestWildcardContains()
     var
         Product: Record "Test Product";
     begin
+        Initialize();
         Product.DeleteAll();
         // [GIVEN] Products with various descriptions
         SetupProducts();
@@ -37,6 +46,7 @@ codeunit 50389 "Product Filter Tests"
     var
         Product: Record "Test Product";
     begin
+        Initialize();
         Product.DeleteAll();
         SetupProducts();
 
@@ -52,6 +62,7 @@ codeunit 50389 "Product Filter Tests"
     var
         Product: Record "Test Product";
     begin
+        Initialize();
         Product.DeleteAll();
         SetupProducts();
 
@@ -67,6 +78,7 @@ codeunit 50389 "Product Filter Tests"
     var
         _ResetTestProduct: Record "Test Product";
     begin
+        Initialize();
         _ResetTestProduct.DeleteAll();
         SetupProducts();
 
@@ -81,6 +93,7 @@ codeunit 50389 "Product Filter Tests"
     var
         _ResetTestProduct: Record "Test Product";
     begin
+        Initialize();
         _ResetTestProduct.DeleteAll();
         SetupProducts();
 
@@ -95,6 +108,7 @@ codeunit 50389 "Product Filter Tests"
     var
         _ResetTestProduct: Record "Test Product";
     begin
+        Initialize();
         _ResetTestProduct.DeleteAll();
         SetupProducts();
 
@@ -109,6 +123,7 @@ codeunit 50389 "Product Filter Tests"
     var
         _ResetTestProduct: Record "Test Product";
     begin
+        Initialize();
         _ResetTestProduct.DeleteAll();
         SetupProducts();
 
@@ -123,6 +138,7 @@ codeunit 50389 "Product Filter Tests"
     var
         _ResetTestProduct: Record "Test Product";
     begin
+        Initialize();
         _ResetTestProduct.DeleteAll();
         SetupProducts();
 
@@ -137,6 +153,7 @@ codeunit 50389 "Product Filter Tests"
     var
         Product: Record "Test Product";
     begin
+        Initialize();
         SetupProducts();
 
         // [WHEN] Filtering description case-insensitively for "blue widget"
@@ -151,6 +168,7 @@ codeunit 50389 "Product Filter Tests"
     var
         Product: Record "Test Product";
     begin
+        Initialize();
         Product.DeleteAll();
         SetupProducts();
 

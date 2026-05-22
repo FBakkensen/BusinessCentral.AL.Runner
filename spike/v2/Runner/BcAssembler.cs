@@ -26,7 +26,27 @@ public sealed class BcAssembler
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             ".local/share/al-runner/artifacts/27.5.46862.48827");
 
+    // Roslyn's internal recursion on large bundles can overflow the default 8 MB stack.
+    // Run the full compile pass on a thread with 64 MB stack to avoid SIGSEGV.
+    private const int CompileStackSize = 64 * 1024 * 1024;
+
     public CompileResult Compile(string assemblyName, IEnumerable<EmittedSource> sources)
+    {
+        CompileResult? result = null;
+        Exception? threadEx = null;
+        var t = new Thread(() =>
+        {
+            try { result = CompileCore(assemblyName, sources); }
+            catch (Exception ex) { threadEx = ex; }
+        }, CompileStackSize);
+        t.Start();
+        t.Join();
+        if (threadEx != null)
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(threadEx).Throw();
+        return result!;
+    }
+
+    private CompileResult CompileCore(string assemblyName, IEnumerable<EmittedSource> sources)
     {
         var sourceList = sources.ToList();
         if (Environment.GetEnvironmentVariable("DUMP_CS") == "1")
@@ -50,7 +70,7 @@ public sealed class BcAssembler
             refs,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary,
                 allowUnsafe: true,
-                concurrentBuild: true,
+                concurrentBuild: false,
                 optimizationLevel: OptimizationLevel.Release));
 
         using var ms = new MemoryStream();
@@ -165,6 +185,36 @@ public sealed class BcAssembler
         // Source-level redirect is the reliable alternative: "NavForm.Run(" cannot be a
         // substring of "NavForm.RunModal(" so there is no false-positive risk.
         ("NavForm.Run(", "global::AlRunnerV2Shim.NavRuntimeHelpersShim.NavForm_Run("),
+        // NavTextExtensions.ALSubstring — v27 DLL uses 1-based indexing, but BC v28+ (and
+        // the AL Language test library) expects 0-based. Override with 0-based shims.
+        ("NavTextExtensions.ALSubstring(",   "global::AlRunnerV2Shim.NavRuntimeHelpersShim.ALSubstring("),
+        // NavTextExtensions.ALIndexOf — v27 returns 1-based (0 = not found); v28+ returns
+        // 0-based (-1 = not found). Override to match.
+        ("NavTextExtensions.ALIndexOf(",     "global::AlRunnerV2Shim.NavRuntimeHelpersShim.ALIndexOf("),
+        // NavTextExtensions.ALLastIndexOf — same 1-based vs 0-based issue.
+        ("NavTextExtensions.ALLastIndexOf(", "global::AlRunnerV2Shim.NavRuntimeHelpersShim.ALLastIndexOf("),
+        // NavTextExtensions.ALIndexOfAny — v27 DLL doesn't have NavList<char> overloads; shim adds them
+        // and converts 0-based C# results back to 1-based AL semantics (0 = not found).
+        ("NavTextExtensions.ALIndexOfAny(",  "global::AlRunnerV2Shim.NavRuntimeHelpersShim.ALIndexOfAny("),
+        // NavTextExtensions.ALSplit — v27 DLL overloads don't accept NavList<char> text/separator
+        // directly from the AL compiler. Redirect to the shim which adds those overloads while
+        // preserving the same whole-string-delimiter semantics as real BC.
+        ("NavTextExtensions.ALSplit(",       "global::AlRunnerV2Shim.NavRuntimeHelpersShim.ALSplit("),
+        // ALSystemString.ALMaxStrLen — v27 returns Int32.MaxValue for unlimited Text;
+        // v28+ returns 0 for unlimited Text variables (NavDefinedLengthMetadata == Int32.MaxValue).
+        ("ALSystemString.ALMaxStrLen(",      "global::AlRunnerV2Shim.NavRuntimeHelpersShim.ALMaxStrLen("),
+        // NavApp.GetCurrentModuleInfo — NREs via NavTenant.get_Database on skeleton.
+        // Shim returns module info derived from the loaded bundle's app.json.
+        ("ALNavApp.ALGetCurrentModuleInfo(", "global::AlRunnerV2Shim.NavRuntimeHelpersShim.ALNavApp_GetCurrentModuleInfo("),
+        // ALSystemString.ALCopyStr — v27 throws when fromPos < 1; v28+ clamps to 1.
+        ("ALSystemString.ALCopyStr(",      "global::AlRunnerV2Shim.NavRuntimeHelpersShim.ALCopyStr("),
+        // ALSystemString.ALIncStr — v27 throws when string has no digits; v28+ appends "1".
+        ("ALSystemString.ALIncStr(",       "global::AlRunnerV2Shim.NavRuntimeHelpersShim.ALIncStr("),
+        // ALSystemString.ALSelectString — v27 throws for index 0 or index > count; v28+ returns "".
+        ("ALSystemString.ALSelectString(", "global::AlRunnerV2Shim.NavRuntimeHelpersShim.ALSelectString("),
+        // ALSystemString.ALStrPos — v27 DLL doesn't have NavList<char> overloads; shim adds them
+        // while preserving the same semantics: returns 0 when substring is empty or not found.
+        ("ALSystemString.ALStrPos(",       "global::AlRunnerV2Shim.NavRuntimeHelpersShim.ALStrPos("),
     };
 
     private static string ApplyPolyfillRedirects(string code)
@@ -358,6 +408,222 @@ namespace AlRunnerV2Shim
         {
             if (global::AlRunnerV2.BcRuntime.OosHooksActive)
                 global::AlRunnerV2.Infrastructure.RunnerScope.ThrowOutOfScope(""NavForm.RunAsync"", ""non-modal-ui"", ""ui"");
+        }
+
+        // ─── Text method polyfills ────────────────────────────────────────────────
+        // BC v27 DLL implements Substring/IndexOf/LastIndexOf/IndexOfAny with 1-based
+        // indexing (not-found = 0). BC v28+ uses 0-based indexing (not-found = -1).
+        // The AL Language test library was written against v28+ semantics.
+
+        public static Microsoft.Dynamics.Nav.Runtime.NavText ALSubstring(string text, int startIndex)
+            => new Microsoft.Dynamics.Nav.Runtime.NavText(text.Substring(startIndex));
+
+        public static Microsoft.Dynamics.Nav.Runtime.NavText ALSubstring(string text, int startIndex, int count)
+            => new Microsoft.Dynamics.Nav.Runtime.NavText(text.Substring(startIndex, count));
+
+        public static int ALIndexOf(string text, string value)
+            => text.IndexOf(value, global::System.StringComparison.Ordinal);
+
+        public static int ALIndexOf(string text, string value, int startIndex)
+            => text.IndexOf(value, startIndex, global::System.StringComparison.Ordinal);
+
+        public static int ALLastIndexOf(string text, string value)
+            => text.LastIndexOf(value, global::System.StringComparison.Ordinal);
+
+        public static int ALLastIndexOf(string text, string value, int startIndex)
+            => text.LastIndexOf(value, startIndex, global::System.StringComparison.Ordinal);
+
+        // ALIndexOfAny: AL uses 1-based indexing (0 = not found). Convert from C# 0-based.
+        // The startIndex parameter from AL is also 1-based.
+        public static int ALIndexOfAny(string text, string chars)
+        {
+            int r = text.IndexOfAny(chars.ToCharArray());
+            return r < 0 ? 0 : r + 1;
+        }
+
+        public static int ALIndexOfAny(string text, string chars, int startIndex)
+        {
+            int r = text.IndexOfAny(chars.ToCharArray(), startIndex - 1);
+            return r < 0 ? 0 : r + 1;
+        }
+
+        public static int ALIndexOfAny(string text, Microsoft.Dynamics.Nav.Runtime.NavList<char> chars)
+        {
+            var arr = new char[chars.ALCount];
+            for (int i = 0; i < arr.Length; i++) arr[i] = chars.ALGet(i + 1);
+            int r = text.IndexOfAny(arr);
+            return r < 0 ? 0 : r + 1;
+        }
+
+        public static int ALIndexOfAny(string text, Microsoft.Dynamics.Nav.Runtime.NavList<char> chars, int startIndex)
+        {
+            var arr = new char[chars.ALCount];
+            for (int i = 0; i < arr.Length; i++) arr[i] = chars.ALGet(i + 1);
+            int r = text.IndexOfAny(arr, startIndex - 1);
+            return r < 0 ? 0 : r + 1;
+        }
+
+        // ALSplit: the separator is treated as a whole-string delimiter (not per-character).
+        // This matches BC behaviour for Text.Split(separator) in both v27 and v28+.
+        public static Microsoft.Dynamics.Nav.Runtime.NavList<Microsoft.Dynamics.Nav.Runtime.NavText> ALSplit(
+            string text, string separators)
+        {
+            var parts = text.Split(new string[] { separators }, global::System.StringSplitOptions.None);
+            var result = Microsoft.Dynamics.Nav.Runtime.NavList<Microsoft.Dynamics.Nav.Runtime.NavText>.Default;
+            foreach (var p in parts) result.ALAdd(new Microsoft.Dynamics.Nav.Runtime.NavText(p));
+            return result;
+        }
+
+        public static Microsoft.Dynamics.Nav.Runtime.NavList<Microsoft.Dynamics.Nav.Runtime.NavText> ALSplit(
+            string text, string[] separators)
+        {
+            var parts = text.Split(separators, global::System.StringSplitOptions.None);
+            var result = Microsoft.Dynamics.Nav.Runtime.NavList<Microsoft.Dynamics.Nav.Runtime.NavText>.Default;
+            foreach (var p in parts) result.ALAdd(new Microsoft.Dynamics.Nav.Runtime.NavText(p));
+            return result;
+        }
+
+        public static Microsoft.Dynamics.Nav.Runtime.NavList<Microsoft.Dynamics.Nav.Runtime.NavText> ALSplit(
+            string text, Microsoft.Dynamics.Nav.Runtime.NavList<Microsoft.Dynamics.Nav.Runtime.NavText> separators)
+        {
+            var sepArr = new string[separators.ALCount];
+            for (int i = 0; i < sepArr.Length; i++) sepArr[i] = separators.ALGet(i + 1);
+            var parts = text.Split(sepArr, global::System.StringSplitOptions.None);
+            var result = Microsoft.Dynamics.Nav.Runtime.NavList<Microsoft.Dynamics.Nav.Runtime.NavText>.Default;
+            foreach (var p in parts) result.ALAdd(new Microsoft.Dynamics.Nav.Runtime.NavText(p));
+            return result;
+        }
+
+        public static Microsoft.Dynamics.Nav.Runtime.NavList<Microsoft.Dynamics.Nav.Runtime.NavText> ALSplit(
+            string text, Microsoft.Dynamics.Nav.Runtime.NavList<char> separator)
+        {
+            string sep = separator == null ? global::System.String.Empty : separator.ToString();
+            return ALSplit(text, sep);
+        }
+
+        // NavList<char> (AL Text) overloads — emitted C# passes Text args as NavList<char>.
+        // NOTE: Only keeping the two most common overloads; using explicit static helper to avoid overload resolution explosion in Roslyn.
+        public static Microsoft.Dynamics.Nav.Runtime.NavList<Microsoft.Dynamics.Nav.Runtime.NavText> ALSplit(
+            Microsoft.Dynamics.Nav.Runtime.NavList<char> text, string separators)
+        {
+            string t = text == null ? global::System.String.Empty : text.ToString();
+            return ALSplit(t, separators);
+        }
+
+        public static Microsoft.Dynamics.Nav.Runtime.NavList<Microsoft.Dynamics.Nav.Runtime.NavText> ALSplit(
+            Microsoft.Dynamics.Nav.Runtime.NavList<char> text, Microsoft.Dynamics.Nav.Runtime.NavList<char> separator)
+        {
+            string t = text == null ? global::System.String.Empty : text.ToString();
+            string sep = separator == null ? global::System.String.Empty : separator.ToString();
+            return ALSplit(t, sep);
+        }
+
+        // ALMaxStrLen: v27 returns Int32.MaxValue for unlimited Text; v28+ returns 0.
+        // NavDefinedLengthMetadata already stores 0 for unlimited and N for Text[N].
+        public static int ALMaxStrLen(Microsoft.Dynamics.Nav.Runtime.NavText text)
+            => text.NavDefinedLengthMetadata;
+
+        public static int ALMaxStrLen(Microsoft.Dynamics.Nav.Runtime.NavCode text)
+            => text.NavDefinedLengthMetadata;
+
+        public static int ALMaxStrLen(string text)
+            => 0; // unlimited Text passed as raw string
+
+        // NavApp.GetCurrentModuleInfo — returns module info from the loaded bundle's app.json.
+        public static void ALNavApp_GetCurrentModuleInfo(
+            Microsoft.Dynamics.Nav.Types.DataError errorLevel,
+            Microsoft.Dynamics.Nav.Runtime.ByRef<Microsoft.Dynamics.Nav.Runtime.NavModuleInfo> info)
+        {
+            var (appId, name, publisher, version) = global::AlRunnerV2.BcRuntime.GetCurrentModuleAppInfo();
+            var navVersion = new Microsoft.Dynamics.Nav.Runtime.NavVersion(version);
+            var emptyDeps = Microsoft.Dynamics.Nav.Runtime.NavList<Microsoft.Dynamics.Nav.Runtime.NavModuleDependencyInfo>.Default;
+            info.Value = new Microsoft.Dynamics.Nav.Runtime.NavModuleInfo(
+                appId, name, publisher, navVersion, navVersion, emptyDeps, appId);
+        }
+
+        // ─── Text function polyfills (BC v27 → v28+ behavioral gaps) ─────────────────
+
+        // CopyStr: position < 1 clamps to 1 instead of throwing (BC v28+ behavior).
+        public static string ALCopyStr(string source, int fromPos1Based)
+        {
+            if (source == null) return global::System.String.Empty;
+            if (fromPos1Based < 1) fromPos1Based = 1;
+            if (fromPos1Based > source.Length) return global::System.String.Empty;
+            return source.Substring(fromPos1Based - 1);
+        }
+        public static string ALCopyStr(string source, int fromPos1Based, int length)
+        {
+            if (source == null) return global::System.String.Empty;
+            if (fromPos1Based < 1) fromPos1Based = 1;
+            if (fromPos1Based > source.Length) return global::System.String.Empty;
+            int avail = source.Length - fromPos1Based + 1;
+            int actual = global::System.Math.Min(length, avail);
+            if (actual <= 0) return global::System.String.Empty;
+            return source.Substring(fromPos1Based - 1, actual);
+        }
+        public static string ALCopyStr(Microsoft.Dynamics.Nav.Runtime.NavList<char> source, int fromPos1Based)
+            => ALCopyStr(source == null ? null : source.ToString(), fromPos1Based);
+        public static string ALCopyStr(Microsoft.Dynamics.Nav.Runtime.NavList<char> source, int fromPos1Based, int length)
+            => ALCopyStr(source == null ? null : source.ToString(), fromPos1Based, length);
+
+        // IncStr: non-numeric string appends 1 instead of throwing (BC v28+ behavior).
+        public static string ALIncStr(string value)
+        {
+            if (value == null) return ""1"";
+            bool hasDigit = false;
+            foreach (char c in value) if (char.IsDigit(c)) { hasDigit = true; break; }
+            if (!hasDigit) return value + ""1"";
+            return Microsoft.Dynamics.Nav.Runtime.ALSystemString.ALIncStr(value);
+        }
+        public static string ALIncStr(string value, long increment)
+        {
+            if (value == null) return increment.ToString();
+            bool hasDigit = false;
+            foreach (char c in value) if (char.IsDigit(c)) { hasDigit = true; break; }
+            if (!hasDigit) return value + increment.ToString();
+            return Microsoft.Dynamics.Nav.Runtime.ALSystemString.ALIncStr(value, increment);
+        }
+        public static string ALIncStr(Microsoft.Dynamics.Nav.Runtime.NavList<char> value)
+            => ALIncStr(value == null ? null : value.ToString());
+        public static string ALIncStr(Microsoft.Dynamics.Nav.Runtime.NavList<char> value, long increment)
+            => ALIncStr(value == null ? null : value.ToString(), increment);
+
+        // SelectStr: index 0 or index > count returns "" instead of throwing (BC v28+ behavior).
+        public static string ALSelectString(int index1Based, string source)
+        {
+            if (index1Based <= 0) return global::System.String.Empty;
+            try { return Microsoft.Dynamics.Nav.Runtime.ALSystemString.ALSelectString(index1Based, source); }
+            catch { return global::System.String.Empty; }
+        }
+        public static string ALSelectString(int index1Based, Microsoft.Dynamics.Nav.Runtime.NavList<char> source)
+        {
+            if (index1Based <= 0) return global::System.String.Empty;
+            string s = source == null ? global::System.String.Empty : source.ToString();
+            try { return Microsoft.Dynamics.Nav.Runtime.ALSystemString.ALSelectString(index1Based, s); }
+            catch { return global::System.String.Empty; }
+        }
+
+        // StrPos: delegates to the original BC runtime behaviour.
+        // Both v27 and v28+ return 0 when the substring is empty (""not found"").
+        public static int ALStrPos(string source, string substring)
+        {
+            return Microsoft.Dynamics.Nav.Runtime.ALSystemString.ALStrPos(source, substring);
+        }
+        public static int ALStrPos(Microsoft.Dynamics.Nav.Runtime.NavList<char> source, string substring)
+        {
+            string s = source == null ? global::System.String.Empty : source.ToString();
+            return Microsoft.Dynamics.Nav.Runtime.ALSystemString.ALStrPos(s, substring);
+        }
+        public static int ALStrPos(string source, Microsoft.Dynamics.Nav.Runtime.NavList<char> substring)
+        {
+            string sub = substring == null ? global::System.String.Empty : substring.ToString();
+            return Microsoft.Dynamics.Nav.Runtime.ALSystemString.ALStrPos(source, sub);
+        }
+        public static int ALStrPos(Microsoft.Dynamics.Nav.Runtime.NavList<char> source, Microsoft.Dynamics.Nav.Runtime.NavList<char> substring)
+        {
+            string s = source == null ? global::System.String.Empty : source.ToString();
+            string sub = substring == null ? global::System.String.Empty : substring.ToString();
+            return Microsoft.Dynamics.Nav.Runtime.ALSystemString.ALStrPos(s, sub);
         }
     }
 }

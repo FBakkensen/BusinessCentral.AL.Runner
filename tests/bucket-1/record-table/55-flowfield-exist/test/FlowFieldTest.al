@@ -5,11 +5,22 @@ codeunit 50571 "FF Tests"
     var
         Assert: Codeunit Assert;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "FF Child";
+        Rec2: Record "FF Master";
+    begin
+        Rec1.DeleteAll(false);
+        Rec2.DeleteAll(false);
+    end;
+
     [Test]
     procedure CalcFieldsExistsFalseWhenNoChild()
     var
         M: Record "FF Master";
     begin
+        Initialize();
         M.Id := 1;
         M.Insert();
 
@@ -23,6 +34,7 @@ codeunit 50571 "FF Tests"
         M: Record "FF Master";
         C: Record "FF Child";
     begin
+        Initialize();
         M.Id := 2;
         M.Insert();
 

@@ -15,6 +15,7 @@ codeunit 50069 "ErrorInfo Test"
     end;
 
     [Test]
+    [ErrorBehavior(ErrorBehavior::Collect)]
     procedure ErrorInfoDetailedMessage()
     var
         Errors: List of [ErrorInfo];
@@ -39,6 +40,7 @@ codeunit 50069 "ErrorInfo Test"
     end;
 
     [Test]
+    [ErrorBehavior(ErrorBehavior::Collect)]
     procedure CollectSingleErrorBasic()
     begin
         // Positive: collectible error in collecting context adds to list
@@ -48,6 +50,7 @@ codeunit 50069 "ErrorInfo Test"
     end;
 
     [Test]
+    [ErrorBehavior(ErrorBehavior::Collect)]
     procedure CollectMultipleErrors()
     var
         Errors: List of [ErrorInfo];
@@ -69,6 +72,7 @@ codeunit 50069 "ErrorInfo Test"
     end;
 
     [Test]
+    [ErrorBehavior(ErrorBehavior::Collect)]
     procedure ClearCollectedErrorsWorks()
     begin
         // Positive: ClearCollectedErrors empties the list
@@ -77,6 +81,7 @@ codeunit 50069 "ErrorInfo Test"
     end;
 
     [Test]
+    [ErrorBehavior(ErrorBehavior::Collect)]
     procedure NonCollectibleStillThrows()
     begin
         // Negative: non-collectible error throws even in collecting context

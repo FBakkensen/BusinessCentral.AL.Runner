@@ -5,12 +5,21 @@ codeunit 50553 "SAV Product Tests"
     var
         Assert: Codeunit Assert;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "SAV Product";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure SingleArgValidateFiresTrigger()
     var
         Prod: Record "SAV Product";
         Cfg: Codeunit "SAV Configurator";
     begin
+        Initialize();
         // [GIVEN] A product whose Price is populated via Evaluate into a local
         Prod."No." := 'A';
         Prod.Insert();
@@ -29,6 +38,7 @@ codeunit 50553 "SAV Product Tests"
         Prod: Record "SAV Product";
         Cfg: Codeunit "SAV Configurator";
     begin
+        Initialize();
         // Reporter's shape: Evaluate into DateFormula field, then single-arg Validate
         Prod."No." := 'D';
         Prod.Insert();
@@ -44,6 +54,7 @@ codeunit 50553 "SAV Product Tests"
         Prod: Record "SAV Product";
         Cfg: Codeunit "SAV Configurator";
     begin
+        Initialize();
         // [GIVEN] A product
         Prod."No." := 'B';
         Prod.Insert();

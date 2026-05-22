@@ -5,12 +5,21 @@ codeunit 50425 "RecRef Method Tests"
     var
         Assert: Codeunit Assert;
 
+
+    local procedure Initialize()
+    var
+        Rec1: Record "RecRef Method Table";
+    begin
+        Rec1.DeleteAll(false);
+    end;
+
     [Test]
     procedure TestRenameWorks()
     var
         Helper: Codeunit "RecRef Method Helper";
         _ResetRecRefMethodTable: Record "RecRef Method Table";
     begin
+        Initialize();
         _ResetRecRefMethodTable.DeleteAll();
         Assert.IsTrue(Helper.TestRename(), 'Rename should preserve record data');
     end;
@@ -22,6 +31,7 @@ codeunit 50425 "RecRef Method Tests"
         Pos: Text;
         _ResetRecRefMethodTable: Record "RecRef Method Table";
     begin
+        Initialize();
         _ResetRecRefMethodTable.DeleteAll();
         Pos := Helper.TestGetPosition();
         Assert.AreNotEqual('', Pos, 'GetPosition should return non-empty string');
@@ -32,6 +42,7 @@ codeunit 50425 "RecRef Method Tests"
     var
         Helper: Codeunit "RecRef Method Helper";
     begin
+        Initialize();
         Assert.IsTrue(Helper.TestChangeCompany(), 'ChangeCompany should not crash');
     end;
 
@@ -40,6 +51,7 @@ codeunit 50425 "RecRef Method Tests"
     var
         Helper: Codeunit "RecRef Method Helper";
     begin
+        Initialize();
         Assert.IsTrue(Helper.TestHasFilter(), 'HasFilter should be true after SetRange on field');
     end;
 
@@ -49,6 +61,7 @@ codeunit 50425 "RecRef Method Tests"
         Helper: Codeunit "RecRef Method Helper";
         _ResetRecRefMethodTable: Record "RecRef Method Table";
     begin
+        Initialize();
         _ResetRecRefMethodTable.DeleteAll();
         // Mark(true) marks the record, then Mark() returns true
         Assert.IsTrue(Helper.TestMark(), 'Mark() should return true after Mark(true)');
@@ -59,6 +72,7 @@ codeunit 50425 "RecRef Method Tests"
     var
         Helper: Codeunit "RecRef Method Helper";
     begin
+        Initialize();
         Assert.IsTrue(Helper.TestAscending(), 'Default Ascending should be true');
     end;
 
@@ -67,6 +81,7 @@ codeunit 50425 "RecRef Method Tests"
     var
         Helper: Codeunit "RecRef Method Helper";
     begin
+        Initialize();
         // ClearMarks after Mark(true) should not error, and Mark() should still return false (stub)
         Assert.IsFalse(Helper.TestClearMarksAndCheck(), 'After ClearMarks, Mark() should return false');
     end;
@@ -77,6 +92,7 @@ codeunit 50425 "RecRef Method Tests"
         Helper: Codeunit "RecRef Method Helper";
         Filters: Text;
     begin
+        Initialize();
         Filters := Helper.TestGetFilters();
         Assert.AreEqual('', Filters, 'GetFilters should return empty string (stub)');
     end;

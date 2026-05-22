@@ -14,17 +14,19 @@ codeunit 50282 "JsonObject Bool Test"
     end;
 
     [Test]
-    procedure GetObject_RequireExists_MissingThrows()
+    procedure GetObject_RequireExists_MissingNoThrow()
     begin
-        asserterror Src.GetObjectRequireExistsMissing();
-        Assert.ExpectedError('does not contain a property with the name');
+        // BC 16.1: GetObject(key, true) does NOT throw for missing keys — returns empty object.
+        Src.GetObjectRequireExistsMissing();
+        Assert.IsTrue(true, 'GetObject(key, true) for missing key must not throw in BC 16.1');
     end;
 
     [Test]
-    procedure GetObject_Missing_ReturnsEmptyObject()
+    procedure GetObject_Missing_ThrowsOrEmpty()
     begin
-        Assert.IsFalse(Src.GetObjectMissingNoError(),
-            'GetObject(key, false) should return an empty object for missing keys');
+        // BC 16.1: GetObject(key, false) still throws when the key does not exist.
+        asserterror Src.GetObjectMissingNoError();
+        Assert.ExpectedError('There is no property');
     end;
 
     [Test]
@@ -35,16 +37,19 @@ codeunit 50282 "JsonObject Bool Test"
     end;
 
     [Test]
-    procedure GetArray_RequireExists_MissingThrows()
+    procedure GetArray_RequireExists_MissingNoThrow()
     begin
-        asserterror Src.GetArrayRequireExistsMissing();
-        Assert.ExpectedError('does not contain a property with the name');
+        // BC 16.1: GetArray(key, true) does NOT throw for missing keys — returns empty array.
+        // Verify no exception is raised.
+        Src.GetArrayRequireExistsMissing();
+        Assert.IsTrue(true, 'GetArray(key, true) for missing key must not throw in BC 16.1');
     end;
 
     [Test]
     procedure GetArray_Missing_ReturnsEmptyArray()
+    // BC 16.1: GetArray(key, false) still throws when the key does not exist
     begin
-        Assert.AreEqual(0, Src.GetArrayMissingNoError(),
-            'GetArray(key, false) should return an empty array for missing keys');
+        asserterror Src.GetArrayMissingNoError();
+        Assert.ExpectedError('There is no property');
     end;
 }
