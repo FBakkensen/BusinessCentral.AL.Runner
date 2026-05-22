@@ -159,22 +159,59 @@ public static class NavReportSync
                 BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public,
                 null, Type.EmptyTypes, null);
 
-        InvokeVirtual(_onInitReport, navReport);
-        InvokeVirtual(_onPreReport, navReport);
-        InvokeDataItems(navReport);
-        InvokeVirtual(_onPostReport, navReport);
+        TryRunOrControlFlow(navReport, navReportBase);
+    }
 
-        // Strict AL semantics: when the AL source declares `ProcessingOnly =
-        // false` (the AL default), Run() must attempt rendering after the
-        // lifecycle triggers. The runner has no service tier and cannot
-        // render layouts, so the rendering attempt must surface as an
-        // AL-observable error. We trigger that via NavReport.RDLCLayout —
-        // a public static method that forwards to GetLayoutCore (Cecil-
-        // rewritten to throw an OOS InvalidOperationException on
-        // ThrowError). The error therefore originates from the actual
-        // layout-resolution code path, not from a guard at the top of Run.
-        if (!IsProcessingOnly(navReport, navReportBase))
-            InvokeLayoutForReport(navReport, navReportBase);
+    // Runs the full lifecycle (OnInitReport → OnPreReport → DataItems →
+    // OnPostReport → layout). Catches NavControlException (Skip/Quit/etc.)
+    // as control-flow termination, not error.
+    private static bool TryRunOrControlFlow(object navReport, Type navReportBase)
+    {
+        try
+        {
+            InvokeVirtual(_onInitReport, navReport);
+            InvokeVirtual(_onPreReport, navReport);
+            InvokeDataItems(navReport);
+            InvokeVirtual(_onPostReport, navReport);
+
+            // Strict AL semantics: when the AL source declares `ProcessingOnly =
+            // false` (the AL default), Run() must attempt rendering after the
+            // lifecycle triggers. The runner has no service tier and cannot
+            // render layouts, so the rendering attempt must surface as an
+            // AL-observable error. We trigger that via NavReport.RDLCLayout —
+            // a public static method that forwards to GetLayoutCore (Cecil-
+            // rewritten to throw an OOS InvalidOperationException on
+            // ThrowError). The error therefore originates from the actual
+            // layout-resolution code path, not from a guard at the top of Run.
+            if (!IsProcessingOnly(navReport, navReportBase))
+                InvokeLayoutForReport(navReport, navReportBase);
+            return false;
+        }
+        catch (Exception ex) when (IsNavControlException(ex))
+        {
+            // CurrReport.Skip() / Quit() / Cancel() / Break() in a report-level
+            // trigger (OnPreReport, OnPostReport, or per-record data-item
+            // triggers we don't yet special-case) is a control-flow signal,
+            // not an error. NavReport.Skip() etc. throw NavControlException
+            // by design. Swallow it — the report ends here, no layout.
+            if (Environment.GetEnvironmentVariable("AL_RUNNER_DIAG_IC") == "1")
+                Console.Error.WriteLine($"[NavReportSync] SyncRun: report terminated by {ex.GetType().Name} (control-flow)");
+            return true;
+        }
+    }
+
+    // NavControlException lives in Microsoft.Dynamics.Nav.Types and is
+    // internal — match by full type name so we don't need an InternalsVisibleTo
+    // bridge. NavReport.Skip/Quit/Cancel/Break and DataItem.Skip/Break/etc.
+    // all throw this type as a control-flow signal.
+    private static bool IsNavControlException(Exception ex)
+    {
+        for (var e = ex; e != null; e = e.InnerException)
+        {
+            var n = e.GetType().Name;
+            if (n == "NavControlException") return true;
+        }
+        return false;
     }
 
     // Looks up ProcessingOnly from the parsed AL source (RecordPatches).
