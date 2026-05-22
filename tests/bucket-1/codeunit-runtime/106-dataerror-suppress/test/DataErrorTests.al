@@ -199,6 +199,7 @@ codeunit 50061 "DataError Suppress Tests"
     var
         R: Record "DataError Probe";
     begin
+        R.DeleteAll();
         // [GIVEN] No records exist
         // [WHEN] Finding first on empty table without capturing return
         asserterror R.FindFirst();
@@ -230,6 +231,7 @@ codeunit 50061 "DataError Suppress Tests"
     var
         R: Record "DataError Probe";
     begin
+        R.DeleteAll();
         // [GIVEN] No records exist
         // [WHEN] Finding last on empty table without capturing return
         asserterror R.FindLast();
@@ -261,6 +263,7 @@ codeunit 50061 "DataError Suppress Tests"
     var
         R: Record "DataError Probe";
     begin
+        R.DeleteAll();
         // [GIVEN] No records exist
         // [WHEN] FindSet on empty table without capturing return
         asserterror R.FindSet();

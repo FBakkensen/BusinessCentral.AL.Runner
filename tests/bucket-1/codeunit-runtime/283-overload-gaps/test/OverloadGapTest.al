@@ -62,6 +62,7 @@ codeunit 50203 "OGap Test"
         Src: Codeunit "OGap Source";
         Rec: Record "OGap Table";
     begin
+        Rec.DeleteAll();
         // [GIVEN] A record already inserted
         Rec.Init();
         Rec."No." := 'DUP';

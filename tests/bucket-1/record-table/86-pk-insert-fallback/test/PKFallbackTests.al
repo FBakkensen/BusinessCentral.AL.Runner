@@ -28,6 +28,7 @@ codeunit 50615 "PK Fallback Tests"
     var
         Rec: Record "No Key Table";
     begin
+        Rec.DeleteAll();
         Rec."Entry No." := 42;
         Rec.Description := 'Original';
         Rec.Insert();

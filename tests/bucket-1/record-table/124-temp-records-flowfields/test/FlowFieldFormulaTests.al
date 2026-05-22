@@ -149,6 +149,8 @@ codeunit 50432 "FlowField Formula Tests"
         Header: Record "FF Order Header";
         Line: Record "FF Order Line";
     begin
+        Header.DeleteAll();
+        Line.DeleteAll();
         Header.Init();
         Header."No." := 'DUP-HDR';
         Header.Insert();

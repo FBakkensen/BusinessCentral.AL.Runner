@@ -80,6 +80,7 @@ codeunit 50359 "AI Attribute Item Tests"
     var
         Rec: Record "AI Test Record";
     begin
+        Rec.DeleteAll();
         // [GIVEN] A record already exists with Id = 5
         Rec.Init();
         Rec.Id := 5;

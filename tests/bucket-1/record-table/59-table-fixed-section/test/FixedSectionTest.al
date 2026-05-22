@@ -81,6 +81,7 @@ codeunit 50580 "Test Table Fixed Section"
     var
         Rec: Record "Fixed Section Test Table";
     begin
+        Rec.DeleteAll();
         // [GIVEN] A record with Id 4 already exists
         Rec.Id := 4;
         Rec.Name := 'First';
