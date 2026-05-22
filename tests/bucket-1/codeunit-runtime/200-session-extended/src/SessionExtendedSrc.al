@@ -26,6 +26,7 @@ codeunit 50160 "SXE Src"
         exit(Session.GetCurrentModuleExecutionContext());
     end;
 
+#if ONPREM
     procedure SendTraceTag_DoesNotThrow(): Boolean
     begin
         Session.SendTraceTag('TAG001', 'MyCategory', Verbosity::Normal,
@@ -39,12 +40,12 @@ codeunit 50160 "SXE Src"
             'description', AuditCategory::UserManagement);
         exit(true);
     end;
-
     procedure EnableVerboseTelemetry_DoesNotThrow(): Boolean
     begin
         Session.EnableVerboseTelemetry(true, 60000);
         exit(true);
     end;
+#endif
 
     procedure ApplicationIdentifier_DoesNotThrow(): Text
     begin

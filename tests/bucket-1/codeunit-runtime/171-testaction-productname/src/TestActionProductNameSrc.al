@@ -33,6 +33,7 @@ table 50020 "TAPN Record"
 
 page 50003 "TAPN Card"
 {
+    ApplicationArea = All;
     PageType = Card;
     SourceTable = "TAPN Record";
 

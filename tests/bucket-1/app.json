@@ -10,6 +10,7 @@
       "to": 99999
     }
   ],
-  "target": "OnPrem",
+  "target": "Cloud",
+  "runtime": "16.1",
   "preprocessorSymbols": ["CLEANSCHEMA1","CLEANSCHEMA25"]
 }

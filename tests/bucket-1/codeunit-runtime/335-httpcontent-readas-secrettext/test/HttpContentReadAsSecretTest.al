@@ -6,6 +6,7 @@ codeunit 50292 "HC ReadAs Secret Test"
         Assert: Codeunit Assert;
         Src: Codeunit "HC ReadAs Secret Src";
 
+#if ONPREM
     [Test]
     procedure ReadAsSecret_RoundTrip()
     begin
@@ -26,4 +27,5 @@ codeunit 50292 "HC ReadAs Secret Test"
         Assert.IsFalse(Src.ReadAsSecretIsEmpty('not-empty'),
             'ReadAs(SecretText) must not return empty for non-empty content');
     end;
+#endif
 }

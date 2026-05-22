@@ -1,5 +1,6 @@
 page 50014 "Test Item Card"
 {
+    ApplicationArea = All;
     PageType = Card;
     SourceTable = "Test Item";
 

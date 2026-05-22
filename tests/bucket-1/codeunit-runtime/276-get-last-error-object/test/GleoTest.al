@@ -4,10 +4,13 @@
 codeunit 50201 "GLEO Test"
 {
     Subtype = Test;
-    var Assert: Codeunit Assert;
+
+    var
+        Assert: Codeunit Assert;
 
     // ── Basic non-crash ────────────────────────────────────────────────────────
 
+#if ONPREM
     [Test]
     procedure GetLastErrorObject_AfterError_DoesNotCrash()
     var
@@ -37,8 +40,8 @@ codeunit 50201 "GLEO Test"
     [Test]
     procedure GetLastErrorObject_CoexistsWithGetLastErrorText()
     var
-        ErrObj: Variant;
         ErrText: Text;
+        ErrObj: Variant;
     begin
         // Positive: After asserterror, both GetLastErrorObject() and
         // GetLastErrorText() must be available without interfering.
@@ -50,6 +53,7 @@ codeunit 50201 "GLEO Test"
         Assert.AreEqual('coexist-test', ErrText,
             'GetLastErrorText must still return the error message after GetLastErrorObject call');
     end;
+#endif
 
     [Test]
     procedure ClearLastError_ResetsErrorState()
@@ -66,6 +70,7 @@ codeunit 50201 "GLEO Test"
 
     // ── Return type is a Variant ───────────────────────────────────────────────
 
+#if ONPREM
     [Test]
     procedure GetLastErrorObject_ReturnsVariant_CanBeAssigned()
     var
@@ -79,4 +84,5 @@ codeunit 50201 "GLEO Test"
         ErrObj2 := ErrObj;
         Assert.IsTrue(true, 'GetLastErrorObject return value can be assigned to a Variant variable');
     end;
+#endif
 }

@@ -6,6 +6,7 @@ codeunit 50462 "CUP Test"
         Assert: Codeunit Assert;
         Src: Codeunit "CUP Src";
 
+#if ONPREM
     [Test]
     procedure ChangeUserPassword_ValidArgs_NoOp()
     begin
@@ -41,4 +42,5 @@ codeunit 50462 "CUP Test"
             'verylongnewpassword!@#$%^&*()');
         Assert.IsTrue(true, 'ChangeUserPassword with long strings must not throw');
     end;
+#endif
 }

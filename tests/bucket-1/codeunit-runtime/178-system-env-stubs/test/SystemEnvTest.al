@@ -18,6 +18,7 @@ codeunit 50143 "SEVS Test"
         Assert.IsFalse(Src.IsSvcTier(), 'IsServiceTier must be false in standalone runner');
     end;
 
+#if ONPREM
     [Test]
     procedure ApplicationPath_NotEmpty()
     begin
@@ -29,7 +30,7 @@ codeunit 50143 "SEVS Test"
     begin
         Assert.AreNotEqual('', Src.GetTemporaryPath(), 'TemporaryPath must return a non-empty path');
     end;
-
+#endif
     [Test]
     procedure WorkDate_GetSet_RoundTrips()
     begin
@@ -68,6 +69,7 @@ codeunit 50143 "SEVS Test"
         Assert.AreEqual(CreateDateTime(20260417D, 080000T), Rounded, 'RoundDateTime(08:10, 1h) must round to 08:00');
     end;
 
+#if ONPREM
     [Test]
     procedure IsNull_FalseForText()
     var
@@ -76,7 +78,7 @@ codeunit 50143 "SEVS Test"
         V := 'hello';
         Assert.IsFalse(Src.NullCheck(V), 'IsNull must return false for a non-null text variant');
     end;
-
+#endif
     [Test]
     procedure Hyperlink_NoThrow()
     begin

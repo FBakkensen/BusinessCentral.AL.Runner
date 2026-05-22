@@ -12,6 +12,7 @@ table 50035 "MOv Rec"
 
 page 50004 "MOv Card"
 {
+    ApplicationArea = All;
     PageType = Card;
     SourceTable = "MOv Rec";
     layout
@@ -75,8 +76,8 @@ codeunit 50230 "MOv Src"
 
     procedure FPB_AddField_3Arg(caption: Text; defaultFilter: Text): Boolean
     var
-        fpb: FilterPageBuilder;
         rec: Record "MOv Rec";
+        fpb: FilterPageBuilder;
     begin
         fpb.AddField(caption, rec.Code, defaultFilter);
         exit(true);
@@ -84,8 +85,8 @@ codeunit 50230 "MOv Src"
 
     procedure FPB_AddField_3Arg_Count(): Integer
     var
-        fpb: FilterPageBuilder;
         rec: Record "MOv Rec";
+        fpb: FilterPageBuilder;
     begin
         fpb.AddField('Code', rec.Code, 'A*');
         fpb.AddField('Name', rec.Name, 'Test*');

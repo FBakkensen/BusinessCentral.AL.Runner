@@ -22,6 +22,7 @@ codeunit 50156 "SystemMisc Src"
 
     // ── GetDocumentUrl ────────────────────────────────────────────────────────
 
+#if ONPREM
     /// GetDocumentUrl must not throw; returns empty string stub.
     procedure GetDocumentUrlStub(): Text
     var
@@ -30,6 +31,7 @@ codeunit 50156 "SystemMisc Src"
         MediaId := CreateGuid();
         exit(GetDocumentUrl(MediaId));
     end;
+#endif
 
     // ── CaptionClassTranslate ─────────────────────────────────────────────────
 
@@ -57,6 +59,7 @@ codeunit 50156 "SystemMisc Src"
 
     // ── ImportStreamWithUrlAccess ─────────────────────────────────────────────
 
+#if ONPREM
     /// ImportStreamWithUrlAccess must not throw; returns empty-or-stub URL.
     procedure ImportStreamUrl(): Text
     var
@@ -67,4 +70,5 @@ codeunit 50156 "SystemMisc Src"
         Rec.Content.CreateInStream(IStream);
         exit(ImportStreamWithUrlAccess(IStream, 'test.pdf', 60));
     end;
+#endif
 }

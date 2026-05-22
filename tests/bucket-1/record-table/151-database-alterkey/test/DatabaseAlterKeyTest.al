@@ -5,6 +5,7 @@ codeunit 50460 "DAK AlterKey Test"
     var
         Assert: Codeunit Assert;
 
+#if ONPREM
     [Test]
     procedure AlterKey_NoOp_ClusteredTrue()
     var
@@ -35,6 +36,7 @@ codeunit 50460 "DAK AlterKey Test"
         Helper.CallAlterKeyOnPK(false);
         Assert.IsTrue(true, 'AlterKey called twice must complete without error');
     end;
+#endif
 
     [Test]
     procedure AddWithBonus_ProvingCompilationUnitLive()

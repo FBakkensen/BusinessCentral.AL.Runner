@@ -6,6 +6,7 @@ codeunit 50612 "DS Tests"
         Assert: Codeunit Assert;
         Src: Codeunit "DS Src";
 
+#if ONPREM
     // -----------------------------------------------------------------------
     // Positive: SID is non-empty
     // -----------------------------------------------------------------------
@@ -69,4 +70,5 @@ codeunit 50612 "DS Tests"
         Assert.AreNotEqual('', Sid,
             'Inline Database.SID() call must return non-empty');
     end;
+#endif
 }

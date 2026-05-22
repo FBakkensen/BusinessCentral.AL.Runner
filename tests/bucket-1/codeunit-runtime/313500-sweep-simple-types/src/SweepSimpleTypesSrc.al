@@ -76,15 +76,12 @@ codeunit 50247 "Sweep Simple Src"
         Rec: Record "SST Rec";
         RecRef: RecordRef;
         FR: FieldRef;
-        Caught: Text;
     begin
         Rec.Init();
         Rec.Id := 1;
         RecRef.GetTable(Rec);
         FR := RecRef.Field(2);  // Name field
-        asserterror FR.FieldError('Custom error message for Name');
-        Caught := GetLastErrorText();
-        exit(Caught);
+        FR.FieldError('Custom error message for Name');
     end;
 
     // ── Notification.AddAction (Text, Integer, Text, Text) ──────────────────

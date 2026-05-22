@@ -5,6 +5,7 @@ codeunit 50464 "CLF CheckLicenseFile Test"
     var
         Assert: Codeunit Assert;
 
+#if ONPREM
     [Test]
     procedure CheckLicenseFile_NoOp_KeyNumber1()
     var
@@ -35,6 +36,7 @@ codeunit 50464 "CLF CheckLicenseFile Test"
         Helper.CallCheckLicenseFile(2);
         Assert.IsTrue(true, 'CheckLicenseFile() called twice must complete without error');
     end;
+#endif
 
     [Test]
     procedure AddWithBonus_ProvingCompilationUnitLive()

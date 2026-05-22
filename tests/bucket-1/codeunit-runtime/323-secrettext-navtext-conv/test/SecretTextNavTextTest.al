@@ -10,6 +10,7 @@ codeunit 50268 "STN Test"
         Assert: Codeunit Assert;
         Src: Codeunit "STN Src";
 
+#if ONPREM
     // ── UseWindowsAuthentication with SecretText ─────────────────────────────
 
     /// Positive: UseWindowsAuthentication(SecretText, SecretText) must not throw.
@@ -27,6 +28,7 @@ codeunit 50268 "STN Test"
         Src.UseWindowsAuthDomainWithSecret('user1', 'pass1', 'CORP');
         // [THEN] No error
     end;
+#endif
 
     // ── AddCertificate with SecretText ────────────────────────────────────────
 

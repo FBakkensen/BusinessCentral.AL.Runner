@@ -13,6 +13,7 @@ table 50040 "RR Link Table"
 
 page 50005 "RR Child Page"
 {
+    ApplicationArea = All;
     PageType = ListPart;
     SourceTable = "RR Link Table";
 
@@ -22,7 +23,7 @@ page 50005 "RR Child Page"
         {
             repeater(Group)
             {
-                field("No."; "No.") { }
+                field("No."; Rec."No.") { }
             }
         }
     }
@@ -30,6 +31,7 @@ page 50005 "RR Child Page"
 
 page 50006 "RR Parent Page"
 {
+    ApplicationArea = All;
     PageType = Card;
     SourceTable = "RR Link Table";
 
@@ -39,7 +41,7 @@ page 50006 "RR Parent Page"
         {
             group(General)
             {
-                field("No."; "No.") { }
+                field("No."; Rec."No.") { }
             }
             part(ChildPart; "RR Child Page")
             {

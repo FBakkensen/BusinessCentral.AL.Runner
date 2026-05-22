@@ -2,6 +2,7 @@
 /// that are most likely to appear in production AL (test helpers).
 codeunit 50166 "DBG Src"
 {
+#if ONPREM
     procedure IsDebuggerActive(): Boolean
     begin
         exit(Debugger.IsActive());
@@ -18,4 +19,5 @@ codeunit 50166 "DBG Src"
         Debugger.Activate();
         exit(true);
     end;
+#endif
 }

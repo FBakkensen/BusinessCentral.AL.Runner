@@ -11,6 +11,7 @@ codeunit 50266 "HC UseDefaultNetwork Test"
     var
         Assert: Codeunit Assert;
 
+#if ONPREM
     // ── UseDefaultNetworkWindowsAuthentication ───────────────────────────────
 
     /// Positive: Calling UseDefaultNetworkWindowsAuthentication() must not throw.
@@ -24,4 +25,5 @@ codeunit 50266 "HC UseDefaultNetwork Test"
         client.UseDefaultNetworkWindowsAuthentication();
         // [THEN] No error — method call succeeds
     end;
+#endif
 }

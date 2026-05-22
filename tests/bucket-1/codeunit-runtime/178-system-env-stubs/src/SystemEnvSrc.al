@@ -1,5 +1,7 @@
 codeunit 50142 "SEVS Src"
 {
+
+#if ONPREM
     procedure GetApplicationPath(): Text
     begin
         exit(ApplicationPath());
@@ -9,6 +11,7 @@ codeunit 50142 "SEVS Src"
     begin
         exit(TemporaryPath());
     end;
+#endif
 
     procedure IsGui(): Boolean
     begin
@@ -50,11 +53,12 @@ codeunit 50142 "SEVS Src"
         exit(RoundDateTime(DT, Precision));
     end;
 
+#if ONPREM
     procedure NullCheck(V: Variant): Boolean
     begin
         exit(IsNull(V));
     end;
-
+#endif
     procedure OpenHyperlink(Url: Text)
     begin
         Hyperlink(Url);

@@ -6,6 +6,7 @@ codeunit 50169 "AIT Test"
         Assert: Codeunit Assert;
         Src: Codeunit "AIT Src";
 
+#if ONPREM
     [Test]
     procedure AITokensUsed_ReturnsZero()
     begin
@@ -27,4 +28,5 @@ codeunit 50169 "AIT Test"
         Assert.AreNotEqual(1, Src.GetAITokens(),
             'SessionInformation.AITokensUsed must not report >= 1 in standalone mode');
     end;
+#endif
 }

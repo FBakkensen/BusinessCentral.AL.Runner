@@ -3,9 +3,11 @@
 /// the runner has no service tier and cannot change real passwords.
 codeunit 50520 "SUP Src"
 {
+#if ONPREM
     procedure ChangePassword(UserId: Guid; NewPwd: Text): Boolean
     begin
         Database.SetUserPassword(UserId, NewPwd);
         exit(true);
     end;
+#endif
 }

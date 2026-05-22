@@ -6,6 +6,7 @@ codeunit 50521 "SUP Test"
         Assert: Codeunit Assert;
         Src: Codeunit "SUP Src";
 
+#if ONPREM
     // -----------------------------------------------------------------------
     // Positive: Database.SetUserPassword must be a silent no-op in standalone
     // mode — the runner has no service tier, so password changes are ignored.
@@ -50,4 +51,5 @@ codeunit 50521 "SUP Test"
         Result := Src.ChangePassword(UserId, 'S3cr3t!');
         Assert.IsTrue(Result, 'Return value after SetUserPassword must be true');
     end;
+#endif
 }

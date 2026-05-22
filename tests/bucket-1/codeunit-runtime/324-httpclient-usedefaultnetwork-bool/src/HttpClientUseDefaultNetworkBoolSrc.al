@@ -1,5 +1,6 @@
 codeunit 50269 "HC UseDefaultNetwork Bool Src"
 {
+#if ONPREM
     /// <summary>
     /// Exercises UseDefaultNetworkWindowsAuthentication() in a boolean context.
     /// </summary>
@@ -11,4 +12,5 @@ codeunit 50269 "HC UseDefaultNetwork Bool Src"
             exit(false);
         exit(true);
     end;
+#endif
 }

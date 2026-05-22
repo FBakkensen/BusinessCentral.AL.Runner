@@ -5,6 +5,7 @@ codeunit 50470 "DFI Tests"
     var
         Assert: Codeunit Assert;
 
+#if ONPREM
     // ------------------------------------------------------------------
     // Positive: DataFileInformation completes without error.
     // The stub is a no-op — var parameters keep their default values.
@@ -49,4 +50,5 @@ codeunit 50470 "DFI Tests"
         asserterror Error('post-call error');
         Assert.ExpectedError('post-call error');
     end;
+#endif
 }

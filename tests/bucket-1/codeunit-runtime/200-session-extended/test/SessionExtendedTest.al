@@ -36,6 +36,7 @@ codeunit 50161 "SXE Test"
             'Session.GetCurrentModuleExecutionContext must return Normal');
     end;
 
+#if ONPREM
     [Test]
     procedure SendTraceTag_DoesNotThrow()
     begin
@@ -56,7 +57,7 @@ codeunit 50161 "SXE Test"
         Assert.IsTrue(Src.EnableVerboseTelemetry_DoesNotThrow(),
             'Session.EnableVerboseTelemetry must complete without error');
     end;
-
+#endif
     [Test]
     procedure ApplicationIdentifier_DoesNotThrow()
     var

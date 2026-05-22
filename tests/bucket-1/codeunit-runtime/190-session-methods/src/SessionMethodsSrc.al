@@ -26,10 +26,12 @@ codeunit 50146 "SES Src"
         exit(true);
     end;
 
+#if ONPREM
     procedure LogAuditMessageDoesNotThrow(): Boolean
     begin
         Session.LogAuditMessage('audit', SecurityOperationResult::Success,
             AuditCategory::UserManagement, 1, 1);
         exit(true);
     end;
+#endif
 }

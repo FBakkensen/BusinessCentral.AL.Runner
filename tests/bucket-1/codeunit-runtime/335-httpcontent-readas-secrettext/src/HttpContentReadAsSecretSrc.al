@@ -1,5 +1,6 @@
 codeunit 50291 "HC ReadAs Secret Src"
 {
+#if ONPREM
     procedure ReadAsSecretRoundTrip(body: Text): Text
     var
         content: HttpContent;
@@ -28,4 +29,5 @@ codeunit 50291 "HC ReadAs Secret Src"
         content.ReadAs(secret);
         exit(secret.Unwrap() = '');
     end;
+#endif
 }

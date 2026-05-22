@@ -5,6 +5,7 @@ codeunit 50270 "HC UseDefaultNetwork Bool Test"
     var
         Assert: Codeunit Assert;
 
+#if ONPREM
     [Test]
     procedure UseDefaultNetwork_ReturnsTrue()
     var
@@ -23,4 +24,5 @@ codeunit 50270 "HC UseDefaultNetwork Bool Test"
             'UseDefaultNetworkWindowsAuthentication should not return false');
         Assert.ExpectedError('AreEqual');
     end;
+#endif
 }

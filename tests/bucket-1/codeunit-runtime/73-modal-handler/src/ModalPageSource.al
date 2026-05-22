@@ -10,6 +10,7 @@ table 50049 "Modal Test Data"
 
 page 50008 "Modal Edit Page"
 {
+    ApplicationArea = All;
     PageType = Card;
     SourceTable = "Modal Test Data";
 

@@ -1,6 +1,7 @@
 /// Helper codeunit exercising Database.SID().
 codeunit 50611 "DS Src"
 {
+#if ONPREM
     /// Returns the result of Database.SID().
     procedure GetSid(): Text
     begin
@@ -18,4 +19,5 @@ codeunit 50611 "DS Src"
     begin
         exit(StrLen(Database.SID()));
     end;
+#endif
 }

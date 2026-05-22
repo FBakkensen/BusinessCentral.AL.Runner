@@ -11,6 +11,7 @@ table 50050 "Stub Test Table"
 
 page 50009 "Stub Test Card"
 {
+    ApplicationArea = All;
     PageType = Card;
     SourceTable = "Stub Test Table";
 

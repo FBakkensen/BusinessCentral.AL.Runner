@@ -28,6 +28,7 @@ codeunit 50215 "OG Tests"
     // #1183 — File.Create() returns Boolean (positive: returns true)
     // ──────────────────────────────────────────────────────────────────────────
 
+#if ONPREM
     [Test]
     procedure File_Create_ReturnsTrue()
     var
@@ -46,6 +47,7 @@ codeunit 50215 "OG Tests"
         Assert.IsFalse(Src.CanNegatCreateResult(F, 'test.txt'),
             'NOT File.Create should return false when Create succeeds');
     end;
+#endif
 
     // ──────────────────────────────────────────────────────────────────────────
     // #1187 — RecordRef.AddLink(Url, Description) — returns link ID (0 in stub)

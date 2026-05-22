@@ -15,6 +15,7 @@ table 50109 "DFI Source"
 ///     var CreationDateTime: DateTime; var SourceTable: Table)
 codeunit 50469 "DFI Helper"
 {
+#if ONPREM
     procedure CallDataFileInformation(ShowDialog: Boolean)
     var
         Name: Text;
@@ -45,4 +46,5 @@ codeunit 50469 "DFI Helper"
             HasApplicationData, HasGlobalData, TenantInformation, CreationDateTime, SourceRec);
         exit(true);
     end;
+#endif
 }

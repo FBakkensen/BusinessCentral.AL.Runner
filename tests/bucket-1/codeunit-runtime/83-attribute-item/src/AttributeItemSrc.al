@@ -16,8 +16,8 @@ table 50054 "AI Test Record"
         field(3; Notes; Text[250])
         {
             DataClassification = CustomerContent;
-            ObsoleteState = Pending;
             ObsoleteReason = 'Use Description instead';
+            ObsoleteState = Pending;
         }
         field(4; Amount; Decimal)
         {
@@ -39,7 +39,7 @@ tableextension 50000 "AI Test Record Ext" extends "AI Test Record"
 {
     fields
     {
-        field(10; Code; Code[20])
+        field(50000; Code; Code[20])
         {
             DataClassification = ToBeClassified;
         }

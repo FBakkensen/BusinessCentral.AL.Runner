@@ -10,6 +10,7 @@ codeunit 50264 "File Bool Returns Test"
     var
         Assert: Codeunit Assert;
 
+#if ONPREM
     // ── File.Open bool return ────────────────────────────────────────────────
 
     /// Positive: Open returns a boolean that can be tested.
@@ -69,4 +70,5 @@ codeunit 50264 "File Bool Returns Test"
         ok := File.Copy('a.txt', 'b.txt');
         Assert.AreEqual(true, ok, 'File.Copy must return Boolean true in stub');
     end;
+#endif
 }

@@ -5,6 +5,7 @@ codeunit 50472 "IDT ImportData Test"
     var
         Assert: Codeunit Assert;
 
+#if ONPREM
     [Test]
     procedure ImportData_NoOp_ShowDialogTrue()
     var
@@ -35,6 +36,7 @@ codeunit 50472 "IDT ImportData Test"
         Helper.CallImportData(true);
         Assert.IsTrue(true, 'ImportData called twice must complete without error');
     end;
+#endif
 
     [Test]
     procedure AddWithBonus_ProvingCompilationUnitLive()

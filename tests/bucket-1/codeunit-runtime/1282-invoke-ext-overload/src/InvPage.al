@@ -1,5 +1,6 @@
 page 50001 "Inv Ext Pg"
 {
+    ApplicationArea = All;
     PageType = Card;
     SourceTable = "Inv Ext Tbl";
 

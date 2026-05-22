@@ -23,6 +23,7 @@ table 50182 "Fixed Section Test Table"
 
 page 50013 "Fixed Section Page"
 {
+    ApplicationArea = All;
     PageType = Card;
     SourceTable = "Fixed Section Test Table";
 

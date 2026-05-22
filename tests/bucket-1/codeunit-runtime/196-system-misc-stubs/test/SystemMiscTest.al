@@ -59,6 +59,7 @@ codeunit 50157 "SystemMisc Test"
 
     // ── GetDocumentUrl ────────────────────────────────────────────────────────
 
+#if ONPREM
     [Test]
     procedure GetDocumentUrl_DoesNotThrow()
     begin
@@ -68,7 +69,7 @@ codeunit 50157 "SystemMisc Test"
         Src.GetDocumentUrlStub();
         Assert.IsTrue(true, 'GetDocumentUrl must not throw');
     end;
-
+#endif
     // ── CaptionClassTranslate ─────────────────────────────────────────────────
 
     [Test]
@@ -111,6 +112,7 @@ codeunit 50157 "SystemMisc Test"
 
     // ── ImportStreamWithUrlAccess ─────────────────────────────────────────────
 
+#if ONPREM
     [Test]
     procedure ImportStreamWithUrlAccess_DoesNotThrow()
     begin
@@ -120,4 +122,5 @@ codeunit 50157 "SystemMisc Test"
         Src.ImportStreamUrl();
         Assert.IsTrue(true, 'ImportStreamWithUrlAccess must not throw');
     end;
+#endif
 }

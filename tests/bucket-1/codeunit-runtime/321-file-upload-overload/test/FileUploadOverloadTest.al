@@ -10,6 +10,7 @@ codeunit 50265 "File Upload Overload Test"
     var
         Assert: Codeunit Assert;
 
+#if ONPREM
     // ── File.Upload 5-param static form — OOS (browser round-trip) ─────────
 
     /// File.Upload (browser round-trip) is out-of-scope (§3.4 file-storage).
@@ -32,4 +33,5 @@ codeunit 50265 "File Upload Overload Test"
         asserterror File.Upload('My Dialog', '', 'All Files|*.*', '', toFile);
         Assert.ExpectedError('out-of-scope: NavFile.Upload');
     end;
+#endif
 }

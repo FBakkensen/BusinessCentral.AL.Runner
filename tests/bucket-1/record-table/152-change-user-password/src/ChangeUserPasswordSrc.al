@@ -2,6 +2,7 @@
 /// Signature per the AL compiler: `ChangeUserPassword(OldPassword: Text, NewPassword: Text)`.
 codeunit 50461 "CUP Src"
 {
+#if ONPREM
     procedure CallChangePassword(OldPassword: Text; NewPassword: Text)
     begin
         Database.ChangeUserPassword(OldPassword, NewPassword);
@@ -12,4 +13,5 @@ codeunit 50461 "CUP Src"
         Database.ChangeUserPassword(OldPassword, NewPassword);
         exit(true);
     end;
+#endif
 }

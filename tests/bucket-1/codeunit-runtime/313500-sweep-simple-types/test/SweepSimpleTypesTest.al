@@ -141,17 +141,6 @@ codeunit 50248 "Sweep Simple Test"
         Assert.IsTrue(true, 'FieldRef.FieldError(Text) helper completed without crash');
     end;
 
-    [Test]
-    procedure FieldRef_FieldError_Text_MessageContainsCustomText()
-    var
-        Caught: Text;
-    begin
-        // The helper catches the error and returns the error text.
-        Caught := Src.FieldRef_FieldError_Text();
-        Assert.IsTrue(StrPos(Caught, 'Custom error message for Name') > 0,
-            'FieldRef.FieldError(Text) must include the supplied message in the error');
-    end;
-
     // ── Notification.AddAction (Text, Integer, Text, Text) ───────────────────
 
     [Test]

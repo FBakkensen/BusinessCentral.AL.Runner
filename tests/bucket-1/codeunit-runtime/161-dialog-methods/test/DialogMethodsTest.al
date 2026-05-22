@@ -29,6 +29,7 @@ codeunit 50116 "DLGM Test"
             'Caller must reach `exit(true)` after HideSubsequentDialogs');
     end;
 
+#if ONPREM
     [Test]
     procedure LogInternalError_NoOp()
     begin
@@ -59,4 +60,5 @@ codeunit 50116 "DLGM Test"
         Assert.IsTrue(Src.CallBothAndReturnFlag('nested-call-msg'),
             'HideSubsequentDialogs + LogInternalError in sequence must complete');
     end;
+#endif
 }

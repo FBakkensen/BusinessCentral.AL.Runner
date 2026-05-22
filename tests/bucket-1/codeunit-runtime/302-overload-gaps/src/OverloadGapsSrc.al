@@ -10,6 +10,7 @@ codeunit 50214 "OG Src"
     end;
 
     // Issue #1183 — File.Create() returns Boolean.
+#if ONPREM
     procedure CreateFileReturnsTrue(var F: File; FileName: Text): Boolean
     begin
         exit(F.Create(FileName));
@@ -20,6 +21,7 @@ codeunit 50214 "OG Src"
     begin
         exit(not F.Create(FileName));
     end;
+#endif
 
     // Issue #1187 — RecordRef.AddLink(Url, Description) returns Integer (link ID).
     procedure AddLinkReturnsId(var RecRef: RecordRef; Url: Text; Description: Text): Integer

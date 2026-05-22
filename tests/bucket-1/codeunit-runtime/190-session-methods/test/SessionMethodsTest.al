@@ -38,13 +38,14 @@ codeunit 50147 "SES Test"
             'Session.LogMessage must complete without throwing');
     end;
 
+#if ONPREM
     [Test]
     procedure LogAuditMessage_DoesNotThrow()
     begin
         Assert.IsTrue(Src.LogAuditMessageDoesNotThrow(),
             'Session.LogAuditMessage must complete without throwing');
     end;
-
+#endif
     [Test]
     procedure ClientType_NotWebClient_NegativeTrap()
     begin

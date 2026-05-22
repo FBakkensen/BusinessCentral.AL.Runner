@@ -22,6 +22,7 @@ table 50018 "VCA Item"
 /// must still compile with these constructs present.
 page 50002 "VCA Item Card"
 {
+    ApplicationArea = All;
     PageType = Card;
     SourceTable = "VCA Item";
 
@@ -45,8 +46,8 @@ page 50002 "VCA Item Card"
     }
 
     var
-        ShowPrice: Boolean;
         HideActiveFlag: Boolean;
+        ShowPrice: Boolean;
 
     trigger OnOpenPage()
     begin

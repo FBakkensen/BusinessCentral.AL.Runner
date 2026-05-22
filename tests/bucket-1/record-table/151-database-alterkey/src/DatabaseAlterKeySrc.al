@@ -16,6 +16,7 @@ table 50106 "DAK Item"
 /// Helper codeunit that wraps Database.AlterKey(KeyRef, Boolean).
 codeunit 50459 "DAK Helper"
 {
+#if ONPREM
     /// Call Database.AlterKey(primaryKeyRef, clustered) — must be a no-op stub.
     procedure CallAlterKeyOnPK(clustered: Boolean)
     var
@@ -27,6 +28,7 @@ codeunit 50459 "DAK Helper"
         Database.AlterKey(KRef, clustered);
         RecRef.Close();
     end;
+#endif
 
     /// Proving helper — returns a+b+1 so tests can verify the codeunit is live.
     procedure AddWithBonus(a: Integer; b: Integer): Integer

@@ -6,6 +6,7 @@ codeunit 50167 "DBG Test"
         Assert: Codeunit Assert;
         Src: Codeunit "DBG Src";
 
+#if ONPREM
     [Test]
     procedure IsActive_ReturnsFalse()
     begin
@@ -26,4 +27,5 @@ codeunit 50167 "DBG Test"
         Assert.IsTrue(Src.ActivateDoesNotThrow(),
             'Debugger.Activate must not throw');
     end;
+#endif
 }

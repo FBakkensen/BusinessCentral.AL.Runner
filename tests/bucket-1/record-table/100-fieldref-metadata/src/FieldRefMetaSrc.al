@@ -1,7 +1,7 @@
 table 50063 "FieldRef Meta Table"
 {
-    DataClassification = CustomerContent;
     Caption = 'Field Ref Meta Table';
+    DataClassification = CustomerContent;
     fields
     {
         field(1; "Document No."; Code[20])
@@ -23,7 +23,7 @@ tableextension 50001 "FieldRef Meta Table Ext" extends "FieldRef Meta Table"
 {
     fields
     {
-        field(10; "Extended Field"; Text[50])
+        field(50000; "Extended Field"; Text[50])
         {
             Caption = 'Extended Field Caption';
         }

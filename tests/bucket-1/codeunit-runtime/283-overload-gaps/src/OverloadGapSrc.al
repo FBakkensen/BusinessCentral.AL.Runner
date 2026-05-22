@@ -33,6 +33,7 @@ codeunit 50202 "OGap Source"
     // AL allows passing Text literals to SecretText parameters (implicit conversion).
     // BC emits NavSecretText; the runner needs NavSecretText.ALUnwrap() to work.
 
+#if ONPREM
     procedure SecretText_Unwrap(S: SecretText): Text
     begin
         exit(S.Unwrap());
@@ -43,4 +44,5 @@ codeunit 50202 "OGap Source"
         // Mirror the unwrap result through the function
         exit(S.Unwrap());
     end;
+#endif
 }

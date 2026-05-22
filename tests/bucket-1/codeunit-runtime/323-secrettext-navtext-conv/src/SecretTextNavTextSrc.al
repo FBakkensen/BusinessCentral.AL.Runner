@@ -5,6 +5,7 @@
 /// overloads accepting NavSecretText must exist in the mock.
 codeunit 50267 "STN Src"
 {
+#if ONPREM
     /// UseWindowsAuthentication called with SecretText variables.
     /// BC emits: client.ALUseWindowsAuthentication(DataError, NavSecretText, NavSecretText)
     procedure UseWindowsAuthWithSecret(plainUser: Text; plainPass: Text)
@@ -32,6 +33,7 @@ codeunit 50267 "STN Src"
         domain := plainDomain;
         client.UseWindowsAuthentication(username, password, domain);
     end;
+#endif
 
     /// AddCertificate(SecretText) — thumbprint as SecretText.
     /// BC emits: client.ALAddCertificate(DataError, NavSecretText)
@@ -49,8 +51,8 @@ codeunit 50267 "STN Src"
     procedure AddCertWithPasswordSecret(plainThumbprint: Text; plainCertPass: Text)
     var
         client: HttpClient;
-        thumbprint: SecretText;
         certPass: SecretText;
+        thumbprint: SecretText;
     begin
         thumbprint := plainThumbprint;
         certPass := plainCertPass;

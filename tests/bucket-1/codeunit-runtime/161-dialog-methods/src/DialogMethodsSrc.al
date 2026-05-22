@@ -22,6 +22,7 @@ codeunit 50115 "DLGM Src"
         exit(true);
     end;
 
+#if ONPREM
     procedure CallLogInternalError(msg: Text)
     begin
         Dialog.LogInternalError(msg, DataClassification::SystemMetadata, Verbosity::Normal);
@@ -35,4 +36,5 @@ codeunit 50115 "DLGM Src"
         Dialog.LogInternalError(msg, DataClassification::SystemMetadata, Verbosity::Normal);
         exit(true);
     end;
+#endif
 }

@@ -18,6 +18,7 @@ table 50047 "VCond Item"
 /// Tests that expressions (variable, record field comparison) compile correctly.
 page 50007 "VCond Item Page"
 {
+    ApplicationArea = All;
     PageType = Card;
     SourceTable = "VCond Item";
 

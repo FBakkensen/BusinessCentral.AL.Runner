@@ -11,6 +11,7 @@ table 50052 "Form Stub Data"
 
 page 50010 "Form Stub Page"
 {
+    ApplicationArea = All;
     PageType = Card;
     SourceTable = "Form Stub Data";
 
@@ -43,8 +44,8 @@ codeunit 50351 "Form Stub Logic"
     var
         Rec: Record "Form Stub Data";
         P: Page "Form Stub Page";
-        IsLookup: Boolean;
         IsEdit: Boolean;
+        IsLookup: Boolean;
         Cap: Text;
     begin
         P.SetTableView(Rec);
