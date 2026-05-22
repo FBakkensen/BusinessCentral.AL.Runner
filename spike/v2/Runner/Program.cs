@@ -69,6 +69,8 @@ bool bundledMode = true;
 // the runner assembly mtime). See `precompiled-dll-respect.md` —
 // "Our AL output is meant to be cacheable".
 string? alCacheDir = null;
+// Test isolation mode — default matches BC's "Test Runner - Isol. Codeunit" (130450).
+var isolation = AlRunnerV2.TestIsolation.Codeunit;
 for (int i = 0; i < args.Length; i++)
 {
     if (args[i] == "--out" && i + 1 < args.Length) { outPath = args[++i]; continue; }
@@ -78,6 +80,18 @@ for (int i = 0; i < args.Length; i++)
     if (args[i] == "--cache" && i + 1 < args.Length) { alCacheDir = args[++i]; continue; }
     if (args[i] == "--verbose") { AlRunnerV2.Log.Verbose = true; continue; }
     if (args[i] == "--show-pass") { showPass = true; continue; }
+    if (args[i] == "--isolation" && i + 1 < args.Length)
+    {
+        var mode = args[++i].ToLowerInvariant();
+        isolation = mode switch
+        {
+            "codeunit" => AlRunnerV2.TestIsolation.Codeunit,
+            "test"     => AlRunnerV2.TestIsolation.Test,
+            "disabled" => AlRunnerV2.TestIsolation.Disabled,
+            _ => throw new ArgumentException($"--isolation: unknown mode '{mode}' (codeunit|test|disabled)")
+        };
+        continue;
+    }
     bundles.Add(args[i]);
 }
 if (alCacheDir != null) Directory.CreateDirectory(alCacheDir);
@@ -111,7 +125,7 @@ Console.WriteLine($"BC runtime patches applied ({t0.ElapsedMilliseconds}ms)");
 
 var emitter = new BcCompiler();
 var assembler = new BcAssembler();
-var executor = new TestExecutor();
+var executor = new TestExecutor { Isolation = isolation };
 var depLoader = new DependencyLoader(emitter, assembler);
 var results = new List<BucketResult>();
 

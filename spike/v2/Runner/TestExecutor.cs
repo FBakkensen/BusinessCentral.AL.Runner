@@ -9,11 +9,23 @@ namespace AlRunnerV2;
 
 public enum TestOutcome { Pass, Fail, Error }
 
+/// <summary>
+/// Test-isolation granularity. Mirrors the BC "Test Runner" codeunits:
+///   Codeunit (default, matches 130450 "Test Runner - Isol. Codeunit") — all
+///     tests inside a single codeunit share state; reset happens once per CU.
+///   Test  (matches 130452 "Test Runner - Isol. Test") — every [Test] gets a
+///     fresh in-memory state.
+///   Disabled (matches 130453) — no state reset; suite-long sharing.
+/// </summary>
+public enum TestIsolation { Codeunit, Test, Disabled }
+
 public sealed record TestResult(string Codeunit, string Method, TestOutcome Outcome,
                                 string? Message, string? FullException, TimeSpan Duration);
 
 public sealed class TestExecutor
 {
+    public TestIsolation Isolation { get; set; } = TestIsolation.Codeunit;
+
     public IReadOnlyList<TestResult> Run(Assembly assembly)
     {
         var results = new List<TestResult>();
@@ -28,6 +40,12 @@ public sealed class TestExecutor
             // EventSubscriberPatches.InjectAll. Re-run injection now (idempotent — each
             // subscriber MethodInfo is injected at most once).
             AlRunnerV2.Patches.EventSubscriberPatches.InjectAllUsingStoredLookup();
+
+            // Per-codeunit reset: BC's 130450 "Test Runner - Isol. Codeunit" wraps
+            // the whole codeunit in one transaction, so tests inside share state but
+            // each NEW codeunit starts fresh.
+            if (Isolation == TestIsolation.Codeunit)
+                AlRunnerV2.Patches.RecordPatches.ResetPerTestState();
 
             object? instance;
             try { instance = InstantiateCodeunit(t); }
@@ -69,13 +87,13 @@ public sealed class TestExecutor
         return ctor.Invoke(new object[] { BcRuntime.RootTreeStub! });
     }
 
-    private static TestResult RunOne(string codeunit, MethodInfo m, object instance)
+    private TestResult RunOne(string codeunit, MethodInfo m, object instance)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        // Mirror BC's per-test isolation transaction: drain in-memory table state so
-        // each test starts empty. Without this, Insert calls in later tests collide
-        // with leftover rows from earlier tests on the same table.
-        AlRunnerV2.Patches.RecordPatches.ResetPerTestState();
+        // Per-test reset only when isolation == Test. For Codeunit / Disabled the
+        // reset (if any) happens at codeunit boundaries instead.
+        if (Isolation == TestIsolation.Test)
+            AlRunnerV2.Patches.RecordPatches.ResetPerTestState();
         try
         {
             var args = m.GetParameters().Length == 0 ? Array.Empty<object>() : null;
