@@ -22,7 +22,7 @@ codeunit 50102 "JOE Test"
         Obj: JsonObject;
     begin
         asserterror Src.GetCharValue(Obj, 'nope');
-        Assert.ExpectedError('');
+        Assert.ExpectedError('There is no property with the ''nope'' key on the JSON object.');
     end;
 
     [Test]
@@ -42,7 +42,7 @@ codeunit 50102 "JOE Test"
         Obj: JsonObject;
     begin
         asserterror Src.GetDateValue(Obj, 'nope');
-        Assert.ExpectedError('');
+        Assert.ExpectedError('There is no property with the ''nope'' key on the JSON object.');
     end;
 
     [Test]
@@ -62,7 +62,7 @@ codeunit 50102 "JOE Test"
         Obj: JsonObject;
     begin
         asserterror Src.GetDateTimeValue(Obj, 'nope');
-        Assert.ExpectedError('');
+        Assert.ExpectedError('There is no property with the ''nope'' key on the JSON object.');
     end;
 
     [Test]
