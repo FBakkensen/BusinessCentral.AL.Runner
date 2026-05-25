@@ -853,25 +853,12 @@ public static partial class BcRuntime
                 if (noop != null) Hook(m, noop, $"NavSession.VerifyExecutePermission/{p}");
             }
 
-            // NavSession.FlushDataCache — invoked from ALDatabase.ALSelectLatestVersion. The
-            // real body constructs NavSystemCodeunitUIHelperTriggers(parent) where parent is
-            // null on the headless runner → ArgumentNullException. Hook one level deeper than
-            // ALSelectLatestVersion: hooking the ALDatabase.* statics themselves is fatal
-            // because their precodes are R2R-inlined into callers (see
-            // feedback_aldatabase_hard.md — SIGSEGV at first execution, install passes).
-            // Faithful no-op: FlushDataCache refreshes the BC service-tier in-memory
-            // table-version stamp so subsequent reads bypass the client-side cache and
-            // re-fetch from SQL. The runner is a single-process in-memory store with no
-            // SQL cache and no version concept — every read is already authoritative, so
-            // skipping the flush is observably equivalent for any in-scope test.
-            // Closes 6 al-language SelectLatestVersion failures.
-            foreach (var m in sessType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
-                .Where(m => m.Name == "FlushDataCache" && m.ReturnType == typeof(void)))
-            {
-                var p = m.GetParameters().Length;
-                var noop = p switch { 0 => nameof(NoOp_OneArg), 1 => nameof(NoOp2), 2 => nameof(NoOp3), _ => null };
-                if (noop != null) Hook(m, noop, $"NavSession.FlushDataCache/{p}");
-            }
+            // NavSession.FlushDataCache hook DISABLED 2026-05-25 pending investigation:
+            // post-install execution SIGSEGVs across BOTH al-language and bucket-1 corpora.
+            // The hook installs cleanly (283 hooks applied) but the first compile/run after
+            // patches crashes in JIT-compiled code with no symbol info. Re-enable only after
+            // root-cause: confirm overload signatures and whether FlushDataCache is itself
+            // R2R-inlined (which would make the JmpHook silently corrupt the call site).
         }
 
         // Reflect and cache the fields we need for the ctor replacement below.
@@ -1540,11 +1527,11 @@ public static partial class BcRuntime
 
             // DO NOT hook ALDatabase.ALSelectLatestVersion — its precode is R2R-inlined into
             // callers; the hook installs successfully (no crash log) but executing those
-            // callers later SIGSEGVs the runner. Verified 2026-05-25 via instrumented bisect:
-            // bisect step with hook → SIGSEGV during al-language compile; without hook →
-            // 1444P/219F/0E with the same FlushDataCache hook above doing the real work
-            // one level deeper. The downstream FlushDataCache hook is sufficient to make all
-            // 6 SelectLatestVersion tests pass without touching the inlined surface.
+            // callers later SIGSEGVs the runner. See feedback_aldatabase_hard.md.
+            // Note 2026-05-25: hooking NavSession.FlushDataCache (the immediate callee one
+            // level deeper) ALSO crashes — install succeeds, first test execution SIGSEGVs.
+            // The SelectLatestVersion sub-cluster remains open until an architectural fix
+            // (EventPipe post-JIT body patch, or skeleton state populated upstream).
         }
 
         // ALSystemOperatingSystem.GetUrlCore — real body reaches into ALSession,
