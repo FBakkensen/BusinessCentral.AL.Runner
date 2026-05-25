@@ -18,7 +18,7 @@ namespace AlRunnerV2.Infrastructure;
 
 public static class NclCecilRewrite
 {
-    private const int CACHE_VERSION = 58;
+    private const int CACHE_VERSION = 59;
 
     private static readonly Dictionary<byte, System.Reflection.Emit.OpCode> SingleByteOpCodes = typeof(System.Reflection.Emit.OpCodes)
         .GetFields(BindingFlags.Public | BindingFlags.Static)
@@ -695,20 +695,29 @@ public static class NclCecilRewrite
         }
 
         // ALNavApp.ALGetResourceAsTextAsync — async Task<NavText>; real impl
-        // requires the .app package being mounted (no service tier here). Test
-        // contract (tests/bucket-1/codeunit-runtime/267-navapp-resources):
-        // missing resource → empty NavText, no throw. Cecil rewrites the body
-        // to Task.FromResult<NavText>(NavText.Empty).
+        // requires the .app package being mounted (no service tier here). Corpus
+        // contract (tests/al-language/.../session/TestNavAppExtended.al:41):
+        // missing resource → throw, matching real BC v28.1. Runner has no .app
+        // mounted so every call is a missing-resource call → always throw.
+        //
+        // Token-safety: throws System.InvalidOperationException via the
+        // parameterless ctor that is ALREADY in Ncl's memberRef table — avoids
+        // adding new typeRefs/memberRefs which can shift metadata tokens and
+        // corrupt R2R-precompiled callers (see feedback_r2r_inlining_traps).
         {
             var alNavAppType = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.ALNavApp");
             if (alNavAppType != null)
             {
-                var navTextType = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Types.NavText")
-                    ?? asm.MainModule.GetTypes().FirstOrDefault(t => t.Name == "NavText");
-                if (navTextType != null)
+                // Find the parameterless ctor of System.InvalidOperationException that
+                // already exists in Ncl's memberRef table (verified via dump). No import.
+                var iopCtorRef = asm.MainModule.GetMemberReferences()
+                    .OfType<MethodReference>()
+                    .FirstOrDefault(mr =>
+                        mr.DeclaringType.FullName == "System.InvalidOperationException"
+                        && mr.Name == ".ctor"
+                        && mr.Parameters.Count == 0);
+                if (iopCtorRef != null)
                 {
-                    var navTextEmptyGetter = navTextType.Properties
-                        .FirstOrDefault(p => p.Name == "Empty")?.GetMethod;
                     foreach (var m in alNavAppType.Methods.Where(x => x.Name == "ALGetResourceAsTextAsync"))
                     {
                         if (!m.ReturnType.FullName.StartsWith("System.Threading.Tasks.Task`1<"))
@@ -718,26 +727,10 @@ public static class NclCecilRewrite
                         body.Variables.Clear();
                         body.ExceptionHandlers.Clear();
                         var il = body.GetILProcessor();
-                        var fromResultMi = typeof(System.Threading.Tasks.Task)
-                            .GetMethods()
-                            .First(x => x.Name == "FromResult" && x.IsGenericMethod && x.GetParameters().Length == 1);
-                        // Build closed FromResult<NavText> by referencing the Cecil type via a TypeReference.
-                        var fromResultGenericRef = new GenericInstanceMethod(
-                            asm.MainModule.ImportReference(fromResultMi));
-                        fromResultGenericRef.GenericArguments.Add(navTextType);
-                        if (navTextEmptyGetter != null)
-                        {
-                            il.Append(il.Create(OpCodes.Call, navTextEmptyGetter));
-                        }
-                        else
-                        {
-                            // Fallback: ldnull (Task.FromResult<NavText>(null))
-                            il.Append(il.Create(OpCodes.Ldnull));
-                        }
-                        il.Append(il.Create(OpCodes.Call, fromResultGenericRef));
-                        il.Append(il.Create(OpCodes.Ret));
+                        il.Append(il.Create(OpCodes.Newobj, iopCtorRef));
+                        il.Append(il.Create(OpCodes.Throw));
                         body.MaxStackSize = 1;
-                        Console.Error.WriteLine($"[Cecil] Rewrote ALNavApp.{m.Name} → return Task.FromResult(NavText.Empty)");
+                        Console.Error.WriteLine($"[Cecil] Rewrote ALNavApp.{m.Name} → throw InvalidOperationException (token-safe)");
                     }
                 }
             }
