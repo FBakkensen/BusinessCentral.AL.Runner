@@ -18,7 +18,7 @@ namespace AlRunnerV2.Infrastructure;
 
 public static class NclCecilRewrite
 {
-    private const int CACHE_VERSION = 57;
+    private const int CACHE_VERSION = 58;
 
     private static readonly Dictionary<byte, System.Reflection.Emit.OpCode> SingleByteOpCodes = typeof(System.Reflection.Emit.OpCodes)
         .GetFields(BindingFlags.Public | BindingFlags.Static)
@@ -1838,6 +1838,45 @@ public static class NclCecilRewrite
                 il.Append(il.Create(OpCodes.Ret));
                 body.MaxStackSize = 0;
                 Console.Error.WriteLine("[Cecil] Rewrote NavSession.FlushDataCache → no-op (runner has no version cache)");
+            }
+        }
+
+        // ── NavNotification.ALAddAction(...) → return true ──────────────────────────
+        // AL `Notification.AddAction(caption, codeunit, function[, description])`
+        // registers a UI callback. Runner has no UI — actions never fire — so the
+        // runtime state ("registered") is unobservable. Real BC returns true on
+        // successful registration.
+        //
+        // Body-replace with `ldc.i4.1; ret` is observably equivalent for any in-scope
+        // test (all three failing tests assert "does not throw").
+        //
+        // Closes 3 al-language fails:
+        //   Codeunit60145.Notification_AddAction_WithDescription_Succeeds
+        //   Codeunit60135.NotificationAddAction_AddsActionWithoutError
+        //   Codeunit60135.NotificationAddAction_MultipleActions
+        {
+            var navNotification = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.NavNotification")
+                ?? throw new InvalidOperationException("NavNotification type not found in Ncl");
+            var alAddAction = navNotification.Methods.FirstOrDefault(m =>
+                m.Name == "ALAddAction"
+                && m.Parameters.Count == 4
+                && m.ReturnType.MetadataType == Mono.Cecil.MetadataType.Boolean
+                && m.Parameters[0].ParameterType.MetadataType == Mono.Cecil.MetadataType.String
+                && m.Parameters[1].ParameterType.MetadataType == Mono.Cecil.MetadataType.Int32
+                && m.Parameters[2].ParameterType.MetadataType == Mono.Cecil.MetadataType.String
+                && m.Parameters[3].ParameterType.MetadataType == Mono.Cecil.MetadataType.String)
+                ?? throw new InvalidOperationException("NavNotification.ALAddAction(String,Int32,String,String) not found");
+            if (alAddAction.HasBody)
+            {
+                var body = alAddAction.Body;
+                body.Instructions.Clear();
+                body.Variables.Clear();
+                body.ExceptionHandlers.Clear();
+                var il = body.GetILProcessor();
+                il.Append(il.Create(OpCodes.Ldc_I4_1));
+                il.Append(il.Create(OpCodes.Ret));
+                body.MaxStackSize = 1;
+                Console.Error.WriteLine("[Cecil] Rewrote NavNotification.ALAddAction → return true (no UI in runner)");
             }
         }
 
