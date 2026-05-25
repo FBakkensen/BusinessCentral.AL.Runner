@@ -188,10 +188,12 @@ public sealed class BcAssembler
         // NavTextExtensions.ALSubstring — v27 DLL uses 1-based indexing, but BC v28+ (and
         // the AL Language test library) expects 0-based. Override with 0-based shims.
         ("NavTextExtensions.ALSubstring(",   "global::AlRunnerV2Shim.NavRuntimeHelpersShim.ALSubstring("),
-        // NavTextExtensions.ALIndexOf — v27 returns 1-based (0 = not found); v28+ returns
-        // 0-based (-1 = not found). Override to match.
+        // NavTextExtensions.ALIndexOf — AL contract is 1-based (0 = not found), consistent
+        // with all other AL string positions (StrPos, CopyStr, SelectStr). The prior comment
+        // claiming v28+ is 0-based was incorrect; the AL test library validated against real
+        // BC confirms 1-based semantics. Override with shims that return 1-based results.
         ("NavTextExtensions.ALIndexOf(",     "global::AlRunnerV2Shim.NavRuntimeHelpersShim.ALIndexOf("),
-        // NavTextExtensions.ALLastIndexOf — same 1-based vs 0-based issue.
+        // NavTextExtensions.ALLastIndexOf — same 1-based semantics.
         ("NavTextExtensions.ALLastIndexOf(", "global::AlRunnerV2Shim.NavRuntimeHelpersShim.ALLastIndexOf("),
         // NavTextExtensions.ALIndexOfAny — v27 DLL doesn't have NavList<char> overloads; shim adds them
         // and converts 0-based C# results back to 1-based AL semantics (0 = not found).
@@ -428,16 +430,16 @@ namespace AlRunnerV2Shim
             => new Microsoft.Dynamics.Nav.Runtime.NavText(text.Substring(startIndex, count));
 
         public static int ALIndexOf(string text, string value)
-            => text.IndexOf(value, global::System.StringComparison.Ordinal);
+            => text.IndexOf(value, global::System.StringComparison.Ordinal) + 1;
 
         public static int ALIndexOf(string text, string value, int startIndex)
-            => text.IndexOf(value, startIndex, global::System.StringComparison.Ordinal);
+            => text.IndexOf(value, startIndex - 1, global::System.StringComparison.Ordinal) + 1;
 
         public static int ALLastIndexOf(string text, string value)
-            => text.LastIndexOf(value, global::System.StringComparison.Ordinal);
+            => text.LastIndexOf(value, global::System.StringComparison.Ordinal) + 1;
 
         public static int ALLastIndexOf(string text, string value, int startIndex)
-            => text.LastIndexOf(value, startIndex, global::System.StringComparison.Ordinal);
+            => text.LastIndexOf(value, startIndex - 1, global::System.StringComparison.Ordinal) + 1;
 
         // ALIndexOfAny: AL uses 1-based indexing (0 = not found). Convert from C# 0-based.
         // The startIndex parameter from AL is also 1-based.
