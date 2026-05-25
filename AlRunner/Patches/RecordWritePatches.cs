@@ -766,6 +766,90 @@ public static partial class BcRuntime
         catch { /* don't block insert if AI counter assignment fails */ }
     }
 
+    // ── System fields (2000000001-2000000004) stamping helpers ──────────────────────
+    // Called via Cecil-prepended IL at the start of NavRecord.ALInsertAsync and
+    // ALModifyAsync. Both helpers are (NavRecord)→void so the Cecil prepend is the
+    // same minimal `ldarg.0; call` pair as AssignAutoIncrement above.
+
+    private static readonly System.Guid _sessionUserGuid = System.Guid.NewGuid();
+    private static System.Guid GetOrCreateSessionUserGuid() => _sessionUserGuid;
+
+    private static void TryStampDateTime(
+        Microsoft.Dynamics.Nav.Runtime.NavRecord self,
+        Microsoft.Dynamics.Nav.Runtime.NCLMetaTable meta,
+        int fieldNo,
+        System.DateTime value)
+    {
+        try
+        {
+            if (meta.TryGetFieldByNo(fieldNo, out var field))
+            {
+                var nv = Microsoft.Dynamics.Nav.Runtime.NavValue
+                    .CreateNavValueFromObject(field, (object)value);
+                self.SetFieldValue(field, nv);
+            }
+        }
+        catch { /* skip on any per-field failure */ }
+    }
+
+    private static void TryStampGuid(
+        Microsoft.Dynamics.Nav.Runtime.NavRecord self,
+        Microsoft.Dynamics.Nav.Runtime.NCLMetaTable meta,
+        int fieldNo,
+        System.Guid value)
+    {
+        try
+        {
+            if (meta.TryGetFieldByNo(fieldNo, out var field))
+            {
+                var nv = Microsoft.Dynamics.Nav.Runtime.NavValue
+                    .CreateNavValueFromObject(field, (object)value);
+                self.SetFieldValue(field, nv);
+            }
+        }
+        catch { /* skip on any per-field failure */ }
+    }
+
+    /// <summary>
+    /// Stamps SystemCreatedAt/By/ModifiedAt/By on Insert. Called via Cecil prepend
+    /// on NavRecord.ALInsertAsync(DataError,bool,bool).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void StampSystemFieldsOnInsert(Microsoft.Dynamics.Nav.Runtime.NavRecord self)
+    {
+        try
+        {
+            var meta = self.MetaTable;
+            var nowUtc = System.DateTime.UtcNow;
+            var sessionUser = GetOrCreateSessionUserGuid();
+
+            TryStampDateTime(self, meta, 2000000001, nowUtc);    // SystemCreatedAt
+            TryStampGuid    (self, meta, 2000000002, sessionUser); // SystemCreatedBy
+            TryStampDateTime(self, meta, 2000000003, nowUtc);    // SystemModifiedAt
+            TryStampGuid    (self, meta, 2000000004, sessionUser); // SystemModifiedBy
+        }
+        catch { /* never block insert */ }
+    }
+
+    /// <summary>
+    /// Stamps only SystemModifiedAt/By on Modify. NEVER touches SystemCreatedAt/By.
+    /// Called via Cecil prepend on NavRecord.ALModifyAsync.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void StampSystemFieldsOnModify(Microsoft.Dynamics.Nav.Runtime.NavRecord self)
+    {
+        try
+        {
+            var meta = self.MetaTable;
+            var nowUtc = System.DateTime.UtcNow;
+            var sessionUser = GetOrCreateSessionUserGuid();
+
+            TryStampDateTime(self, meta, 2000000003, nowUtc);    // SystemModifiedAt
+            TryStampGuid    (self, meta, 2000000004, sessionUser); // SystemModifiedBy
+        }
+        catch { /* never block modify */ }
+    }
+
     /// <summary>
     /// Replacement for NavRecord.ALInsertAsync(DataError, bool, bool).
     /// Assigns the next AutoIncrement counter value to the AI field when it is zero,

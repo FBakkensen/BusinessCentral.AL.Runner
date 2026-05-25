@@ -18,7 +18,7 @@ namespace AlRunnerV2.Infrastructure;
 
 public static class NclCecilRewrite
 {
-    private const int CACHE_VERSION = 54;
+    private const int CACHE_VERSION = 55;
 
     private static readonly Dictionary<byte, System.Reflection.Emit.OpCode> SingleByteOpCodes = typeof(System.Reflection.Emit.OpCodes)
         .GetFields(BindingFlags.Public | BindingFlags.Static)
@@ -1680,6 +1680,82 @@ public static class NclCecilRewrite
             // extra slot covers it. Bump conservatively to be safe.
             if (body.MaxStackSize < 1) body.MaxStackSize = 1;
             Console.Error.WriteLine("[Cecil] Prepended AssignAutoIncrement → NavRecord.ALInsertAsync(DataError,bool,bool)");
+        }
+
+        // ── NavRecord.ALInsertAsync(DataError, bool, bool) — SystemFields stamp prepend ──
+        // Stamps SystemCreatedAt/SystemCreatedBy/SystemModifiedAt/SystemModifiedBy on
+        // `self` before the storage layer persists the record. Mirrors AssignAutoIncrement
+        // pattern above. Non-stamp tables (no system fields registered) become no-op via
+        // TryGetFieldByNo miss. Closes 4 al-language fails in Codeunit60152.
+        {
+            var navRecord = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.NavRecord")
+                ?? throw new InvalidOperationException("NavRecord type not found in Ncl");
+            var alInsert3 = navRecord.Methods.FirstOrDefault(m =>
+                m.Name == "ALInsertAsync"
+                && m.Parameters.Count == 3
+                && m.Parameters[0].ParameterType.Name == "DataError"
+                && m.Parameters[1].ParameterType.MetadataType == Mono.Cecil.MetadataType.Boolean
+                && m.Parameters[2].ParameterType.MetadataType == Mono.Cecil.MetadataType.Boolean)
+                ?? throw new InvalidOperationException("NavRecord.ALInsertAsync(DataError,bool,bool) not found");
+
+            var helperMi = typeof(AlRunnerV2.BcRuntime).GetMethod(
+                nameof(AlRunnerV2.BcRuntime.StampSystemFieldsOnInsert),
+                BindingFlags.Public | BindingFlags.Static)
+                ?? throw new InvalidOperationException("BcRuntime.StampSystemFieldsOnInsert not found");
+            var helperRef = asm.MainModule.ImportReference(helperMi);
+
+            var body = alInsert3.Body;
+            var il = body.GetILProcessor();
+            var firstOriginal = body.Instructions[0];
+            il.InsertBefore(firstOriginal, il.Create(OpCodes.Ldarg_0));
+            il.InsertBefore(firstOriginal, il.Create(OpCodes.Call, helperRef));
+            if (body.MaxStackSize < 1) body.MaxStackSize = 1;
+            Console.Error.WriteLine("[Cecil] Prepended StampSystemFieldsOnInsert → NavRecord.ALInsertAsync(DataError,bool,bool)");
+        }
+
+        // ── NavRecord.ALModifyAsync — SystemModified stamp prepend ──────────────────
+        // Stamps only SystemModifiedAt + SystemModifiedBy. NEVER touches
+        // SystemCreatedAt / SystemCreatedBy (BC semantics: created fields are
+        // immutable after insert). Closes 2 al-language fails in Codeunit60152.
+        // SystemCreatedAt_Does_Not_Change_On_Modify must remain passing.
+        {
+            var navRecord = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.NavRecord")
+                ?? throw new InvalidOperationException("NavRecord type not found in Ncl");
+            var alModify = navRecord.Methods.FirstOrDefault(m =>
+                m.Name == "ALModifyAsync"
+                && m.Parameters.Count == 3
+                && m.Parameters[0].ParameterType.Name == "DataError"
+                && m.Parameters[1].ParameterType.MetadataType == Mono.Cecil.MetadataType.Boolean
+                && m.Parameters[2].ParameterType.MetadataType == Mono.Cecil.MetadataType.Boolean);
+            if (alModify == null)
+            {
+                // Some Ncl revisions use a 2-arg overload
+                alModify = navRecord.Methods.FirstOrDefault(m =>
+                    m.Name == "ALModifyAsync"
+                    && m.Parameters.Count == 2
+                    && m.Parameters[0].ParameterType.Name == "DataError"
+                    && m.Parameters[1].ParameterType.MetadataType == Mono.Cecil.MetadataType.Boolean);
+            }
+            if (alModify != null)
+            {
+                var helperMi = typeof(AlRunnerV2.BcRuntime).GetMethod(
+                    nameof(AlRunnerV2.BcRuntime.StampSystemFieldsOnModify),
+                    BindingFlags.Public | BindingFlags.Static)
+                    ?? throw new InvalidOperationException("BcRuntime.StampSystemFieldsOnModify not found");
+                var helperRef = asm.MainModule.ImportReference(helperMi);
+
+                var body = alModify.Body;
+                var il = body.GetILProcessor();
+                var firstOriginal = body.Instructions[0];
+                il.InsertBefore(firstOriginal, il.Create(OpCodes.Ldarg_0));
+                il.InsertBefore(firstOriginal, il.Create(OpCodes.Call, helperRef));
+                if (body.MaxStackSize < 1) body.MaxStackSize = 1;
+                Console.Error.WriteLine($"[Cecil] Prepended StampSystemFieldsOnModify → NavRecord.ALModifyAsync({alModify.Parameters.Count}-arg)");
+            }
+            else
+            {
+                Console.Error.WriteLine("[Cecil] WARN: NavRecord.ALModifyAsync not found — SystemModified stamping skipped");
+            }
         }
 
         // ── ALDatabase.ALTenantID() → return "STANDALONE" ────────────────────────────
