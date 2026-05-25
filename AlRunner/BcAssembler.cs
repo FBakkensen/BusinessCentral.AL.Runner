@@ -217,11 +217,11 @@ public sealed class BcAssembler
         // false (not-found) for any other GUID, mirroring what real BC would return when an
         // unknown id is queried with errorLevel=DataError.Ignore.
         ("ALNavApp.ALGetModuleInfo(", "global::AlRunnerV2Shim.NavRuntimeHelpersShim.ALNavApp_GetModuleInfo("),
-        // ALSystemString.ALCopyStr — v27 throws when fromPos < 1; v28+ clamps to 1.
+        // ALSystemString.ALCopyStr — throws "outside of the permitted range" when fromPos < 1.
         ("ALSystemString.ALCopyStr(",      "global::AlRunnerV2Shim.NavRuntimeHelpersShim.ALCopyStr("),
-        // ALSystemString.ALIncStr — v27 throws when string has no digits; v28+ appends "1".
+        // ALSystemString.ALIncStr — returns "" for non-numeric strings.
         ("ALSystemString.ALIncStr(",       "global::AlRunnerV2Shim.NavRuntimeHelpersShim.ALIncStr("),
-        // ALSystemString.ALSelectString — v27 throws for index 0 or index > count; v28+ returns "".
+        // ALSystemString.ALSelectString — throws "does not contain a value for index" for invalid index.
         ("ALSystemString.ALSelectString(", "global::AlRunnerV2Shim.NavRuntimeHelpersShim.ALSelectString("),
         // ALSystemString.ALStrPos — v27 DLL doesn't have NavList<char> overloads; shim adds them
         // while preserving the same semantics: returns 0 when substring is empty or not found.
@@ -570,46 +570,47 @@ namespace AlRunnerV2Shim
             return true;
         }
 
-        // ─── Text function polyfills (BC v27 → v28+ behavioral gaps) ─────────────────
+        // ─── Text function polyfills ──────────────────────────────────────────────────
 
-        // CopyStr: position < 1 clamps to 1 instead of throwing (BC v28+ behavior).
+        // CopyStr: both v27 and v28 throw when fromPos < 1.
         public static string ALCopyStr(string source, int fromPos1Based)
         {
+            if (fromPos1Based < 1)
+                throw new global::System.ArgumentOutOfRangeException(
+                    nameof(fromPos1Based),
+                    ""Position is outside of the permitted range of the input string."");
             if (source == null) return global::System.String.Empty;
-            if (fromPos1Based < 1) fromPos1Based = 1;
-            if (fromPos1Based > source.Length) return global::System.String.Empty;
-            return source.Substring(fromPos1Based - 1);
+            return Microsoft.Dynamics.Nav.Runtime.ALSystemString.ALCopyStr(source, fromPos1Based);
         }
         public static string ALCopyStr(string source, int fromPos1Based, int length)
         {
+            if (fromPos1Based < 1)
+                throw new global::System.ArgumentOutOfRangeException(
+                    nameof(fromPos1Based),
+                    ""Position is outside of the permitted range of the input string."");
             if (source == null) return global::System.String.Empty;
-            if (fromPos1Based < 1) fromPos1Based = 1;
-            if (fromPos1Based > source.Length) return global::System.String.Empty;
-            int avail = source.Length - fromPos1Based + 1;
-            int actual = global::System.Math.Min(length, avail);
-            if (actual <= 0) return global::System.String.Empty;
-            return source.Substring(fromPos1Based - 1, actual);
+            return Microsoft.Dynamics.Nav.Runtime.ALSystemString.ALCopyStr(source, fromPos1Based, length);
         }
         public static string ALCopyStr(Microsoft.Dynamics.Nav.Runtime.NavList<char> source, int fromPos1Based)
             => ALCopyStr(source == null ? null : source.ToString(), fromPos1Based);
         public static string ALCopyStr(Microsoft.Dynamics.Nav.Runtime.NavList<char> source, int fromPos1Based, int length)
             => ALCopyStr(source == null ? null : source.ToString(), fromPos1Based, length);
 
-        // IncStr: non-numeric string appends 1 instead of throwing (BC v28+ behavior).
+        // IncStr: both v27 and v28 return "" for non-numeric strings.
         public static string ALIncStr(string value)
         {
-            if (value == null) return ""1"";
+            if (value == null) return global::System.String.Empty;
             bool hasDigit = false;
             foreach (char c in value) if (char.IsDigit(c)) { hasDigit = true; break; }
-            if (!hasDigit) return value + ""1"";
+            if (!hasDigit) return global::System.String.Empty;
             return Microsoft.Dynamics.Nav.Runtime.ALSystemString.ALIncStr(value);
         }
         public static string ALIncStr(string value, long increment)
         {
-            if (value == null) return increment.ToString();
+            if (value == null) return global::System.String.Empty;
             bool hasDigit = false;
             foreach (char c in value) if (char.IsDigit(c)) { hasDigit = true; break; }
-            if (!hasDigit) return value + increment.ToString();
+            if (!hasDigit) return global::System.String.Empty;
             return Microsoft.Dynamics.Nav.Runtime.ALSystemString.ALIncStr(value, increment);
         }
         public static string ALIncStr(Microsoft.Dynamics.Nav.Runtime.NavList<char> value)
@@ -617,19 +618,13 @@ namespace AlRunnerV2Shim
         public static string ALIncStr(Microsoft.Dynamics.Nav.Runtime.NavList<char> value, long increment)
             => ALIncStr(value == null ? null : value.ToString(), increment);
 
-        // SelectStr: index 0 or index > count returns "" instead of throwing (BC v28+ behavior).
+        // SelectStr: both v27 and v28 throw for index 0 or index > count.
         public static string ALSelectString(int index1Based, string source)
-        {
-            if (index1Based <= 0) return global::System.String.Empty;
-            try { return Microsoft.Dynamics.Nav.Runtime.ALSystemString.ALSelectString(index1Based, source); }
-            catch { return global::System.String.Empty; }
-        }
+            => Microsoft.Dynamics.Nav.Runtime.ALSystemString.ALSelectString(index1Based, source);
         public static string ALSelectString(int index1Based, Microsoft.Dynamics.Nav.Runtime.NavList<char> source)
         {
-            if (index1Based <= 0) return global::System.String.Empty;
             string s = source == null ? global::System.String.Empty : source.ToString();
-            try { return Microsoft.Dynamics.Nav.Runtime.ALSystemString.ALSelectString(index1Based, s); }
-            catch { return global::System.String.Empty; }
+            return Microsoft.Dynamics.Nav.Runtime.ALSystemString.ALSelectString(index1Based, s);
         }
 
         // StrPos: delegates to the original BC runtime behaviour.
