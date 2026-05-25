@@ -206,6 +206,12 @@ public sealed class BcAssembler
         // NavApp.GetCurrentModuleInfo — NREs via NavTenant.get_Database on skeleton.
         // Shim returns module info derived from the loaded bundle's app.json.
         ("ALNavApp.ALGetCurrentModuleInfo(", "global::AlRunnerV2Shim.NavRuntimeHelpersShim.ALNavApp_GetCurrentModuleInfo("),
+        // NavApp.GetModuleInfo(moduleId, info) — looks up installed extensions, throws on miss.
+        // The runner has no installed-extensions registry — the only "extension" loaded is the
+        // currently-running bundle. Shim matches against _currentBundleInfo.AppId and returns
+        // false (not-found) for any other GUID, mirroring what real BC would return when an
+        // unknown id is queried with errorLevel=DataError.Ignore.
+        ("ALNavApp.ALGetModuleInfo(", "global::AlRunnerV2Shim.NavRuntimeHelpersShim.ALNavApp_GetModuleInfo("),
         // ALSystemString.ALCopyStr — v27 throws when fromPos < 1; v28+ clamps to 1.
         ("ALSystemString.ALCopyStr(",      "global::AlRunnerV2Shim.NavRuntimeHelpersShim.ALCopyStr("),
         // ALSystemString.ALIncStr — v27 throws when string has no digits; v28+ appends "1".
@@ -539,6 +545,24 @@ namespace AlRunnerV2Shim
             var emptyDeps = Microsoft.Dynamics.Nav.Runtime.NavList<Microsoft.Dynamics.Nav.Runtime.NavModuleDependencyInfo>.Default;
             info.Value = new Microsoft.Dynamics.Nav.Runtime.NavModuleInfo(
                 appId, name, publisher, navVersion, navVersion, emptyDeps, appId);
+        }
+
+        // NavApp.GetModuleInfo(errorLevel, moduleId, info) — see top-of-class string-replace
+        // entry for full rationale: only the current bundle is known; on a matching AppId we
+        // populate and return true, otherwise return false (callers that pass errorLevel.Throw
+        // and want a strict miss can still distinguish by checking the bool return).
+        public static bool ALNavApp_GetModuleInfo(
+            Microsoft.Dynamics.Nav.Types.DataError errorLevel,
+            global::System.Guid moduleId,
+            Microsoft.Dynamics.Nav.Runtime.ByRef<Microsoft.Dynamics.Nav.Runtime.NavModuleInfo> info)
+        {
+            var (appId, name, publisher, version) = global::AlRunnerV2.BcRuntime.GetCurrentModuleAppInfo();
+            if (moduleId != appId) return false;
+            var navVersion = new Microsoft.Dynamics.Nav.Runtime.NavVersion(version);
+            var emptyDeps = Microsoft.Dynamics.Nav.Runtime.NavList<Microsoft.Dynamics.Nav.Runtime.NavModuleDependencyInfo>.Default;
+            info.Value = new Microsoft.Dynamics.Nav.Runtime.NavModuleInfo(
+                appId, name, publisher, navVersion, navVersion, emptyDeps, appId);
+            return true;
         }
 
         // ─── Text function polyfills (BC v27 → v28+ behavioral gaps) ─────────────────
