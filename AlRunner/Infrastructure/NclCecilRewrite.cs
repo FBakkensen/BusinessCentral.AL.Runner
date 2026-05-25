@@ -18,7 +18,7 @@ namespace AlRunnerV2.Infrastructure;
 
 public static class NclCecilRewrite
 {
-    private const int CACHE_VERSION = 55;
+    private const int CACHE_VERSION = 56;
 
     private static readonly Dictionary<byte, System.Reflection.Emit.OpCode> SingleByteOpCodes = typeof(System.Reflection.Emit.OpCodes)
         .GetFields(BindingFlags.Public | BindingFlags.Static)
@@ -1755,6 +1755,51 @@ public static class NclCecilRewrite
             else
             {
                 Console.Error.WriteLine("[Cecil] WARN: NavRecord.ALModifyAsync not found — SystemModified stamping skipped");
+            }
+        }
+
+        // ── NavRecord.get_ALReadPermission / get_ALWritePermission → return true ─────
+        // AL `Rec.ReadPermission()` / `Rec.WritePermission()` lower to these getters.
+        // Runner has no real permission system (single privileged user). Real BC's
+        // TestPermissions=Disabled mode also returns true unconditionally — so this is
+        // observably equivalent to the default test-context behaviour.
+        //
+        // JmpHook on these R2R-compiled getters SIGSEGVs (see RecordWritePatches.cs:194-198
+        // historical note). Cecil body-replace is the safe path: clear instructions,
+        // emit `ldc.i4.1; ret`.
+        //
+        // Closes 6 al-language fails:
+        //   Codeunit60128.Database_ReadPermission_ReturnsTrue
+        //   Codeunit60128.Database_WritePermission_ReturnsTrue
+        //   Codeunit60059.Record_ReadPermission_ReturnsTrue
+        //   Codeunit60059.Record_WritePermission_ReturnsTrue
+        //   Codeunit60178.Record_ReadPermission_BCRUNNER_ReturnsTrue
+        //   Codeunit60178.Record_WritePermission_BCRUNNER_ReturnsTrue
+        {
+            var navRecord = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.NavRecord");
+            if (navRecord != null)
+            {
+                foreach (var name in new[] { "get_ALReadPermission", "get_ALWritePermission" })
+                {
+                    var m = navRecord.Methods.FirstOrDefault(x =>
+                        x.Name == name
+                        && x.Parameters.Count == 0
+                        && x.ReturnType.MetadataType == Mono.Cecil.MetadataType.Boolean);
+                    if (m == null || !m.HasBody)
+                    {
+                        Console.Error.WriteLine($"[Cecil] WARN: NavRecord.{name} not found — permission fix not applied");
+                        continue;
+                    }
+                    var body = m.Body;
+                    body.Instructions.Clear();
+                    body.Variables.Clear();
+                    body.ExceptionHandlers.Clear();
+                    var il = body.GetILProcessor();
+                    il.Append(il.Create(OpCodes.Ldc_I4_1));
+                    il.Append(il.Create(OpCodes.Ret));
+                    body.MaxStackSize = 1;
+                    Console.Error.WriteLine($"[Cecil] Rewrote NavRecord.{name} → return true");
+                }
             }
         }
 
