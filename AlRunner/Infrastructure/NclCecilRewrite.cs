@@ -18,7 +18,7 @@ namespace AlRunnerV2.Infrastructure;
 
 public static class NclCecilRewrite
 {
-    private const int CACHE_VERSION = 53;
+    private const int CACHE_VERSION = 54;
 
     private static readonly Dictionary<byte, System.Reflection.Emit.OpCode> SingleByteOpCodes = typeof(System.Reflection.Emit.OpCodes)
         .GetFields(BindingFlags.Public | BindingFlags.Static)
@@ -1591,6 +1591,43 @@ public static class NclCecilRewrite
             il.Append(il.Create(OpCodes.Ret));
             body.MaxStackSize = 3;
             Console.Error.WriteLine("[Cecil] Replaced DataAccessSource.GetDataAccessForTable → RecordPatches.NavDataAccessSource_GetDataAccessForTable");
+        }
+
+        // ── NavSession.get_SortingProperties ─────────────────────────────────────────
+        // NavSession.get_SortingProperties lazy-inits sqlSortingProperties via a
+        // NavDatabase call that NREs on the skeleton runtime because no collation is
+        // set up. This is the root cause of 119 al-language failures (45.9% of
+        // remaining failures after the GetDataAccessForTable fix).
+        //
+        // The helper NavSession_get_SortingProperties already existed in RecordPatches.cs
+        // (line 791) but had no install site — neither a JmpHook nor a Cecil rewrite
+        // ever wired it. This block is the missing install site.
+        //
+        // Replacement returns the pre-built _sqlSortingProperties singleton from
+        // RecordPatches, which satisfies every in-scope AL sorting surface.
+        {
+            var navSessionType = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.NavSession")
+                ?? throw new InvalidOperationException("NavSession type not found");
+            var getSortingProps = navSessionType.Methods.FirstOrDefault(m =>
+                m.Name == "get_SortingProperties" && m.Parameters.Count == 0 && !m.IsStatic)
+                ?? throw new InvalidOperationException("NavSession.get_SortingProperties not found");
+
+            var helperMi = typeof(AlRunnerV2.Patches.RecordPatches).GetMethod(
+                "NavSession_get_SortingProperties",
+                BindingFlags.Public | BindingFlags.Static)
+                ?? throw new InvalidOperationException("RecordPatches.NavSession_get_SortingProperties not found");
+            var helperRef = asm.MainModule.ImportReference(helperMi);
+
+            var body = getSortingProps.Body;
+            body.Instructions.Clear();
+            body.Variables.Clear();
+            body.ExceptionHandlers.Clear();
+            var il = body.GetILProcessor();
+            il.Append(il.Create(OpCodes.Ldarg_0));
+            il.Append(il.Create(OpCodes.Call, helperRef));
+            il.Append(il.Create(OpCodes.Ret));
+            body.MaxStackSize = 1;
+            Console.Error.WriteLine("[Cecil] Replaced NavSession.get_SortingProperties → RecordPatches.NavSession_get_SortingProperties");
         }
 
         // ── NavRecord.ALInsertAsync(DataError, bool, bool) — AutoIncrement prepend ──
