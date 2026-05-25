@@ -18,7 +18,7 @@ namespace AlRunnerV2.Infrastructure;
 
 public static class NclCecilRewrite
 {
-    private const int CACHE_VERSION = 56;
+    private const int CACHE_VERSION = 57;
 
     private static readonly Dictionary<byte, System.Reflection.Emit.OpCode> SingleByteOpCodes = typeof(System.Reflection.Emit.OpCodes)
         .GetFields(BindingFlags.Public | BindingFlags.Static)
@@ -1800,6 +1800,44 @@ public static class NclCecilRewrite
                     body.MaxStackSize = 1;
                     Console.Error.WriteLine($"[Cecil] Rewrote NavRecord.{name} → return true");
                 }
+            }
+        }
+
+        // ── NavSession.FlushDataCache(Nullable<Int32>) → no-op ───────────────────────
+        // AL `SelectLatestVersion(...)` lowers to FlushDataCache. The body constructs
+        // `new NavSystemCodeunitUIHelperTriggers(this.parent)`; `parent` is null on
+        // the skeleton session and the ctor throws ArgumentNullException.
+        //
+        // Semantics: FlushDataCache is a cache-eviction hint for the server-side
+        // version cache. The runner stores records in-memory via TempTableDataProvider
+        // with no version cache, so flush is observably a no-op — the post-condition
+        // "subsequent reads return latest data" already holds.
+        //
+        // Closes 6 al-language fails:
+        //   Codeunit60178.Record_SelectLatestVersion_DoesNotThrow
+        //   Codeunit60178.Record_SelectLatestVersion_WithTableId_DoesNotThrow
+        //   Codeunit60145.Database_SelectLatestVersion_NoArgs_Succeeds
+        //   Codeunit60145.Database_SelectLatestVersion_WithTableNo_Succeeds
+        //   Codeunit60142.System_SelectLatestVersion_NoParameter_DoesNotThrow
+        //   (+1 more — confirmed by classifier output)
+        {
+            var navSession = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.NavSession")
+                ?? throw new InvalidOperationException("NavSession type not found in Ncl");
+            var flush = navSession.Methods.FirstOrDefault(m =>
+                m.Name == "FlushDataCache"
+                && m.Parameters.Count == 1
+                && m.ReturnType.MetadataType == Mono.Cecil.MetadataType.Void)
+                ?? throw new InvalidOperationException("NavSession.FlushDataCache(Nullable<Int32>) not found");
+            if (flush.HasBody)
+            {
+                var body = flush.Body;
+                body.Instructions.Clear();
+                body.Variables.Clear();
+                body.ExceptionHandlers.Clear();
+                var il = body.GetILProcessor();
+                il.Append(il.Create(OpCodes.Ret));
+                body.MaxStackSize = 0;
+                Console.Error.WriteLine("[Cecil] Rewrote NavSession.FlushDataCache → no-op (runner has no version cache)");
             }
         }
 
