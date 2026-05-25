@@ -4,8 +4,12 @@
 // Allowed surface per .claude/rules/precompiled-dll-respect.md: Ncl.dll is runtime engine,
 // not BaseApplication / SystemApplication / ISV business logic.
 using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Reflection;
+using System.Reflection.Metadata.Ecma335;
+using System.Reflection.PortableExecutable;
 using System.Security.Cryptography;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
@@ -14,7 +18,21 @@ namespace AlRunnerV2.Infrastructure;
 
 public static class NclCecilRewrite
 {
-    private const int CACHE_VERSION = 48;
+    private const int CACHE_VERSION = 52;
+
+    private static readonly Dictionary<byte, System.Reflection.Emit.OpCode> SingleByteOpCodes = typeof(System.Reflection.Emit.OpCodes)
+        .GetFields(BindingFlags.Public | BindingFlags.Static)
+        .Where(f => f.FieldType == typeof(System.Reflection.Emit.OpCode))
+        .Select(f => (System.Reflection.Emit.OpCode)f.GetValue(null)!)
+        .Where(op => op.Size == 1)
+        .ToDictionary(op => unchecked((byte)op.Value));
+
+    private static readonly Dictionary<byte, System.Reflection.Emit.OpCode> DoubleByteOpCodes = typeof(System.Reflection.Emit.OpCodes)
+        .GetFields(BindingFlags.Public | BindingFlags.Static)
+        .Where(f => f.FieldType == typeof(System.Reflection.Emit.OpCode))
+        .Select(f => (System.Reflection.Emit.OpCode)f.GetValue(null)!)
+        .Where(op => op.Size == 2 && ((ushort)op.Value >> 8) == 0xFE)
+        .ToDictionary(op => unchecked((byte)op.Value));
 
 
     /// <summary>
@@ -609,6 +627,7 @@ public static class NclCecilRewrite
             if (alDatabaseType != null)
             {
                 foreach (var m in alDatabaseType.Methods.Where(x =>
+                    x.Name == "ALCommit" ||
                     x.Name == "ALSetDefaultTableConnection" ||
                     x.Name == "ALRegisterTableConnection" ||
                     x.Name == "ALUnregisterTableConnection"))
@@ -1510,6 +1529,9 @@ public static class NclCecilRewrite
                 ?? throw new InvalidOperationException("FlowFieldPatches.RecordImpl_CalcFieldsAsync_3 not found");
             var helperRef = asm.MainModule.ImportReference(helperMi);
 
+            var asyncAttr = calc3.CustomAttributes.FirstOrDefault(ca => ca.AttributeType.Name == "AsyncStateMachineAttribute");
+            if (asyncAttr != null) calc3.CustomAttributes.Remove(asyncAttr);
+
             var body = calc3.Body;
             body.Instructions.Clear();
             body.Variables.Clear();
@@ -1575,6 +1597,30 @@ public static class NclCecilRewrite
             // extra slot covers it. Bump conservatively to be safe.
             if (body.MaxStackSize < 1) body.MaxStackSize = 1;
             Console.Error.WriteLine("[Cecil] Prepended AssignAutoIncrement → NavRecord.ALInsertAsync(DataError,bool,bool)");
+        }
+
+        // ── ALDatabase.ALTenantID() → return "STANDALONE" ────────────────────────────
+        // JmpHook on this R2R-inlined static SIGSEGVs (see disabled hook in BcRuntime.cs).
+        // Cecil IL rewrite is safe: body becomes ldstr "STANDALONE" / ret.
+        {
+            var alDbType = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.ALDatabase");
+            if (alDbType != null)
+            {
+                var tenantId = alDbType.Methods.FirstOrDefault(m =>
+                    m.Name == "ALTenantID" && m.Parameters.Count == 0 && m.IsStatic);
+                if (tenantId != null)
+                {
+                    var body = tenantId.Body;
+                    body.Instructions.Clear();
+                    body.Variables.Clear();
+                    body.ExceptionHandlers.Clear();
+                    var il = body.GetILProcessor();
+                    il.Append(il.Create(OpCodes.Ldstr, "STANDALONE"));
+                    il.Append(il.Create(OpCodes.Ret));
+                    body.MaxStackSize = 1;
+                    Console.Error.WriteLine("[Cecil] Replaced ALDatabase.ALTenantID → return \"STANDALONE\"");
+                }
+            }
         }
 
         // === NavQuery ctor null-safety ===
@@ -2771,12 +2817,170 @@ public static class NclCecilRewrite
         var outStream = new MemoryStream();
         asm.Write(outStream);
         var modifiedBytes = outStream.ToArray();
+        ValidateRewrittenAssembly(modifiedBytes);
 
         StripR2RHeader(modifiedBytes);
 
         Console.Error.WriteLine($"[Cecil] Ncl rewrite complete: {originalBytes.Length} → {modifiedBytes.Length} bytes");
         return modifiedBytes;
     }
+
+    private static void ValidateRewrittenAssembly(byte[] bytes)
+    {
+        using var peReader = new PEReader(ImmutableArray.Create(bytes));
+        var mr = System.Reflection.Metadata.PEReaderExtensions.GetMetadataReader(peReader);
+        foreach (var methodHandle in mr.MethodDefinitions)
+        {
+            var methodDef = mr.GetMethodDefinition(methodHandle);
+            if (methodDef.RelativeVirtualAddress == 0) continue;
+
+            var methodName = mr.GetString(methodDef.Name);
+            System.Reflection.Metadata.MethodBodyBlock body;
+            try
+            {
+                body = System.Reflection.Metadata.PEReaderExtensions.GetMethodBody(peReader, methodDef.RelativeVirtualAddress);
+            }
+            catch (BadImageFormatException ex)
+            {
+                throw new InvalidOperationException($"[Cecil] Rewritten Ncl has dangling metadata token in method '{methodName}': {ex.Message}", ex);
+            }
+
+            foreach (var region in body.ExceptionRegions)
+            {
+                if (region.Kind == System.Reflection.Metadata.ExceptionRegionKind.Catch && !region.CatchType.IsNil)
+                    ValidateToken(mr, MetadataTokens.GetToken(region.CatchType), methodName, methodDef.RelativeVirtualAddress);
+            }
+
+            ValidateMethodBodyTokens(mr, body.GetILBytes(), methodName);
+        }
+    }
+
+    private static void ValidateMethodBodyTokens(System.Reflection.Metadata.MetadataReader mr, byte[] il, string methodName)
+    {
+        ReadOnlySpan<byte> bytes = il;
+        var offset = 0;
+        while (offset < bytes.Length)
+        {
+            var instructionOffset = offset;
+            System.Reflection.Emit.OpCode opCode;
+            var first = bytes[offset++];
+            if (first == 0xFE)
+            {
+                if (offset >= bytes.Length || !DoubleByteOpCodes.TryGetValue(bytes[offset++], out opCode))
+                    throw new InvalidOperationException($"[Cecil] Rewritten Ncl has malformed IL in method '{methodName}' at IL_{instructionOffset:X4}");
+            }
+            else if (!SingleByteOpCodes.TryGetValue(first, out opCode))
+            {
+                throw new InvalidOperationException($"[Cecil] Rewritten Ncl has malformed IL in method '{methodName}' at IL_{instructionOffset:X4}");
+            }
+
+            int token;
+            switch (opCode.OperandType)
+            {
+                case System.Reflection.Emit.OperandType.InlineNone:
+                    break;
+                case System.Reflection.Emit.OperandType.ShortInlineBrTarget:
+                case System.Reflection.Emit.OperandType.ShortInlineI:
+                case System.Reflection.Emit.OperandType.ShortInlineVar:
+                    offset += 1;
+                    break;
+                case System.Reflection.Emit.OperandType.InlineVar:
+                    offset += 2;
+                    break;
+                case System.Reflection.Emit.OperandType.InlineI:
+                case System.Reflection.Emit.OperandType.InlineBrTarget:
+                case System.Reflection.Emit.OperandType.ShortInlineR:
+                    offset += 4;
+                    break;
+                case System.Reflection.Emit.OperandType.InlineI8:
+                case System.Reflection.Emit.OperandType.InlineR:
+                    offset += 8;
+                    break;
+                case System.Reflection.Emit.OperandType.InlineSwitch:
+                    EnsureRemaining(bytes, offset, 4, methodName, instructionOffset);
+                    var caseCount = ReadInt32(bytes, offset);
+                    offset += 4 + (caseCount * 4);
+                    break;
+                case System.Reflection.Emit.OperandType.InlineField:
+                case System.Reflection.Emit.OperandType.InlineMethod:
+                case System.Reflection.Emit.OperandType.InlineSig:
+                case System.Reflection.Emit.OperandType.InlineString:
+                case System.Reflection.Emit.OperandType.InlineTok:
+                case System.Reflection.Emit.OperandType.InlineType:
+                    EnsureRemaining(bytes, offset, 4, methodName, instructionOffset);
+                    token = ReadInt32(bytes, offset);
+                    ValidateToken(mr, token, methodName, instructionOffset);
+                    offset += 4;
+                    break;
+                case System.Reflection.Emit.OperandType.InlinePhi:
+                    throw new InvalidOperationException($"[Cecil] Rewritten Ncl uses unsupported InlinePhi in method '{methodName}' at IL_{instructionOffset:X4}");
+                default:
+                    throw new InvalidOperationException($"[Cecil] Rewritten Ncl hit unknown operand type {opCode.OperandType} in method '{methodName}' at IL_{instructionOffset:X4}");
+            }
+
+            if (offset > bytes.Length)
+                throw new InvalidOperationException($"[Cecil] Rewritten Ncl has truncated IL in method '{methodName}' at IL_{instructionOffset:X4}");
+        }
+    }
+
+    private static void ValidateToken(System.Reflection.Metadata.MetadataReader mr, int token, string methodName, int instructionOffset)
+    {
+        try
+        {
+            var handle = MetadataTokens.Handle(token);
+            if (handle.IsNil)
+                return;
+
+            switch (handle.Kind)
+            {
+                case System.Reflection.Metadata.HandleKind.TypeDefinition:
+                    _ = mr.GetTypeDefinition((System.Reflection.Metadata.TypeDefinitionHandle)handle);
+                    break;
+                case System.Reflection.Metadata.HandleKind.TypeReference:
+                    _ = mr.GetTypeReference((System.Reflection.Metadata.TypeReferenceHandle)handle);
+                    break;
+                case System.Reflection.Metadata.HandleKind.TypeSpecification:
+                    _ = mr.GetTypeSpecification((System.Reflection.Metadata.TypeSpecificationHandle)handle);
+                    break;
+                case System.Reflection.Metadata.HandleKind.FieldDefinition:
+                    _ = mr.GetFieldDefinition((System.Reflection.Metadata.FieldDefinitionHandle)handle);
+                    break;
+                case System.Reflection.Metadata.HandleKind.MethodDefinition:
+                    _ = mr.GetMethodDefinition((System.Reflection.Metadata.MethodDefinitionHandle)handle);
+                    break;
+                case System.Reflection.Metadata.HandleKind.MemberReference:
+                    _ = mr.GetMemberReference((System.Reflection.Metadata.MemberReferenceHandle)handle);
+                    break;
+                case System.Reflection.Metadata.HandleKind.MethodSpecification:
+                    _ = mr.GetMethodSpecification((System.Reflection.Metadata.MethodSpecificationHandle)handle);
+                    break;
+                case System.Reflection.Metadata.HandleKind.StandaloneSignature:
+                    _ = mr.GetStandaloneSignature((System.Reflection.Metadata.StandaloneSignatureHandle)handle);
+                    break;
+                case System.Reflection.Metadata.HandleKind.UserString:
+                    _ = mr.GetUserString((System.Reflection.Metadata.UserStringHandle)handle);
+                    break;
+                default:
+                    throw new BadImageFormatException($"unsupported token kind {handle.Kind}");
+            }
+        }
+        catch (Exception ex) when (ex is BadImageFormatException or ArgumentOutOfRangeException)
+        {
+            throw new InvalidOperationException($"[Cecil] Rewritten Ncl has dangling metadata token: 0x{token:X8} in {methodName} at IL_{instructionOffset:X4}", ex);
+        }
+    }
+
+    private static void EnsureRemaining(ReadOnlySpan<byte> bytes, int offset, int size, string methodName, int instructionOffset)
+    {
+        if (offset + size > bytes.Length)
+            throw new InvalidOperationException($"[Cecil] Rewritten Ncl has truncated IL in method '{methodName}' at IL_{instructionOffset:X4}");
+    }
+
+    private static int ReadInt32(ReadOnlySpan<byte> bytes, int offset)
+        => bytes[offset]
+         | (bytes[offset + 1] << 8)
+         | (bytes[offset + 2] << 16)
+         | (bytes[offset + 3] << 24);
 
     /// <summary>
     /// Zero the CorHeader.ManagedNativeHeader directory entry so CoreCLR sees the
