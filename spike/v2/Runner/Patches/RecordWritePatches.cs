@@ -734,9 +734,46 @@ public static partial class BcRuntime
         => _aiFieldIds[tableId] = fieldNo;
 
     /// <summary>
+    /// AutoIncrement assignment helper, called via Cecil-prepended IL at the start
+    /// of NavRecord.ALInsertAsync(DataError, bool, bool). Pure side-effect:
+    /// if the table has a registered AutoIncrement field and that field is currently
+    /// zero/empty on `self`, advance the per-table counter and stamp the new value
+    /// into the field. Any exception is swallowed — the real async body then runs
+    /// unchanged; if AI couldn't be assigned, the duplicate-key check downstream is
+    /// the observable failure mode, same as without this helper. The signature
+    /// (NavRecord)→void is deliberately minimal so the Cecil prepend is a single
+    /// `ldarg.0; call` pair with no stack-balance complications.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void AssignAutoIncrement(Microsoft.Dynamics.Nav.Runtime.NavRecord self)
+    {
+        try
+        {
+            int tableId = self.MetaTable.TableId;
+            if (_aiFieldIds.TryGetValue(tableId, out int aiFieldNo)
+                && self.MetaTable.TryGetFieldByNo(aiFieldNo, out var aiField))
+            {
+                var currentVal = self.GetFieldValue(aiField);
+                if (currentVal.IsZeroOrEmpty)
+                {
+                    long next = _aiCounters.AddOrUpdate(tableId, 1L, (_, v) => v + 1L);
+                    var newVal = Microsoft.Dynamics.Nav.Runtime.NavValue
+                        .CreateNavValueFromObject(aiField, (object)(int)next);
+                    self.SetFieldValue(aiField, newVal);
+                }
+            }
+        }
+        catch { /* don't block insert if AI counter assignment fails */ }
+    }
+
+    /// <summary>
     /// Replacement for NavRecord.ALInsertAsync(DataError, bool, bool).
     /// Assigns the next AutoIncrement counter value to the AI field when it is zero,
     /// then calls the real ALInsertAsync body via MethodInfo.Invoke (bypasses the hook).
+    /// NOTE: this JmpHook-mode replacement is intentionally NOT installed — see notes
+    /// at the hook discovery site. AutoIncrement is delivered via Cecil prepend on
+    /// NavRecord.ALInsertAsync(DataError,bool,bool) calling AssignAutoIncrement above.
+    /// Kept as reference for the equivalence claim.
     /// </summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static System.Threading.Tasks.ValueTask<bool> NavRecord_ALInsertAsync3(

@@ -1481,6 +1481,58 @@ public static class NclCecilRewrite
             Console.Error.WriteLine("[Cecil] Replaced RecordImplementation.CalcFieldsAsync(DataError,NCLMetaField[]) → FlowFieldPatches.RecordImpl_CalcFieldsAsync_2");
         }
 
+        // ── NavRecord.ALInsertAsync(DataError, bool, bool) — AutoIncrement prepend ──
+        // The 3-arg ALInsertAsync is the async state-machine entrypoint for AL
+        // `Rec.Insert()` calls. Its first instruction (`ldloca.s V_0`) begins the
+        // state-machine setup — we prepend a synchronous `AssignAutoIncrement(this)`
+        // call before that, so any registered AI field on `this`'s table is stamped
+        // with the next counter value before the storage layer's duplicate-key check.
+        //
+        // Why Cecil and not JmpHook: the method is `async ValueTask<bool>` and
+        // JmpHook on async ValueTask entry points causes SIGSEGV under R2R (see
+        // RecordWritePatches.cs:245 historical comment and feedback_r2r_inlining_traps.md).
+        // Cecil prepend leaves the async state-machine intact; we just inject a
+        // single static call ahead of the existing IL with no stack-balance impact.
+        //
+        // Equivalence: AssignAutoIncrement is a no-op when the table has no registered
+        // AI field, when the AI field is already non-zero (AL caller pre-assigned),
+        // or when reflection on MetaTable throws. So tables outside the AI registry
+        // see byte-identical behaviour. For registered tables, the field gets the
+        // next counter value just as the real BC server would have assigned at SQL
+        // INSERT time — observably equivalent under the in-memory store.
+        //
+        // Closes the 18 al-language InsertRecordAsync DuplicateKey failures rooted
+        // in `ALT Trigger Log` insertions from table-trigger code that doesn't set
+        // Entry No. itself.
+        {
+            var navRecord = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.NavRecord")
+                ?? throw new InvalidOperationException("NavRecord type not found in Ncl");
+            var alInsert3 = navRecord.Methods.FirstOrDefault(m =>
+                m.Name == "ALInsertAsync"
+                && m.Parameters.Count == 3
+                && m.Parameters[0].ParameterType.Name == "DataError"
+                && m.Parameters[1].ParameterType.MetadataType == Mono.Cecil.MetadataType.Boolean
+                && m.Parameters[2].ParameterType.MetadataType == Mono.Cecil.MetadataType.Boolean)
+                ?? throw new InvalidOperationException("NavRecord.ALInsertAsync(DataError,bool,bool) not found");
+
+            var helperMi = typeof(AlRunnerV2.BcRuntime).GetMethod(
+                nameof(AlRunnerV2.BcRuntime.AssignAutoIncrement),
+                BindingFlags.Public | BindingFlags.Static)
+                ?? throw new InvalidOperationException("BcRuntime.AssignAutoIncrement not found");
+            var helperRef = asm.MainModule.ImportReference(helperMi);
+
+            var body = alInsert3.Body;
+            var il = body.GetILProcessor();
+            var firstOriginal = body.Instructions[0];
+            il.InsertBefore(firstOriginal, il.Create(OpCodes.Ldarg_0));
+            il.InsertBefore(firstOriginal, il.Create(OpCodes.Call, helperRef));
+            // The helper consumes the ldarg.0 and pushes nothing. MaxStackSize only
+            // grows if our prepended call needs more than the existing budget; one
+            // extra slot covers it. Bump conservatively to be safe.
+            if (body.MaxStackSize < 1) body.MaxStackSize = 1;
+            Console.Error.WriteLine("[Cecil] Prepended AssignAutoIncrement → NavRecord.ALInsertAsync(DataError,bool,bool)");
+        }
+
         // === NavQuery ctor null-safety ===
         // The AL-emitted Query{ID} class chains to `: base(parent, securityFiltering, metaQuery)`
         // (the 3-arg ctor `(ITreeObject, SecurityFiltering, NCLMetaQuery)`). The original ctor
