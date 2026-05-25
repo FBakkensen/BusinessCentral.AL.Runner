@@ -1481,6 +1481,50 @@ public static class NclCecilRewrite
             Console.Error.WriteLine("[Cecil] Replaced RecordImplementation.CalcFieldsAsync(DataError,NCLMetaField[]) → FlowFieldPatches.RecordImpl_CalcFieldsAsync_2");
         }
 
+        // ── RecordImplementation.CalcFieldsAsync(DataError, NCLMetaField[], bool) ─
+        // Same story as the 2-arg above, one level deeper. The 3-arg overload is the
+        // private async state-machine that the 2-arg wrapper used to dispatch into;
+        // AL's CalcAutoCalcFields path goes directly to this 3-arg from
+        // RecordImplementation.FindFirstRecordAsync. JmpHook on this async ValueTask
+        // entry point doesn't fire under R2R (FlowFieldPatches.Register installs the
+        // hook but execution still reaches the real body, which NREs through
+        // MapException because recordBuffer is null on the skeleton runtime).
+        //
+        // Replacement: same FlowFieldPatches.RecordImpl_CalcFieldsAsync_3 helper the
+        // dead JmpHook would have called — bypasses the FlowFieldsHelper pipeline
+        // entirely. Closes the 6 al-language MapException-NRE failures rooted in
+        // SetAutoCalcFields → FindFirst → CalcFieldsAsync(3).
+        {
+            var recImpl = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.RecordImplementation")
+                ?? throw new InvalidOperationException("RecordImplementation type not found");
+            var calc3 = recImpl.Methods.FirstOrDefault(m =>
+                m.Name == "CalcFieldsAsync" && m.Parameters.Count == 3
+                && m.Parameters[1].ParameterType is ArrayType
+                && m.Parameters[1].ParameterType.GetElementType().FullName == "Microsoft.Dynamics.Nav.Runtime.NCLMetaField"
+                && m.Parameters[2].ParameterType.MetadataType == Mono.Cecil.MetadataType.Boolean)
+                ?? throw new InvalidOperationException("RecordImplementation.CalcFieldsAsync(DataError,NCLMetaField[],bool) not found");
+
+            var helperMi = typeof(AlRunnerV2.Patches.FlowFieldPatches).GetMethod(
+                nameof(AlRunnerV2.Patches.FlowFieldPatches.RecordImpl_CalcFieldsAsync_3),
+                BindingFlags.Public | BindingFlags.Static)
+                ?? throw new InvalidOperationException("FlowFieldPatches.RecordImpl_CalcFieldsAsync_3 not found");
+            var helperRef = asm.MainModule.ImportReference(helperMi);
+
+            var body = calc3.Body;
+            body.Instructions.Clear();
+            body.Variables.Clear();
+            body.ExceptionHandlers.Clear();
+            var il = body.GetILProcessor();
+            il.Append(il.Create(OpCodes.Ldarg_0));
+            il.Append(il.Create(OpCodes.Ldarg_1));
+            il.Append(il.Create(OpCodes.Ldarg_2));
+            il.Append(il.Create(OpCodes.Ldarg_3));
+            il.Append(il.Create(OpCodes.Call, helperRef));
+            il.Append(il.Create(OpCodes.Ret));
+            body.MaxStackSize = 4;
+            Console.Error.WriteLine("[Cecil] Replaced RecordImplementation.CalcFieldsAsync(DataError,NCLMetaField[],bool) → FlowFieldPatches.RecordImpl_CalcFieldsAsync_3");
+        }
+
         // ── NavRecord.ALInsertAsync(DataError, bool, bool) — AutoIncrement prepend ──
         // The 3-arg ALInsertAsync is the async state-machine entrypoint for AL
         // `Rec.Insert()` calls. Its first instruction (`ldloca.s V_0`) begins the
