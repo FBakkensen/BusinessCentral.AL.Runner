@@ -18,7 +18,7 @@ namespace AlRunnerV2.Infrastructure;
 
 public static class NclCecilRewrite
 {
-    private const int CACHE_VERSION = 58;
+    private const int CACHE_VERSION = 59;
 
     private static readonly Dictionary<byte, System.Reflection.Emit.OpCode> SingleByteOpCodes = typeof(System.Reflection.Emit.OpCodes)
         .GetFields(BindingFlags.Public | BindingFlags.Static)
@@ -695,50 +695,38 @@ public static class NclCecilRewrite
         }
 
         // ALNavApp.ALGetResourceAsTextAsync — async Task<NavText>; real impl
-        // requires the .app package being mounted (no service tier here). Test
-        // contract (tests/bucket-1/codeunit-runtime/267-navapp-resources):
-        // missing resource → empty NavText, no throw. Cecil rewrites the body
-        // to Task.FromResult<NavText>(NavText.Empty).
+        // requires the .app package being mounted (no service tier here). Corpus
+        // contract (tests/al-language/tests/al-language/session/TestNavAppExtended.al:41-48):
+        // missing resource → throw FileNotFoundException, matching real BC v28.1
+        // cloud behavior. Cecil rewrites the body to always throw since the runner
+        // has no .app package mounted (every call is a missing-resource call).
         {
             var alNavAppType = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.ALNavApp");
             if (alNavAppType != null)
             {
-                var navTextType = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Types.NavText")
-                    ?? asm.MainModule.GetTypes().FirstOrDefault(t => t.Name == "NavText");
-                if (navTextType != null)
+                foreach (var m in alNavAppType.Methods.Where(x => x.Name == "ALGetResourceAsTextAsync"))
                 {
-                    var navTextEmptyGetter = navTextType.Properties
-                        .FirstOrDefault(p => p.Name == "Empty")?.GetMethod;
-                    foreach (var m in alNavAppType.Methods.Where(x => x.Name == "ALGetResourceAsTextAsync"))
-                    {
-                        if (!m.ReturnType.FullName.StartsWith("System.Threading.Tasks.Task`1<"))
-                            continue;
-                        var body = m.Body;
-                        body.Instructions.Clear();
-                        body.Variables.Clear();
-                        body.ExceptionHandlers.Clear();
-                        var il = body.GetILProcessor();
-                        var fromResultMi = typeof(System.Threading.Tasks.Task)
-                            .GetMethods()
-                            .First(x => x.Name == "FromResult" && x.IsGenericMethod && x.GetParameters().Length == 1);
-                        // Build closed FromResult<NavText> by referencing the Cecil type via a TypeReference.
-                        var fromResultGenericRef = new GenericInstanceMethod(
-                            asm.MainModule.ImportReference(fromResultMi));
-                        fromResultGenericRef.GenericArguments.Add(navTextType);
-                        if (navTextEmptyGetter != null)
-                        {
-                            il.Append(il.Create(OpCodes.Call, navTextEmptyGetter));
-                        }
-                        else
-                        {
-                            // Fallback: ldnull (Task.FromResult<NavText>(null))
-                            il.Append(il.Create(OpCodes.Ldnull));
-                        }
-                        il.Append(il.Create(OpCodes.Call, fromResultGenericRef));
-                        il.Append(il.Create(OpCodes.Ret));
-                        body.MaxStackSize = 1;
-                        Console.Error.WriteLine($"[Cecil] Rewrote ALNavApp.{m.Name} → return Task.FromResult(NavText.Empty)");
-                    }
+                    if (!m.ReturnType.FullName.StartsWith("System.Threading.Tasks.Task`1<"))
+                        continue;
+                    var body = m.Body;
+                    body.Instructions.Clear();
+                    body.Variables.Clear();
+                    body.ExceptionHandlers.Clear();
+                    var il = body.GetILProcessor();
+                    // Method is static: ALGetResourceAsTextAsync(NavSession, string resourceName, TextEncoding)
+                    // resourceName is arg1 (ldarg.1).
+                    var fnfCtor = asm.MainModule.ImportReference(
+                        typeof(System.IO.FileNotFoundException).GetConstructor(new[] { typeof(string), typeof(string) }));
+                    var concat = asm.MainModule.ImportReference(
+                        typeof(string).GetMethod("Concat", new[] { typeof(string), typeof(string) }));
+                    il.Append(il.Create(OpCodes.Ldstr, "AL Runner: resource not found: "));
+                    il.Append(il.Create(OpCodes.Ldarg_1)); // resourceName
+                    il.Append(il.Create(OpCodes.Call, concat));
+                    il.Append(il.Create(OpCodes.Ldarg_1)); // fileName param of FileNotFoundException
+                    il.Append(il.Create(OpCodes.Newobj, fnfCtor));
+                    il.Append(il.Create(OpCodes.Throw));
+                    body.MaxStackSize = 3;
+                    Console.Error.WriteLine($"[Cecil] Rewrote ALNavApp.{m.Name} → throw FileNotFoundException(resource not found)");
                 }
             }
         }
