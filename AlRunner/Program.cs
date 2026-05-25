@@ -57,7 +57,12 @@ if (args[0] == "--precompile")
     return RunPrecompile(args.Skip(1).ToArray());
 }
 
-string outPath = "v2-classification.json";
+// Failure classification (the FAILURE CLASSIFICATION block + v2-classification.json)
+// is a runner-development diagnostic, not something end users care about. Default off.
+// Enable by passing --out PATH (which sets the JSON output path) or --classify (which
+// turns on the printed block without writing a file). See --help.
+string? outPath = null;
+bool printClassification = false;
 var bundles = new List<string>();
 var packageCacheArgs = new List<string>();
 // Bundled mode is the canonical fast path (5-7× faster, parity-verified across
@@ -84,7 +89,8 @@ string? testFilter = null;
 string? dumpCsharpDir = null;
 for (int i = 0; i < args.Length; i++)
 {
-    if (args[i] == "--out" && i + 1 < args.Length) { outPath = args[++i]; continue; }
+    if (args[i] == "--out" && i + 1 < args.Length) { outPath = args[++i]; printClassification = true; continue; }
+    if (args[i] == "--classify") { printClassification = true; continue; }
     if (args[i] == "--package-cache" && i + 1 < args.Length) { packageCacheArgs.Add(args[++i]); continue; }
     if (args[i] == "--per-suite") { bundledMode = false; continue; }
     if (args[i] == "--bundled") { bundledMode = true; continue; }
@@ -513,10 +519,14 @@ foreach (var bundle in bundles)
 }
 
 Reporter.PrintPerTest(results, Console.Out, showPass);
-Reporter.PrintFailureClassification(results, Console.Out);
+if (printClassification)
+    Reporter.PrintFailureClassification(results, Console.Out);
 Reporter.PrintSummary(results, Console.Out);
-Reporter.WriteClassification(results, outPath);
-Console.WriteLine($"Classification → {outPath}");
+if (outPath != null)
+{
+    Reporter.WriteClassification(results, outPath);
+    Console.WriteLine($"Classification → {outPath}");
+}
 
 // --strict: exit non-zero if anything failed. Matches v1 semantics so CI shell
 // loops can `set -e` against the run command. Default exit is 0 regardless,
@@ -580,7 +590,7 @@ static void PrintHelp(TextWriter w)
     w.WriteLine("dirs, the al-runner artifact cache, and the dotnet tool store.");
     w.WriteLine();
     w.WriteLine("Multiple <bundle-dir> arguments run sequentially and aggregate into one");
-    w.WriteLine("summary + classification JSON.");
+    w.WriteLine("summary. Pass --out PATH to also emit a failure-classification JSON.");
     w.WriteLine();
     w.WriteLine("SELECTION");
     w.WriteLine("  --test PATTERN, --filter PATTERN");
@@ -608,8 +618,11 @@ static void PrintHelp(TextWriter w)
     w.WriteLine("  --bundled               No-op alias for the default bundled mode (deprecated).");
     w.WriteLine();
     w.WriteLine("OUTPUT");
-    w.WriteLine("  --out PATH              Write the failure-classification JSON to PATH");
-    w.WriteLine("                          (default: v2-classification.json).");
+    w.WriteLine("  --out PATH              Write the failure-classification JSON to PATH and");
+    w.WriteLine("                          print the FAILURE CLASSIFICATION block. Off by default —");
+    w.WriteLine("                          classification is a runner-development diagnostic.");
+    w.WriteLine("  --classify              Print the FAILURE CLASSIFICATION block without writing");
+    w.WriteLine("                          a JSON file.");
     w.WriteLine("  --failures-only, --quiet");
     w.WriteLine("                          Print only FAIL/ERROR per-test lines. Default prints both");
     w.WriteLine("                          PASS and FAIL with stack traces (matches v1).");
