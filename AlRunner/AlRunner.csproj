@@ -42,6 +42,17 @@
     <None Include="../CHANGELOG.md" Pack="true" PackagePath="/" />
   </ItemGroup>
 
+  <!-- Win32 P/Invoke stubs (kernel32 / user32 / advapi32 / …) for Linux. The .c
+       source is compiled on first use by Win32Stubs.cs. Ship it beside the
+       binary so the installed dotnet tool can find it. -->
+  <ItemGroup>
+    <Content Include="Win32Stubs/win32_stubs.c">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Pack>true</Pack>
+      <PackagePath>tools/$(TargetFramework)/any/Win32Stubs/</PackagePath>
+    </Content>
+  </ItemGroup>
+
   <PropertyGroup>
     <_BCVersion>27.5.46862.48827</_BCVersion>
     <!-- Cross-platform cache directory for auto-downloaded BC service tier -->

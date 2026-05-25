@@ -47,16 +47,12 @@ internal static class Win32Stubs
     private static IntPtr GetOrBuild()
     {
         if (_handle != IntPtr.Zero) return _handle;
+        var src = LocateStubSource();
         var dir = Path.Combine(Path.GetTempPath(), "alrunner-v2-win32-stubs");
         Directory.CreateDirectory(dir);
-        // From bin/Debug/net8.0 → up 3 → spike/v2/Runner → up 2 → spike → bc-abi-identity/shims/win32_stubs.c
-        var src = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory,
-            "..", "..", "..", "..", "..", "bc-abi-identity", "shims", "win32_stubs.c"));
-        if (!File.Exists(src))
-            throw new FileNotFoundException($"Win32 stubs source not found at {src}");
         var cFile = Path.Combine(dir, "win32_stubs.c");
         var soFile = Path.Combine(dir, "libwin32_stubs.so");
-        if (File.Exists(src)) File.Copy(src, cFile, overwrite: true);
+        File.Copy(src, cFile, overwrite: true);
         var proc = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cc",
             $"-shared -fPIC -o \"{soFile}\" \"{cFile}\"")
         { RedirectStandardError = true, UseShellExecute = false })!;
@@ -65,5 +61,46 @@ internal static class Win32Stubs
             throw new InvalidOperationException($"cc failed: {proc.StandardError.ReadToEnd()}");
         _handle = NativeLibrary.Load(soFile);
         return _handle;
+    }
+
+    /// <summary>
+    /// Locate <c>win32_stubs.c</c>. Three resolution paths, in order:
+    ///   1. Beside the binary (<c>Win32Stubs/win32_stubs.c</c> next to
+    ///      <c>al-runner.dll</c>). This is the layout produced by
+    ///      <c>dotnet build</c> and <c>dotnet pack</c> — the .c file is copied
+    ///      to the output via <c>AlRunner.csproj</c>'s <c>&lt;Content&gt;</c> item.
+    ///   2. Walk up from <see cref="AppContext.BaseDirectory"/> looking for an
+    ///      <c>AlRunner/Win32Stubs/</c> sibling — covers the dev workflow when
+    ///      running from source via <c>dotnet run</c> without publish.
+    ///   3. Environment override <c>AL_RUNNER_WIN32_STUBS_C</c> — full path.
+    /// Throws <see cref="FileNotFoundException"/> with all three paths in the
+    /// message if none resolves, so the diagnosis is trivial.
+    /// </summary>
+    private static string LocateStubSource()
+    {
+        var envOverride = Environment.GetEnvironmentVariable("AL_RUNNER_WIN32_STUBS_C");
+        if (!string.IsNullOrEmpty(envOverride) && File.Exists(envOverride))
+            return envOverride;
+
+        var beside = Path.Combine(AppContext.BaseDirectory, "Win32Stubs", "win32_stubs.c");
+        if (File.Exists(beside)) return beside;
+
+        // Walk up looking for AlRunner/Win32Stubs/win32_stubs.c (dev/source layout).
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        for (int i = 0; i < 10 && dir != null; i++, dir = dir.Parent)
+        {
+            var candidate = Path.Combine(dir.FullName, "AlRunner", "Win32Stubs", "win32_stubs.c");
+            if (File.Exists(candidate)) return candidate;
+            var inside = Path.Combine(dir.FullName, "Win32Stubs", "win32_stubs.c");
+            if (File.Exists(inside) && dir.Name == "AlRunner") return inside;
+        }
+
+        throw new FileNotFoundException(
+            "Win32 stubs source (win32_stubs.c) not found. Searched:\n"
+            + $"  - {beside}\n"
+            + $"  - $AL_RUNNER_WIN32_STUBS_C (={Environment.GetEnvironmentVariable("AL_RUNNER_WIN32_STUBS_C") ?? "<unset>"})\n"
+            + "  - parent dirs up to 10 levels above the binary, looking for AlRunner/Win32Stubs/win32_stubs.c\n"
+            + "Set AL_RUNNER_WIN32_STUBS_C to the absolute path of win32_stubs.c, or rebuild "
+            + "the al-runner tool so the file ships in the output directory.");
     }
 }
