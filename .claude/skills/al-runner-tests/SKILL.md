@@ -1,119 +1,128 @@
 ---
 name: al-runner-tests
-description: How to write, place, and run AL test suites in this repo — proving-test rules, bucket/category layout, AL object-ID uniqueness, run-all-buckets command, build commands, stubs invocation. Use when adding a test suite under tests/, picking object IDs for a new codeunit/table/page, running the test matrix locally, or evaluating whether an existing test "proves" anything.
+description: How AL tests are organised and run in v2 — the read-only al-language submodule corpus, the runner-owned expectations manifest, runner-extras for runner-specific positive tests, the proving-test rules, the run command, and how to bump the corpus pin. Use when investigating a corpus failure, adding an expectation entry, writing a runner-specific test, or evaluating whether an existing test "proves" anything.
 ---
 
-# Writing AL tests
+# Running and writing AL tests (v2)
 
-## What a proving test looks like
+## Layout
 
-A skeptic unfamiliar with the codebase must be able to read any test and say: "yes, if this passes, feature X works correctly in al-runner." Every test must satisfy all four:
+```
+tests/
+  al-language/         ← git submodule, READ-ONLY (StefanMaron/BusinessCentral.AL.Language.Tests).
+                         The canonical AL-language test corpus validated against a real BC service tier.
+                         Never edit. Bump the pin in its own PR.
+  expectations/        ← runner-owned JSON manifest declaring expected outcomes for corpus tests
+                         the runner cannot or does not yet run.
+                         - oos-<area>.json         out-of-scope-by-design
+                         - known-gaps-<area>.json  in-scope but not yet implemented (links GH issue)
+                         - disabled-<area>.json    won't compile or won't run; pure skip
+  runner-extras/       ← runner-specific positive tests (e.g. "surface X throws OOS with reason Y")
+  archive/             ← v1 buckets and fixtures, frozen, scheduled for deletion
+```
+
+There is no `bucket-1/`, `bucket-2/`, `stubs/`, or per-bucket `idRange`. The corpus already organises tests by area (`record/`, `recordref/`, `codeunit/`, `json/`, `streams/`, `out-of-scope/`, etc.) — see `tests/al-language/README.md`.
+
+## Run the corpus
+
+```bash
+dotnet build AlRunner.slnx -c Release
+dotnet run --project AlRunner -c Release -- tests/al-language/tests/al-language
+```
+
+Useful flags (see `AlRunner/Program.cs` for the full list):
+
+```bash
+# Show passes in addition to failures
+dotnet run --project AlRunner -c Release -- --show-pass tests/al-language/tests/al-language
+
+# Verbose internal logs
+dotnet run --project AlRunner -c Release -- --verbose tests/al-language/tests/al-language
+
+# Test isolation modes
+dotnet run --project AlRunner -c Release -- --isolation codeunit  tests/al-language/tests/al-language
+dotnet run --project AlRunner -c Release -- --isolation test      tests/al-language/tests/al-language
+dotnet run --project AlRunner -c Release -- --isolation disabled  tests/al-language/tests/al-language
+
+# Cache compiled AL output between runs
+dotnet run --project AlRunner -c Release -- --cache ~/.cache/al-runner/al-out tests/al-language/tests/al-language
+
+# Extra package caches for dep resolution (repeatable)
+dotnet run --project AlRunner -c Release -- --package-cache ~/.local/share/al-runner/packages tests/al-language/tests/al-language
+
+# JSON classification output
+dotnet run --project AlRunner -c Release -- --out results.json tests/al-language/tests/al-language
+```
+
+## Interpreting output
+
+Today the reporter prints raw PASS / FAIL / ERROR per test plus aggregate counts. Exit codes: `0` all pass, `1` real failures, `2` runner-limitations only, `3` AL compile error.
+
+`AlRunner/Infrastructure/ExpectationManifest.cs` exists and can load the schema described in `docs/expectations.md`, but it is **not yet wired into `Reporter`**. Once it is, the same run will additionally classify failures as:
+
+| Classification | Meaning |
+|---|---|
+| `pass` | Test ran and passed. |
+| `pass-oos` | Test threw `RunnerOutOfScopeException` with the expected reason (declared in `oos-<area>.json`). Counted as success. |
+| `pass-known-gap` | Test failed and matches a `known-gaps-<area>.json` entry. Linked GH issue tracks the fix. |
+| `skipped` | Test matched a `disabled-<area>.json` entry; not executed. |
+| `fail` | Real failure — either unexpected, or expectation drift in either direction. |
+
+Drift is loud in both directions: a test passing despite an `expect-oos` entry fails with "remove the entry"; a test throwing OOS without an entry fails with "add an entry". See `docs/expectations.md`.
+
+## Proving-test rules
+
+A skeptic must be able to read any test and say: "yes, if this passes, feature X works correctly." Every test satisfies all four:
 
 **1. Positive case with a specific assertion**
 ```al
-// Weak — proves almost nothing:
-MyProc();                                 // just runs
-
-// Strong — proves the output is correct:
 Result := MyProc(3, 4);
 Assert.AreEqual(7, Result, 'MyProc should return the sum');
 ```
 
 **2. Negative case with a specific error**
 ```al
-// Weak — proves something fails, but not what:
-asserterror MyProc(-1);
-
-// Strong — proves the right error fires:
 asserterror MyProc(-1);
 Assert.ExpectedError('Value must be positive');
 ```
 
-**3. Would catch a broken mock.** If the test passes when the mock always returns a default value (`0`, `''`, `false`), it is not a proving test. Assert a non-default concrete value.
+**3. Would catch a broken implementation.** If the test passes when the implementation always returns the default value (`0`, `''`, `false`), it is not a proving test. Assert a non-default concrete value.
 
-**4. Use `Assert.*` — never `if X then Error(...)`.** Custom guards are easy to get wrong. Use `Assert.AreEqual`, `Assert.IsTrue`, `Assert.IsFalse`, or `Assert.ExpectedError`.
+**4. Use `Assert.*` — never `if X then Error(...)`.** Use `Assert.AreEqual`, `Assert.IsTrue`, `Assert.IsFalse`, `Assert.ExpectedError`.
 
-Exception: "no-op stub" tests (`Hyperlink_NoThrow`, `Report_Run_IsNoOp`) are valid only when the *entire* claim is "this does not crash." The name must make that explicit.
+Exception: "no-op stub" tests where the *entire* claim is "this does not crash" — name them `*_NoThrow` / `*_IsNoOp` so the limited claim is explicit.
 
-## Suite layout
+## Adding an expectation entry
 
-```
-tests/
-  bucket-1/                 ← backend logic
-    record-table/           — record / table / field / filter / database / permissions
-    codeunit-runtime/       — codeunit / event / dialog / error / scope / handler / session / library / language features
-  bucket-2/                 ← presentation + data
-    page-report/            — page / testpage / report / xmlport / query / action / views / fieldgroup
-    data-formats/           — text / json / xml / date / numeric / format / stream / http / blob / media
-  bucket-feature-niw/       ← suites needing a separate compile unit (NoImplicitWith app.json feature flag)
-                            flat layout, no category subfolder
-  stubs/                    ← 39-stubs (--stubs flag, separate invocation)
-  excluded/                 ← fixtures not in the main loop
-```
+When a corpus test exercises a surface the runner refuses by design (SMTP, real HTTP, report rendering, …):
 
-Each suite:
-```
-tests/<bucket>/<category>/<NN-descriptive-name>/
-  src/   — AL source codeunit(s)
-  test/  — AL test codeunit (Subtype = Test)
-```
+1. Pick the right file: `tests/expectations/oos-<area>.json` (or `known-gaps-<area>.json` for "in scope, not yet implemented", with a GH issue link).
+2. Add one entry following `docs/expectations.md`. One entry per PR if possible; sharding by area keeps diffs small.
+3. The reason field must match a reason already used in `docs/scope.md` (`email-smtp`, `http-egress`, `not-yet-implemented`, …).
 
-When adding a new suite, pick the `<bucket>/<category>` folder that matches the feature theme. Reuse the next free `NN-` prefix in the chosen category.
+## Writing a runner-extras test
 
-## Object IDs — unique within the bucket, inside the bucket's idRange
+When the claim is "this runner surface throws `RunnerOutOfScopeException` with the expected reason" or otherwise asserts runner-specific behaviour the upstream corpus cannot, put it in `tests/runner-extras/` as a normal `app.json`-rooted AL project. Apply the proving-test rules above.
 
-Each bucket has an idRange declared in `tests/bucket-N/app.json` (currently `50000..99999`). All object IDs in the bucket must fit inside that range AND be unique within the bucket. IDs may repeat across buckets. ID collisions or out-of-range IDs cause AL compile errors.
+## Bumping the corpus pin
+
+The submodule is read-only. To pull in new tests from upstream:
 
 ```bash
-grep -rh "^codeunit \|^table \|^page \|^enum " tests/bucket-1/ \
-  | awk '{print $1, $2}' | sort -k2 -n
+git -C tests/al-language fetch
+git -C tests/al-language log --oneline HEAD..origin/master
+git -C tests/al-language diff HEAD..origin/master   # review
+git -C tests/al-language checkout origin/master
+git add tests/al-language
+git commit -m "Bump tests/al-language to <sha>"
 ```
 
-**Object resolution is by NAME, not ID.** IDs are a licensing-era artifact in AL — renumbering them does not break cross-references. But two suites in the same bucket cannot share an object NAME (only one definition wins in a bundled compile), so each suite's codeunit/table/page names must be unique within the bucket.
+Tests that newly fail after the bump are runner gaps. Patch the runner (or add an expectation entry); never patch the corpus.
 
-## Running tests
+## Sister docs
 
-### V2 — bundled per bucket (canonical, fast, matches V1 semantics)
-
-The V2 runner now compiles and runs an entire bucket as one AL package — this is the canonical way to run tests. Each bucket's `app.json` declares its `idRange`, `target`, and any required `preprocessorSymbols`, so the bundle compiles like a normal BC extension.
-
-```bash
-dotnet build spike/v2/Runner -c Release
-dotnet run --project spike/v2/Runner -c Release --no-build -- tests/bucket-1
-dotnet run --project spike/v2/Runner -c Release --no-build -- tests/bucket-2
-```
-
-Or pass multiple buckets in one invocation:
-```bash
-dotnet run --project spike/v2/Runner -c Release --no-build -- tests/bucket-1 tests/bucket-2
-```
-
-Per-suite mode (`--per-suite`) still exists for diagnostic comparison but is no longer the default. Bundled mode is 5-7× faster on representative buckets and exercises the same name-based object resolution V1 used.
-
-### V1 — per-suite (legacy)
-
-```bash
-# Run all buckets (mirrors .github/workflows/test-matrix.yml)
-for bucket in tests/bucket-*/; do
-  args=""
-  for suite in "$bucket"*/*/; do
-    [ -d "${suite}src"  ] && args="$args ${suite}src"
-    for appdir in "${suite}"app*/; do
-      [ -d "$appdir" ] && args="$args $appdir"
-    done
-    [ -d "${suite}test" ] && args="$args ${suite}test"
-  done
-  dotnet run --project AlRunner --framework net10.0 -- --strict --test-isolation method $args
-done
-
-# Stubs test (separate invocation)
-dotnet run --project AlRunner --framework net10.0 -- --stubs \
-  tests/stubs/39-stubs/stubs tests/stubs/39-stubs/src tests/stubs/39-stubs/test
-```
-
-## Build
-
-```bash
-dotnet build AlRunner/
-dotnet run --project AlRunner -- ./src ./test
-```
+- `tests/al-language/README.md` — corpus description, areas, naming convention
+- `tests/expectations/README.md` + `docs/expectations.md` — schema
+- `.claude/rules/al-language-submodule.md` — read-only contract
+- `.claude/rules/tdd.md` — red → green, both directions
+- `.claude/rules/loud-failures.md` — surfaces that must throw OOS

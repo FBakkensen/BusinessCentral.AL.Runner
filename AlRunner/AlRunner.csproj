@@ -9,62 +9,65 @@
     <NoWarn>MSB3277;CA1416</NoWarn>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
 
-    <!-- Cold-start: disable Dynamic PGO profiler overhead (never pays back in <2s process),
-         allow QuickJit for loopy methods (BC compiler + Roslyn have many). -->
-    <TieredPGO>false</TieredPGO>
-    <TieredCompilationQuickJitForLoops>true</TieredCompilationQuickJitForLoops>
+    <!-- Output assembly name matches the tool command (al-runner) so the binary
+         on disk, the dotnet tool command, and the on-screen banner all read the same.
+         The csproj filename stays PascalCase to follow .NET project conventions. -->
+    <AssemblyName>al-runner</AssemblyName>
+    <RootNamespace>AlRunnerV2</RootNamespace>
 
-    <!-- R2R: pre-compile to native code at publish time. Eliminates JIT for AlRunner's
-         own code (~420ms cold-start savings). Only takes effect with `dotnet publish -r <rid>`. -->
-    <PublishReadyToRun>true</PublishReadyToRun>
+    <!-- v2 stability constraint: JMP-hook patches written at tier-0 addresses are
+         overwritten when .NET promotes hot methods to tier-1. Tiered compilation
+         must stay off until every JmpHook has been migrated to Cecil IL rewriting. -->
+    <TieredCompilation>false</TieredCompilation>
 
     <!-- dotnet tool packaging -->
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>al-runner</ToolCommandName>
     <PackageId>MSDyn365BC.AL.Runner</PackageId>
-    <Version>0.1.0</Version>
+    <Version>2.0.0-preview.1</Version>
     <Description>Run Business Central AL unit tests in milliseconds — no BC service tier, no Docker, no SQL Server, no license.</Description>
     <Authors>Stefan Maron</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/StefanMaron/MSDyn365BC.AL.Runner</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/StefanMaron/MSDyn365BC.AL.Runner</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/StefanMaron/BusinessCentral.AL.Runner</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/StefanMaron/BusinessCentral.AL.Runner</RepositoryUrl>
     <PackageTags>business-central;al;unit-test;runner</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>See CHANGELOG.md in the package or https://github.com/StefanMaron/BusinessCentral.AL.Runner/blob/main/CHANGELOG.md</PackageReleaseNotes>
+    <PackageReleaseNotes>v2.0 is a ground-up rewrite — no type renaming, no AL stubbing, runs unmodified MS- and ISV-shipped DLLs in-process. See CHANGELOG.md.</PackageReleaseNotes>
+
+    <RepoRoot>$(MSBuildProjectDirectory)/..</RepoRoot>
   </PropertyGroup>
 
   <ItemGroup>
     <None Include="../README.md" Pack="true" PackagePath="/" />
     <None Include="../CHANGELOG.md" Pack="true" PackagePath="/" />
-    <InternalsVisibleTo Include="AlRunner.Tests" />
-    <InternalsVisibleTo Include="AlRunner.Benchmarks" />
   </ItemGroup>
 
   <PropertyGroup>
-    <_ALToolVersion>17.0.34.45391</_ALToolVersion>
     <_BCVersion>27.5.46862.48827</_BCVersion>
-    <!-- Cross-platform cache directory for auto-downloaded dependencies -->
+    <!-- Cross-platform cache directory for auto-downloaded BC service tier -->
     <_CacheBase Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(LOCALAPPDATA)/al-runner</_CacheBase>
     <_CacheBase Condition="!$([MSBuild]::IsOSPlatform('Windows'))">$(HOME)/.local/share/al-runner</_CacheBase>
   </PropertyGroup>
 
-  <!-- AL Compiler: resolve from dotnet tool store, then cache, then auto-download -->
-  <PropertyGroup Condition="'$(ALCompilerPath)' == ''">
-    <!-- 1. dotnet tool store (if installed manually) -->
-    <ALCompilerPath Condition="$([MSBuild]::IsOSPlatform('Linux')) And Exists('$(HOME)/.dotnet/tools/.store/microsoft.dynamics.businesscentral.development.tools.linux/$(_ALToolVersion)/microsoft.dynamics.businesscentral.development.tools.linux/$(_ALToolVersion)/tools/net8.0/any/Microsoft.Dynamics.Nav.CodeAnalysis.dll')">$(HOME)/.dotnet/tools/.store/microsoft.dynamics.businesscentral.development.tools.linux/$(_ALToolVersion)/microsoft.dynamics.businesscentral.development.tools.linux/$(_ALToolVersion)/tools/net8.0/any</ALCompilerPath>
-    <ALCompilerPath Condition="$([MSBuild]::IsOSPlatform('OSX')) And Exists('$(HOME)/.dotnet/tools/.store/microsoft.dynamics.businesscentral.development.tools.linux/$(_ALToolVersion)/microsoft.dynamics.businesscentral.development.tools.linux/$(_ALToolVersion)/tools/net8.0/any/Microsoft.Dynamics.Nav.CodeAnalysis.dll')">$(HOME)/.dotnet/tools/.store/microsoft.dynamics.businesscentral.development.tools.linux/$(_ALToolVersion)/microsoft.dynamics.businesscentral.development.tools.linux/$(_ALToolVersion)/tools/net8.0/any</ALCompilerPath>
-    <ALCompilerPath Condition="$([MSBuild]::IsOSPlatform('Windows')) And Exists('$(USERPROFILE)/.dotnet/tools/.store/microsoft.dynamics.businesscentral.development.tools/$(_ALToolVersion)/microsoft.dynamics.businesscentral.development.tools/$(_ALToolVersion)/tools/net8.0/any/Microsoft.Dynamics.Nav.CodeAnalysis.dll')">$(USERPROFILE)/.dotnet/tools/.store/microsoft.dynamics.businesscentral.development.tools/$(_ALToolVersion)/microsoft.dynamics.businesscentral.development.tools/$(_ALToolVersion)/tools/net8.0/any</ALCompilerPath>
-    <!-- 2. Cache directory (auto-downloaded) -->
-    <ALCompilerPath Condition="'$(ALCompilerPath)' == ''">$(_CacheBase)/alcompiler/$(_ALToolVersion)</ALCompilerPath>
-  </PropertyGroup>
-
-  <!-- Service Tier: resolve from local artifacts, then cache -->
+  <!-- BC service tier: local artifacts first, then cache directory.
+       v2 pulls Ncl/Types/Common/Language/CodeAnalysis from the service tier — the
+       AL compiler-and-emit infrastructure ships in BC service tier so no separate
+       AL compiler tool is required. -->
   <PropertyGroup Condition="'$(ServiceTierPath)' == ''">
-    <ServiceTierPath Condition="Exists('../artifacts/sandbox/$(_BCVersion)/platform/ServiceTier/PFiles64/Microsoft Dynamics NAV/270/Service')">../artifacts/sandbox/$(_BCVersion)/platform/ServiceTier/PFiles64/Microsoft Dynamics NAV/270/Service</ServiceTierPath>
+    <ServiceTierPath Condition="Exists('$(RepoRoot)/artifacts/sandbox/$(_BCVersion)/platform/ServiceTier/PFiles64/Microsoft Dynamics NAV/270/Service')">$(RepoRoot)/artifacts/sandbox/$(_BCVersion)/platform/ServiceTier/PFiles64/Microsoft Dynamics NAV/270/Service</ServiceTierPath>
     <ServiceTierPath Condition="'$(ServiceTierPath)' == ''">$(_CacheBase)/artifacts/$(_BCVersion)</ServiceTierPath>
   </PropertyGroup>
 
-  <!-- BC service tier runtime dependencies not included in the default .NET runtime -->
+  <!-- Common packages on every TFM -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" />
+    <PackageReference Include="Mono.Cecil" Version="0.11.6" />
+  </ItemGroup>
+
+  <!-- BC service tier runtime dependencies not in the default .NET runtime.
+       BC's Common.dll references EventLog and ConfigurationManager APIs that
+       live in separate packages on cross-platform .NET. Versions pinned per TFM
+       to match the .NET runtime major. -->
   <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
     <PackageReference Include="System.Diagnostics.EventLog" Version="8.0.1" />
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="8.0.1" />
@@ -77,39 +80,13 @@
     <PackageReference Include="System.Diagnostics.EventLog" Version="10.0.6" />
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="10.0.6" />
   </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-  </ItemGroup>
-
-  <!-- Copy stubs to output for runtime discovery -->
-  <ItemGroup>
-    <None Include="stubs/**" CopyToOutputDirectory="PreserveNewest" LinkBase="stubs" />
-  </ItemGroup>
 
   <ItemGroup>
-    <!-- AL Compiler -->
-    <Reference Include="Microsoft.Dynamics.Nav.CodeAnalysis">
-      <HintPath>$(ALCompilerPath)/Microsoft.Dynamics.Nav.CodeAnalysis.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Dynamics.Nav.CodeAnalysis.Workspaces">
-      <HintPath>$(ALCompilerPath)/Microsoft.Dynamics.Nav.CodeAnalysis.Workspaces.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.CodeAnalysis">
-      <HintPath>$(ALCompilerPath)/Microsoft.CodeAnalysis.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.CodeAnalysis.CSharp">
-      <HintPath>$(ALCompilerPath)/Microsoft.CodeAnalysis.CSharp.dll</HintPath>
-    </Reference>
-    <Reference Include="System.IO.Packaging">
-      <HintPath>$(ALCompilerPath)/System.IO.Packaging.dll</HintPath>
-    </Reference>
-
-    <!-- BC Service Tier -->
-    <Reference Include="Microsoft.Dynamics.Nav.Ncl">
-      <HintPath>$(ServiceTierPath)/Microsoft.Dynamics.Nav.Ncl.dll</HintPath>
-    </Reference>
     <Reference Include="Microsoft.Dynamics.Nav.Types">
       <HintPath>$(ServiceTierPath)/Microsoft.Dynamics.Nav.Types.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Dynamics.Nav.Ncl">
+      <HintPath>$(ServiceTierPath)/Microsoft.Dynamics.Nav.Ncl.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Dynamics.Nav.Common">
       <HintPath>$(ServiceTierPath)/Microsoft.Dynamics.Nav.Common.dll</HintPath>
@@ -117,43 +94,23 @@
     <Reference Include="Microsoft.Dynamics.Nav.Language">
       <HintPath>$(ServiceTierPath)/Microsoft.Dynamics.Nav.Language.dll</HintPath>
     </Reference>
-    <Reference Include="Microsoft.Dynamics.Nav.Core">
-      <HintPath>$(ServiceTierPath)/Microsoft.Dynamics.Nav.Core.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Dynamics.Nav.Types.Report">
-      <HintPath>$(ServiceTierPath)/Microsoft.Dynamics.Nav.Types.Report.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Dynamics.Nav.Types.Report.Base">
-      <HintPath>$(ServiceTierPath)/Microsoft.Dynamics.Nav.Types.Report.Base.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Dynamics.Nav.Types.Report.Runtime">
-      <HintPath>$(ServiceTierPath)/Microsoft.Dynamics.Nav.Types.Report.Runtime.dll</HintPath>
+    <Reference Include="Microsoft.Dynamics.Nav.CodeAnalysis">
+      <HintPath>$(ServiceTierPath)/Microsoft.Dynamics.Nav.CodeAnalysis.dll</HintPath>
     </Reference>
   </ItemGroup>
 
-  <!-- Auto-download AL compiler if not present.
+  <!-- Auto-download BC Service Tier DLLs if not present.
        Runs in the outer build (BeforeTargets=DispatchToInnerBuilds) so DLLs are present
        before either inner build starts its ResolveAssemblyReferences pass. Also runs in
        single-target builds (BeforeTargets=ResolveAssemblyReferences) where there is no
-       outer/inner split. Skipped in inner builds (TargetFramework is set, TargetFrameworks
-       is also set) to avoid redundant downloads. -->
-  <Target Name="EnsureALCompiler"
-          BeforeTargets="DispatchToInnerBuilds;ResolveAssemblyReferences"
-          Condition="!Exists('$(ALCompilerPath)/Microsoft.Dynamics.Nav.CodeAnalysis.dll')
-                     AND ('$(TargetFrameworks)' == '' OR '$(TargetFramework)' == '')">
-    <Message Importance="high" Text="AL compiler not found. Downloading from NuGet..." />
-    <Exec Command="dotnet run --project &quot;$(MSBuildProjectDirectory)/../tools/DownloadArtifacts&quot; -- al-compiler $(_ALToolVersion) &quot;$(ALCompilerPath)&quot;" />
-  </Target>
-
-  <!-- Auto-download BC Service Tier DLLs if not present.
-       Same execution conditions as EnsureALCompiler. -->
+       outer/inner split. Skipped in inner multi-target builds (TargetFramework is set,
+       TargetFrameworks is also set) to avoid redundant downloads. -->
   <Target Name="EnsureBCServiceTierDlls"
           BeforeTargets="DispatchToInnerBuilds;ResolveAssemblyReferences"
-          DependsOnTargets="EnsureALCompiler"
           Condition="!Exists('$(ServiceTierPath)/Microsoft.Dynamics.Nav.Types.dll')
                      AND ('$(TargetFrameworks)' == '' OR '$(TargetFramework)' == '')">
-    <Message Importance="high" Text="BC Service Tier DLLs not found. Downloading via range request..." />
-    <Exec Command="dotnet run --project &quot;$(MSBuildProjectDirectory)/../tools/DownloadArtifacts&quot; -- service-tier $(_BCVersion) &quot;$(ServiceTierPath)&quot;" />
+    <Message Importance="high" Text="BC Service Tier DLLs not found at $(ServiceTierPath). Downloading via range request..." />
+    <Exec Command="dotnet run --project &quot;$(RepoRoot)/tools/DownloadArtifacts&quot; -- service-tier $(_BCVersion) &quot;$(ServiceTierPath)&quot;" />
   </Target>
 
 </Project>

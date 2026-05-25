@@ -17,13 +17,14 @@ jobs:
       matrix: ${{ steps.resolve.outputs.matrix }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          submodules: true
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '8.0.x'
       - name: Resolve BC versions
         id: resolve
         run: |
-          # Read version prefixes from the single-source-of-truth config file
           BC_PREFIXES=$(cat .github/bc-versions.txt | grep -v '^#' | tr '\n' ' ')
           VERSIONS="[]"
           for prefix in $BC_PREFIXES; do
@@ -49,130 +50,50 @@ jobs:
       BC_VERSION: ${{ matrix.bc-version }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          submodules: true
+
       - uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: |
-            8.0.x
-            9.0.x
-            10.0.x
+          dotnet-version: '8.0.x'
 
       - name: Build (auto-downloads BC ${{ matrix.bc-version }} DLLs)
         run: |
-          dotnet build AlRunner.slnx -p:_BCVersion=${{ matrix.bc-version }}
-          # Tell the runtime where the MSBuild target cached the DLLs
-          echo "BC_SERVICE_TIER_PATH=${HOME}/.local/share/al-runner/artifacts/${{ matrix.bc-version }}" >> "$GITHUB_ENV"
+          dotnet build AlRunner.slnx -p:_BCVersion=${{ matrix.bc-version }} -c Release
 
-      - name: Run C# tests
-        run: dotnet test AlRunner.Tests/AlRunner.Tests.csproj --no-build --framework net10.0 --verbosity minimal
-
-      - name: Run AL test buckets
-        id: al-tests
+      - name: Run al-language corpus
+        id: al-language
         run: |
-          total_passed=0
-          total_failed=0
-          total_ms=0
-
-          for bucket in tests/bucket-*/; do
-            args=""
-            # Each bucket holds either thematic category subfolders
-            # (bucket/<category>/<suite>/) or — when a single category would be
-            # the only one — flat suites directly under the bucket
-            # (bucket/<suite>/). Auto-detect per entry.
-            for entry in "$bucket"*/; do
-              if [ -d "${entry}src" ] || [ -d "${entry}test" ]; then
-                # Flat layout: <entry> is the suite itself.
-                [ -d "${entry}src"  ] && args="$args ${entry}src"
-                for appdir in "${entry}"app*/; do
-                  [ -d "$appdir" ] && args="$args $appdir"
-                done
-                [ -d "${entry}test" ] && args="$args ${entry}test"
-              else
-                # Categorized layout: <entry> is a category folder; descend.
-                for suite in "$entry"*/; do
-                  [ -d "${suite}src"  ] && args="$args ${suite}src"
-                  for appdir in "${suite}"app*/; do
-                    [ -d "$appdir" ] && args="$args $appdir"
-                  done
-                  [ -d "${suite}test" ] && args="$args ${suite}test"
-                done
-              fi
-            done
-            echo "=== $bucket ==="
-            start=$SECONDS
-            # Capture exit code without tripping `set -e` so we always print output.
-            rc=0
-            output=$(dotnet run --no-build --project AlRunner --framework net10.0 -- --strict --test-isolation method $args 2>&1) || rc=$?
-            elapsed=$(( SECONDS - start ))
-            echo "$output"
-            if [ "$rc" -ne 0 ]; then
-              echo "::error::AL test bucket $bucket exited with code $rc"
-              exit "$rc"
-            fi
-
-            # Parse "N passed[, M failed] in X.Xs"
-            passed=$(echo "$output" | grep -oP '\d+(?= passed)' || echo 0)
-            failed=$(echo "$output" | grep -oP '\d+(?= failed)' || echo 0)
-            total_passed=$(( total_passed + passed ))
-            total_failed=$(( total_failed + failed ))
-            total_ms=$(( total_ms + elapsed * 1000 ))
-
-            if [ "$elapsed" -gt 60 ]; then
-              echo "::error::Performance regression: $bucket took ${elapsed}s (limit: 60s)"
-              exit 1
-            fi
-          done
-
-          # Stubs test
-          echo "=== stubs ==="
-          start=$SECONDS
+          # The canonical corpus lives in the tests/al-language submodule.
+          # See docs/expectations.md for how OOS-by-design tests are declared.
           rc=0
-          output=$(dotnet run --no-build --project AlRunner --framework net10.0 -- --stubs tests/stubs/39-stubs/stubs tests/stubs/39-stubs/src tests/stubs/39-stubs/test 2>&1) || rc=$?
+          start=$SECONDS
+          dotnet run --no-build --project AlRunner -c Release -- \
+              tests/al-language/tests/al-language \
+              --out al-language-results.json || rc=$?
           elapsed=$(( SECONDS - start ))
-          echo "$output"
           if [ "$rc" -ne 0 ]; then
-            echo "::error::Stubs test exited with code $rc"
+            echo "::error::al-language run exited with code $rc"
             exit "$rc"
           fi
-          passed=$(echo "$output" | grep -oP '\d+(?= passed)' || echo 0)
-          total_passed=$(( total_passed + passed ))
-          total_ms=$(( total_ms + elapsed * 1000 ))
+          echo "elapsed=${elapsed}s" >> "$GITHUB_OUTPUT"
 
-          # Format timing
-          total_secs=$(python3 -c "print(f'{$total_ms / 1000:.1f}')")
-
-          echo "total_passed=$total_passed" >> "$GITHUB_OUTPUT"
-          echo "total_failed=$total_failed" >> "$GITHUB_OUTPUT"
-          echo "total_secs=$total_secs" >> "$GITHUB_OUTPUT"
-          echo ""
-          echo "=== Summary ==="
-          echo "AL tests: $total_passed passed, $total_failed failed in ${total_secs}s"
-
-      - name: Verify excluded fixtures
+      - name: Run runner-extras (if present)
+        if: ${{ hashFiles('tests/runner-extras/**/*.al') != '' }}
         run: |
-          # Each excluded test directory that contains an al-runner.json with an
-          # "expectedExitCode" field is verified here. Directories without the file
-          # are documentation-only fixtures and are skipped automatically.
-          for suite in tests/excluded/*/; do
-            json="${suite}al-runner.json"
-            [ -f "$json" ] || continue
+          dotnet run --no-build --project AlRunner -c Release -- \
+              tests/runner-extras \
+              --out runner-extras-results.json
 
-            expected_exit=$(jq -e '.expectedExitCode' "$json") || { echo "ERROR: $json is missing required 'expectedExitCode' field"; exit 1; }
-            extra_flags_str=$(jq -r '.extraFlags // ""' "$json")
-            read -ra extra_flags_arr <<< "$extra_flags_str"
-
-            args=()
-            [ -d "${suite}src"  ] && args+=("${suite}src")
-            for appdir in "${suite}"app*/; do
-              [ -d "$appdir" ] && args+=("$appdir")
-            done
-            [ -d "${suite}stubs" ] && extra_flags_arr=("--stubs" "${suite}stubs" "${extra_flags_arr[@]}")
-            [ -d "${suite}test"  ] && args+=("${suite}test")
-
-            echo "=== $suite (expected exit $expected_exit) ==="
-            rc=0
-            dotnet run --no-build --project AlRunner --framework net10.0 -- "${extra_flags_arr[@]}" "${args[@]}" || rc=$?
-            [ "$rc" -eq "$expected_exit" ] || { echo "Expected exit $expected_exit, got $rc"; exit 1; }
-          done
+      - name: Upload result artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: results-${{ matrix.bc-version }}
+          path: |
+            al-language-results.json
+            runner-extras-results.json
+          if-no-files-found: ignore
 
   all-tests:
     name: All BC versions passed
@@ -187,41 +108,3 @@ jobs:
             exit 1
           fi
           echo "All BC versions passed."
-
-  update-badges:
-    name: Update test badges
-    needs: [resolve-versions, test, all-tests]
-    if: github.ref == 'refs/heads/main' && needs.test.result == 'success'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Count AL test procedures and update badge
-        env:
-          GH_TOKEN: ${{ secrets.GIST_TOKEN }}
-        run: |
-          # Count [Test]-attributed procedures (not Initialize/helper procedures)
-          # in all bucket and stubs test files. Globs cover both flat
-          # (bucket-*/<suite>/test) and categorized (bucket-*/<category>/<suite>/test)
-          # layouts.
-          TESTS=$(grep -rch '^[[:space:]]*\[Test\]' \
-              tests/bucket-*/*/test/*.al \
-              tests/bucket-*/*/*/test/*.al \
-              tests/stubs/*/test/*.al 2>/dev/null \
-            | awk '{s+=$1} END {print s+0}')
-          echo "AL test procedures: $TESTS"
-
-          BADGE_JSON=$(python3 -c "
-          import json
-          print(json.dumps({
-              'schemaVersion': 1,
-              'label': 'AL tests',
-              'message': '${TESTS} passing',
-              'color': 'brightgreen'
-          }))
-          ")
-
-          gh api --method PATCH gists/2ea799885a3e3b3e6c42d6efbfaf9e3f \
-            -f "files[test-badge.json][content]=$BADGE_JSON"
-
-          echo "Updated badge: $TESTS tests"

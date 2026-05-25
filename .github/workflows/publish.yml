@@ -95,62 +95,27 @@ jobs:
       - uses: actions/checkout@v6
         with:
           ref: v${{ inputs.version }}
+          submodules: true
       - uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: |
-            8.0.x
-            9.0.x
-            10.0.x
+          dotnet-version: '8.0.x'
 
       - name: Build (auto-downloads BC ${{ matrix.bc-version }} DLLs)
         run: |
-          dotnet build AlRunner.slnx -p:_BCVersion=${{ matrix.bc-version }}
-          echo "BC_SERVICE_TIER_PATH=${HOME}/.local/share/al-runner/artifacts/${{ matrix.bc-version }}" >> "$GITHUB_ENV"
+          dotnet build AlRunner.slnx -p:_BCVersion=${{ matrix.bc-version }} -c Release
 
-      - name: Run C# tests
-        run: dotnet test AlRunner.Tests/AlRunner.Tests.csproj --no-build --framework net10.0 --verbosity minimal
-
-      - name: Run AL test buckets
+      - name: Run al-language corpus
         run: |
-          for bucket in tests/bucket-*/; do
-            args=""
-            # Each bucket holds either thematic category subfolders
-            # (bucket/<category>/<suite>/) or — when a single category would be
-            # the only one — flat suites directly under the bucket
-            # (bucket/<suite>/). Auto-detect per entry to mirror test-matrix.yml.
-            for entry in "$bucket"*/; do
-              if [ -d "${entry}src" ] || [ -d "${entry}test" ]; then
-                # Flat layout: <entry> is the suite itself.
-                [ -d "${entry}src"  ] && args="$args ${entry}src"
-                for appdir in "${entry}"app*/; do
-                  [ -d "$appdir" ] && args="$args $appdir"
-                done
-                [ -d "${entry}test" ] && args="$args ${entry}test"
-              else
-                # Categorized layout: <entry> is a category folder; descend.
-                for suite in "$entry"*/; do
-                  [ -d "${suite}src"  ] && args="$args ${suite}src"
-                  for appdir in "${suite}"app*/; do
-                    [ -d "$appdir" ] && args="$args $appdir"
-                  done
-                  [ -d "${suite}test" ] && args="$args ${suite}test"
-                done
-              fi
-            done
-            echo "=== $bucket ==="
-            dotnet run --no-build --project AlRunner --framework net10.0 -- --strict --test-isolation method $args
-          done
+          dotnet run --no-build --project AlRunner -c Release -- \
+            tests/al-language/tests/al-language \
+            --out al-language-results.json
 
-      - name: Run stubs test
+      - name: Run runner-extras (if present)
+        if: ${{ hashFiles('tests/runner-extras/**/*.al') != '' }}
         run: |
-          dotnet run --no-build --project AlRunner --framework net10.0 -- --stubs tests/stubs/39-stubs/stubs tests/stubs/39-stubs/src tests/stubs/39-stubs/test
-
-      - name: Verify intentional-failure fixture
-        run: |
-          dotnet run --no-build --project AlRunner --framework net10.0 -- \
-            tests/excluded/06-intentional-failure/src tests/excluded/06-intentional-failure/test \
-            || rc=$?
-          [ "${rc:-0}" -eq 1 ] || { echo "Expected exit 1, got ${rc:-0}"; exit 1; }
+          dotnet run --no-build --project AlRunner -c Release -- \
+            tests/runner-extras \
+            --out runner-extras-results.json
 
   publish:
     needs: [prepare, test]
