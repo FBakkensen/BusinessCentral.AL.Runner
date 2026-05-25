@@ -237,6 +237,21 @@ public static partial class BcRuntime
         RootTreeStub = new RootTreeObject();
         SuppressEventLogWriter();
         ApplyAllPatches(navNcl);
+
+        // Definitive success signal — workers, future agents, and future-me can grep
+        // this single line to verify patch install completed without a silent crash.
+        // Any SIGSEGV during ApplyAllPatches above kills the process before this prints,
+        // so the absence of this line in stderr is unambiguous proof of a crashed install.
+        // JmpHook.LastAttempt names the hook in flight if install crashed mid-stream
+        // (visible only with AL_RUNNER_HOOK_TRACE=1, which logs every Apply with flush).
+        // Write to both streams + a tmpfile fallback so the success marker survives even
+        // if a precedent patch (e.g. NavEnvironment.cctor replacement) redirected Console.
+        var ready = $"[BcRuntime] STARTUP-READY: {AlRunnerV2.Infrastructure.JmpHook.AppliedCount} hooks applied";
+        Console.Out.WriteLine(ready);
+        Console.Out.Flush();
+        Console.Error.WriteLine(ready);
+        Console.Error.Flush();
+        try { System.IO.File.AppendAllText("/tmp/al-runner-startup.log", ready + "\n"); } catch { }
     }
 
     /// <summary>
@@ -836,6 +851,26 @@ public static partial class BcRuntime
                 var p = m.GetParameters().Length;
                 var noop = p switch { 1 => nameof(NoOp2), 2 => nameof(NoOp3), _ => null };
                 if (noop != null) Hook(m, noop, $"NavSession.VerifyExecutePermission/{p}");
+            }
+
+            // NavSession.FlushDataCache — invoked from ALDatabase.ALSelectLatestVersion. The
+            // real body constructs NavSystemCodeunitUIHelperTriggers(parent) where parent is
+            // null on the headless runner → ArgumentNullException. Hook one level deeper than
+            // ALSelectLatestVersion: hooking the ALDatabase.* statics themselves is fatal
+            // because their precodes are R2R-inlined into callers (see
+            // feedback_aldatabase_hard.md — SIGSEGV at first execution, install passes).
+            // Faithful no-op: FlushDataCache refreshes the BC service-tier in-memory
+            // table-version stamp so subsequent reads bypass the client-side cache and
+            // re-fetch from SQL. The runner is a single-process in-memory store with no
+            // SQL cache and no version concept — every read is already authoritative, so
+            // skipping the flush is observably equivalent for any in-scope test.
+            // Closes 6 al-language SelectLatestVersion failures.
+            foreach (var m in sessType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                .Where(m => m.Name == "FlushDataCache" && m.ReturnType == typeof(void)))
+            {
+                var p = m.GetParameters().Length;
+                var noop = p switch { 0 => nameof(NoOp_OneArg), 1 => nameof(NoOp2), 2 => nameof(NoOp3), _ => null };
+                if (noop != null) Hook(m, noop, $"NavSession.FlushDataCache/{p}");
             }
         }
 
@@ -1502,6 +1537,14 @@ public static partial class BcRuntime
                 BindingFlags.Public | BindingFlags.Static);
             if (alUnregister != null)
                 Hook(alUnregister, nameof(NoOp2), "ALDatabase.ALUnregisterTableConnection");
+
+            // DO NOT hook ALDatabase.ALSelectLatestVersion — its precode is R2R-inlined into
+            // callers; the hook installs successfully (no crash log) but executing those
+            // callers later SIGSEGVs the runner. Verified 2026-05-25 via instrumented bisect:
+            // bisect step with hook → SIGSEGV during al-language compile; without hook →
+            // 1444P/219F/0E with the same FlushDataCache hook above doing the real work
+            // one level deeper. The downstream FlushDataCache hook is sufficient to make all
+            // 6 SelectLatestVersion tests pass without touching the inlined surface.
         }
 
         // ALSystemOperatingSystem.GetUrlCore — real body reaches into ALSession,

@@ -16,8 +16,31 @@ internal static class JmpHook
     private static extern int mprotect(IntPtr addr, nuint len, int prot);
     private const int PROT_READ = 1, PROT_WRITE = 2, PROT_EXEC = 4;
 
+    // Counters + last-attempted bookkeeping for post-mortem diagnosis.
+    // If the process SIGSEGVs during patch install, LastAttempt names the hook
+    // whose Apply() was in flight (or had just finished) when the crash occurred.
+    // `AL_RUNNER_HOOK_TRACE=1` enables a stderr line for every Apply, flushed
+    // immediately so the trail survives a crash.
+    public static int AppliedCount;
+    public static string? LastAttempt;
+    private static readonly bool _trace =
+        Environment.GetEnvironmentVariable("AL_RUNNER_HOOK_TRACE") == "1";
+    private static readonly string _traceLog = "/tmp/al-runner-hook-trace.log";
+
+    private static void TraceLine(string line)
+    {
+        // File-based trace: console streams get redirected by NavEnvironment.cctor /
+        // other early patches, so Console.Error.WriteLine inside the patch-install
+        // window vanishes. A direct file write always survives, even across a SIGSEGV
+        // because we open-append-close per line.
+        try { System.IO.File.AppendAllText(_traceLog, line + "\n"); } catch { }
+        try { Console.Error.WriteLine(line); Console.Error.Flush(); } catch { }
+    }
+
     public static void Apply(MethodBase original, MethodInfo replacement, string name)
     {
+        LastAttempt = name;
+        if (_trace) TraceLine($"[JmpHook] APPLY BEGIN {name}");
         RuntimeHelpers.PrepareMethod(original.MethodHandle);
         RuntimeHelpers.PrepareMethod(replacement.MethodHandle);
         var origFp = original.MethodHandle.GetFunctionPointer();
@@ -54,6 +77,8 @@ internal static class JmpHook
                 }
                 WriteJmp(compiledCode, replFp);
             } catch { }
+        AppliedCount++;
+        if (_trace) TraceLine($"[JmpHook] APPLY END   {name} (#{AppliedCount})");
     }
 
     private static void WriteJmp(IntPtr target, IntPtr destination)
