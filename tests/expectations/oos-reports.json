@@ -1,0 +1,11 @@
+[
+  {
+    "codeunitId": 0,
+    "CodeunitName": "_example_replace_me",
+    "Method": "_example_replace_me",
+    "Mode": "expect-oos",
+    "Reason": "report-rendering",
+    "Doc": "docs/scope.md#reports",
+    "Note": "Placeholder so the file is loadable. Replace with real entries as al-language failures surface."
+  }
+]
