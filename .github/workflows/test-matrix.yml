@@ -2,9 +2,9 @@ name: Test Matrix
 
 on:
   push:
-    branches: [main]
+    branches: [main, v2]
   pull_request:
-    branches: [main]
+    branches: [main, v2]
 
 env:
   DOTNET_NOLOGO: true
@@ -95,9 +95,48 @@ jobs:
             runner-extras-results.json
           if-no-files-found: ignore
 
+  smoke:
+    name: Smoke ${{ matrix.tfm }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        tfm: [net10.0]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Clear cold-cache Cecil rewrite cache
+        run: rm -rf ~/.cache/al-runner/ncl-cecil/
+
+      - name: Build Release
+        run: dotnet build AlRunner.slnx -c Release
+
+      - name: Run cold-cache binary smoke test
+        run: |
+          set +e
+          ./AlRunner/bin/Release/${{ matrix.tfm }}/al-runner --strict --quiet tests/al-language > smoke.log 2>&1
+          rc=$?
+          cat smoke.log
+          case "$rc" in
+            0|1|2) ;;
+            *)
+              echo "::error::unexpected exit code $rc (expected 0, 1, or 2; crashes like 134/139 are failures)"
+              exit 1
+              ;;
+          esac
+          if ! grep -Eq '^  pass:[[:space:]]+[1-9][0-9]*$' smoke.log; then
+            echo "::error::smoke output did not include a passing-test summary line"
+            exit 1
+          fi
+
   all-tests:
     name: All BC versions passed
-    needs: [resolve-versions, test]
+    needs: [resolve-versions, test, smoke]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -107,4 +146,8 @@ jobs:
             echo "One or more BC version test jobs failed (result: ${{ needs.test.result }})"
             exit 1
           fi
-          echo "All BC versions passed."
+          if [ "${{ needs.smoke.result }}" != "success" ]; then
+            echo "Smoke job failed (result: ${{ needs.smoke.result }})"
+            exit 1
+          fi
+          echo "All BC versions passed, including smoke."

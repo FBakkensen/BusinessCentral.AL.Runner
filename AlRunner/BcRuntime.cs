@@ -1467,24 +1467,22 @@ public static partial class BcRuntime
                 }
             }
 
-            // ALDatabase.ALTenantID — sibling static of ALSid; real getter walks
-            // NavCurrentThread.Session.Tenant.Id and NREs on the skeleton thread.
-            // Hook returns constant "STANDALONE" (BC standalone-mode tenant id).
-            // Probe-verified 2026-05-19: JmpHook fires for this static (unlike
-            // get_ALUserID which is R2R-baked at the call site).
-            var alTenantId = alDbType.GetMethod("ALTenantID",
-                BindingFlags.Public | BindingFlags.Static, null, Type.EmptyTypes, null);
-            if (alTenantId != null)
-            {
-                var repl = typeof(AlRunnerV2.Patches.ALDatabasePatches)
-                    .GetMethod(nameof(AlRunnerV2.Patches.ALDatabasePatches.ALDatabase_ALTenantID),
-                        BindingFlags.Public | BindingFlags.Static);
-                if (repl != null)
-                {
-                    AlRunnerV2.Infrastructure.JmpHook.Apply(alTenantId, repl, "ALDatabase.ALTenantID");
-                    Console.Error.WriteLine("[BcRuntime] hooking ALDatabase.ALTenantID");
-                }
-            }
+            // DISABLED: ALTenantID is R2R-inlined; JmpHook.Apply(PrepareMethod) SIGSEGVs.
+            // Cecil rewrite in NclCecilRewrite.RewriteNcl() replaces the body instead.
+            // See https://github.com/StefanMaron/BusinessCentral.AL.Runner/issues/1617
+            // var alTenantId = alDbType.GetMethod("ALTenantID",
+            //     BindingFlags.Public | BindingFlags.Static, null, Type.EmptyTypes, null);
+            // if (alTenantId != null)
+            // {
+            //     var repl = typeof(AlRunnerV2.Patches.ALDatabasePatches)
+            //         .GetMethod(nameof(AlRunnerV2.Patches.ALDatabasePatches.ALDatabase_ALTenantID),
+            //             BindingFlags.Public | BindingFlags.Static);
+            //     if (repl != null)
+            //     {
+            //         AlRunnerV2.Infrastructure.JmpHook.Apply(alTenantId, repl, "ALDatabase.ALTenantID");
+            //         Console.Error.WriteLine("[BcRuntime] hooking ALDatabase.ALTenantID");
+            //     }
+            // }
 
             // ALDatabase.ALServiceInstanceID — NOT HOOKED. Probe-verified 2026-05-19:
             // the JmpHook registration succeeds but the replacement body never fires;
@@ -1493,37 +1491,26 @@ public static partial class BcRuntime
             // doesn't intercept. Faithfulness gap: Database.ServiceInstanceId returns 0
             // on the skeleton runtime. Tracked separately.
 
-            // ALCommit / ALRegisterTableConnection / ALUnregisterTableConnection —
-            // database-side operations whose real bodies reach into
-            // NavCurrentThread.Session.TableConnectionManager / Diagnostics chains
-            // (NREs on the skeleton session). The runner has no SQL or connection
-            // manager; these are no-ops in headless mode. AL code (Database.Commit /
-            // Database.RegisterTableConnection / Database.UnregisterTableConnection)
-            // must continue past the call. Faithful per docs/scope.md: tests that
-            // observe side effects of the DB (committed data persisting, connection
-            // actually established) are out of scope; tests that only check that the
-            // statement doesn't throw match the no-op replacement.
-            var alCommit = alDbType.GetMethod("ALCommit",
-                BindingFlags.Public | BindingFlags.Static, null, Type.EmptyTypes, null);
-            if (alCommit != null)
-                Hook(alCommit, nameof(NoOp_0Args), "ALDatabase.ALCommit");
+            // DISABLED: Cecil rewrite in NclCecilRewrite.RewriteNcl() now replaces
+            // ALCommit / ALRegisterTableConnection / ALUnregisterTableConnection bodies
+            // with no-op IL directly. Avoids PrepareMethod/JmpHook risk on tiny R2R statics.
+            // var alCommit = alDbType.GetMethod("ALCommit",
+            //     BindingFlags.Public | BindingFlags.Static, null, Type.EmptyTypes, null);
+            // if (alCommit != null)
+            //     Hook(alCommit, nameof(NoOp_0Args), "ALDatabase.ALCommit");
 
-            // Both overloads of ALRegisterTableConnection — the AL `Database.RegisterTableConnection`
-            // builtin compiles to the 4-arg variant prepending CompilationTarget; the
-            // 4-arg overload internally delegates to the 3-arg. Hook both so direct
-            // and indirect calls both no-op.
-            foreach (var m in alDbType.GetMethods(BindingFlags.Public | BindingFlags.Static))
-            {
-                if (m.Name != "ALRegisterTableConnection") continue;
-                var ps = m.GetParameters().Length;
-                var noop = ps switch { 3 => nameof(NoOp3), 4 => nameof(NoOp4), _ => null };
-                if (noop != null) Hook(m, noop, $"ALDatabase.ALRegisterTableConnection({ps} args)");
-            }
+            // foreach (var m in alDbType.GetMethods(BindingFlags.Public | BindingFlags.Static))
+            // {
+            //     if (m.Name != "ALRegisterTableConnection") continue;
+            //     var ps = m.GetParameters().Length;
+            //     var noop = ps switch { 3 => nameof(NoOp3), 4 => nameof(NoOp4), _ => null };
+            //     if (noop != null) Hook(m, noop, $"ALDatabase.ALRegisterTableConnection({ps} args)");
+            // }
 
-            var alUnregister = alDbType.GetMethod("ALUnregisterTableConnection",
-                BindingFlags.Public | BindingFlags.Static);
-            if (alUnregister != null)
-                Hook(alUnregister, nameof(NoOp2), "ALDatabase.ALUnregisterTableConnection");
+            // var alUnregister = alDbType.GetMethod("ALUnregisterTableConnection",
+            //     BindingFlags.Public | BindingFlags.Static);
+            // if (alUnregister != null)
+            //     Hook(alUnregister, nameof(NoOp2), "ALDatabase.ALUnregisterTableConnection");
 
             // DO NOT hook ALDatabase.ALSelectLatestVersion — its precode is R2R-inlined into
             // callers; the hook installs successfully (no crash log) but executing those
@@ -1756,13 +1743,13 @@ public static partial class BcRuntime
             if (alAlterKey != null && alAlterKey.GetParameters().Length == 3)
                 Hook(alAlterKey, nameof(ReturnValueTask3), "ALDatabase.ALAlterKeyAsync");
 
-            // ALDatabase.ALTenantID() — companion to ALSerialNumber; both surface
-            // the runner-identity sentinel "STANDALONE" so AL tests can assert
-            // a stable non-empty value without a real tenant.
-            var alTenant = alDbType.GetMethod("ALTenantID",
-                BindingFlags.Public | BindingFlags.Static);
-            if (alTenant != null && alTenant.GetParameters().Length == 0)
-                Hook(alTenant, nameof(ReturnStandalone_0Args), "ALDatabase.ALTenantID");
+            // DISABLED: ALTenantID is R2R-inlined; JmpHook.Apply(PrepareMethod) SIGSEGVs.
+            // Cecil rewrite in NclCecilRewrite.RewriteNcl() replaces the body instead.
+            // See https://github.com/StefanMaron/BusinessCentral.AL.Runner/issues/1617
+            // var alTenant = alDbType.GetMethod("ALTenantID",
+            //     BindingFlags.Public | BindingFlags.Static);
+            // if (alTenant != null && alTenant.GetParameters().Length == 0)
+            //     Hook(alTenant, nameof(ReturnStandalone_0Args), "ALDatabase.ALTenantID");
 
             // ALDatabase.ALLastUsedRowVersion() / ALMinimumActiveRowVersion() —
             // both reach DataAccess.RowVersionTracker which is null on the
@@ -1885,13 +1872,14 @@ public static partial class BcRuntime
             if (runMethod != null)
                 Hook(runMethod, nameof(NavXmlPort_Run), "NavXmlPort.Run()");
 
-            // RunXmlPort() (private) is the actual execution body. The BC-generated code for
-            // `XP.Run()` on a local XmlPort variable goes through ApplicationObjectRootScope
-            // which calls RunXmlPort() directly, bypassing the public Run() hook above.
-            var runXmlPortMethod = navXmlPortType.GetMethod("RunXmlPort",
-                BindingFlags.NonPublic | BindingFlags.Instance, null, Type.EmptyTypes, null);
-            if (runXmlPortMethod != null)
-                Hook(runXmlPortMethod, nameof(NavXmlPort_RunXmlPort), "NavXmlPort.RunXmlPort()");
+            // DISABLED: NavXmlPort.RunXmlPort() is R2R-compiled/inlined; RuntimeHelpers.PrepareMethod
+            // SIGSEGVs the process during patch installation. Cecil migration pending.
+            // TODO: convert to Cecil IL rewrite (replace body with RunnerOutOfScopeException throw).
+            // See https://github.com/StefanMaron/BusinessCentral.AL.Runner/issues/1618
+            // var runXmlPortMethod = navXmlPortType.GetMethod("RunXmlPort",
+            //     BindingFlags.NonPublic | BindingFlags.Instance, null, Type.EmptyTypes, null);
+            // if (runXmlPortMethod != null)
+            //     Hook(runXmlPortMethod, nameof(NavXmlPort_RunXmlPort), "NavXmlPort.RunXmlPort()");
 
             // XMLPORT.RUN(id [, reqPage [, import [, record]]]) in AL compiles to static
             // NavXmlPort.Run(int, ...) overloads. Without these hooks, BC tries to look up the
@@ -2537,17 +2525,13 @@ public static partial class BcRuntime
                     "NCLMetaApplicationObject.get_ApplicationObjectConstructor");
         }
 
-        // ── Spike: validate JmpHook.InstallIndirect (cell-patch mechanism) ──────────────────
-        // Step 3: sync re-hook smoke test — NavSession.get_IsLocalLanguage is already hooked
-        //   above via JmpHook.Apply (WriteJmp 14-byte overwrite path). Re-hook the same method
-        //   via InstallIndirect to confirm the cell-patch mechanism routes correctly.
-        //   Expected: InstallIndirect returns true (FF 25 signature found).
-        //   Test harness validates same result (false) as before, confirming identical behaviour.
-        //
-        // Step 4: async entry-point hook — NavRecord.ALFieldCaptionAsync(int).
-        //   Previously crashed with 14-byte overwrite corrupting MOV R10.
-        //   Cell-patch leaves MOV R10 intact → should not crash.
-        ApplyInstallIndirectSpike(navNcl);
+        // DISABLED: ApplyInstallIndirectSpike — Step 3 calls InstallIndirect (PrepareMethod) on
+        // get_IsLocalLanguage after JmpHook.Apply has already patched its precode. PrepareMethod
+        // on an already-patched method SIGSEGVs because the 14-byte JMP overwrite corrupts the
+        // precode bytes the runtime reads during re-preparation. Step 4 was already disabled.
+        // The spike proved the InstallIndirect cell-patch mechanism is structurally sound;
+        // disabling the call loses zero runtime functionality. See issue #1619 for follow-up.
+        // ApplyInstallIndirectSpike(navNcl);
 
         // NavMediaSet — PAGE-REPORT-CLUSTERS §4: in-memory backing for ALInsert/ALRemove/
         // get_ALCount/ALItem/ALImport/ALExport. All real implementations reach the DB/Session
@@ -2732,20 +2716,10 @@ public static partial class BcRuntime
             JmpHook.Apply(alMediaIdDerived, replMediaId, "NavMediaSet.get_ALMediaId(derived)");
             Console.Error.WriteLine("[BcRuntime] NavMediaSet: get_ALMediaId hooked (derived slot)");
         }
-        // Also hook base class declaration so any base-dispatched calls are covered.
-        if (baseTypeForMediaId != null)
-        {
-            var alMediaIdBase = baseTypeForMediaId.GetProperty("ALMediaId",
-                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly)
-                ?.GetGetMethod(nonPublic: true)
-                ?? baseTypeForMediaId.GetMethod("get_ALMediaId",
-                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
-            if (alMediaIdBase != null && alMediaIdBase != alMediaIdDerived)
-            {
-                JmpHook.Apply(alMediaIdBase, replMediaId, "NavMediaValueBase.get_ALMediaId(base)");
-                Console.Error.WriteLine("[BcRuntime] NavMediaSet: get_ALMediaId hooked (base slot)");
-            }
-        }
+        // DISABLED: base-slot hook for NavMediaValueBase.get_ALMediaId SIGSEGVs — PrepareMethod on
+        // the base method crashes after the derived override (NavMediaSet) has already been patched.
+        // The derived hook covers all virtual-dispatch call sites; direct NavMediaValueBase calls
+        // are not observed in the corpus. See issue #1619 for full analysis.
 
         // NavNotification.ALSend / ALRecall — the real bodies NRE at
         // session.Diagnostics.SendTraceTag(...) and even past that need the
