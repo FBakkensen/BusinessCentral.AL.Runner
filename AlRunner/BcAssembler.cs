@@ -185,8 +185,11 @@ public sealed class BcAssembler
         // Source-level redirect is the reliable alternative: "NavForm.Run(" cannot be a
         // substring of "NavForm.RunModal(" so there is no false-positive risk.
         ("NavForm.Run(", "global::AlRunnerV2Shim.NavRuntimeHelpersShim.NavForm_Run("),
-        // NavTextExtensions.ALSubstring — v27 DLL uses 1-based indexing, but BC v28+ (and
-        // the AL Language test library) expects 0-based. Override with 0-based shims.
+        // NavTextExtensions.ALSubstring — AL contract is 1-based, consistent with all other
+        // AL string positions (CopyStr, StrPos, etc.). The prior comment claiming v28+ is
+        // 0-based for Substring was incorrect; the AL test library validates 1-based semantics
+        // against real BC. Override with shims that consistently apply 1-based behaviour
+        // regardless of which BC DLL version is loaded.
         ("NavTextExtensions.ALSubstring(",   "global::AlRunnerV2Shim.NavRuntimeHelpersShim.ALSubstring("),
         // NavTextExtensions.ALIndexOf — AL contract is 1-based (0 = not found), consistent
         // with all other AL string positions (StrPos, CopyStr, SelectStr). The prior comment
@@ -419,15 +422,15 @@ namespace AlRunnerV2Shim
         }
 
         // ─── Text method polyfills ────────────────────────────────────────────────
-        // BC v27 DLL implements Substring/IndexOf/LastIndexOf/IndexOfAny with 1-based
-        // indexing (not-found = 0). BC v28+ uses 0-based indexing (not-found = -1).
-        // The AL Language test library was written against v28+ semantics.
+        // AL string positions are 1-based throughout (CopyStr, StrPos, IndexOf, Substring).
+        // These shims translate AL's 1-based startIndex to BCL's 0-based index (startIndex - 1).
+        // count is a length, not a position, so it is forwarded unchanged.
 
         public static Microsoft.Dynamics.Nav.Runtime.NavText ALSubstring(string text, int startIndex)
-            => new Microsoft.Dynamics.Nav.Runtime.NavText(text.Substring(startIndex));
+            => new Microsoft.Dynamics.Nav.Runtime.NavText(text.Substring(startIndex - 1));
 
         public static Microsoft.Dynamics.Nav.Runtime.NavText ALSubstring(string text, int startIndex, int count)
-            => new Microsoft.Dynamics.Nav.Runtime.NavText(text.Substring(startIndex, count));
+            => new Microsoft.Dynamics.Nav.Runtime.NavText(text.Substring(startIndex - 1, count));
 
         public static int ALIndexOf(string text, string value)
             => text.IndexOf(value, global::System.StringComparison.Ordinal) + 1;
