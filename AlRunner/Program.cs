@@ -57,6 +57,13 @@ if (args[0] == "--precompile")
     return RunPrecompile(args.Skip(1).ToArray());
 }
 
+// ── --emit-app subcommand (debug tool: emit a bundle dir as a .app in-process) ──
+// Usage: --emit-app <bundleDir> <outPath> [--package-cache PATH ...]
+if (args[0] == "--emit-app")
+{
+    return RunEmitApp(args.Skip(1).ToArray());
+}
+
 // Failure classification (the FAILURE CLASSIFICATION block + v2-classification.json)
 // is a runner-development diagnostic, not something end users care about. Default off.
 // Enable by passing --out PATH (which sets the JSON output path) or --classify (which
@@ -190,6 +197,16 @@ var assembler = new BcAssembler();
 var executor = new TestExecutor { Isolation = isolation, TestFilter = testFilter };
 var depLoader = new DependencyLoader(emitter, assembler);
 var results = new List<BucketResult>();
+
+// ── Layered source build pre-pass ─────────────────────────────────────────
+// When multiple bundles are passed and one depends on another (by AppId or
+// Name+Publisher), emit each "impl" bundle (one that another depends on) as
+// a real in-process .app and place it in a fresh per-run workspace cache dir.
+// This lets the dependent bundle's DependencyResolver find the impl .app
+// exactly like any other package-cache .app.
+// Inert when only one bundle is passed or no inter-bundle dep edges exist.
+if (bundles.Count > 1)
+    packageCacheDirs = RunLayeredPrePass(bundles, packageCacheDirs);
 
 int i2 = 0;
 foreach (var bundle in bundles)
@@ -802,6 +819,192 @@ static int RunPrecompile(string[] subArgs)
         foreach (var ch in s) sb.Append(Array.IndexOf(bad, ch) >= 0 ? '_' : ch);
         return sb.ToString();
     }
+}
+
+// ── --emit-app subcommand ──────────────────────────────────────────────────
+// Usage: --emit-app <bundleDir> <outPath> [--package-cache PATH ...]
+// Emits the bundle dir as a real NAVX .app package using PackageModuleOutputter.
+// Useful as a standalone debug tool and as the core of the layered pre-pass.
+static int RunEmitApp(string[] args)
+{
+    if (args.Length < 2)
+    {
+        Console.Error.WriteLine("Usage: al-runner --emit-app <bundleDir> <outPath> [--package-cache PATH ...]");
+        return 2;
+    }
+    var bundleDir = Path.GetFullPath(args[0]);
+    var outPath = Path.GetFullPath(args[1]);
+    var caches = new List<string>();
+    for (int i = 2; i < args.Length; i++)
+    {
+        if ((args[i] == "--package-cache") && i + 1 < args.Length)
+            caches.Add(args[++i]);
+    }
+
+    var appJsonPath = Path.Combine(bundleDir, "app.json");
+    var identity = AlRunnerV2.Infrastructure.InProcessAppPackager.ReadIdentity(appJsonPath);
+    if (identity == null)
+    {
+        Console.Error.WriteLine($"--emit-app: could not read identity from {appJsonPath}");
+        return 2;
+    }
+
+    Console.WriteLine($"  [{identity.Name}] {identity.Dependencies.Count} dep(s) declared in app.json");
+
+    Directory.CreateDirectory(Path.GetDirectoryName(outPath)!);
+    var sw = System.Diagnostics.Stopwatch.StartNew();
+    try
+    {
+        AlRunnerV2.Infrastructure.InProcessAppPackager.EmitAppPackageToFile(
+            bundleDir, identity, outPath);
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"--emit-app: EXCEPTION {ex.GetType().Name}: {ex}");
+        return 3;
+    }
+    sw.Stop();
+    var info = new FileInfo(outPath);
+    Console.WriteLine($"emit-app: {identity.Name} {identity.Version} → {outPath} ({info.Length} bytes, {sw.ElapsedMilliseconds}ms)");
+    return 0;
+}
+
+// ── Layered source build pre-pass ─────────────────────────────────────────
+// Detects inter-bundle dependencies, emits impl bundles in topo order into a
+// per-run workspace cache dir, and prepends that dir to packageCacheDirs.
+// Completely inert when bundles.Count <= 1 or no inter-bundle dep edges exist.
+static List<string> RunLayeredPrePass(List<string> bundles, List<string> packageCacheDirs)
+{
+    // Read identity of every bundle.
+    var identities = new Dictionary<string, AlRunnerV2.Infrastructure.BundleIdentity>(StringComparer.OrdinalIgnoreCase);
+    foreach (var bundle in bundles)
+    {
+        var abs = Path.GetFullPath(bundle);
+        // FindBucketRoot might point up; prefer direct app.json or bucket root.
+        var appJson = Path.Combine(abs, "app.json");
+        if (!File.Exists(appJson))
+        {
+            var root = FindBucketRoot(abs);
+            if (root != null) appJson = Path.Combine(root, "app.json");
+        }
+        if (!File.Exists(appJson)) continue;
+        var id = AlRunnerV2.Infrastructure.InProcessAppPackager.ReadIdentity(appJson);
+        if (id != null) identities[abs] = id;
+    }
+
+    if (identities.Count < 2) return packageCacheDirs; // nothing to wire
+
+    // Build dep edges: bundle B "depends on" bundle A if B's deps contain A's AppId
+    // (or A's Name+Publisher as fallback).
+    var idByKey = identities.ToDictionary(
+        kv => kv.Key,
+        kv => kv.Value,
+        StringComparer.OrdinalIgnoreCase);
+
+    // impls = bundles that at least one other bundle declares as a dependency.
+    var implPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    foreach (var (path, id) in idByKey)
+    {
+        foreach (var (otherPath, otherId) in idByKey)
+        {
+            if (string.Equals(path, otherPath, StringComparison.OrdinalIgnoreCase)) continue;
+            bool dependsOn = otherId.Dependencies.Any(dep =>
+                (dep.AppId != Guid.Empty && dep.AppId == id.AppId) ||
+                (string.Equals(dep.Name, id.Name, StringComparison.OrdinalIgnoreCase) &&
+                 string.Equals(dep.Publisher, id.Publisher, StringComparison.OrdinalIgnoreCase)));
+            if (dependsOn) implPaths.Add(path);
+        }
+    }
+
+    if (implPaths.Count == 0) return packageCacheDirs; // no inter-bundle deps
+
+    // Topological sort of impl paths (deps before dependents).
+    var sortedImpls = TopologicalSort(implPaths.ToList(), idByKey);
+
+    // Create a fresh per-run workspace cache dir.
+    var wsDir = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+        ".cache", "al-runner", "workspace-deps",
+        Guid.NewGuid().ToString("N")[..12]);
+    Directory.CreateDirectory(wsDir);
+
+    // Extended packageCacheDirs = workspace dir first (wins over stale cached .app),
+    // then the original dirs.
+    var extendedCaches = new List<string> { wsDir };
+    extendedCaches.AddRange(packageCacheDirs);
+
+    int emitted = 0;
+    foreach (var implPath in sortedImpls)
+    {
+        if (!idByKey.TryGetValue(implPath, out var implId)) continue;
+        var safePublisher = Sanitize(implId.Publisher);
+        var safeName = Sanitize(implId.Name);
+        var safeVer = implId.Version.ToString().Replace('.', '_');
+        var appFileName = $"{safePublisher}_{safeName}_{safeVer}.app";
+        var outPath = Path.Combine(wsDir, appFileName);
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        try
+        {
+            AlRunnerV2.Infrastructure.InProcessAppPackager.EmitAppPackageToFile(
+                implPath, implId, outPath);
+        }
+        catch (Exception ex)
+        {
+            // Loud failure per repo rule — never silently continue.
+            throw new InvalidOperationException(
+                $"[layered] Failed to emit impl package '{implId.Name}' from {implPath}: {ex.Message}", ex);
+        }
+        sw.Stop();
+        var info = new FileInfo(outPath);
+        Console.WriteLine($"[layered] emitted {implId.Name} {implId.Version} → {appFileName} ({info.Length} bytes, {sw.ElapsedMilliseconds}ms)");
+        emitted++;
+    }
+
+    if (emitted > 0)
+        Console.WriteLine($"[layered] pre-built {emitted} impl package(s) in-process → {wsDir}");
+
+    return extendedCaches;
+
+    static string Sanitize(string s)
+    {
+        var bad = Path.GetInvalidFileNameChars().Concat(new[] { ' ', '/', '\\' }).ToArray();
+        var sb = new System.Text.StringBuilder(s.Length);
+        foreach (var ch in s) sb.Append(Array.IndexOf(bad, ch) >= 0 ? '_' : ch);
+        return sb.ToString();
+    }
+}
+
+// Topological sort: return items in dependency-first order.
+// Simple Kahn's algorithm over the impl subset.
+static List<string> TopologicalSort(
+    List<string> implPaths,
+    Dictionary<string, AlRunnerV2.Infrastructure.BundleIdentity> idByKey)
+{
+    var result = new List<string>();
+    var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+    void Visit(string path)
+    {
+        if (!visited.Add(path)) return;
+        if (!idByKey.TryGetValue(path, out var id)) return;
+        // Visit impl dependencies first.
+        foreach (var dep in id.Dependencies)
+        {
+            var depImpl = implPaths.FirstOrDefault(p =>
+            {
+                if (!idByKey.TryGetValue(p, out var pid)) return false;
+                return (dep.AppId != Guid.Empty && dep.AppId == pid.AppId) ||
+                       (string.Equals(dep.Name, pid.Name, StringComparison.OrdinalIgnoreCase) &&
+                        string.Equals(dep.Publisher, pid.Publisher, StringComparison.OrdinalIgnoreCase));
+            });
+            if (depImpl != null) Visit(depImpl);
+        }
+        result.Add(path);
+    }
+
+    foreach (var p in implPaths) Visit(p);
+    return result;
 }
 
 // Default cache: the latest BC artifact version under ~/.bcartifacts.cache/sandbox/
