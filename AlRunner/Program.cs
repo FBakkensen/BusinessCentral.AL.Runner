@@ -241,6 +241,16 @@ foreach (var bundle in bundles)
                 // NavApp.GetCurrentModuleInfo polyfill shim.
                 SetBundleInfoFromAppJson(appJsonPath);
             }
+            catch (AlRunnerV2.Infrastructure.DependencyLoadException ex)
+            {
+                // DependencyLoadException already printed a [dep-load-fail] line.
+                // Abort immediately with exit 1: running with a broken dependency
+                // produces cryptic NavNCLMissingMethodException with object ID 0,
+                // which is far harder to diagnose than this immediate loud failure.
+                Console.Error.WriteLine(
+                    $"FATAL: dependency compile failed — cannot continue. {ex.Message}");
+                return 1;
+            }
             catch (Exception ex)
             {
                 Console.Error.WriteLine($"  [{rel}] DEP-RESOLVE-FAIL: {ex.Message}");
@@ -791,17 +801,36 @@ static int RunPrecompile(string[] subArgs)
     foreach (var (name, src) in alSources)
         File.WriteAllText(Path.Combine(tempDir, Sanitize(name)), src);
 
-    var emitted = compiler.Emit(new[] { tempDir }, manifest.Name).Sources;
+    IReadOnlyList<EmittedSource> emitted;
+    try
+    {
+        emitted = compiler.Emit(new[] { tempDir }, manifest.Name).Sources;
+    }
+    catch (Exception ex)
+    {
+        // Surface the full flattened emit exception so the developer sees the root cause
+        // without needing BCCOMPILER_DIAG=1.
+        var detail = ex is AggregateException agg
+            ? string.Join("\n  ", agg.Flatten().InnerExceptions.Select(e => $"{e.GetType().Name}: {e.Message}"))
+            : $"{ex.GetType().Name}: {ex.Message}";
+        Console.Error.WriteLine($"--precompile: EMIT-FAIL for {manifest.Publisher}_{manifest.Name} v{manifest.Version}:");
+        Console.Error.WriteLine($"  {detail}");
+        return 3;
+    }
     if (emitted.Count == 0)
     {
-        Console.Error.WriteLine($"--precompile: 0 sources emitted from {manifest.Name} (BC silent zero-output sentinel?)");
+        Console.Error.WriteLine($"--precompile: EMIT-ZERO — 0 sources emitted from {manifest.Publisher}_{manifest.Name} v{manifest.Version}");
+        Console.Error.WriteLine($"  BC Compilation.Emit() returned 0 sources (silent zero-output sentinel — likely a NavTypeKind/emitter crash swallowed internally).");
+        Console.Error.WriteLine($"  Hint: set BCCOMPILER_DIAG=1 for BC-internal compiler diagnostics.");
         return 3;
     }
     var asmName = $"Dep_{Sanitize(manifest.Publisher)}_{Sanitize(manifest.Name)}_{manifest.Version.ToString().Replace('.', '_')}";
     var compile = assembler.Compile(asmName, emitted);
     if (!compile.Success)
     {
-        Console.Error.WriteLine($"--precompile: COMPILE-FAIL: {compile.Errors.FirstOrDefault()?.Split('\n')[0]}");
+        Console.Error.WriteLine($"--precompile: COMPILE-FAIL for {manifest.Publisher}_{manifest.Name} v{manifest.Version}:");
+        foreach (var err in compile.Errors)
+            Console.Error.WriteLine($"  {err.Split('\n')[0]}");
         return 3;
     }
     Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(output))!);

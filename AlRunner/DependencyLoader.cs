@@ -14,6 +14,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.Loader;
+using AlRunnerV2.Infrastructure;
 
 namespace AlRunnerV2;
 
@@ -117,8 +118,12 @@ public sealed class DependencyLoader
         var alSources = AppLoader.ExtractAl(appPath);
         if (alSources.Count == 0)
         {
+            // Symbol-only package (no runtime code in this .app — normal for Microsoft
+            // platform apps that are provided via service-tier DLLs loaded elsewhere).
+            // This is NOT an error; relying on already-loaded assembly.
             Console.Error.WriteLine(
-                $"[deps] WARN: {m.Name} v{m.Version} contains neither R2R DLL nor src/*.al — skipping");
+                $"[deps] NOTE: {m.Publisher}_{m.Name} v{m.Version} is symbol-only " +
+                $"(no runtime code in package); relying on service-tier/already-loaded assembly");
             return null;
         }
 
@@ -140,24 +145,34 @@ public sealed class DependencyLoader
         try { emitted = _compiler.Emit(new[] { tempDir }, m.Name).Sources; }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[deps] compile-on-the-fly EMIT-FAIL: {m.Name}: {ex.Message.Split('\n')[0]}");
-            return null;
+            // EMIT-FAIL: the BC Compilation.Emit() call threw (e.g. "Unexpected value 'None'
+            // of type NavTypeKind", "Index was outside the bounds", etc.).
+            // Do NOT swallow — this dependency is broken and running without it will produce
+            // cryptic failures (NavNCLMissingMethodException with object ID 0).
+            var detail = DependencyLoadException.FlattenException(ex);
+            Console.Error.WriteLine($"[dep-load-fail] {m.Publisher}_{m.Name} v{m.Version}: EMIT-FAIL — {detail}");
+            throw new DependencyLoadException(m.Publisher, m.Name, m.Version.ToString(), "EMIT-FAIL", detail, ex);
         }
         if (emitted.Count == 0)
         {
-            Console.Error.WriteLine(
-                $"[deps] compile-on-the-fly EMIT-ZERO: {m.Name} v{m.Version} produced 0 sources " +
-                $"(likely BC's silent zero-output sentinel — see HANDOFF.md §H)");
-            return null;
+            // EMIT-ZERO: Emit returned success but produced no sources — BC's silent
+            // zero-output sentinel. The dependency has source but nothing was compiled.
+            const string detail =
+                "BC Compilation.Emit() returned 0 sources from app AL source " +
+                "(silent zero-output sentinel — likely a NavTypeKind/emitter crash swallowed internally). " +
+                "Run with BCCOMPILER_DIAG=1 or --precompile for full diagnostics.";
+            Console.Error.WriteLine($"[dep-load-fail] {m.Publisher}_{m.Name} v{m.Version}: EMIT-ZERO — {detail}");
+            throw new DependencyLoadException(m.Publisher, m.Name, m.Version.ToString(), "EMIT-ZERO", detail);
         }
 
         var asmName = $"Dep_{SanitizeIdent(m.Publisher)}_{SanitizeIdent(m.Name)}_{m.Version.ToString().Replace('.', '_')}";
         var compile = _assembler.Compile(asmName, emitted);
         if (!compile.Success)
         {
-            var first = compile.Errors.FirstOrDefault()?.Split('\n')[0];
-            Console.Error.WriteLine($"[deps] compile-on-the-fly COMPILE-FAIL: {m.Name}: {first}");
-            return null;
+            // COMPILE-FAIL: Roslyn failed to compile the C# polyfill bodies BC emitted.
+            var allErrors = string.Join(" | ", compile.Errors.Select(e => e.Split('\n')[0]));
+            Console.Error.WriteLine($"[dep-load-fail] {m.Publisher}_{m.Name} v{m.Version}: COMPILE-FAIL — {allErrors}");
+            throw new DependencyLoadException(m.Publisher, m.Name, m.Version.ToString(), "COMPILE-FAIL", allErrors);
         }
 
         sw.Stop();
@@ -167,8 +182,10 @@ public sealed class DependencyLoader
         try { return Assembly.Load(compile.AssemblyBytes!); }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[deps] tier-3 Assembly.Load failed for {m.Name}: {ex.Message}");
-            return null;
+            // LOAD-FAIL: the compiled bytes could not be loaded into the ALC.
+            var detail = DependencyLoadException.FlattenException(ex);
+            Console.Error.WriteLine($"[dep-load-fail] {m.Publisher}_{m.Name} v{m.Version}: LOAD-FAIL — {detail}");
+            throw new DependencyLoadException(m.Publisher, m.Name, m.Version.ToString(), "LOAD-FAIL", detail, ex);
         }
     }
 
