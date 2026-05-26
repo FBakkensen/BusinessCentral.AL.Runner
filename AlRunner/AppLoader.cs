@@ -29,7 +29,13 @@ public sealed record AppManifest(
     string Name,
     Version Version,
     Guid AppId,
-    IReadOnlyList<DependencyRef> Dependencies);
+    IReadOnlyList<DependencyRef> Dependencies,
+    // Implicit first-party dep versions from the NAVX manifest's `Application` /
+    // `Platform` attributes (the real `al` compiler injects Microsoft/Application
+    // and Microsoft/System from these). Null when the manifest omits them.
+    // See AppLoader.ImplicitRoots for synthesizing the matching DependencyRefs.
+    Version? Application = null,
+    Version? Platform = null);
 
 public static class AppLoader
 {
@@ -101,9 +107,38 @@ public static class AppLoader
                     deps.Add(new DependencyRef(depId, depName, depPub, depVer));
                 }
             }
-            return new AppManifest(publisher, name, ver, id, deps);
+            // Implicit first-party deps: the `Application` / `Platform` attributes
+            // on <App>. Modern apps do NOT list Microsoft apps under <Dependencies>;
+            // the real `al` compiler injects them from these attributes. Capture the
+            // versions so callers resolving a ROOT app can synthesize the matching
+            // Microsoft/Application + Microsoft/System roots (see ImplicitRoots).
+            Version.TryParse(app.Attribute("Application")?.Value, out var appVer);
+            Version.TryParse(app.Attribute("Platform")?.Value, out var platVer);
+            return new AppManifest(publisher, name, ver, id, deps, appVer, platVer);
         }
         catch { return null; }
+    }
+
+    /// <summary>
+    /// Synthetic implicit first-party dependency roots for a ROOT app being
+    /// compiled, derived from its manifest's `Application` / `Platform` versions.
+    /// `Application` → Microsoft/Application (the umbrella app that transitively
+    /// pulls Base Application + System Application + Business Foundation);
+    /// `Platform` → Microsoft/System (platform symbols). Mirrors the app.json
+    /// synthesis in Program.ReadDependencies so `.app` inputs resolve BaseApp the
+    /// same way app.json inputs do. Roots are Optional (warn-not-throw if absent)
+    /// and resolved by (Name, Publisher) — version is informational.
+    ///
+    /// Apply ONLY to the root app being compiled, never transitively: the
+    /// dependency resolver throws on cycles, and every Microsoft app's manifest
+    /// carries these same attributes (Application → Base Application → Application …).
+    /// </summary>
+    public static IEnumerable<DependencyRef> ImplicitRoots(AppManifest manifest)
+    {
+        if (manifest.Application != null)
+            yield return new DependencyRef(Guid.Empty, "Application", "Microsoft", manifest.Application, Optional: true);
+        if (manifest.Platform != null)
+            yield return new DependencyRef(Guid.Empty, "System", "Microsoft", manifest.Platform, Optional: true);
     }
 
     /// <summary>

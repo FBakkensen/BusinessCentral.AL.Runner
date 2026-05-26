@@ -777,8 +777,14 @@ static int RunPrecompile(string[] subArgs)
     BcRuntime.EnsureApplied();
 
     // Resolve transitive deps of THIS app so its compile sees them as symbol refs.
+    // Add the implicit Microsoft/Application + Microsoft/System roots from the
+    // manifest's Application/Platform attributes — modern .app packages (incl. the
+    // BC test toolkit) rely on these instead of listing BaseApp under <Dependencies>.
+    // Root-level only: synthesizing transitively would cycle (Application → BaseApp
+    // → Application) and the resolver throws on cycles. Mirrors the app.json path.
     var resolver = new DependencyResolver(packageCacheDirs);
-    var transitive = resolver.Resolve(manifest.Dependencies);
+    var rootDeps = manifest.Dependencies.Concat(AppLoader.ImplicitRoots(manifest)).ToList();
+    var transitive = resolver.Resolve(rootDeps);
     // For apps with empty <Dependencies/> (e.g. Customizations.app), the explicit
     // dep list is empty but the AL source may still use BaseApp/System Application
     // symbols via `using` statements. Enable the all-packages fallback so the compiler
