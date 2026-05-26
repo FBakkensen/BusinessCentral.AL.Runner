@@ -52,10 +52,19 @@ public sealed class DependencyResolver
         Stack<string> stack)
     {
         if (!TryFind(dep, out var found))
+        {
+            if (dep.Optional)
+            {
+                Console.Error.WriteLine(
+                    $"  [deps] optional dependency not found in cache, skipping: " +
+                    $"{dep.Publisher}/{dep.Name}");
+                return;
+            }
             throw new InvalidOperationException(
                 $"Dependency not found: {dep.Publisher}/{dep.Name} v{dep.Version} " +
                 $"(id={dep.AppId}). Searched: {string.Join(", ", _cacheDirs)}. " +
                 $"Stack: {string.Join(" -> ", stack.Reverse())}");
+        }
 
         var id = found.Manifest.AppId;
         if (state.TryGetValue(id, out var s))

@@ -904,7 +904,7 @@ static IEnumerable<DependencyRef> ReadDependencies(string appJsonPath)
             && !string.IsNullOrWhiteSpace(fv.GetString()))
         {
             if (!Version.TryParse(fv.GetString(), out var iv)) iv = new Version(0, 0, 0, 0);
-            yield return new DependencyRef(Guid.Empty, implName, "Microsoft", iv);
+            yield return new DependencyRef(Guid.Empty, implName, "Microsoft", iv, Optional: true);
         }
     }
 }

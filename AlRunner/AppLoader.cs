@@ -22,7 +22,7 @@ using System.Xml.Linq;
 
 namespace AlRunnerV2;
 
-public sealed record DependencyRef(Guid AppId, string Name, string Publisher, Version Version);
+public sealed record DependencyRef(Guid AppId, string Name, string Publisher, Version Version, bool Optional = false);
 
 public sealed record AppManifest(
     string Publisher,
