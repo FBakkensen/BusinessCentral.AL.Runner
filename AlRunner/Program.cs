@@ -152,9 +152,15 @@ Console.WriteLine($"al-runner v2 — running {bundles.Count} bundle(s)");
         {
             UseShellExecute = false,
         };
-        // GetCommandLineArgs()[0] is the managed dll path under the dotnet host;
-        // forward it plus all user args verbatim.
-        foreach (var a in Environment.GetCommandLineArgs())
+        var argv = Environment.GetCommandLineArgs();
+        // Under the `dotnet` muxer, ProcessPath is dotnet and argv[0] (the managed
+        // dll) must be forwarded as its first arg. Under the native apphost,
+        // ProcessPath is the app itself and argv[0] must NOT be forwarded (the
+        // apphost would treat the dll path as a bundle directory → DirectoryNotFoundException).
+        var underDotnet = System.IO.Path.GetFileNameWithoutExtension(Environment.ProcessPath!)
+            .Equals("dotnet", StringComparison.OrdinalIgnoreCase);
+        var userArgs = underDotnet ? argv : argv.Skip(1);
+        foreach (var a in userArgs)
             psi.ArgumentList.Add(a);
         psi.Environment["AL_RUNNER_REEXECED"] = "1";
         Console.Error.WriteLine("[Cecil] Fresh rewrite done — re-execing for a clean Ncl load");
@@ -863,19 +869,43 @@ static void SetBundleInfoFromAppJson(string appJsonPath)
 static IEnumerable<DependencyRef> ReadDependencies(string appJsonPath)
 {
     using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(appJsonPath));
-    if (!doc.RootElement.TryGetProperty("dependencies", out var deps)
-        || deps.ValueKind != System.Text.Json.JsonValueKind.Array)
-        yield break;
-    foreach (var d in deps.EnumerateArray())
+    var root = doc.RootElement;
+
+    // Explicit deps from the `dependencies` array (third-party + any first-party
+    // apps the author chose to list).
+    if (root.TryGetProperty("dependencies", out var deps)
+        && deps.ValueKind == System.Text.Json.JsonValueKind.Array)
     {
-        var idStr = d.TryGetProperty("id", out var pid) ? pid.GetString() : null;
-        var name = d.TryGetProperty("name", out var pn) ? pn.GetString() ?? "" : "";
-        var pub = d.TryGetProperty("publisher", out var pp) ? pp.GetString() ?? "" : "";
-        var ver = d.TryGetProperty("version", out var pv) ? pv.GetString() ?? "0.0.0.0" : "0.0.0.0";
-        Guid id = Guid.Empty;
-        if (!string.IsNullOrEmpty(idStr)) Guid.TryParse(idStr, out id);
-        if (!Version.TryParse(ver, out var v)) v = new Version(0, 0, 0, 0);
-        yield return new DependencyRef(id, name, pub, v);
+        foreach (var d in deps.EnumerateArray())
+        {
+            var idStr = d.TryGetProperty("id", out var pid) ? pid.GetString() : null;
+            var name = d.TryGetProperty("name", out var pn) ? pn.GetString() ?? "" : "";
+            var pub = d.TryGetProperty("publisher", out var pp) ? pp.GetString() ?? "" : "";
+            var ver = d.TryGetProperty("version", out var pv) ? pv.GetString() ?? "0.0.0.0" : "0.0.0.0";
+            Guid id = Guid.Empty;
+            if (!string.IsNullOrEmpty(idStr)) Guid.TryParse(idStr, out id);
+            if (!Version.TryParse(ver, out var v)) v = new Version(0, 0, 0, 0);
+            yield return new DependencyRef(id, name, pub, v);
+        }
+    }
+
+    // Implicit first-party deps. Modern AL apps do NOT list the Microsoft apps
+    // in `dependencies`; the real `al` compiler injects them from the manifest's
+    // `application` and `platform` fields. Synthesize the same roots here so they
+    // resolve from the package cache, otherwise every `using Microsoft.*` is an
+    // unknown namespace. The `application` umbrella app transitively pulls Base
+    // Application + System Application + Business Foundation; `platform` is the
+    // System (platform symbols) app. TryFind matches by (Name, Publisher) —
+    // version is informational only, so an exact runtime match isn't required.
+    foreach (var (field, implName) in new[] { ("application", "Application"), ("platform", "System") })
+    {
+        if (root.TryGetProperty(field, out var fv)
+            && fv.ValueKind == System.Text.Json.JsonValueKind.String
+            && !string.IsNullOrWhiteSpace(fv.GetString()))
+        {
+            if (!Version.TryParse(fv.GetString(), out var iv)) iv = new Version(0, 0, 0, 0);
+            yield return new DependencyRef(Guid.Empty, implName, "Microsoft", iv);
+        }
     }
 }
 
