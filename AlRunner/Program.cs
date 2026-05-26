@@ -138,7 +138,30 @@ Console.WriteLine($"al-runner v2 — running {bundles.Count} bundle(s)");
     var srcDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
         ".local/share/al-runner/artifacts/27.5.46862.48827");
     var binNcl = Path.Combine(AppContext.BaseDirectory, "Microsoft.Dynamics.Nav.Ncl.dll");
-    AlRunnerV2.Infrastructure.NclCecilRewrite.RewriteInPlace(srcDir, binNcl);
+    var didFreshRewrite = AlRunnerV2.Infrastructure.NclCecilRewrite.RewriteInPlace(srcDir, binNcl);
+
+    // A process that performs the Cecil rewrite and then loads the byte-identical
+    // rewritten Ncl in-process intermittently dies with BadImageFormatException
+    // 0x80131124 ("Index not found"). A fresh process loading the same bytes via
+    // cache HIT always succeeds. So on a fresh rewrite (cold run / CACHE_VERSION
+    // bump), re-exec ourselves once: the child hits the now-populated cache and
+    // loads cleanly. The AL_RUNNER_REEXECED guard prevents an infinite loop.
+    if (didFreshRewrite && Environment.GetEnvironmentVariable("AL_RUNNER_REEXECED") != "1")
+    {
+        var psi = new System.Diagnostics.ProcessStartInfo(Environment.ProcessPath!)
+        {
+            UseShellExecute = false,
+        };
+        // GetCommandLineArgs()[0] is the managed dll path under the dotnet host;
+        // forward it plus all user args verbatim.
+        foreach (var a in Environment.GetCommandLineArgs())
+            psi.ArgumentList.Add(a);
+        psi.Environment["AL_RUNNER_REEXECED"] = "1";
+        Console.Error.WriteLine("[Cecil] Fresh rewrite done — re-execing for a clean Ncl load");
+        using var child = System.Diagnostics.Process.Start(psi)!;
+        child.WaitForExit();
+        return child.ExitCode;
+    }
 }
 
 var packageCacheDirs = packageCacheArgs.Count > 0

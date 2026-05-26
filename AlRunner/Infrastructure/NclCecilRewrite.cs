@@ -3349,14 +3349,24 @@ public static class NclCecilRewrite
     /// the source Ncl bytes, runner assembly mtime, and CACHE_VERSION. Set
     /// AL_RUNNER_NCL_CACHE=0 to force a fresh rewrite without reading or writing cache.
     /// </summary>
-    public static void RewriteInPlace(string srcDir, string binNclPath)
+    /// <summary>
+    /// Returns <c>true</c> when this call performed a FRESH Cecil rewrite (cache MISS
+    /// or cache disabled). In that case the caller MUST re-exec the process before
+    /// loading Ncl: a process that runs the Cecil rewrite and then memory-maps the
+    /// byte-identical rewritten Ncl in-process intermittently fails the load with
+    /// BadImageFormatException 0x80131124 ("Index not found"), whereas a fresh process
+    /// loading the same bytes via cache HIT always succeeds. Re-execing turns every
+    /// cold run into the known-good HIT path. Returns <c>false</c> on cache HIT (the
+    /// load is safe — proceed in this process).
+    /// </summary>
+    public static bool RewriteInPlace(string srcDir, string binNclPath)
     {
         var alreadyLoaded = AppDomain.CurrentDomain.GetAssemblies()
             .Any(a => a.GetName().Name == "Microsoft.Dynamics.Nav.Ncl");
         if (alreadyLoaded)
         {
             Console.Error.WriteLine("[Cecil] WARNING: Ncl already loaded before in-place rewrite — no effect");
-            return;
+            return false;
         }
 
         var nclSrc = Path.Combine(srcDir, "Microsoft.Dynamics.Nav.Ncl.dll");
@@ -3367,7 +3377,7 @@ public static class NclCecilRewrite
             var bytes = RewriteNcl(nclSrc);
             File.WriteAllBytes(binNclPath, bytes);
             Console.Error.WriteLine($"[Cecil] Wrote rewritten Ncl to {binNclPath} ({bytes.Length} bytes)");
-            return;
+            return true;
         }
 
         var cacheKey = ComputeCacheKey(nclSrc);
@@ -3384,13 +3394,11 @@ public static class NclCecilRewrite
             Console.Error.WriteLine($"[Cecil] Cecil cache HIT (key={shortKey})");
             File.Copy(cachePath, binNclPath, overwrite: true);
             Console.Error.WriteLine($"[Cecil] Copied cached Ncl to {binNclPath}");
-            return;
+            return false;
         }
 
         Console.Error.WriteLine($"[Cecil] Cecil cache MISS — rewrote and cached (key={shortKey})");
         var modifiedBytes = RewriteNcl(nclSrc);
-        File.WriteAllBytes(binNclPath, modifiedBytes);
-        Console.Error.WriteLine($"[Cecil] Wrote rewritten Ncl to {binNclPath} ({modifiedBytes.Length} bytes)");
 
         // Write to cache atomically via temp-file-then-rename so concurrent runners
         // never read a partially-written cache entry.
@@ -3398,6 +3406,16 @@ public static class NclCecilRewrite
         File.WriteAllBytes(tempPath, modifiedBytes);
         File.Move(tempPath, cachePath, overwrite: true);
         Console.Error.WriteLine($"[Cecil] Saved to cache ({modifiedBytes.Length} bytes)");
+
+        // Produce binNclPath via File.Copy from the freshly-written cache entry,
+        // mirroring the cache-HIT path above. (Note: this alone does NOT prevent the
+        // cold-run load crash — a process that ran the Cecil rewrite then loads the
+        // byte-identical Ncl in-process still intermittently fails with
+        // BadImageFormatException 0x80131124. The caller re-execs on the `true` return
+        // below so the actual load always happens in a fresh process via cache HIT.)
+        File.Copy(cachePath, binNclPath, overwrite: true);
+        Console.Error.WriteLine($"[Cecil] Copied rewritten Ncl to {binNclPath} ({modifiedBytes.Length} bytes)");
+        return true;
     }
 
     private static string ComputeCacheKey(string nclPath)
