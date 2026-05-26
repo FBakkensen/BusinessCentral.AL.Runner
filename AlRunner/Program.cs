@@ -779,6 +779,12 @@ static int RunPrecompile(string[] subArgs)
     // Resolve transitive deps of THIS app so its compile sees them as symbol refs.
     var resolver = new DependencyResolver(packageCacheDirs);
     var transitive = resolver.Resolve(manifest.Dependencies);
+    // For apps with empty <Dependencies/> (e.g. Customizations.app), the explicit
+    // dep list is empty but the AL source may still use BaseApp/System Application
+    // symbols via `using` statements. Enable the all-packages fallback so the compiler
+    // can resolve those symbols from the package cache dirs.
+    if (transitive.Count == 0)
+        BcCompiler.SetPackageCacheFallback(manifest.AppId);
     BcCompiler.SetResolvedDeps(transitive, packageCacheDirs);
 
     var sw = System.Diagnostics.Stopwatch.StartNew();

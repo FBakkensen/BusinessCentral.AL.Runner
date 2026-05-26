@@ -32,6 +32,7 @@ using NavSyntax = Microsoft.Dynamics.Nav.CodeAnalysis.Syntax;
 using NavEmit = Microsoft.Dynamics.Nav.CodeAnalysis.Emit;
 using NavDiag = Microsoft.Dynamics.Nav.CodeAnalysis.Diagnostics;
 using NavSymRef = Microsoft.Dynamics.Nav.CodeAnalysis.SymbolReference;
+using NavDotNet = Microsoft.Dynamics.Nav.CodeAnalysis.DotNet;
 
 namespace AlRunnerV2;
 
@@ -69,6 +70,67 @@ public sealed class BcCompiler
     // mirrors the runtime-loaded dep set by construction — no allow-list drift.
     private static IReadOnlyList<(AppManifest Manifest, string AppPath)>? _resolvedDeps;
     private static IReadOnlyList<string>? _packageCacheDirs;
+
+    // Cached DotNet resolver factory — constructed once from the service-tier
+    // artifacts dir so AL `DotNet` variable types resolve to real .NET types.
+    // Without this, NavTypeKind stays None and Compilation.Emit throws
+    // UnexpectedValue(NavTypeKind.None) for any AL object with DotNet interop.
+    private static NavDotNet.IDotNetResolverFactory? _dotNetResolverFactory;
+    private static readonly object _dotNetSync = new();
+
+    // When true (set by --precompile), the symbol-reference fallback enumerates
+    // all discoverable .app files in the package cache dirs. This is needed for
+    // apps whose NavxManifest.xml <Dependencies/> is empty but whose AL source
+    // uses `using` statements that require BaseApp/System Application symbols.
+    // Left false for corpus runs (where SetResolvedDeps provides the dep list).
+    private static bool _usePackageCacheFallback;
+    private static Guid _packageCacheFallbackExcludeId;
+
+    /// <summary>
+    /// Called from the --precompile path to enable the all-packages fallback for
+    /// apps that declare no manifest deps. <paramref name="excludeAppId"/> is the
+    /// AppId of the app being compiled — excluded to avoid AL0275 self-reference errors.
+    /// </summary>
+    public static void SetPackageCacheFallback(Guid excludeAppId)
+    {
+        lock (_refSync)
+        {
+            _usePackageCacheFallback = true;
+            _packageCacheFallbackExcludeId = excludeAppId;
+            _refLoader = null;
+            _refSpecs = null;
+        }
+    }
+
+    // The service-tier artifacts dir mirrors BcAssembler.ServiceTierDir.
+    // It contains the DLLs (XmlTextReader etc.) that BC DotNet interop resolves against.
+    internal static readonly string DefaultServiceTierDir =
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            ".local/share/al-runner/artifacts/27.5.46862.48827");
+
+    private static NavDotNet.IDotNetResolverFactory GetOrCreateDotNetFactory()
+    {
+        lock (_dotNetSync)
+        {
+            if (_dotNetResolverFactory != null)
+                return _dotNetResolverFactory;
+
+            // Probing paths: service-tier artifacts dir (BC's own .NET deps
+            // such as Aspose, Azure SDK, BouncyCastle etc. shipped alongside Ncl.dll)
+            // plus the runtime's own base-class library location.
+            var probingPaths = new List<string>();
+            if (Directory.Exists(DefaultServiceTierDir))
+                probingPaths.Add(DefaultServiceTierDir);
+            // BCL: where mscorlib / System.* lives (net10.0 shared framework).
+            var runtimeDir = System.Runtime.InteropServices.RuntimeEnvironment.GetRuntimeDirectory();
+            if (Directory.Exists(runtimeDir))
+                probingPaths.Add(runtimeDir);
+
+            var locator = new NavDotNet.AssemblyLocator(probingPaths);
+            _dotNetResolverFactory = new NavDotNet.DotNetResolverFactory(locator);
+            return _dotNetResolverFactory;
+        }
+    }
 
     /// <summary>
     /// Set by Program.cs after DependencyResolver runs. The set of .app paths
@@ -124,6 +186,36 @@ public sealed class BcCompiler
                         isPropagated: false,
                         alternateIds: ImmutableArray<Guid>.Empty))
                     .ToArray();
+            }
+            else if (_usePackageCacheFallback)
+            {
+                // --precompile path only: no explicit dep list (e.g. Customizations.app with
+                // empty <Dependencies/>). Fall back to adding every discoverable .app in the
+                // package cache dirs as a symbol reference — exactly what `alc --packagecachepath`
+                // does implicitly. Covers apps that declare no manifest deps but still compile
+                // against BaseApp/System Application via namespace-qualified `using` statements.
+                // _packageCacheFallbackExcludeId: skip the app being compiled (avoids AL0275).
+                var byId = new Dictionary<Guid, NavCA.SymbolReferenceSpecification>();
+                foreach (var dir in packageDirs)
+                {
+                    if (!Directory.Exists(dir)) continue;
+                    foreach (var appFile in Directory.EnumerateFiles(dir, "*.app", SearchOption.AllDirectories))
+                    {
+                        var m = AppLoader.ReadManifest(appFile);
+                        if (m == null || byId.ContainsKey(m.AppId)) continue;
+                        if (_packageCacheFallbackExcludeId != default
+                            && m.AppId == _packageCacheFallbackExcludeId) continue;
+                        byId[m.AppId] = new NavCA.SymbolReferenceSpecification(
+                            publisher: m.Publisher,
+                            name: m.Name,
+                            version: m.Version,
+                            exact: false,
+                            appId: m.AppId,
+                            isPropagated: false,
+                            alternateIds: ImmutableArray<Guid>.Empty);
+                    }
+                }
+                _refSpecs = byId.Values.ToArray();
             }
             else
             {
@@ -191,6 +283,12 @@ public sealed class BcCompiler
             if (specs.Length > 0)
                 compilation = compilation.AddReferences(specs);
         }
+
+        // Attach a local DotNet resolver so AL `DotNet` variables resolve to real
+        // .NET types. Without this the default NullDotNetResolverFactory leaves
+        // NavTypeKind = None, causing Compilation.Emit to throw
+        // UnexpectedValue(NavTypeKind.None) for every DotNet-using method.
+        compilation = compilation.WithDotNetResolverFactory(GetOrCreateDotNetFactory());
 
         var outputter = new CaptureOutputter();
         Exception? caught = null;
