@@ -819,6 +819,11 @@ static IEnumerable<string> DefaultPackageCacheDirs()
         if (Directory.Exists(w1Ext)) yield return w1Ext;
         var platApps = Path.Combine(bcLatest, "platform", "Applications");
         if (Directory.Exists(platApps)) yield return platApps;
+        // The `System` platform-symbols app (Microsoft/System) ships here, not in
+        // w1/Extensions. The resolver scans *.app recursively, so the ModernDev
+        // root suffices despite the version-numbered / case-varying subpath.
+        var modernDev = Path.Combine(bcLatest, "platform", "ModernDev");
+        if (Directory.Exists(modernDev)) yield return modernDev;
     }
 
     var symRoot = Path.Combine(home, ".local", "share", "al-runner", "symbols");
