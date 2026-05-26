@@ -207,6 +207,11 @@ var results = new List<BucketResult>();
 // Inert when only one bundle is passed or no inter-bundle dep edges exist.
 if (bundles.Count > 1)
     packageCacheDirs = RunLayeredPrePass(bundles, packageCacheDirs);
+// Discover + compile sibling source-only dependency apps. Some apps declare a
+// dependency that ships ONLY as AL source in a sibling directory (not a compiled
+// .app in any cache) — e.g. the corpus internalsVisibleTo fixture next to the
+// main test app. Inert when no declared dep matches a sibling source app.
+packageCacheDirs = BuildSiblingSourceDeps(bundles, packageCacheDirs);
 
 int i2 = 0;
 foreach (var bundle in bundles)
@@ -240,6 +245,14 @@ foreach (var bundle in bundles)
                 // Populate BcRuntime with this bundle's identity for the
                 // NavApp.GetCurrentModuleInfo polyfill shim.
                 SetBundleInfoFromAppJson(appJsonPath);
+                // Compile this bundle under its REAL app.json identity so a dependency's
+                // internalsVisibleTo grant (which names this app) matches — otherwise the
+                // synthetic compile identity fails the grant check (AL0161).
+                var bundleId = AlRunnerV2.Infrastructure.InProcessAppPackager.ReadIdentity(appJsonPath);
+                if (bundleId != null)
+                    BcCompiler.SetCurrentAppIdentity(bundleId.AppId, bundleId.Publisher, bundleId.Version);
+                else
+                    BcCompiler.SetCurrentAppIdentity(null, null, null);
             }
             catch (AlRunnerV2.Infrastructure.DependencyLoadException ex)
             {
@@ -1033,6 +1046,130 @@ static List<string> RunLayeredPrePass(List<string> bundles, List<string> package
 
 // Topological sort: return items in dependency-first order.
 // Simple Kahn's algorithm over the impl subset.
+// ── Sibling source-dependency pre-pass ────────────────────────────────────
+// For a dependency declared in a bundle's app.json that has no compiled .app in
+// any package cache, look for a matching AL-source app in a sibling directory
+// (the parent of the bundle root), compile it in-process to a .app, and prepend
+// a fresh workspace cache dir so the per-bundle DependencyResolver finds it like
+// any other dep. This is what lets the corpus's two-app internalsVisibleTo
+// fixture (tests/.../al-language-internals-fixture next to tests/.../al-language)
+// resolve. Inert when no declared dep matches a sibling source app.
+static List<string> BuildSiblingSourceDeps(List<string> bundles, List<string> packageCacheDirs)
+{
+    // 1. Collect each bundle's declared (non-implicit) deps + their bundle roots.
+    var neededDeps = new List<DependencyRef>();
+    var bundleRoots = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    foreach (var bundle in bundles)
+    {
+        var abs = Path.GetFullPath(bundle);
+        var appJson = Path.Combine(abs, "app.json");
+        if (!File.Exists(appJson))
+        {
+            var root = FindBucketRoot(abs);
+            if (root != null) appJson = Path.Combine(root, "app.json");
+        }
+        if (!File.Exists(appJson)) continue;
+        var id = AlRunnerV2.Infrastructure.InProcessAppPackager.ReadIdentity(appJson);
+        if (id == null) continue;
+        bundleRoots.Add(Path.GetFullPath(Path.GetDirectoryName(appJson)!));
+        // Skip Optional (implicit Microsoft Application/System) roots — those live
+        // in the package caches, never as a sibling source app.
+        neededDeps.AddRange(id.Dependencies.Where(d => !d.Optional));
+    }
+    if (neededDeps.Count == 0) return packageCacheDirs;
+
+    // 2. Discover candidate source apps in the parent dir of each bundle root.
+    var sourceApps = new Dictionary<string, AlRunnerV2.Infrastructure.BundleIdentity>(StringComparer.OrdinalIgnoreCase);
+    foreach (var bundleRoot in bundleRoots)
+    {
+        var parent = Path.GetDirectoryName(bundleRoot);
+        if (parent == null || !Directory.Exists(parent)) continue;
+        foreach (var sub in Directory.EnumerateDirectories(parent))
+        {
+            var subAbs = Path.GetFullPath(sub);
+            if (bundleRoots.Contains(subAbs)) continue; // not a bundle itself
+            var aj = Path.Combine(subAbs, "app.json");
+            if (!File.Exists(aj)) continue;
+            var sid = AlRunnerV2.Infrastructure.InProcessAppPackager.ReadIdentity(aj);
+            if (sid != null) sourceApps[subAbs] = sid;
+        }
+    }
+    if (sourceApps.Count == 0) return packageCacheDirs;
+
+    // 3. Match needed deps to sibling source apps (by AppId, else Name+Publisher).
+    var toBuild = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    foreach (var dep in neededDeps)
+        foreach (var (dir, sid) in sourceApps)
+        {
+            bool match = (dep.AppId != Guid.Empty && dep.AppId == sid.AppId) ||
+                (string.Equals(dep.Name, sid.Name, StringComparison.OrdinalIgnoreCase) &&
+                 string.Equals(dep.Publisher, sid.Publisher, StringComparison.OrdinalIgnoreCase));
+            if (match) toBuild.Add(dir);
+        }
+    if (toBuild.Count == 0) return packageCacheDirs;
+
+    static string Sanitize(string s)
+    {
+        var bad = Path.GetInvalidFileNameChars().Concat(new[] { ' ', '/', '\\' }).ToArray();
+        var sb = new System.Text.StringBuilder(s.Length);
+        foreach (var ch in s) sb.Append(Array.IndexOf(bad, ch) >= 0 ? '_' : ch);
+        return sb.ToString();
+    }
+
+    // 4. Topo-sort (deps before dependents) + compile to a fresh workspace dir, prepend.
+    var sorted = TopologicalSort(toBuild.ToList(), sourceApps);
+    var wsDir = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+        ".cache", "al-runner", "workspace-deps",
+        Guid.NewGuid().ToString("N")[..12]);
+    Directory.CreateDirectory(wsDir);
+    int emitted = 0;
+    foreach (var dir in sorted)
+    {
+        if (!sourceApps.TryGetValue(dir, out var sid)) continue;
+        var appFileName = $"{Sanitize(sid.Publisher)}_{Sanitize(sid.Name)}_{sid.Version.ToString().Replace('.', '_')}.app";
+        var outPath = Path.Combine(wsDir, appFileName);
+        try
+        {
+            AlRunnerV2.Infrastructure.InProcessAppPackager.EmitAppPackageToFile(dir, sid, outPath);
+        }
+        catch (Exception ex)
+        {
+            // Loud failure per repo rule — never silently continue.
+            throw new InvalidOperationException(
+                $"[source-dep] Failed to emit source dependency '{sid.Name}' from {dir}: {ex.Message}", ex);
+        }
+        // Compile-visible half: emit the dep's AL symbols (*.symbols.json) + deps
+        // sidecar so the DEPENDENT app can COMPILE against it. The synthetic .app
+        // above carries no SymbolReference.json, so without this the dep is
+        // runtime-loadable but invisible to the compiler (AL0185). BcCompiler's
+        // GetSharedReferences chains a JsonSymbolReferenceLoader over the workspace
+        // dir to pick these up. Revived from main's DepCompiler / SymbolJson.
+        var symBase = Path.Combine(wsDir, $"{Sanitize(sid.Publisher)}_{Sanitize(sid.Name)}_{sid.Version.ToString().Replace('.', '_')}");
+        try
+        {
+            new BcCompiler().EmitDepSymbols(new[] { dir }, sid.Name, sid.AppId, sid.Publisher, sid.Version, symBase + ".symbols.json");
+            DepsSidecarWriter.Write(
+                symBase + ".symbols.deps.json", sid.Publisher, sid.Name, sid.Version, sid.AppId,
+                sid.Dependencies.Where(d => !d.Optional)
+                    .Select(d => new DepsSidecarWriter.DepEntry(d.Publisher, d.Name, d.Version, d.AppId)));
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException(
+                $"[source-dep] Failed to emit symbols for '{sid.Name}' from {dir}: {ex.Message}", ex);
+        }
+
+        var info = new FileInfo(outPath);
+        Console.WriteLine($"[source-dep] compiled {sid.Name} {sid.Version} → {appFileName} (+symbols, {info.Length} bytes)");
+        emitted++;
+    }
+    if (emitted == 0) return packageCacheDirs;
+    var extended = new List<string> { wsDir };
+    extended.AddRange(packageCacheDirs);
+    return extended;
+}
+
 static List<string> TopologicalSort(
     List<string> implPaths,
     Dictionary<string, AlRunnerV2.Infrastructure.BundleIdentity> idByKey)

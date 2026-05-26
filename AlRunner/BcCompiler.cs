@@ -71,6 +71,21 @@ public sealed class BcCompiler
     private static IReadOnlyList<(AppManifest Manifest, string AppPath)>? _resolvedDeps;
     private static IReadOnlyList<string>? _packageCacheDirs;
 
+    // The bundle's real app.json identity, set per bundle before Emit. Used so the
+    // main compilation matches internalsVisibleTo grants from its dependencies (BC
+    // matches the grant by the consuming compilation's appId/publisher). Null → a
+    // synthetic identity is used (the historical default).
+    private static Guid? _currentAppId;
+    private static string? _currentPublisher;
+    private static Version? _currentVersion;
+
+    /// <summary>Set the real app identity of the bundle about to be compiled, so
+    /// internalsVisibleTo grants from its deps match. Pass nulls to reset.</summary>
+    public static void SetCurrentAppIdentity(Guid? appId, string? publisher, Version? version)
+    {
+        lock (_refSync) { _currentAppId = appId; _currentPublisher = publisher; _currentVersion = version; }
+    }
+
     // Cached DotNet resolver factory — constructed once from the service-tier
     // artifacts dir so AL `DotNet` variable types resolve to real .NET types.
     // Without this, NavTypeKind stays None and Compilation.Emit throws
@@ -174,6 +189,21 @@ public sealed class BcCompiler
 
             _refLoader = NavSymRef.ReferenceLoaderFactory.CreateReferenceLoader(packageDirs);
 
+            // Chain JSON-symbols loaders for any `*.symbols.json` in the package dirs
+            // (written by EmitDepSymbols for source dependencies we compiled ourselves).
+            // The standard scanner only reads a .app's SymbolReference.json, which a
+            // synthetic source-dep .app lacks — so without this a source dep is
+            // runtime-loadable but compile-invisible (AL0185). JSON loaders go FIRST
+            // so they answer for those deps; they return null for everything else,
+            // falling through to the package scanner.
+            var jsonLoaders = packageDirs
+                .Select(d => new JsonSymbolReferenceLoader(d))
+                .Where(l => l.HasAny)
+                .ToList();
+            if (jsonLoaders.Count > 0)
+                _refLoader = new CompositeSymbolReferenceLoader(
+                    jsonLoaders.Cast<NavCA.ISymbolReferenceLoader>().Append(_refLoader).ToList());
+
             if (_resolvedDeps != null && _resolvedDeps.Count > 0)
             {
                 _refSpecs = _resolvedDeps
@@ -221,6 +251,26 @@ public sealed class BcCompiler
             {
                 _refSpecs = Array.Empty<NavCA.SymbolReferenceSpecification>();
             }
+
+            // Contribute specs for *.symbols.json deps so the compiler's reference
+            // resolver sees them (the .app scanner above emits specs only for .app
+            // files). Dedupe by AppId against the specs already built — a source dep
+            // resolved as a (symbol-less) .app is already specced, and the composite
+            // loader will satisfy it from the JSON loader.
+            if (jsonLoaders.Count > 0)
+            {
+                var have = new HashSet<Guid>(_refSpecs.Select(s => s.AppId));
+                var extra = jsonLoaders
+                    .SelectMany(jl => jl.EnumerateSpecs())
+                    .Where(s => have.Add(s.AppId))
+                    .Select(s => new NavCA.SymbolReferenceSpecification(
+                        publisher: s.Publisher, name: s.Name, version: s.Version,
+                        exact: false, appId: s.AppId, isPropagated: false,
+                        alternateIds: ImmutableArray<Guid>.Empty))
+                    .ToArray();
+                if (extra.Length > 0)
+                    _refSpecs = _refSpecs.Concat(extra).ToArray();
+            }
             return (_refLoader, _refSpecs);
         }
     }
@@ -263,11 +313,16 @@ public sealed class BcCompiler
                 NavCA.CompilationGenerationOptions.Code |
                 NavCA.CompilationGenerationOptions.Navigation);
 
-        var appId = DeterministicGuid(moduleName);
+        // Identity: use the bundle's REAL app.json identity when set, else a synthetic
+        // one. The real identity matters when a dependency grants this app access via
+        // internalsVisibleTo — BC matches the grant against the consuming compilation's
+        // appId/publisher, so a synthetic "AlRunnerV2"/deterministic-guid identity would
+        // fail to match and produce AL0161 on the dep's Access=Internal members.
+        var appId = _currentAppId ?? DeterministicGuid(moduleName);
         var compilation = NavCA.Compilation.Create(
             moduleName: moduleName,
-            publisher: "AlRunnerV2",
-            version: new Version(1, 0, 0, 0),
+            publisher: _currentPublisher ?? "AlRunnerV2",
+            version: _currentVersion ?? new Version(1, 0, 0, 0),
             appId: appId,
             syntaxTrees: trees,
             options: compOpts);
@@ -414,6 +469,110 @@ public sealed class BcCompiler
         }
 
         return new BcEmitOutput(outputter.Captured, alDiags);
+    }
+
+    /// <summary>
+    /// Compile a source-dependency app's AL into a BC Compilation and serialize its
+    /// AL symbol metadata to <paramref name="symbolsJsonPath"/> (a `*.symbols.json`
+    /// readable by <see cref="JsonSymbolReferenceLoader"/>). This is the
+    /// compile-visible half of a source dependency — the runtime half is the DLL the
+    /// DependencyLoader produces from the same source. The serialized symbols carry
+    /// the dep's Access/internalsVisibleTo metadata, so a dependent app compiles
+    /// against it with the boundary enforced (revived from main's DepCompiler; v2
+    /// only shipped a symbol-less synthetic .app before, hence AL0185). The
+    /// Compilation is created with the dep's REAL identity so the loader indexes it.
+    /// </summary>
+    public void EmitDepSymbols(
+        IEnumerable<string> alFolders, string moduleName,
+        Guid appId, string publisher, Version version, string symbolsJsonPath)
+    {
+        var dirs = alFolders.Where(Directory.Exists).Distinct().ToList();
+        var alFiles = dirs
+            .SelectMany(d => Directory.EnumerateFiles(d, "*.al", SearchOption.AllDirectories))
+            .Distinct().ToList();
+        if (alFiles.Count == 0)
+            throw new InvalidOperationException(
+                $"BcCompiler.EmitDepSymbols: no .al files under {string.Join(", ", dirs)}");
+
+        var parseOpts = new NavCA.ParseOptions(
+            runtimeVersion: null!,
+            preprocessorSymbols: Enumerable.Range(1, 25).Select(n => $"CLEANSCHEMA{n}"),
+            documentationMode: NavCA.DocumentationMode.None);
+        var trees = new NavSyntax.SyntaxTree[alFiles.Count];
+        Parallel.For(0, alFiles.Count, i =>
+        {
+            var src = File.ReadAllText(alFiles[i]);
+            trees[i] = NavSyntax.SyntaxTree.ParseObjectText(src, path: alFiles[i], encoding: null!, parseOpts, default);
+        });
+        var compOpts = new NavCA.CompilationOptions(
+            continueBuildOnError: true,
+            target: NavCA.CompilationTarget.OnPrem,
+            generateOptions:
+                NavCA.CompilationGenerationOptions.Code | NavCA.CompilationGenerationOptions.Navigation);
+        // Propagate the dep's own `internalsVisibleTo` (from its app.json) into the
+        // Compilation. BC populates IModuleSymbol.InternalsVisibleToModules ONLY from
+        // this dedicated Create parameter — not from the manifest — so without it a
+        // dependent app hits AL0161 on the dep's Access=Internal members even when the
+        // grant exists. (main:Program.cs BuildInternalsVisibleToRefs.)
+        var ivtRefs = ReadInternalsVisibleToRefs(
+            dirs.Select(d => Path.Combine(d, "app.json")).FirstOrDefault(File.Exists));
+
+        var compilation = NavCA.Compilation.Create(
+            moduleName: moduleName, publisher: publisher, version: version,
+            appId: appId, internalsVisibleTo: ivtRefs, syntaxTrees: trees, options: compOpts);
+
+        var bundleAlpackages = dirs
+            .SelectMany(d => Directory.EnumerateDirectories(d, ".alpackages", SearchOption.AllDirectories))
+            .Distinct();
+        var (refLoader, specs) = GetSharedReferences(bundleAlpackages);
+        if (refLoader != null)
+        {
+            compilation = compilation.WithReferenceLoader(refLoader);
+            if (specs.Length > 0) compilation = compilation.AddReferences(specs);
+        }
+        compilation = compilation.WithDotNetResolverFactory(GetOrCreateDotNetFactory());
+
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(symbolsJsonPath))!);
+        using var fs = new FileStream(symbolsJsonPath, FileMode.Create, FileAccess.Write, FileShare.None);
+        SymbolJsonWriter.WriteSymbolJson(compilation, fs);
+    }
+
+    /// <summary>
+    /// Read <c>internalsVisibleTo</c> from an app.json and return one
+    /// <see cref="NavCA.SymbolReferenceSpecification"/> per entry, for the dedicated
+    /// <c>internalsVisibleTo</c> parameter of <see cref="NavCA.Compilation.Create"/>.
+    /// Schema: <c>[{ id|appId: guid, name, publisher }]</c>. Null when absent.
+    /// </summary>
+    private static IEnumerable<NavCA.SymbolReferenceSpecification>? ReadInternalsVisibleToRefs(string? appJsonPath)
+    {
+        if (appJsonPath == null || !File.Exists(appJsonPath)) return null;
+        try
+        {
+            using var json = System.Text.Json.JsonDocument.Parse(File.ReadAllText(appJsonPath));
+            if (!json.RootElement.TryGetProperty("internalsVisibleTo", out var ivt)
+                || ivt.ValueKind != System.Text.Json.JsonValueKind.Array)
+                return null;
+            var refs = new List<NavCA.SymbolReferenceSpecification>();
+            foreach (var e in ivt.EnumerateArray())
+            {
+                if (e.ValueKind != System.Text.Json.JsonValueKind.Object) continue;
+                var name = e.TryGetProperty("name", out var n) && n.ValueKind == System.Text.Json.JsonValueKind.String ? n.GetString() : null;
+                if (string.IsNullOrEmpty(name)) continue;
+                var pub = e.TryGetProperty("publisher", out var p) && p.ValueKind == System.Text.Json.JsonValueKind.String ? p.GetString() ?? "" : "";
+                Guid? appId = null;
+                if ((e.TryGetProperty("id", out var idEl) || e.TryGetProperty("appId", out idEl))
+                    && idEl.ValueKind == System.Text.Json.JsonValueKind.String
+                    && Guid.TryParse(idEl.GetString(), out var gid))
+                    appId = gid;
+                // IVT matching is by publisher/name/appId; version is not part of the
+                // schema, so a 0.0.0.0 placeholder is fine (BC does not gate IVT on version).
+                refs.Add(new NavCA.SymbolReferenceSpecification(
+                    publisher: pub, name: name!, version: new Version(0, 0, 0, 0),
+                    exact: false, appId: appId));
+            }
+            return refs.Count > 0 ? refs : null;
+        }
+        catch { return null; }
     }
 
     /// <summary>

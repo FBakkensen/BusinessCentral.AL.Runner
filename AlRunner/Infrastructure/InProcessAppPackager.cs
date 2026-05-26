@@ -144,36 +144,48 @@ public static class InProcessAppPackager
         string bundleDir,
         IReadOnlyList<string> alFiles)
     {
-        // Write NAVX magic header: 'N','A','V','X' + LE uint32 zip-offset (=8).
+        // Build the zip in its OWN buffer first, so its central-directory / EOCD
+        // offsets are relative to the zip's byte 0. If we instead wrote the
+        // ZipArchive directly onto outStream AFTER the 8-byte header, the EOCD
+        // would record absolute positions that include the header — and reading
+        // the zip back from a stream sliced at offset 8 (AppLoader.OpenZipFromNavx)
+        // then fails with "Number of entries expected in End Of Central Directory
+        // does not correspond to number of entries in Central Directory", so the
+        // package is silently unresolvable. Self-contained zip bytes round-trip.
+        byte[] zipBytes;
+        using (var zipMs = new MemoryStream())
+        {
+            using (var zip = new ZipArchive(zipMs, ZipArchiveMode.Create, leaveOpen: true))
+            {
+                // NavxManifest.xml
+                var manifestEntry = zip.CreateEntry("NavxManifest.xml", CompressionLevel.Optimal);
+                using (var mw = manifestEntry.Open())
+                {
+                    var xmlBytes = Encoding.UTF8.GetBytes(manifestXml);
+                    mw.Write(xmlBytes, 0, xmlBytes.Length);
+                }
+
+                // src/<filename>.al for every .al file in the bundle.
+                foreach (var alPath in alFiles)
+                {
+                    var entryName = "src/" + Path.GetFileName(alPath);
+                    var entry = zip.CreateEntry(entryName, CompressionLevel.Optimal);
+                    using var ew = entry.Open();
+                    using var fr = File.OpenRead(alPath);
+                    fr.CopyTo(ew);
+                }
+            }
+            zipBytes = zipMs.ToArray();
+        }
+
+        // NAVX magic header: 'N','A','V','X' + LE uint32 zip-offset (=8), then the
+        // self-contained zip bytes immediately after.
         outStream.Write(NavxMagic, 0, 4);
         var offsetBytes = BitConverter.GetBytes(NavxZipOffset); // little-endian on x64 Linux
         if (!BitConverter.IsLittleEndian)
-        {
-            // Ensure little-endian regardless of host byte order.
-            Array.Reverse(offsetBytes);
-        }
+            Array.Reverse(offsetBytes); // ensure little-endian regardless of host byte order
         outStream.Write(offsetBytes, 0, 4);
-
-        // Write the zip archive directly after the header.
-        using var zip = new ZipArchive(outStream, ZipArchiveMode.Create, leaveOpen: true);
-
-        // NavxManifest.xml
-        var manifestEntry = zip.CreateEntry("NavxManifest.xml", CompressionLevel.Optimal);
-        using (var mw = manifestEntry.Open())
-        {
-            var xmlBytes = Encoding.UTF8.GetBytes(manifestXml);
-            mw.Write(xmlBytes, 0, xmlBytes.Length);
-        }
-
-        // src/<filename>.al for every .al file in the bundle.
-        foreach (var alPath in alFiles)
-        {
-            var entryName = "src/" + Path.GetFileName(alPath);
-            var entry = zip.CreateEntry(entryName, CompressionLevel.Optimal);
-            using var ew = entry.Open();
-            using var fr = File.OpenRead(alPath);
-            fr.CopyTo(ew);
-        }
+        outStream.Write(zipBytes, 0, zipBytes.Length);
     }
 
     /// <summary>
@@ -209,8 +221,22 @@ public static class InProcessAppPackager
                     new XAttribute("ShowMyCode", "true")),
                 depsEl));
 
-        using var sw = new StringWriter();
+        // A plain StringWriter is UTF-16-backed, so doc.Save() would emit
+        // encoding="utf-16" in the declaration — but the bytes are later written as
+        // UTF-8 (WriteNavxApp → Encoding.UTF8.GetBytes). That declaration/encoding
+        // mismatch makes XDocument.Load throw when AppLoader.ReadManifest reads the
+        // package back, so DependencyResolver silently skips it (the .app becomes
+        // unresolvable). Advertise UTF-8 so the declaration matches the bytes.
+        using var sw = new Utf8StringWriter();
         doc.Save(sw);
         return sw.ToString();
+    }
+
+    /// <summary>StringWriter that reports UTF-8 so Xml serialization emits a
+    /// matching <c>encoding="utf-8"</c> declaration (StringWriter is otherwise
+    /// UTF-16-backed and would emit <c>encoding="utf-16"</c>).</summary>
+    private sealed class Utf8StringWriter : StringWriter
+    {
+        public override Encoding Encoding => Encoding.UTF8;
     }
 }
