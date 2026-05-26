@@ -813,10 +813,10 @@ static int RunPrecompile(string[] subArgs)
     foreach (var (name, src) in alSources)
         File.WriteAllText(Path.Combine(tempDir, Sanitize(name)), src);
 
-    IReadOnlyList<EmittedSource> emitted;
+    BcEmitOutput emitOut;
     try
     {
-        emitted = compiler.Emit(new[] { tempDir }, manifest.Name).Sources;
+        emitOut = compiler.Emit(new[] { tempDir }, manifest.Name);
     }
     catch (Exception ex)
     {
@@ -829,11 +829,26 @@ static int RunPrecompile(string[] subArgs)
         Console.Error.WriteLine($"  {detail}");
         return 3;
     }
+    var emitted = emitOut.Sources;
     if (emitted.Count == 0)
     {
-        Console.Error.WriteLine($"--precompile: EMIT-ZERO — 0 sources emitted from {manifest.Publisher}_{manifest.Name} v{manifest.Version}");
-        Console.Error.WriteLine($"  BC Compilation.Emit() returned 0 sources (silent zero-output sentinel — likely a NavTypeKind/emitter crash swallowed internally).");
-        Console.Error.WriteLine($"  Hint: set BCCOMPILER_DIAG=1 for BC-internal compiler diagnostics.");
+        // Fail LOUDLY — print the diagnostics that explain WHY 0 objects emitted
+        // (binding errors and per-object emit crashes), by default. A bare
+        // "EMIT-ZERO, set an env var" message is the silent-failure mode issue
+        // #1620 / loud-failures.md forbids: the developer must see what broke.
+        Console.Error.WriteLine($"--precompile: EMIT-ZERO — 0 of {manifest.Name}'s objects emitted ({manifest.Publisher}_{manifest.Name} v{manifest.Version})");
+        var diags = emitOut.Diagnostics;
+        if (diags.Count == 0)
+            Console.Error.WriteLine("  Compilation.Emit() returned 0 sources with no diagnostics (set BCCOMPILER_DIAG=1 for BC-internal compiler detail).");
+        else
+        {
+            Console.Error.WriteLine($"  {diags.Count} blocking diagnostic(s):");
+            const int cap = 40;
+            foreach (var d in diags.Take(cap))
+                Console.Error.WriteLine($"    {d}");
+            if (diags.Count > cap)
+                Console.Error.WriteLine($"    ... and {diags.Count - cap} more");
+        }
         return 3;
     }
     var asmName = $"Dep_{Sanitize(manifest.Publisher)}_{Sanitize(manifest.Name)}_{manifest.Version.ToString().Replace('.', '_')}";

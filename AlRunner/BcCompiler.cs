@@ -395,6 +395,23 @@ public sealed class BcCompiler
                 .Where(d => d.Severity == NavDiag.DiagnosticSeverity.Error))
                 alDiags.Add($"{d.Location}: error {d.Id}: {d.GetMessage().Split('\n', 2)[0]}");
         }
+        // When Compilation.Emit throws (BC's emitter crashed on a per-object bound
+        // tree — e.g. an unresolved type reaching codegen), the AggregateException
+        // message carries one "Object:'X' Method:'Y' (reason)" entry per failing
+        // object. Surface them in the returned diagnostics so callers fail LOUDLY
+        // with the failing object names by default — not only under BCCOMPILER_DIAG.
+        // See loud-failures.md / runner issue #1620.
+        if (caught != null)
+        {
+            var rx = new System.Text.RegularExpressions.Regex(
+                @"Object:'([^']+)' Method:'([^']+)' \(([^)]+)\)");
+            var matches = rx.Matches(caught.Message);
+            foreach (System.Text.RegularExpressions.Match m in matches)
+                alDiags.Add($"emit-crash: {m.Groups[1].Value} :: {m.Groups[2].Value} — {m.Groups[3].Value}");
+            if (matches.Count == 0)
+                // No per-object breakdown in the message — surface the raw emit failure.
+                alDiags.Add($"emit-crash: {caught.GetType().Name}: {caught.Message.Split('\n', 2)[0]}");
+        }
 
         return new BcEmitOutput(outputter.Captured, alDiags);
     }
