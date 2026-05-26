@@ -142,8 +142,7 @@ Console.WriteLine($"al-runner v2 — running {bundles.Count} bundle(s)");
 // triggers Ncl load on class init). Allowed surface per
 // .claude/rules/precompiled-dll-respect.md — Ncl is runtime engine, not BaseApp.
 {
-    var srcDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-        ".local/share/al-runner/artifacts/27.5.46862.48827");
+    var srcDir = AlRunnerV2.Infrastructure.BcArtifacts.ServiceTierDir;
     var binNcl = Path.Combine(AppContext.BaseDirectory, "Microsoft.Dynamics.Nav.Ncl.dll");
     var didFreshRewrite = AlRunnerV2.Infrastructure.NclCecilRewrite.RewriteInPlace(srcDir, binNcl);
 
@@ -1024,6 +1023,13 @@ static List<string> RunLayeredPrePass(List<string> bundles, List<string> package
             throw new InvalidOperationException(
                 $"[layered] Failed to emit impl package '{implId.Name}' from {implPath}: {ex.Message}", ex);
         }
+        // NOTE (WIP): the synthetic .app carries no SymbolReference.json, so the DEPENDENT
+        // bundle can't COMPILE against it (AL1022). Emitting <impl>.symbols.json here (as
+        // BuildSiblingSourceDeps does) is the fix, but it self-references when the impl is then
+        // compiled as its own bundle (its symbols.json is in the shared wsDir) and the
+        // all-packages fallback scan over default caches hangs the corpus. Needs a
+        // per-impl symbol dir + current-app exclusion before re-enabling. See
+        // handoff-2026-05-26-bc28-dll-first for the precise blocker.
         sw.Stop();
         var info = new FileInfo(outPath);
         Console.WriteLine($"[layered] emitted {implId.Name} {implId.Version} → {appFileName} ({info.Length} bytes, {sw.ElapsedMilliseconds}ms)");

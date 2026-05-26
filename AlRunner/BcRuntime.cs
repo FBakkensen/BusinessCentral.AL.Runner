@@ -282,8 +282,7 @@ public static partial class BcRuntime
 
     private static void ForceLoadBcDlls()
     {
-        var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            ".local/share/al-runner/artifacts/27.5.46862.48827");
+        var dir = AlRunnerV2.Infrastructure.BcArtifacts.ServiceTierDir;
         // Ncl is preloaded with Cecil rewrite by Program.cs before this runs.
         foreach (var n in new[] { "Microsoft.Dynamics.Nav.Common", "Microsoft.Dynamics.Nav.Types",
                                   "Microsoft.Dynamics.Nav.Language" })

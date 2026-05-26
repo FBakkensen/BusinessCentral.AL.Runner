@@ -120,8 +120,7 @@ public sealed class BcCompiler
     // The service-tier artifacts dir mirrors BcAssembler.ServiceTierDir.
     // It contains the DLLs (XmlTextReader etc.) that BC DotNet interop resolves against.
     internal static readonly string DefaultServiceTierDir =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            ".local/share/al-runner/artifacts/27.5.46862.48827");
+        AlRunnerV2.Infrastructure.BcArtifacts.ServiceTierDir;
 
     private static NavDotNet.IDotNetResolverFactory GetOrCreateDotNetFactory()
     {

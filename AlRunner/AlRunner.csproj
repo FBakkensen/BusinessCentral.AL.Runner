@@ -54,7 +54,7 @@
   </ItemGroup>
 
   <PropertyGroup>
-    <_BCVersion>27.5.46862.48827</_BCVersion>
+    <_BCVersion>28.1.49838.50794</_BCVersion>
     <!-- Cross-platform cache directory for auto-downloaded BC service tier -->
     <_CacheBase Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(LOCALAPPDATA)/al-runner</_CacheBase>
     <_CacheBase Condition="!$([MSBuild]::IsOSPlatform('Windows'))">$(HOME)/.local/share/al-runner</_CacheBase>

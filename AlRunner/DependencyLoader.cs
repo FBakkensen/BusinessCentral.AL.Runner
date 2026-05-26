@@ -116,6 +116,25 @@ public sealed class DependencyLoader
         // Tier 3: source-only compile-on-the-fly.
         var sw = Stopwatch.StartNew();
         var alSources = AppLoader.ExtractAl(appPath);
+
+        // Tier 2.5 (DLL-first): Microsoft ships its test toolkit symbol-only (AL source,
+        // no compiled code). The same objects are precompiled in the extracted service-tier
+        // DLL cache. If the cache covers this dep's codeunits, skip the expensive whole-app
+        // source compile and let CodeunitPatches.FindCodeunitType resolve each codeunit body
+        // lazily from the cache at dispatch (runs the REAL Microsoft code). Per the chosen
+        // policy: source-compile only remains the fallback for objects the cache lacks.
+        if (alSources.Count > 0 && ServiceTierDllIndex.Available)
+        {
+            var codeunitIds = ExtractCodeunitTypeNames(alSources);
+            if (codeunitIds.Count > 0 && codeunitIds.All(ServiceTierDllIndex.Contains))
+            {
+                Console.Error.WriteLine(
+                    $"[deps] DLL-first: {m.Publisher}_{m.Name} v{m.Version} — {codeunitIds.Count} codeunit(s) " +
+                    $"served from extracted service-tier DLLs; skipping source compile");
+                return null; // lazy dispatch via ServiceTierDllIndex
+            }
+        }
+
         if (alSources.Count == 0)
         {
             // Symbol-only package (no runtime code in this .app — normal for Microsoft
@@ -189,6 +208,22 @@ public sealed class DependencyLoader
         }
     }
 
+    // Cheap source scan for "codeunit <id> ..." declarations → "Codeunit<id>" type names,
+    // used to test extracted-DLL coverage without a full compile. Object-extension and
+    // non-codeunit objects are intentionally ignored (only codeunits carry dispatchable
+    // runtime bodies the test calls into).
+    private static readonly System.Text.RegularExpressions.Regex _codeunitDecl =
+        new(@"(?im)^\s*codeunit\s+(\d+)\b", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    private static HashSet<string> ExtractCodeunitTypeNames(IReadOnlyList<(string Name, string Src)> sources)
+    {
+        var set = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var (_, src) in sources)
+            foreach (System.Text.RegularExpressions.Match mm in _codeunitDecl.Matches(src))
+                set.Add("Codeunit" + mm.Groups[1].Value);
+        return set;
+    }
+
     private static string SanitizeFileName(string s)
     {
         var bad = Path.GetInvalidFileNameChars().Concat(new[] { ' ', '/', '\\' }).ToArray();
@@ -226,20 +261,21 @@ public sealed class DependencyLoader
         // .TableProxyBuilder), it fails to load and the call NREs deep in MS code. The
         // probe below catches every Microsoft.Dynamics.Nav.* assembly request and serves
         // it from the artifact dir.
-        var serviceTierPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            ".local/share/al-runner/artifacts/27.5.46862.48827");
+        // Single source of truth for the artifact dir (tracks AlRunner.csproj's _BCVersion).
+        var serviceTierPath = AlRunnerV2.Infrastructure.BcArtifacts.ServiceTierDir;
         AssemblyLoadContext.Default.Resolving += (ctx, name) =>
         {
             if (name.Name == null) return null;
             if (_byName.TryGetValue(name.Name, out var asm))
                 return asm;
-            if (name.Name.StartsWith("Microsoft.Dynamics.Nav.", StringComparison.Ordinal))
-            {
-                var probe = Path.Combine(serviceTierPath, name.Name + ".dll");
-                if (File.Exists(probe))
-                    return ctx.LoadFromAssemblyPath(probe);
-            }
+            // Serve any service-tier assembly from the artifact dir. BC 28 modernised its
+            // runtime onto a large external closure (Azure SDK, Microsoft.Identity / .Extensions,
+            // IdentityModel) beyond the Microsoft.Dynamics.Nav.* set; all ship in the artifact
+            // dir. This handler only fires after default resolution fails, so serving BC's own
+            // shipped copy is the faithful choice.
+            var probe = Path.Combine(serviceTierPath, name.Name + ".dll");
+            if (File.Exists(probe))
+                return ctx.LoadFromAssemblyPath(probe);
             return null;
         };
     }

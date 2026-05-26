@@ -631,6 +631,13 @@ public static partial class BcRuntime
             }
             catch { /* skip dynamic/reflection-only assemblies */ }
         }
+        // Tier 3 — DLL-first dependency code. Microsoft test-toolkit codeunits ship
+        // symbol-only (no runtime code in the .app); their compiled bodies live in the
+        // extracted BC service-tier DLL cache. Lazily load the owning DLL by object id
+        // so the test exercises the REAL Microsoft code rather than a re-compile.
+        var fromCache = AlRunnerV2.Infrastructure.ServiceTierDllIndex.ResolveObjectType(name);
+        if (fromCache != null && baseCu.IsAssignableFrom(fromCache))
+            return fromCache;
         return null;
     }
 }

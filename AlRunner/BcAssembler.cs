@@ -23,8 +23,7 @@ public sealed record CompileResult(byte[]? AssemblyBytes, IReadOnlyList<string> 
 public sealed class BcAssembler
 {
     public string ServiceTierDir { get; init; } =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            ".local/share/al-runner/artifacts/27.5.46862.48827");
+        AlRunnerV2.Infrastructure.BcArtifacts.ServiceTierDir;
 
     // Roslyn's internal recursion on large bundles can overflow the default 8 MB stack.
     // Run the full compile pass on a thread with 64 MB stack to avoid SIGSEGV.
