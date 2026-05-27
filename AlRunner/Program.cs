@@ -1010,6 +1010,35 @@ static List<string> RunLayeredPrePass(List<string> bundles, List<string> package
 
     if (implPaths.Count == 0) return packageCacheDirs; // no inter-bundle deps
 
+    // Skip any impl that already has a real, compiler-valid prebuilt .app (one with
+    // a SymbolReference.json) in the package caches — e.g. RecoverySolutions ships
+    // MainApps/Customizations.Test/.alpackages/Customizations.app, a symbol+source
+    // package built by alc. That real .app serves BOTH compile-time symbols (via BC's
+    // native .app scanner, which merges tableextensions correctly — our synthetic
+    // symbols.json does NOT) AND runtime code (DependencyLoader compiles its src/*.al).
+    // Synthesizing a competing .app here would only shadow the real one with weaker
+    // symbols, reintroducing AL0132/AL0133 on the dependent's tableextension fields.
+    foreach (var implPath in implPaths.ToList())
+    {
+        if (!idByKey.TryGetValue(implPath, out var implId)) continue;
+        var prebuilt = packageCacheDirs
+            .Where(Directory.Exists)
+            .SelectMany(d => Directory.EnumerateFiles(d, "*.app", SearchOption.AllDirectories))
+            .FirstOrDefault(f =>
+            {
+                var m = AppLoader.ReadManifest(f);
+                return m != null && m.AppId == implId.AppId
+                    && AppLoader.HasSymbolReference(f);
+            });
+        if (prebuilt != null)
+        {
+            Console.WriteLine($"[layered] {implId.Name} {implId.Version} already has a prebuilt symbol package " +
+                $"({Path.GetFileName(prebuilt)}) — skipping in-process synthesis.");
+            implPaths.Remove(implPath);
+        }
+    }
+    if (implPaths.Count == 0) return packageCacheDirs; // every impl already prebuilt
+
     // Topological sort of impl paths (deps before dependents).
     var sortedImpls = TopologicalSort(implPaths.ToList(), idByKey);
 

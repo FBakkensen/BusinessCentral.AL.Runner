@@ -54,6 +54,35 @@ public static class AppLoader
         catch { return null; }
     }
 
+    /// <summary>
+    /// True if the .app is a real, compiler-valid BC package — i.e. its NAVX zip
+    /// contains a <c>SymbolReference.json</c> part. Such a package can serve
+    /// compile-time symbols directly through BC's native .app scanner (no synthetic
+    /// symbols.json needed), and merges tableextensions/etc. correctly. A synthetic
+    /// source-only .app emitted by InProcessAppPackager returns false here.
+    /// Returns false on any read/format error.
+    /// </summary>
+    public static bool HasSymbolReference(string appPath)
+    {
+        try
+        {
+            var bytes = File.ReadAllBytes(appPath);
+            using var zip = OpenZipFromNavx(bytes);
+            if (zip.Entries.Any(e => e.FullName.Equals("SymbolReference.json", StringComparison.OrdinalIgnoreCase)))
+                return true;
+            // R2R nested case: the inner .app carries the SymbolReference.json.
+            var nested = zip.Entries.FirstOrDefault(e =>
+                e.FullName.EndsWith(".app", StringComparison.OrdinalIgnoreCase) && !e.FullName.Contains('/'));
+            if (nested == null) return false;
+            using var ns = nested.Open();
+            using var nms = new MemoryStream();
+            ns.CopyTo(nms);
+            using var innerZip = OpenZipFromNavx(nms.ToArray());
+            return innerZip.Entries.Any(e => e.FullName.Equals("SymbolReference.json", StringComparison.OrdinalIgnoreCase));
+        }
+        catch { return false; }
+    }
+
     private static AppManifest? ReadManifestFromBytes(byte[] bytes)
     {
         try
