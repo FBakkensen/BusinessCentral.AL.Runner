@@ -1061,15 +1061,22 @@ static List<string> RunLayeredPrePass(List<string> bundles, List<string> package
         var symBase = Path.Combine(wsDir, $"{safePublisher}_{safeName}_{safeVer}");
         try
         {
-            // Give the impl's symbol-compile its full dep context (BaseApp etc.)
-            // via the all-packages fallback, scoped to this call only.
-            // Also scope _currentAppId to the impl's own identity so GetSharedReferences
-            // excludes the impl from its own specs (self-reference guard).
-            BcCompiler.SetPackageCacheFallback(implId.AppId);
+            // Resolve the impl's OWN dependency closure (declared + the implicit
+            // Application/System roots from app.json) transitively, exactly like the
+            // main per-bundle compile does. This replaces the former all-.app
+            // SetPackageCacheFallback, which scanned EVERY package in the caches —
+            // 134 apps / 353MB in the RS Extensions dir → ~215s per impl. The
+            // Application closure pulls only BaseApp / System App / Business
+            // Foundation (≈5 apps), so the symbol compile is fast and identical in
+            // coverage (an app that uses BaseApp via namespace depends, implicitly,
+            // on Application — never on the whole marketplace).
+            // ScopeCurrentAppIdentity sets _currentAppId to the impl so
+            // GetSharedReferences excludes the impl from its own specs (self-ref guard).
+            var implResolver = new DependencyResolver(packageCacheDirs);
+            var implDeps = implResolver.Resolve(implId.Dependencies);
             // Use the ORIGINAL package cache dirs (not extendedCaches which includes wsDir)
-            // for the symbol compile — wsDir has no valid .app yet at this point anyway,
-            // and including it would cause the fallback scanner to open a non-existent file.
-            BcCompiler.SetResolvedDeps(Array.Empty<(AppManifest Manifest, string AppPath)>(), packageCacheDirs);
+            // for the symbol compile — wsDir has no valid .app yet at this point anyway.
+            BcCompiler.SetResolvedDeps(implDeps, packageCacheDirs);
             using (BcCompiler.ScopeCurrentAppIdentity(implId.AppId, implId.Publisher, implId.Version))
                 new BcCompiler().EmitDepSymbols(new[] { implPath }, implId.Name, implId.AppId, implId.Publisher, implId.Version, symBase + ".symbols.json");
             DepsSidecarWriter.Write(
@@ -1083,12 +1090,6 @@ static List<string> RunLayeredPrePass(List<string> bundles, List<string> package
             // against this impl without its symbols, so don't continue silently.
             throw new InvalidOperationException(
                 $"[layered] Failed to emit symbols for impl '{implId.Name}' from {implPath}: {ex.Message}", ex);
-        }
-        finally
-        {
-            // Always reset the fallback — even on failure — so it never leaks
-            // into the main per-bundle compile path.
-            BcCompiler.ResetPackageCacheFallback();
         }
 
         // ── Step 2: emit the .app — runtime/identity package ONLY, NO embedded
