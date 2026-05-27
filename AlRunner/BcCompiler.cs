@@ -65,11 +65,20 @@ public sealed class BcCompiler
     // object-id collisions and silently produced 0 sources.
     private static NavCA.ISymbolReferenceLoader? _refLoader;
     private static NavCA.SymbolReferenceSpecification[]? _refSpecs;
+    // Cached JSON symbol loaders — one per package dir that has *.symbols.json files.
+    // Kept separately so specs can be recomputed with _currentAppId exclusion without
+    // rescanning the filesystem.
+    private static List<JsonSymbolReferenceLoader>? _cachedJsonLoaders;
     private static readonly object _refSync = new();
     // Set by Program.cs once after dep resolution. The compile-time symbol set
     // mirrors the runtime-loaded dep set by construction — no allow-list drift.
     private static IReadOnlyList<(AppManifest Manifest, string AppPath)>? _resolvedDeps;
     private static IReadOnlyList<string>? _packageCacheDirs;
+    // Extra dirs that contain ONLY *.symbols.json files (no .app files). Used to
+    // provide compile-time visibility of layered-build impls without exposing the
+    // synthetic (SymbolReference.json-free) .app to the BC package scanner, which
+    // would report AL1023 "package not valid". Set by RunLayeredPrePass.
+    private static IReadOnlyList<string>? _extraSymbolDirs;
 
     // The bundle's real app.json identity, set per bundle before Emit. Used so the
     // main compilation matches internalsVisibleTo grants from its dependencies (BC
@@ -84,6 +93,51 @@ public sealed class BcCompiler
     public static void SetCurrentAppIdentity(Guid? appId, string? publisher, Version? version)
     {
         lock (_refSync) { _currentAppId = appId; _currentPublisher = publisher; _currentVersion = version; }
+    }
+
+    /// <summary>
+    /// Temporarily overrides the "current app being compiled" identity for the
+    /// duration of a single sub-compile (e.g. DependencyLoader compiling a dep from
+    /// source). The override is scoped: the caller MUST dispose the returned
+    /// <see cref="IDisposable"/> (use a <c>using</c> block) to restore the previous
+    /// identity. The <see cref="GetSharedReferences"/> self-reference guard uses
+    /// <c>_currentAppId</c> to exclude the dep's own AppId from reference specs so
+    /// its own AL source doesn't collide with a stale cached reference (AL0275).
+    /// </summary>
+    public static IDisposable ScopeCurrentAppIdentity(Guid appId, string publisher, Version version)
+    {
+        Guid? savedId;
+        string? savedPublisher;
+        Version? savedVersion;
+        lock (_refSync)
+        {
+            savedId = _currentAppId;
+            savedPublisher = _currentPublisher;
+            savedVersion = _currentVersion;
+            _currentAppId = appId;
+            _currentPublisher = publisher;
+            _currentVersion = version;
+        }
+        return new IdentityScope(savedId, savedPublisher, savedVersion);
+    }
+
+    private sealed class IdentityScope : IDisposable
+    {
+        private readonly Guid? _savedId;
+        private readonly string? _savedPublisher;
+        private readonly Version? _savedVersion;
+
+        public IdentityScope(Guid? savedId, string? savedPublisher, Version? savedVersion)
+        {
+            _savedId = savedId;
+            _savedPublisher = savedPublisher;
+            _savedVersion = savedVersion;
+        }
+
+        public void Dispose()
+        {
+            lock (_refSync) { _currentAppId = _savedId; _currentPublisher = _savedPublisher; _currentVersion = _savedVersion; }
+        }
     }
 
     // Cached DotNet resolver factory — constructed once from the service-tier
@@ -114,6 +168,43 @@ public sealed class BcCompiler
             _packageCacheFallbackExcludeId = excludeAppId;
             _refLoader = null;
             _refSpecs = null;
+            _cachedJsonLoaders = null;
+        }
+    }
+
+    /// <summary>
+    /// Resets the package-cache fallback to off and clears the cached loader/specs so
+    /// the next call to <see cref="GetSharedReferences"/> rebuilds from the explicit
+    /// dep list. Call after a scoped <see cref="SetPackageCacheFallback"/> use
+    /// (e.g. inside <c>RunLayeredPrePass</c> per-impl symbol emit) to avoid leaking
+    /// the all-packages scan into subsequent corpus or main-bundle compiles.
+    /// </summary>
+    public static void ResetPackageCacheFallback()
+    {
+        lock (_refSync)
+        {
+            _usePackageCacheFallback = false;
+            _packageCacheFallbackExcludeId = default;
+            _refLoader = null;
+            _refSpecs = null;
+            _cachedJsonLoaders = null;
+        }
+    }
+
+    /// <summary>
+    /// Registers extra symbol-only directories (containing <c>*.symbols.json</c> but no
+    /// <c>.app</c> files) that <see cref="GetSharedReferences"/> should include in its
+    /// <see cref="JsonSymbolReferenceLoader"/> chain. Call AFTER <see cref="SetResolvedDeps"/>
+    /// so the cache invalidation there doesn't wipe this state. Resets when
+    /// <see cref="SetResolvedDeps"/> is called again (next bundle).
+    /// </summary>
+    public static void SetExtraSymbolDirs(IReadOnlyList<string> dirs)
+    {
+        lock (_refSync)
+        {
+            _extraSymbolDirs = dirs;
+            _refLoader = null;   // force rebuild so the new dirs are picked up
+            _cachedJsonLoaders = null;
         }
     }
 
@@ -161,6 +252,8 @@ public sealed class BcCompiler
             _packageCacheDirs = packageCacheDirs;
             _refLoader = null;
             _refSpecs = null;
+            _cachedJsonLoaders = null;
+            _extraSymbolDirs = null; // reset so stale layered-build dirs don't leak to next bundle
         }
     }
 
@@ -169,43 +262,74 @@ public sealed class BcCompiler
     {
         lock (_refSync)
         {
-            if (_refLoader != null && _refSpecs != null)
-                return (_refLoader, _refSpecs);
+            // ── Loader (expensive filesystem scan) — cache and reuse ──────────────
+            // The loader scans package dirs for .app files and serves ModuleDefinitions.
+            // This is the expensive part (filesystem + zip reads) — cache it.
+            if (_refLoader == null)
+            {
+                var packageDirs = bundleAlpackagesDirs
+                    .Where(Directory.Exists)
+                    .Distinct()
+                    .ToList();
+                if (_packageCacheDirs != null)
+                    packageDirs.AddRange(_packageCacheDirs.Where(Directory.Exists));
+                else
+                    packageDirs.AddRange(ResolveSymbolDirs());
+                packageDirs = packageDirs.Distinct().ToList();
+                if (packageDirs.Count == 0) return (null, Array.Empty<NavCA.SymbolReferenceSpecification>());
 
-            // Reference loader scans whole package cache dirs (so it can resolve
-            // anything BC's emitter walks), but Specs is the explicit list of
-            // resolved deps — no allow-list, no drift between compile and runtime.
-            var packageDirs = bundleAlpackagesDirs
-                .Where(Directory.Exists)
-                .Distinct()
-                .ToList();
-            if (_packageCacheDirs != null)
-                packageDirs.AddRange(_packageCacheDirs.Where(Directory.Exists));
-            else
-                packageDirs.AddRange(ResolveSymbolDirs());
-            packageDirs = packageDirs.Distinct().ToList();
-            if (packageDirs.Count == 0) return (null, Array.Empty<NavCA.SymbolReferenceSpecification>());
+                _refLoader = NavSymRef.ReferenceLoaderFactory.CreateReferenceLoader(packageDirs);
 
-            _refLoader = NavSymRef.ReferenceLoaderFactory.CreateReferenceLoader(packageDirs);
+                // Chain JSON-symbols loaders for any `*.symbols.json` in the package dirs
+                // (written by EmitDepSymbols for source dependencies we compiled ourselves).
+                // The standard scanner only reads a .app's SymbolReference.json, which a
+                // synthetic source-dep .app lacks — so without this a source dep is
+                // runtime-loadable but compile-invisible (AL0185). JSON loaders go FIRST
+                // so they answer for those deps; they return null for everything else,
+                // falling through to the package scanner.
+                //
+                // IMPORTANT: _extraSymbolDirs are scanned for *.symbols.json ONLY — they
+                // must NOT be included in packageDirs above (passed to CreateReferenceLoader)
+                // because they may contain synthetic .app files with no SymbolReference.json
+                // (written by RunLayeredPrePass). If such an .app ends up in the .app scanner,
+                // BC reports AL1023 "package not valid" for every compilation.
+                var jsonScanDirs = packageDirs.ToList();
+                if (_extraSymbolDirs != null)
+                    foreach (var d in _extraSymbolDirs)
+                        if (Directory.Exists(d) && !jsonScanDirs.Contains(d, StringComparer.OrdinalIgnoreCase))
+                            jsonScanDirs.Add(d);
 
-            // Chain JSON-symbols loaders for any `*.symbols.json` in the package dirs
-            // (written by EmitDepSymbols for source dependencies we compiled ourselves).
-            // The standard scanner only reads a .app's SymbolReference.json, which a
-            // synthetic source-dep .app lacks — so without this a source dep is
-            // runtime-loadable but compile-invisible (AL0185). JSON loaders go FIRST
-            // so they answer for those deps; they return null for everything else,
-            // falling through to the package scanner.
-            var jsonLoaders = packageDirs
-                .Select(d => new JsonSymbolReferenceLoader(d))
-                .Where(l => l.HasAny)
-                .ToList();
-            if (jsonLoaders.Count > 0)
-                _refLoader = new CompositeSymbolReferenceLoader(
-                    jsonLoaders.Cast<NavCA.ISymbolReferenceLoader>().Append(_refLoader).ToList());
+                _cachedJsonLoaders = jsonScanDirs
+                    .Select(d => new JsonSymbolReferenceLoader(d))
+                    .Where(l => l.HasAny)
+                    .ToList();
+                if (_cachedJsonLoaders.Count > 0)
+                    _refLoader = new CompositeSymbolReferenceLoader(
+                        _cachedJsonLoaders.Cast<NavCA.ISymbolReferenceLoader>().Append(_refLoader).ToList());
+            }
+
+            // ── Specs (cheap) — recompute each call with _currentAppId exclusion ──
+            // Specs are just a list of (publisher, name, version, appId) tuples derived
+            // from _resolvedDeps. Recomputing is trivial, and doing so ensures the
+            // self-reference guard (_currentAppId) is applied fresh for EVERY compile:
+            //   • main bundle compile: _currentAppId = bundle's own AppId → exclude self
+            //   • dep compile inside DependencyLoader: _currentAppId = parent bundle's id,
+            //     BUT the dep's AppId must be excluded too (it is its own primary source).
+            //     DependencyLoader sets _currentAppId to the dep's AppId before calling
+            //     BcCompiler.Emit, so the guard fires correctly for dep compiles as well.
+            //   • EmitDepSymbols (pre-pass): _currentAppId = impl's AppId (set via
+            //     SetCurrentAppIdentity in RunLayeredPrePass) → exclude self-spec.
+            NavCA.SymbolReferenceSpecification[] specs;
 
             if (_resolvedDeps != null && _resolvedDeps.Count > 0)
             {
-                _refSpecs = _resolvedDeps
+                // Normal path: explicit dep list from DependencyResolver.
+                // Exclude the dep whose AppId == _currentAppId — that dep is the PRIMARY
+                // source being compiled right now (either a main bundle being compiled as
+                // itself, or a sub-dep being compiled inside DependencyLoader). Including it
+                // as a reference alongside its own AL source causes AL0275 ambiguous-reference.
+                specs = _resolvedDeps
+                    .Where(d => _currentAppId == null || d.Manifest.AppId != _currentAppId.Value)
                     .Select(d => new NavCA.SymbolReferenceSpecification(
                         publisher: d.Manifest.Publisher,
                         name: d.Manifest.Name,
@@ -224,8 +348,10 @@ public sealed class BcCompiler
                 // does implicitly. Covers apps that declare no manifest deps but still compile
                 // against BaseApp/System Application via namespace-qualified `using` statements.
                 // _packageCacheFallbackExcludeId: skip the app being compiled (avoids AL0275).
+                var loaderPackageDirs = _packageCacheDirs?.Where(Directory.Exists).ToList()
+                    ?? ResolveSymbolDirs().Where(Directory.Exists).ToList();
                 var byId = new Dictionary<Guid, NavCA.SymbolReferenceSpecification>();
-                foreach (var dir in packageDirs)
+                foreach (var dir in loaderPackageDirs)
                 {
                     if (!Directory.Exists(dir)) continue;
                     foreach (var appFile in Directory.EnumerateFiles(dir, "*.app", SearchOption.AllDirectories))
@@ -244,11 +370,11 @@ public sealed class BcCompiler
                             alternateIds: ImmutableArray<Guid>.Empty);
                     }
                 }
-                _refSpecs = byId.Values.ToArray();
+                specs = byId.Values.ToArray();
             }
             else
             {
-                _refSpecs = Array.Empty<NavCA.SymbolReferenceSpecification>();
+                specs = Array.Empty<NavCA.SymbolReferenceSpecification>();
             }
 
             // Contribute specs for *.symbols.json deps so the compiler's reference
@@ -256,11 +382,17 @@ public sealed class BcCompiler
             // files). Dedupe by AppId against the specs already built — a source dep
             // resolved as a (symbol-less) .app is already specced, and the composite
             // loader will satisfy it from the JSON loader.
-            if (jsonLoaders.Count > 0)
+            // Self-reference guard: skip any spec whose AppId == _currentAppId so a
+            // bundle that previously emitted its OWN symbols.json into a workspace dir
+            // (via RunLayeredPrePass) doesn't see those symbols when it is later compiled
+            // as its own bundle (avoids AL1023 "package not valid") or as a dep
+            // (avoids AL0275 "ambiguous reference").
+            if (_cachedJsonLoaders != null && _cachedJsonLoaders.Count > 0)
             {
-                var have = new HashSet<Guid>(_refSpecs.Select(s => s.AppId));
-                var extra = jsonLoaders
+                var have = new HashSet<Guid>(specs.Select(s => s.AppId));
+                var extra = _cachedJsonLoaders
                     .SelectMany(jl => jl.EnumerateSpecs())
+                    .Where(s => _currentAppId == null || s.AppId != _currentAppId.Value)
                     .Where(s => have.Add(s.AppId))
                     .Select(s => new NavCA.SymbolReferenceSpecification(
                         publisher: s.Publisher, name: s.Name, version: s.Version,
@@ -268,9 +400,10 @@ public sealed class BcCompiler
                         alternateIds: ImmutableArray<Guid>.Empty))
                     .ToArray();
                 if (extra.Length > 0)
-                    _refSpecs = _refSpecs.Concat(extra).ToArray();
+                    specs = specs.Concat(extra).ToArray();
             }
-            return (_refLoader, _refSpecs);
+            _refSpecs = specs; // keep for any legacy callers that read _refSpecs directly
+            return (_refLoader, specs);
         }
     }
 

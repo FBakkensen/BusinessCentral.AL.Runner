@@ -204,13 +204,30 @@ var results = new List<BucketResult>();
 // This lets the dependent bundle's DependencyResolver find the impl .app
 // exactly like any other package-cache .app.
 // Inert when only one bundle is passed or no inter-bundle dep edges exist.
+// Synthetic-workspace dirs created by the pre-passes below. These hold
+// source-only .app packages (NO SymbolReference.json) plus their *.symbols.json
+// sidecars. They MUST feed the runtime resolver (DependencyLoader extracts the
+// .app's src and compiles real dep code from it) but MUST NOT feed BC's
+// compile-time .app scanner (CreateReferenceLoader): a synthetic .app with no
+// SymbolReference.json makes that scanner throw AL1023 "package not valid" —
+// observed for RS, where a real symbol-only Customizations.app with the same
+// AppId also sits in .alpackages. So we register them via SetExtraSymbolDirs
+// (symbols.json-only scan) instead of _packageCacheDirs. See BcCompiler
+// GetSharedReferences for the _extraSymbolDirs contract.
+var layeredWorkspaceDirs = new List<string>();
 if (bundles.Count > 1)
-    packageCacheDirs = RunLayeredPrePass(bundles, packageCacheDirs);
+    packageCacheDirs = RunLayeredPrePass(bundles, packageCacheDirs, layeredWorkspaceDirs);
 // Discover + compile sibling source-only dependency apps. Some apps declare a
 // dependency that ships ONLY as AL source in a sibling directory (not a compiled
 // .app in any cache) — e.g. the corpus internalsVisibleTo fixture next to the
 // main test app. Inert when no declared dep matches a sibling source app.
-packageCacheDirs = BuildSiblingSourceDeps(bundles, packageCacheDirs);
+packageCacheDirs = BuildSiblingSourceDeps(bundles, packageCacheDirs, layeredWorkspaceDirs);
+
+// Dirs the COMPILE-time .app scanner may safely enumerate: everything except the
+// synthetic workspace dirs (whose source-only .apps would trip AL1023).
+var compilerPackageDirs = packageCacheDirs
+    .Where(d => !layeredWorkspaceDirs.Contains(d, StringComparer.OrdinalIgnoreCase))
+    .ToList();
 
 int i2 = 0;
 foreach (var bundle in bundles)
@@ -232,7 +249,14 @@ foreach (var bundle in bundles)
                 var resolver = new DependencyResolver(packageCacheDirs);
                 var ordered = resolver.Resolve(roots);
                 Console.WriteLine($"  [{rel}] resolved {ordered.Count} dep(s)");
-                BcCompiler.SetResolvedDeps(ordered, packageCacheDirs);
+                // Compiler sees only non-workspace dirs in its .app scanner; the
+                // synthetic workspace dirs are registered as symbols.json-only
+                // sources via SetExtraSymbolDirs (called AFTER SetResolvedDeps,
+                // which resets _extraSymbolDirs). Runtime resolution above used the
+                // full packageCacheDirs (incl. workspace) so dep code still loads.
+                BcCompiler.SetResolvedDeps(ordered, compilerPackageDirs);
+                if (layeredWorkspaceDirs.Count > 0)
+                    BcCompiler.SetExtraSymbolDirs(layeredWorkspaceDirs);
                 var loaded = depLoader.LoadAll(ordered, bucketRoot);
                 Console.WriteLine($"  [{rel}] loaded {loaded.Count} dep assembl(ies)");
                 // Register dep .app paths with RecordPatches so the NCLMetaTable
@@ -941,7 +965,7 @@ static int RunEmitApp(string[] args)
 // Detects inter-bundle dependencies, emits impl bundles in topo order into a
 // per-run workspace cache dir, and prepends that dir to packageCacheDirs.
 // Completely inert when bundles.Count <= 1 or no inter-bundle dep edges exist.
-static List<string> RunLayeredPrePass(List<string> bundles, List<string> packageCacheDirs)
+static List<string> RunLayeredPrePass(List<string> bundles, List<string> packageCacheDirs, List<string> workspaceDirsOut)
 {
     // Read identity of every bundle.
     var identities = new Dictionary<string, AlRunnerV2.Infrastructure.BundleIdentity>(StringComparer.OrdinalIgnoreCase);
@@ -997,7 +1021,11 @@ static List<string> RunLayeredPrePass(List<string> bundles, List<string> package
     Directory.CreateDirectory(wsDir);
 
     // Extended packageCacheDirs = workspace dir first (wins over stale cached .app),
-    // then the original dirs.
+    // then the original dirs. Record wsDir as a synthetic-workspace dir so Main
+    // keeps it out of the compile-time .app scanner (it holds a source-only .app
+    // with no SymbolReference.json → would trip AL1023) while still using it for
+    // runtime dep resolution + the symbols.json compile handoff.
+    workspaceDirsOut.Add(wsDir);
     var extendedCaches = new List<string> { wsDir };
     extendedCaches.AddRange(packageCacheDirs);
 
@@ -1012,10 +1040,75 @@ static List<string> RunLayeredPrePass(List<string> bundles, List<string> package
         var outPath = Path.Combine(wsDir, appFileName);
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
+
+        // ── Step 1: compile the impl's symbols (*.symbols.json + deps sidecar) ──
+        // This is the COMPILE-time half of the handoff: the dependent bundle
+        // (e.g. Customizations.Test) resolves the impl's symbols from this
+        // *.symbols.json via BcCompiler's chained JsonSymbolReferenceLoader (the
+        // workspace dir is registered through SetExtraSymbolDirs in Main). The
+        // synthetic .app emitted in Step 2 carries source only (no
+        // SymbolReference.json) and serves the RUNTIME half.
+        //
+        // Two traps navigated here:
+        // (1) Corpus hang — SetPackageCacheFallback is scoped only to this call and
+        //     immediately reset with ResetPackageCacheFallback() so it never leaks
+        //     into subsequent per-bundle SetResolvedDeps compiles or corpus runs.
+        // (2) Self-reference (AL0275 / AL1023) — when the impl is later compiled as
+        //     its OWN bundle, BcCompiler.GetSharedReferences skips any JSON spec whose
+        //     AppId == _currentAppId (set per bundle) and also skips the impl's own
+        //     AppId from _resolvedDeps, so the impl's own symbols are invisible to
+        //     its own compile.
+        var symBase = Path.Combine(wsDir, $"{safePublisher}_{safeName}_{safeVer}");
+        try
+        {
+            // Give the impl's symbol-compile its full dep context (BaseApp etc.)
+            // via the all-packages fallback, scoped to this call only.
+            // Also scope _currentAppId to the impl's own identity so GetSharedReferences
+            // excludes the impl from its own specs (self-reference guard).
+            BcCompiler.SetPackageCacheFallback(implId.AppId);
+            // Use the ORIGINAL package cache dirs (not extendedCaches which includes wsDir)
+            // for the symbol compile — wsDir has no valid .app yet at this point anyway,
+            // and including it would cause the fallback scanner to open a non-existent file.
+            BcCompiler.SetResolvedDeps(Array.Empty<(AppManifest Manifest, string AppPath)>(), packageCacheDirs);
+            using (BcCompiler.ScopeCurrentAppIdentity(implId.AppId, implId.Publisher, implId.Version))
+                new BcCompiler().EmitDepSymbols(new[] { implPath }, implId.Name, implId.AppId, implId.Publisher, implId.Version, symBase + ".symbols.json");
+            DepsSidecarWriter.Write(
+                symBase + ".symbols.deps.json", implId.Publisher, implId.Name, implId.Version, implId.AppId,
+                implId.Dependencies.Where(d => !d.Optional)
+                    .Select(d => new DepsSidecarWriter.DepEntry(d.Publisher, d.Name, d.Version, d.AppId)));
+        }
+        catch (Exception ex)
+        {
+            // Loud failure per repo rule — the dependent bundle cannot compile
+            // against this impl without its symbols, so don't continue silently.
+            throw new InvalidOperationException(
+                $"[layered] Failed to emit symbols for impl '{implId.Name}' from {implPath}: {ex.Message}", ex);
+        }
+        finally
+        {
+            // Always reset the fallback — even on failure — so it never leaks
+            // into the main per-bundle compile path.
+            BcCompiler.ResetPackageCacheFallback();
+        }
+
+        // ── Step 2: emit the .app — runtime/identity package ONLY, NO embedded
+        // SymbolReference.json ─────────────────────────────────────────────────
+        // The synthetic NAVX package we emit (8-byte header) is faithful enough for
+        // our own AppLoader/DependencyResolver (identity + runtime source extraction),
+        // but it is NOT a byte-valid MS NAVX package (real MS apps use a 40-byte header
+        // with version + content-hash + trailing magic). Embedding SymbolReference.json
+        // makes BC's *own* package reader try to load the .app as a symbol-reference
+        // package, which then fails its header validation with AL1023 "package not valid".
+        //
+        // Compile-time symbol resolution does NOT need the embed: it is served by the
+        // *.symbols.json sidecar written above (Step 1), picked up by BcCompiler's
+        // chained JsonSymbolReferenceLoader over the workspace dir — exactly the
+        // mechanism BuildSiblingSourceDeps uses for the (green) corpus internalsVisibleTo
+        // fixture. So we pass null here and let the sidecar carry the symbols.
         try
         {
             AlRunnerV2.Infrastructure.InProcessAppPackager.EmitAppPackageToFile(
-                implPath, implId, outPath);
+                implPath, implId, outPath, symbolReferenceJson: null);
         }
         catch (Exception ex)
         {
@@ -1023,16 +1116,10 @@ static List<string> RunLayeredPrePass(List<string> bundles, List<string> package
             throw new InvalidOperationException(
                 $"[layered] Failed to emit impl package '{implId.Name}' from {implPath}: {ex.Message}", ex);
         }
-        // NOTE (WIP): the synthetic .app carries no SymbolReference.json, so the DEPENDENT
-        // bundle can't COMPILE against it (AL1022). Emitting <impl>.symbols.json here (as
-        // BuildSiblingSourceDeps does) is the fix, but it self-references when the impl is then
-        // compiled as its own bundle (its symbols.json is in the shared wsDir) and the
-        // all-packages fallback scan over default caches hangs the corpus. Needs a
-        // per-impl symbol dir + current-app exclusion before re-enabling. See
-        // handoff-2026-05-26-bc28-dll-first for the precise blocker.
+
         sw.Stop();
         var info = new FileInfo(outPath);
-        Console.WriteLine($"[layered] emitted {implId.Name} {implId.Version} → {appFileName} ({info.Length} bytes, {sw.ElapsedMilliseconds}ms)");
+        Console.WriteLine($"[layered] emitted {implId.Name} {implId.Version} → {appFileName} (src .app + sidecar symbols, {info.Length} bytes, {sw.ElapsedMilliseconds}ms)");
         emitted++;
     }
 
@@ -1060,7 +1147,7 @@ static List<string> RunLayeredPrePass(List<string> bundles, List<string> package
 // any other dep. This is what lets the corpus's two-app internalsVisibleTo
 // fixture (tests/.../al-language-internals-fixture next to tests/.../al-language)
 // resolve. Inert when no declared dep matches a sibling source app.
-static List<string> BuildSiblingSourceDeps(List<string> bundles, List<string> packageCacheDirs)
+static List<string> BuildSiblingSourceDeps(List<string> bundles, List<string> packageCacheDirs, List<string> workspaceDirsOut)
 {
     // 1. Collect each bundle's declared (non-implicit) deps + their bundle roots.
     var neededDeps = new List<DependencyRef>();
@@ -1129,6 +1216,10 @@ static List<string> BuildSiblingSourceDeps(List<string> bundles, List<string> pa
         ".cache", "al-runner", "workspace-deps",
         Guid.NewGuid().ToString("N")[..12]);
     Directory.CreateDirectory(wsDir);
+    // Synthetic-workspace dir: source-only .apps (no SymbolReference.json) +
+    // symbols.json sidecars. Keep out of the compile-time .app scanner (AL1023)
+    // but use for runtime resolution + symbols.json handoff. See Main.
+    workspaceDirsOut.Add(wsDir);
     int emitted = 0;
     foreach (var dir in sorted)
     {
@@ -1151,10 +1242,19 @@ static List<string> BuildSiblingSourceDeps(List<string> bundles, List<string> pa
         // runtime-loadable but invisible to the compiler (AL0185). BcCompiler's
         // GetSharedReferences chains a JsonSymbolReferenceLoader over the workspace
         // dir to pick these up. Revived from main's DepCompiler / SymbolJson.
+        // NOTE: do NOT enable the all-packages SetPackageCacheFallback here. This path runs
+        // on EVERY run (incl. the single-bundle corpus, for its internalsVisibleTo fixture)
+        // with the DEFAULT package caches (bcartifacts: 100+ apps incl. ~25 language packs +
+        // a 98MB BaseApp). The fallback's all-.app manifest scan over those hangs the corpus
+        // (>450s vs ~15s). The fixture compiles fine with the loader-only context
+        // (ResolveSymbolDirs gives BaseApp), so empty specs suffice here. The RS-style
+        // multi-bundle ISV path uses RunLayeredPrePass (small --package-cache dirs) where the
+        // fallback IS affordable.
         var symBase = Path.Combine(wsDir, $"{Sanitize(sid.Publisher)}_{Sanitize(sid.Name)}_{sid.Version.ToString().Replace('.', '_')}");
         try
         {
-            new BcCompiler().EmitDepSymbols(new[] { dir }, sid.Name, sid.AppId, sid.Publisher, sid.Version, symBase + ".symbols.json");
+            using (BcCompiler.ScopeCurrentAppIdentity(sid.AppId, sid.Publisher, sid.Version))
+                new BcCompiler().EmitDepSymbols(new[] { dir }, sid.Name, sid.AppId, sid.Publisher, sid.Version, symBase + ".symbols.json");
             DepsSidecarWriter.Write(
                 symBase + ".symbols.deps.json", sid.Publisher, sid.Name, sid.Version, sid.AppId,
                 sid.Dependencies.Where(d => !d.Optional)

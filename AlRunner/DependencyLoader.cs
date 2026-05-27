@@ -161,7 +161,13 @@ public sealed class DependencyLoader
         }
 
         IReadOnlyList<EmittedSource> emitted;
-        try { emitted = _compiler.Emit(new[] { tempDir }, m.Name).Sources; }
+        // Scope _currentAppId to the dep's own identity for the duration of this compile.
+        // GetSharedReferences uses _currentAppId to exclude the "current app" from its
+        // reference specs. Without this, the dep's resolved spec (from _resolvedDeps of
+        // the PARENT bundle) would be both in the reference list AND in the primary AL
+        // source → AL0275 "ambiguous reference". The scope is restored on dispose.
+        try { using (BcCompiler.ScopeCurrentAppIdentity(m.AppId, m.Publisher, m.Version))
+                  emitted = _compiler.Emit(new[] { tempDir }, m.Name).Sources; }
         catch (Exception ex)
         {
             // EMIT-FAIL: the BC Compilation.Emit() call threw (e.g. "Unexpected value 'None'

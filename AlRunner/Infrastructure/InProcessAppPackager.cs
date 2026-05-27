@@ -114,7 +114,8 @@ public static class InProcessAppPackager
     public static void EmitAppPackageToFile(
         string bundleDir,
         BundleIdentity identity,
-        string outPath)
+        string outPath,
+        byte[]? symbolReferenceJson = null)
     {
         // Collect AL files.
         var alFiles = Directory.EnumerateFiles(bundleDir, "*.al", SearchOption.AllDirectories)
@@ -129,7 +130,7 @@ public static class InProcessAppPackager
 
         // Write NAVX header + zip to file.
         using var fs = new FileStream(outPath, FileMode.Create, FileAccess.Write, FileShare.None);
-        WriteNavxApp(fs, manifestXml, bundleDir, alFiles);
+        WriteNavxApp(fs, manifestXml, bundleDir, alFiles, symbolReferenceJson);
     }
 
     // ── internals ─────────────────────────────────────────────────────────────
@@ -142,7 +143,8 @@ public static class InProcessAppPackager
         Stream outStream,
         string manifestXml,
         string bundleDir,
-        IReadOnlyList<string> alFiles)
+        IReadOnlyList<string> alFiles,
+        byte[]? symbolReferenceJson = null)
     {
         // Build the zip in its OWN buffer first, so its central-directory / EOCD
         // offsets are relative to the zip's byte 0. If we instead wrote the
@@ -163,6 +165,43 @@ public static class InProcessAppPackager
                 {
                     var xmlBytes = Encoding.UTF8.GetBytes(manifestXml);
                     mw.Write(xmlBytes, 0, xmlBytes.Length);
+                }
+
+                // SymbolReference.json — optional; when provided makes the .app valid
+                // for BC's package scanner (avoids AL1023 "package not valid"). The
+                // standard BC compiler embeds this in every .app it produces; without it
+                // BC reports AL1023 when a referencing compilation tries to load the package.
+                if (symbolReferenceJson != null)
+                {
+                    // Each ZipArchiveEntry stream must be fully closed before the next
+                    // CreateEntry call — ZipArchive throws IOException otherwise.
+                    // Use explicit {} blocks so the using-var goes out of scope before
+                    // the next CreateEntry.
+                    {
+                        var symEntry = zip.CreateEntry("SymbolReference.json", CompressionLevel.Optimal);
+                        using var sw = symEntry.Open();
+                        sw.Write(symbolReferenceJson, 0, symbolReferenceJson.Length);
+                    }
+
+                    // [Content_Types].xml — required by BC's OPC-based package validator.
+                    // Without it BC reports AL1023 even when SymbolReference.json is present.
+                    // Schema: minimal OPC content-types matching real MS .app format (no BOM,
+                    // no space before <Types>). The C# \xNN escape is a Unicode code point,
+                    // NOT a raw byte — don't add a BOM via \xEF\xBB\xBF or it double-encodes
+                    // to UTF-8 (\xC3\xAF\xC2\xBB\xC2\xBF) which BC's XML reader rejects.
+                    {
+                        var contentTypesXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                            "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">" +
+                            "<Default Extension=\"xml\" ContentType=\"\" />" +
+                            "<Default Extension=\"json\" ContentType=\"\" />" +
+                            "<Default Extension=\"al\" ContentType=\"\" />" +
+                            "<Default Extension=\"png\" ContentType=\"\" />" +
+                            "</Types>";
+                        var ctEntry = zip.CreateEntry("[Content_Types].xml", CompressionLevel.Optimal);
+                        using var cw = ctEntry.Open();
+                        var ctBytes = System.Text.Encoding.UTF8.GetBytes(contentTypesXml);
+                        cw.Write(ctBytes, 0, ctBytes.Length);
+                    }
                 }
 
                 // src/<filename>.al for every .al file in the bundle.
