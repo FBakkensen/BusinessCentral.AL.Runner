@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- SPIKE / THROWAWAY — do NOT merge to v2 without review. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- TieredCompilation must be off: same JMP-hook constraint as AlRunner -->
+    <TieredCompilation>false</TieredCompilation>
+    <AssemblyName>stc-probe</AssemblyName>
+    <RootNamespace>StcProbe</RootNamespace>
+    <NoWarn>MSB3277;CA1416</NoWarn>
+  </PropertyGroup>
+
+  <!-- Resolve BC service tier artifacts (mirrors AlRunner.csproj) -->
+  <PropertyGroup>
+    <_BCVersion>28.1.49838.50794</_BCVersion>
+    <_CacheBase Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(LOCALAPPDATA)/al-runner</_CacheBase>
+    <_CacheBase Condition="!$([MSBuild]::IsOSPlatform('Windows'))">$(HOME)/.local/share/al-runner</_CacheBase>
+    <ServiceTierPath Condition="'$(ServiceTierPath)' == ''">$(_CacheBase)/artifacts/$(_BCVersion)</ServiceTierPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Reuse AlRunner project: BcRuntime, BcCompiler, BcArtifacts, InProcessAppPackager, etc. -->
+    <ProjectReference Include="../../../AlRunner/AlRunner.csproj" />
+    <!-- Direct reference to NavCA CodeAnalysis for Compilation.Create in Step 7 -->
+    <Reference Include="Microsoft.Dynamics.Nav.CodeAnalysis">
+      <HintPath>$(ServiceTierPath)/Microsoft.Dynamics.Nav.CodeAnalysis.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>
