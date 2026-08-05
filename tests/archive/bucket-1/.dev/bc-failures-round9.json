@@ -1,0 +1,129 @@
+[
+  {
+    "id": 50069,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50071,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The date is not valid."
+      },
+      {
+        "method": "NormalDateOnZeroDateReturnsZero",
+        "error": "The date is not valid."
+      }
+    ]
+  },
+  {
+    "id": 50203,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50203.Insert_TwoArg_DuplicateErrors()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      },
+      {
+        "method": "Insert_TwoArg_DuplicateErrors",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50203.Insert_TwoArg_DuplicateErrors()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      }
+    ]
+  },
+  {
+    "id": 50303,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50336,
+    "status": "Error",
+    "message": "3 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table VCond Item already exists. Identification fields and values: Id='3'"
+      },
+      {
+        "method": "PageOpensWithShowDetailsTrue",
+        "error": "The record in table VCond Item already exists. Identification fields and values: Id='3'"
+      },
+      {
+        "method": "PageOpensWithShowDetailsFalse",
+        "error": "The record in table VCond Item already exists. Identification fields and values: Id='2'"
+      }
+    ]
+  },
+  {
+    "id": 50344,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50411,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "The record in table Rename Probe already exists. Identification fields and values: Entry No.='2'"
+      },
+      {
+        "method": "RenameToConflictReturnsFalse",
+        "error": "The record in table Rename Probe already exists. Identification fields and values: Entry No.='2'"
+      }
+    ]
+  },
+  {
+    "id": 50432,
+    "status": "Error",
+    "message": "2 test(s) failed - check logs for details",
+    "failures": [
+      {
+        "method": "",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50432.DuplicateLineInsertThrowsError()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      },
+      {
+        "method": "DuplicateLineInsertThrowsError",
+        "error": "Microsoft.Dynamics.Nav.Types.Exceptions.NavNCLAssertErrorException: An error was expected inside an ASSERTERROR statement.\\   at Microsoft.Dynamics.Nav.Runtime.NavMethodScope.AssertErrorAsync(Func`1 body)\\   at Microsoft.Dynamics.Nav.BusinessApplication.Codeunit50432.DuplicateLineInsertThrowsError()\\   at Microsoft.Dynamics.Nav.Runtime.NavTestCodeunit.ExecuteTestMethodAsync(MethodInfo method, TestTransactionModel transactionModel, Boolean isAsync)"
+      }
+    ]
+  },
+  {
+    "id": 50478,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50574,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50585,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50592,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  },
+  {
+    "id": 50606,
+    "status": "Finished",
+    "message": "Success",
+    "failures": []
+  }
+]

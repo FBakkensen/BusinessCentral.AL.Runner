@@ -19,11 +19,12 @@ the BC runtime environment:
 - **Permissions and entitlements** — there is no permission system. All field/table
   access succeeds unconditionally. `entitlement_declaration`, `permissionset_declaration`,
   and `permissionsetextension_declaration` object types compile but have no effect at runtime.
-- **Company context** — no active BC company. `CompanyName()` defaults to empty
-  string but is configurable: pass `--company-name <name>` on the CLI, or call
-  codeunit 131100 `"AL Runner Config".SetCompanyName(Name)` from AL tests.
-  Code that only branches on whether the name is empty still takes the "empty"
-  branch by default.
+- **Company context** — no active BC company. `CompanyName()` and `UserId()` are
+  seeded with fixed defaults (empty string / `"TESTUSER"`) at runtime startup —
+  not currently configurable via a CLI flag or an AL-callable API. Code that
+  only branches on whether the name is empty still takes the "empty" branch by
+  default. If your workflow needs a different value, open an issue describing
+  the use case.
 - **Base app data** — no standard BC tables are populated. Code that reads
   `G/L Account`, `Customer`, `Vendor`, or any other base app table finds them empty
   unless your test inserts data.
@@ -216,8 +217,8 @@ the exact value will see different results.
 
 | AL call | Real BC | al-runner |
 |---|---|---|
-| `CompanyName()` | Active company name | `""` (or `--company-name <name>` / `"AL Runner Config".SetCompanyName()`) |
-| `UserId()` | Authenticated user | `""` (configurable via `--user-id <value>` / `PipelineOptions.UserId`) |
+| `CompanyName()` | Active company name | `""` (fixed default, not currently configurable) |
+| `UserId()` | Authenticated user | `"TESTUSER"` (fixed default, not currently configurable) |
 | `IsSessionActive(id)` | True while session runs | Always `false` |
 | `GuiAllowed()` | False in background sessions | `false` |
 | `GetFilter(field)` | Serialised filter expression | Returns serialised filter expression (functional) |
@@ -225,6 +226,53 @@ the exact value will see different results.
 | `FieldRef.Caption` / `.Name` | Field metadata from schema | Real values for all AL-compiled tables including tableextension fields; `"FieldNN"` stub only for base-app tables not compiled in the current run |
 | `Commit()` | Commits current transaction | No-op |
 | `FilterGroup(n)` | Scoped filter groups | Not tracked — `FilterGroup()` is a no-op; all filters apply to group 0 |
+
+---
+
+## BC 26
+
+Not supported. The runner is tested against **BC 27.0 and up** — see
+`.github/bc-versions.txt` for the exact matrix.
+
+This is not a statement about the runner's capability. The canonical test corpus
+(`tests/al-language`) declares in its own `app.json`:
+
+```
+platform:     27.0.0.0
+dependencies: System Application 27.5.0.0
+              Base Application   27.5.0.0
+```
+
+Those are AL *minimum* versions, so a BC 26 provisioning — platform 26.0, System
+and Base Application 26.x — is rejected by the compiler before a single test
+runs. The corpus is a read-only upstream submodule pinned to 27.5-era System
+Application surface, so lowering that floor is neither this repo's call nor free:
+it would mean deleting the coverage that depends on it.
+
+"The runner supports BC 26" and "the corpus runs on BC 26" are therefore separate
+claims, and only the second one is blocked by the above. Demonstrating the first
+would need a small suite with its own BC 26-compatible `app.json`, not the corpus.
+
+Three interface shapes cannot be bridged by reflection, because the runner
+implements or constructs them and the C# compiler must agree with the reference
+assembly before any code runs:
+
+| Shape | BC 26 | BC 27+ |
+|---|---|---|
+| `ITestPage` part accessor | `ITestPage GetPage(int)` | `ITestPart GetPart(int)` (`ITestPart` does not exist on 26) |
+| `INCLObjectXmlMetadataLoader.GetExtensionDeltasForAppObject` | returns `NavAppObjectMetadataTimestampRecord<T>` | returns bare `T` |
+| `NCLObjectXmlMetadata` ctor | extra leading `long timestamp` | no timestamp |
+
+Commit `0983df71` handled all three with version-derived compile constants and is
+the reference if a future BC version needs the same treatment. The constants were
+removed again when BC 26 was dropped, because nothing in CI could exercise them
+and an unexercised `#if` branch rots silently.
+
+One further known difference, reached but never resolved: `NavTenant
+.GetObjectAccessIntent` takes `(session, objectType, objectId)` on BC 27+ but
+`(objectType, objectId)` on 26, and the Cecil pass looks it up by arity. That is
+the *first* failure past compilation, not necessarily the last — the pass aborts
+there, so everything behind it is unmeasured.
 
 ---
 

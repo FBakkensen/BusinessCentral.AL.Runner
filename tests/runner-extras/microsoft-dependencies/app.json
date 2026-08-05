@@ -1,0 +1,19 @@
+{
+  "id": "6f02d2a3-0834-4d2e-9d77-c4fb3b2a99f1",
+  "name": "Runner Extras - Microsoft Dependencies",
+  "publisher": "AL Runner",
+  "version": "1.0.0.0",
+  "brief": "Regression tests for runner Microsoft dependency loading and metadata plumbing.",
+  "description": "Proves that runner auto-loaded Microsoft dependencies (Base Application, System Application) can be invoked from AL tests. The one test needing Microsoft/Application Test Library — a BC 28.0+ only app — lives in runner-extras/microsoft-test-library so this suite keeps a 27.0 floor.",
+  "dependencies": [],
+  "idRanges": [
+    {
+      "from": 61000,
+      "to": 61099
+    }
+  ],
+  "platform": "27.0.0.0",
+  "application": "27.0.0.0",
+  "runtime": "17.0",
+  "target": "Cloud"
+}

@@ -1,155 +1,159 @@
 # Contributing to BusinessCentral.AL.Runner
 
-Thanks for your interest in contributing. This guide covers the requirements every pull request must meet before it can be merged.
+Thanks for your interest in contributing. This guide covers what every pull request must include before it can be merged.
 
 ---
 
 ## Before you start
 
-Read `README.md` (architecture overview), `docs/limitations.md` (architectural limits and runtime boundaries), and `docs/coverage.yaml` (mock-surface coverage). `CLAUDE.md` is the entry point for AI coding agents working in the repo; it points at the rules in `.claude/rules/` and the on-demand reference in `.claude/skills/`. Understanding the project's design before building will save you from conflicts.
+Read `README.md` (architecture overview), [`docs/limitations.md`](docs/limitations.md) (hard architectural limits), [`docs/scope.md`](docs/scope.md) (per-API in/out-of-scope list), [`docs/subsystems.md`](docs/subsystems.md) (subsystem boundary map), and [`docs/expectations.md`](docs/expectations.md) (test-expectation schema). `CLAUDE.md` is the entry point for AI agents working in the repo; it points at the rules in `.claude/rules/` and the on-demand reference in `.claude/skills/`.
 
-The goal is broad AL language compatibility — targeting the full functional AL surface. A small number of hard architectural limits exist (parallel sessions, transaction isolation, service-tier rendering, HTTP), documented in `docs/limitations.md`. Everything else is a gap to close. If AL code compiles but fails to run in the runner, that is a missing feature, not a design boundary.
-
----
-
-## Tests are mandatory — no exceptions
-
-Every feature, fix, and mock addition must have tests. No change merges without them.
-
-### AL end-to-end tests (`tests/`)
-
-Tests live in numbered buckets inside `tests/`:
-
-```
-tests/
-  bucket-1/   — suites 01–32, 71, 77, 79-gui-fieldclass
-  bucket-2/   — suites 33–95
-  stubs/      — 39-stubs (run separately with --stubs)
-  excluded/   — fixtures not in the main loop
-```
-
-Each suite inside a bucket:
-
-```
-tests/bucket-N/NN-descriptive-name/
-  src/   — AL source codeunit(s) exercising the feature
-  test/  — AL test codeunit (Subtype = Test) using Assert
-```
-
-Put new suites in the bucket with fewer entries. Check that the AL object IDs (codeunit, table numbers) in your new suite don't clash with other suites already in that bucket — suites in the same bucket compile together, so IDs must be unique within a bucket. IDs may repeat across buckets (they run as separate invocations).
-
-**Every test case must cover both directions:**
-
-- **Positive**: call the logic with valid input, assert on the result with `Assert.AreEqual` or similar.
-- **Negative**: call with invalid input, use `asserterror` + `Assert.ExpectedError` to verify the error is caught.
-
-A test that only proves the happy path proves nothing — a mock that returns a constant default value would pass it too.
-
-**`Assert.IsTrue(true, ...)` is not a test.** If your test procedure ends with an unconditional assertion, it is testing compilation, not behavior. The assertion must depend on the output of the code under test.
-
-### C# unit tests (`AlRunner.Tests/`)
-
-New cache classes, rewriter rules, server protocol handling, and other infrastructure components should also have xUnit tests in `AlRunner.Tests/`. Look at the existing tests for structure:
-
-- `IncrementalTests.cs` — server-mode caching and warm-start behavior
-- `SingleProcedureTests.cs` — `--run` flag test isolation
-- `StubGeneratorTests.cs` — `--generate-stubs` output
-
-When your change is primarily about internal C# behavior (thread-safety, cache correctness, protocol parsing), a C# test is the right vehicle. When the change is about what AL code can run, an AL end-to-end test in `tests/` is the right vehicle. Often both are needed.
-
-### Red/Green TDD
-
-Write the failing test first, verify it fails for the right reason, then implement the fix. This sequence matters: it proves your test actually exercises the code you wrote. Never write implementation code without a failing test to drive it.
+The goal is broad AL-language compatibility — any AL code that can run without the BC service tier should compile and execute here. A small number of hard architectural limits exist (parallel sessions, transaction isolation, service-tier rendering, real HTTP), documented in `docs/limitations.md` and `docs/scope.md`. Everything else is a gap to close. Silent workarounds are forbidden: a gap goes to a GitHub issue and (if necessary) a `tests/expectations/` entry, never a quiet patch (`.claude/rules/file-issues-for-gaps.md`, `.claude/rules/loud-failures.md`).
 
 ---
 
-## The full CI pipeline must pass
+## Repo layout
 
-All pull requests run against a matrix of BC versions (currently 26.0–27.5) on net10.0. A PR cannot merge unless every job in the matrix is green.
+```
+AlRunner/                — runner source (Program.cs, BcRuntime.cs, BcCompiler.cs,
+                           BcAssembler.cs, TestExecutor.cs, Patches/, Infrastructure/)
+tests/al-language/       — git submodule, canonical AL test corpus (READ-ONLY)
+tests/expectations/      — JSON manifest: OOS-by-design, known gaps, disabled tests
+tests/runner-extras/     — runner-specific positive tests (e.g. asserts that a
+                           given surface throws RunnerOutOfScopeException)
+docs/                    — expectations.md, scope.md, limitations.md,
+                           cecil-migration.md, subsystems.md (+ docs/archive/ for v1)
+tools/                   — DownloadArtifacts (auto-used by AlRunner.csproj),
+                           RuntimeApiEnumerator, telemetry-triage
+scripts/                 — al-inventory.py, coverage-gen.js (auxiliary)
+```
 
-To run the same checks locally before pushing:
+`tests/al-language/` is the read-only corpus. Never edit it. See `.claude/rules/al-language-submodule.md`.
+
+---
+
+## Dev loop
+
+### Clone
 
 ```bash
-# Build (downloads BC DLLs automatically on first run)
-dotnet build AlRunner.slnx
-
-# C# unit tests
-dotnet test AlRunner.Tests/
-
-# AL end-to-end tests (mirrors .github/workflows/test-matrix.yml)
-for bucket in tests/bucket-*/; do
-  args=""
-  for suite in "$bucket"*/; do
-    [ -d "${suite}src"  ] && args="$args ${suite}src"
-    for appdir in "${suite}"app*/; do
-      [ -d "$appdir" ] && args="$args $appdir"
-    done
-    [ -d "${suite}test" ] && args="$args ${suite}test"
-  done
-  dotnet run --project AlRunner --framework net10.0 -- --strict --test-isolation method $args || {
-    rc=$?; [ $rc -eq 2 ] || exit $rc
-  }
-done
-
-# Stubs suite (needs --stubs flag)
-dotnet run --project AlRunner --framework net10.0 -- \
-  --stubs tests/stubs/39-stubs/stubs tests/stubs/39-stubs/src tests/stubs/39-stubs/test
+git clone --recurse-submodules https://github.com/StefanMaron/BusinessCentral.AL.Runner
+cd BusinessCentral.AL.Runner
 ```
 
-Exit code 2 means the runner hit a known limitation (not a test failure). Exit codes 1 and 3 are real failures and block CI.
+If you already cloned without `--recurse-submodules`:
+
+```bash
+git submodule update --init --recursive
+```
+
+### Build
+
+```bash
+dotnet build AlRunner.slnx -c Release
+```
+
+The build target auto-downloads the BC service-tier DLLs and the AL compiler the first time. No manual setup.
+
+### Run the al-language corpus
+
+```bash
+dotnet run --project AlRunner -c Release -- tests/al-language/tests/al-language
+```
+
+### Run with extra options
+
+```bash
+# Verbose internal logs + show passes
+dotnet run --project AlRunner -c Release -- --verbose --show-pass tests/al-language/tests/al-language
+
+# Choose isolation
+dotnet run --project AlRunner -c Release -- --isolation test tests/al-language/tests/al-language
+
+# Cache compiled AL output
+dotnet run --project AlRunner -c Release -- --cache ~/.cache/al-runner/al-out tests/al-language/tests/al-language
+```
+
+### Bump the corpus pin
+
+The submodule is its own PR. Inspect the corpus diff before bumping:
+
+```bash
+git -C tests/al-language fetch
+git -C tests/al-language log --oneline HEAD..origin/master
+git -C tests/al-language diff HEAD..origin/master   # review
+git -C tests/al-language checkout origin/master
+git add tests/al-language
+git commit -m "Bump tests/al-language to <sha>"
+```
+
+Tests that newly fail after the bump are runner gaps — patch the runner (or add an expectation entry), never the corpus.
 
 ---
 
-## CHANGELOG.md
+## TDD is non-negotiable
 
-`CHANGELOG.md` is **auto-generated** during release by `.github/scripts/generate_changelog.py`, which reads squash-commit messages and injects categorized release notes. The publish pipeline runs this script and commits the result — manual edits will be overwritten.
+`.claude/rules/tdd.md`. Strict red → green for every change.
 
-**Do not manually edit `CHANGELOG.md` in PRs.**
+1. **RED** — write the failing test first, run it, confirm it fails for the right reason.
+2. **GREEN** — implement the fix, run again, confirm it passes.
 
-To make sure your change appears correctly in the generated release notes, use a [Conventional Commit](https://www.conventionalcommits.org/) prefix in your PR title and squash-commit message:
+Every test must cover both directions:
+- **Positive** — correct input produces the expected concrete value (`Assert.AreEqual`).
+- **Negative** — invalid input fails with the specific error (`asserterror` + `Assert.ExpectedError`).
 
-- `feat:` — new feature or capability visible to users
-- `fix:` — bug fix
-- `docs:` — documentation-only change
-- `chore:` — maintenance, dependency bumps, CI changes
+Tests must **prove**, not just pass. A test that would still pass if the implementation always returned the default value (`0`, `''`, `false`) is noise — strengthen it. `Assert.IsTrue(true, ...)` and bare `asserterror` without `Assert.ExpectedError` are not tests. The only valid exception is a "no-op stub" test where the entire claim is "this does not crash" — name it `*_NoThrow` or `*_IsNoOp` so the limited claim is explicit.
 
-The generator uses these prefixes to categorize entries automatically.
+Where the test lives:
 
----
-
-## Documentation checklist
-
-When your change affects observable behavior, update all of the following before marking the PR ready:
-
-| Location | What to update |
+| Kind of change | Test location |
 |---|---|
-| `README.md` | Supported/unsupported feature list, CLI flags |
-| `PrintGuide()` in `Program.cs` | The `--guide` output (primary discovery mechanism for AI coding agents) |
-| `docs/coverage.yaml` | Mock-surface coverage entry for the implemented method/overload (required for every feature PR) |
-| `docs/limitations.md` | Update if the change closes or reframes a known limit |
+| Runner can now run an AL pattern it couldn't before | A failing test in `tests/al-language/` that now passes (cite the test file in the PR body). If the corpus does not cover the pattern, write the test first against real BC in the `BusinessCentral.AL.Language.Tests` upstream repo, get it merged, then bump the submodule pin in your runner PR. |
+| Runner-specific positive assertion (e.g. surface X throws OOS with reason Y) | New suite under `tests/runner-extras/`. |
+| Test is OOS-by-design and the runner correctly refuses it | New entry in `tests/expectations/oos-<area>.json` per [`docs/expectations.md`](docs/expectations.md). |
+| Test is in scope but the runner cannot run it yet | Open a GH issue; add a `known-gaps-<area>.json` entry linking the issue. |
 
-If a change only touches internal implementation with no externally visible effect, you can skip the README and guide updates.
-
----
-
-## Code quality
-
-**Best solution, not easiest.** Choose the highest-quality approach regardless of how much refactoring it requires. A simpler fix that creates technical debt or leaves the codebase in a worse shape than before is not acceptable. If the right solution requires touching more files than a shortcut would, do it properly.
-
-**DRY.** Do not duplicate logic. If you are writing a private method that already exists somewhere else in the Runtime namespace, extract it and share it. Two copies of the same code will diverge.
-
-**SOLID.** Keep classes focused on a single responsibility. Prefer composition. Do not add parameters to methods just to thread state through — if a class needs that state, it should own it.
-
-**No speculative abstractions.** Three similar lines of code is better than a premature abstraction built for a hypothetical future case. Only extract when the duplication is real and the abstraction is obvious.
-
-**Only validate at system boundaries.** Do not add defensive checks for conditions that the internal contract already prevents. Trust the type system and framework guarantees.
+There is no C# unit-test project. The deleted `AlRunner.Tests/` is gone; runner behaviour is asserted end-to-end through AL tests.
 
 ---
 
-## What belongs in this repo
+## PR contract
 
-Any AL language feature that can be run without a real BC service tier is in scope. This includes expanding existing mocks, adding new mock classes, new rewriter rules, and new CLI capabilities.
+Branch name: `agent/<your-id>/issue-<N>` for agent work, otherwise a descriptive `feat/...` / `fix/...` name. Never push directly to `main` (`.claude/rules/branch-and-pr.md`).
 
-The hard limits are architectural, not policy: parallel session contracts, real transaction isolation, page/report rendering, and HTTP cannot work without the service tier. Everything else is either already supported or a gap worth filling.
+Every PR must:
 
-If you are unsure whether something is in scope, open an issue and describe what AL construct you want to support. The bar is: can it be meaningfully emulated in a single .NET process with in-memory state?
+- Cite the test that proves the change. For a fix, point at the al-language test that now passes (or the new entry in `tests/runner-extras/` or `tests/expectations/`).
+- Include `Closes #N` in the body if it addresses a GH issue.
+- **Not** edit `CHANGELOG.md`. It is generated post-merge from squash-commit messages (`.claude/rules/no-changelog-edits.md`).
+- **Not** edit anything under `tests/al-language/`. The corpus is read-only; bump the submodule pin in a separate PR.
+- Honour the precompiled-DLL contract: no rewriting method bodies or renaming types in MS / ISV business-logic DLLs (`.claude/rules/precompiled-dll-respect.md`). Runtime engine (`Ncl.dll`, `Types.dll`) and skeleton state are fair game.
+- Make every unsupported surface **loud** — throw `RunnerOutOfScopeException` with a named API and reason from `docs/scope.md`. Never silently return a default (`.claude/rules/loud-failures.md`).
+- Not be assumption-driven. If the triggering AL pattern is not clear from the issue body, ask the reporter — do not guess (`.claude/rules/no-assumption-fixes.md`).
+
+---
+
+## CI
+
+Pull requests run against a matrix of BC versions. A PR cannot merge unless every job is green. Run the corpus locally before pushing:
+
+```bash
+dotnet run --project AlRunner -c Release -- tests/al-language/tests/al-language
+```
+
+Exit code 2 is "runner limitations only" — not a fail in itself, but treat it as work-to-do. Exit codes 1 and 3 always fail CI.
+
+---
+
+## Reference: the rules
+
+All loaded automatically by `.claude/` in agent sessions. Read them once:
+
+- `.claude/rules/precompiled-dll-respect.md` — the load-chain contract; what we may not rewrite.
+- `.claude/rules/loud-failures.md` — runtime-side: throw `RunnerOutOfScopeException`, never silent defaults.
+- `.claude/rules/tdd.md` — red → green; cover both directions; prove, don't just pass.
+- `.claude/rules/no-assumption-fixes.md` — investigate before patching; ask for reproducers.
+- `.claude/rules/branch-and-pr.md` — branch naming, PR body, `status: review-ready`, one PR per impl agent.
+- `.claude/rules/no-changelog-edits.md` — never touch `CHANGELOG.md`.
+- `.claude/rules/al-language-submodule.md` — the corpus is read-only.
+- `.claude/rules/file-issues-for-gaps.md` — gaps go to issues + expectation entries, never silent workarounds.

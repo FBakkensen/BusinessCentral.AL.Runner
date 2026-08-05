@@ -1,0 +1,16 @@
+{
+  "id": "b1000001-0000-0000-0000-000000000001",
+  "name": "AL Runner v2 Tests — Bucket 1",
+  "publisher": "AL Runner",
+  "version": "1.0.0.0",
+  "dependencies": [],
+  "idRanges": [
+    {
+      "from": 50000,
+      "to": 99999
+    }
+  ],
+  "target": "Cloud",
+  "runtime": "16.1",
+  "preprocessorSymbols": ["CLEANSCHEMA1","CLEANSCHEMA25"]
+}

@@ -1,38 +1,31 @@
+// JUnitReport — writes AL Runner test results as JUnit XML, the format GitHub
+// Actions, Azure DevOps, and GitLab CI natively render as test annotations,
+// summaries, and trend graphs. Ported from v1 (AlRunner/JUnitReport.cs) onto
+// v2's BucketResult/TestResult shape.
 using System.Text;
 using System.Xml;
-using AlRunner;
 
-/// <summary>
-/// Generates JUnit XML test reports from AL Runner test results.
-///
-/// JUnit XML is the industry standard for CI test reporting. GitHub Actions,
-/// Azure DevOps, and GitLab CI all natively render JUnit XML as test
-/// annotations, summaries, and trend graphs.
-///
-/// Tests are grouped by codeunit name as &lt;testsuite&gt; elements.
-/// Real assertion failures use &lt;failure&gt;; runner limitations use &lt;error&gt;.
-/// </summary>
+namespace AlRunner;
+
 public static class JUnitReport
 {
-    /// <summary>
-    /// Write a JUnit XML report to <paramref name="outputPath"/>.
-    /// </summary>
-    /// <param name="outputPath">File path to write the XML to.</param>
-    /// <param name="tests">Test results from the pipeline.</param>
-    public static void WriteJUnit(string outputPath, IEnumerable<TestResult> tests)
+    /// <summary>Write a JUnit XML report to <paramref name="outputPath"/>.</summary>
+    public static void WriteJUnit(string outputPath, IReadOnlyList<BucketResult> buckets)
     {
-        var testList = tests.ToList();
+        var tests = buckets
+            .Where(b => b.Stage == BucketStage.Ran)
+            .SelectMany(b => b.Tests)
+            .ToList();
 
-        // Group tests by codeunit name (suite)
-        var suites = testList
-            .GroupBy(t => t.CodeunitName ?? t.Name)
+        var suites = tests
+            .GroupBy(t => t.Codeunit)
             .OrderBy(g => g.Key)
             .ToList();
 
-        double totalSeconds = testList.Sum(t => t.DurationMs) / 1000.0;
-        int totalTests = testList.Count;
-        int totalFailures = testList.Count(t => t.Status == TestStatus.Fail);
-        int totalErrors = testList.Count(t => t.Status == TestStatus.Error);
+        double totalSeconds = tests.Sum(t => t.Duration.TotalSeconds);
+        int totalTests = tests.Count;
+        int totalFailures = tests.Count(t => t.Outcome == TestOutcome.Fail);
+        int totalErrors = tests.Count(t => t.Outcome == TestOutcome.Error);
 
         using var writer = XmlWriter.Create(outputPath, new XmlWriterSettings
         {
@@ -50,9 +43,9 @@ public static class JUnitReport
         foreach (var suite in suites)
         {
             var suiteTests = suite.ToList();
-            double suiteSeconds = suiteTests.Sum(t => t.DurationMs) / 1000.0;
-            int suiteFailures = suiteTests.Count(t => t.Status == TestStatus.Fail);
-            int suiteErrors = suiteTests.Count(t => t.Status == TestStatus.Error);
+            double suiteSeconds = suiteTests.Sum(t => t.Duration.TotalSeconds);
+            int suiteFailures = suiteTests.Count(t => t.Outcome == TestOutcome.Fail);
+            int suiteErrors = suiteTests.Count(t => t.Outcome == TestOutcome.Error);
 
             writer.WriteStartElement("testsuite");
             writer.WriteAttributeString("name", suite.Key);
@@ -64,24 +57,22 @@ public static class JUnitReport
             foreach (var test in suiteTests)
             {
                 writer.WriteStartElement("testcase");
-                writer.WriteAttributeString("name", test.Name);
+                writer.WriteAttributeString("name", test.Method);
                 writer.WriteAttributeString("classname", suite.Key);
-                writer.WriteAttributeString("time", (test.DurationMs / 1000.0).ToString("F3", System.Globalization.CultureInfo.InvariantCulture));
+                writer.WriteAttributeString("time", test.Duration.TotalSeconds.ToString("F3", System.Globalization.CultureInfo.InvariantCulture));
 
-                if (test.Status == TestStatus.Fail)
+                if (test.Outcome == TestOutcome.Fail)
                 {
                     writer.WriteStartElement("failure");
                     writer.WriteAttributeString("message", test.Message ?? "Test failed");
-                    if (test.Message != null || test.StackTrace != null)
-                        writer.WriteString(BuildBody(test));
+                    writer.WriteString(BuildBody(test));
                     writer.WriteEndElement(); // failure
                 }
-                else if (test.Status == TestStatus.Error)
+                else if (test.Outcome == TestOutcome.Error)
                 {
                     writer.WriteStartElement("error");
                     writer.WriteAttributeString("message", test.Message ?? "Runner error");
-                    if (test.Message != null || test.StackTrace != null)
-                        writer.WriteString(BuildBody(test));
+                    writer.WriteString(BuildBody(test));
                     writer.WriteEndElement(); // error
                 }
 
@@ -96,8 +87,8 @@ public static class JUnitReport
 
     private static string BuildBody(TestResult test)
     {
-        if (test.StackTrace == null)
-            return test.Message ?? "";
-        return $"{test.Message}\n\n{test.StackTrace}";
+        var body = test.AlCallStack ?? test.FullException;
+        if (body == null) return test.Message ?? "";
+        return $"{test.Message}\n\n{body}";
     }
 }

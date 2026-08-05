@@ -142,6 +142,42 @@ public static class DepsSidecarWriter
 {
     public sealed record DepEntry(string Publisher, string Name, Version Version, Guid AppId);
 
+    /// <summary>
+    /// Build the sidecar dependency closure a source dep must declare so that BC's
+    /// ReferenceManager can link cross-app type references appearing in its PUBLIC surface
+    /// (procedure parameters, return types, field/property types) at downstream compile time.
+    /// <para>
+    /// The naive list — the app.json <c>dependencies</c> array minus <c>Optional</c> entries —
+    /// is WRONG: the Microsoft platform apps (Application/System/Base Application/System
+    /// Application/Business Foundation) are synthesized as <c>Optional</c> implicit roots
+    /// (from the manifest's <c>application</c>/<c>platform</c> fields), so filtering them out
+    /// drops exactly the apps whose types most commonly appear in a signature — e.g.
+    /// <c>Codeunit "Temp Blob"</c> (System Application) or <c>Enum "Copilot Capability"</c>
+    /// (platform System). A dependent then sees those parameter types as
+    /// <c>__MissingTypeSymbol__</c> (AL0133). See issue #1546.
+    /// </para>
+    /// The correct closure is what the dep actually COMPILED against: the resolved manifest
+    /// set (real AppIds/versions), UNIONed with any Microsoft platform app physically present
+    /// in the dep's own <c>.alpackages</c> — those enter the dep compile via the raw package
+    /// scan even when they are not in the resolved spec closure. Deduped by AppId; the dep's
+    /// own AppId and empty AppIds (unresolvable implicit roots) are excluded.
+    /// </summary>
+    public static IReadOnlyList<DepEntry> BuildClosure(
+        IEnumerable<DepEntry> resolvedDeps,
+        IEnumerable<DepEntry> vendoredPlatformApps,
+        Guid selfAppId)
+    {
+        var byId = new Dictionary<Guid, DepEntry>();
+        void Add(DepEntry d)
+        {
+            if (d.AppId == Guid.Empty || d.AppId == selfAppId) return;
+            if (!byId.ContainsKey(d.AppId)) byId[d.AppId] = d;
+        }
+        foreach (var d in resolvedDeps) Add(d);
+        foreach (var d in vendoredPlatformApps) Add(d);
+        return byId.Values.ToList();
+    }
+
     /// <summary>Write a <c>*.symbols.deps.json</c> file at <paramref name="path"/>.</summary>
     public static void Write(string path, string publisher, string name, Version version, Guid appId, IEnumerable<DepEntry> dependencies)
     {
@@ -237,6 +273,25 @@ public sealed class JsonSymbolReferenceLoader : ISymbolReferenceLoader
     public bool HasAny => _moduleCache.Count > 0 || _dependencyCache.Count > 0;
 
     /// <summary>
+    /// Re-scan the root directory, picking up files written since construction.
+    ///
+    /// Indexing happens in the constructor, so a loader built over an initially-empty
+    /// directory would never see anything added later. Bundled mode needs exactly that:
+    /// an app is emitted, its symbols are written, and the NEXT app in the same bundle
+    /// must be able to reference it. Re-indexing in place keeps the loader OBJECT
+    /// identity, which is what makes this cheap — BcCompiler's expensive reference
+    /// loader (a filesystem scan plus a sequential symbol warm) is rebuilt only when its
+    /// content signature changes, and mutating this cache does not change it.
+    /// </summary>
+    public void Reindex()
+    {
+        _moduleCache.Clear();
+        _dependencyCache.Clear();
+        IndexModules();
+        IndexDependencySidecars();
+    }
+
+    /// <summary>
     /// Enumerate (publisher, name, version, appId) tuples for every cached module so
     /// callers can inject these specs into the BC compiler's reference list — without
     /// this, the compiler's PackageScanner only sees .app files and ignores our
@@ -271,7 +326,16 @@ public sealed class JsonSymbolReferenceLoader : ISymbolReferenceLoader
         if (Environment.GetEnvironmentVariable("ALRUNNER_DUMP_SYMBOLS") == "1")
             Console.Error.WriteLine($"  DEBUG JsonLoader.GetDependencies({reference.Publisher}/{reference.Name} v{reference.Version})");
         if (TryGetDependencies(reference, out var deps)) return deps;
-        return Enumerable.Empty<SymbolReferenceSpecification>();
+        // This loader does not know the module at all — signal "not mine" the same way
+        // LoadModule does, so CompositeSymbolReferenceLoader falls through to the next
+        // child (the BC package scanner). Returning an empty list here instead would WIN
+        // the composite race and erase the real dependency list of every .app module
+        // (e.g. System Application → platform System), degrading cross-module types in
+        // method signatures to __MissingTypeSymbol__ (AL0133) whenever any sidecar
+        // symbols exist (i.e. every multi-bundle layered run).
+        throw new FileNotFoundException(
+            $"Symbol reference dependencies not found: {reference.Publisher}/{reference.Name} {reference.Version}",
+            _rootDirectory);
     }
 
     public ModuleInfo LoadModuleInfo(SymbolReferenceSpecification reference, IList<Diagnostic> diagnostics, LoadModuleInfoFlags flags)

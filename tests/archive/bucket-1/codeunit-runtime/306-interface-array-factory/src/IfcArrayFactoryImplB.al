@@ -1,0 +1,7 @@
+codeunit 50217 "IfcArr Factory Impl B" implements "IfcArr Factory Item"
+{
+    procedure GetValue(): Integer
+    begin
+        exit(23);
+    end;
+}

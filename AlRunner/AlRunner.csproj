@@ -2,114 +2,180 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+    <!-- BC 28.1 is a .NET 8 product (Server.runtimeconfig.json tfm=net8.0); the runner
+         targets net8.0 so it runs BC on its real runtime. net9/net10 were dropped:
+         net10's BCL drift (BitArray m_array→_array, etc.) breaks BC's UnsafeAccessor/
+         precode assumptions, and net9 can't satisfy BC's System.Text.Json 10 bind. -->
+    <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <NoWarn>MSB3277;CA1416</NoWarn>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
 
-    <!-- Cold-start: disable Dynamic PGO profiler overhead (never pays back in <2s process),
-         allow QuickJit for loopy methods (BC compiler + Roslyn have many). -->
-    <TieredPGO>false</TieredPGO>
-    <TieredCompilationQuickJitForLoops>true</TieredCompilationQuickJitForLoops>
+    <!-- Output assembly name matches the tool command (al-runner) so the binary
+         on disk, the dotnet tool command, and the on-screen banner all read the same.
+         The csproj filename stays PascalCase to follow .NET project conventions. -->
+    <AssemblyName>al-runner</AssemblyName>
+    <RootNamespace>AlRunner</RootNamespace>
 
-    <!-- R2R: pre-compile to native code at publish time. Eliminates JIT for AlRunner's
-         own code (~420ms cold-start savings). Only takes effect with `dotnet publish -r <rid>`. -->
-    <PublishReadyToRun>true</PublishReadyToRun>
+    <!-- v2 stability constraint: JMP-hook patches written at tier-0 addresses are
+         overwritten when .NET promotes hot methods to tier-1. Tiered compilation
+         must stay off until every JmpHook has been migrated to Cecil IL rewriting. -->
+    <TieredCompilation>false</TieredCompilation>
 
     <!-- dotnet tool packaging -->
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>al-runner</ToolCommandName>
     <PackageId>MSDyn365BC.AL.Runner</PackageId>
-    <Version>0.1.0</Version>
+    <Version>2.0.0-preview.1</Version>
     <Description>Run Business Central AL unit tests in milliseconds — no BC service tier, no Docker, no SQL Server, no license.</Description>
     <Authors>Stefan Maron</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/StefanMaron/MSDyn365BC.AL.Runner</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/StefanMaron/MSDyn365BC.AL.Runner</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/StefanMaron/BusinessCentral.AL.Runner</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/StefanMaron/BusinessCentral.AL.Runner</RepositoryUrl>
     <PackageTags>business-central;al;unit-test;runner</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>See CHANGELOG.md in the package or https://github.com/StefanMaron/BusinessCentral.AL.Runner/blob/main/CHANGELOG.md</PackageReleaseNotes>
+    <PackageReleaseNotes>v2.0 is a ground-up rewrite — no type renaming, no AL stubbing, runs unmodified MS- and ISV-shipped DLLs in-process. See CHANGELOG.md.</PackageReleaseNotes>
+
+    <RepoRoot>$(MSBuildProjectDirectory)/..</RepoRoot>
   </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>AlRunner.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <!-- The isolated multi-dataitem query-JOIN executor. al-runner references it ONLY via
+       Assembly.LoadFrom + reflection at runtime (see RecordPatches.QueryJoin.cs) — there
+       is no compile-time type reference, so the executor's Ncl-reflecting IL never enters
+       al-runner.dll's metadata and cannot perturb the startup ReadyToRun bind. This
+       ProjectReference exists purely to co-build the assembly and copy it beside
+       al-runner.dll (and into the tool package). ReferenceOutputAssembly=false keeps the
+       compiler from binding against it. -->
+  <ItemGroup>
+    <ProjectReference Include="../AlRunner.QueryJoin/AlRunner.QueryJoin.csproj"
+                      ReferenceOutputAssembly="false"
+                      Private="true"
+                      OutputItemType="Content"
+                      CopyToOutputDirectory="PreserveNewest">
+      <Pack>true</Pack>
+      <PackagePath>tools/$(TargetFramework)/any/</PackagePath>
+    </ProjectReference>
+  </ItemGroup>
+
+  <!-- BC-free provisioning library (HTTP + ZIP artifact downloader). Referenced so the
+       runner can verify/auto-resolve missing BC artifacts in-process (ProvisioningCheck)
+       instead of shelling out to `dotnet run`. It carries no BC deps, so it does not
+       perturb the engine load chain. -->
+  <ItemGroup>
+    <ProjectReference Include="../AlRunner.Provisioning/AlRunner.Provisioning.csproj" />
+  </ItemGroup>
 
   <ItemGroup>
     <None Include="../README.md" Pack="true" PackagePath="/" />
     <None Include="../CHANGELOG.md" Pack="true" PackagePath="/" />
-    <InternalsVisibleTo Include="AlRunner.Tests" />
-    <InternalsVisibleTo Include="AlRunner.Benchmarks" />
+  </ItemGroup>
+
+  <!-- Win32 P/Invoke stubs (kernel32 / user32 / advapi32 / …) for Linux. The .c
+       source is compiled on first use by Win32Stubs.cs. Ship it beside the
+       binary so the installed dotnet tool can find it. -->
+  <ItemGroup>
+    <Content Include="Win32Stubs/win32_stubs.c">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Pack>true</Pack>
+      <PackagePath>tools/$(TargetFramework)/any/Win32Stubs/</PackagePath>
+    </Content>
+  </ItemGroup>
+
+  <!-- Bake the BC version this binary was BUILT against into the assembly.
+       Microsoft stamps Ncl.dll's assembly version as major.0.0.0 only (28.0.0.0), so the
+       MINOR is unrecoverable from the engine DLLs at runtime — yet the minor is what
+       decides whether the artifact matches. Without this the default artifact selection
+       could only constrain by major and silently picked whatever minor was cached:
+       measured at 1041P/35F/0E (28.1, the built minor) vs 996P/77F/3E (28.2) on the same
+       Pageworks suite. Read back via BcArtifacts.EngineBuiltVersion(). -->
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>BcEngineVersion</_Parameter1>
+      <_Parameter2>$(_BCVersion)</_Parameter2>
+    </AssemblyAttribute>
   </ItemGroup>
 
   <PropertyGroup>
-    <_ALToolVersion>17.0.34.45391</_ALToolVersion>
-    <_BCVersion>27.5.46862.48827</_BCVersion>
-    <!-- Cross-platform cache directory for auto-downloaded dependencies -->
-    <_CacheBase Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(LOCALAPPDATA)/al-runner</_CacheBase>
+    <_BCVersion>28.1.49838.50794</_BCVersion>
+
+    <!-- No compile-time BC feature constants. BC-version differences are handled by
+         reflection at runtime — one binary, no build matrix in the source.
+
+         A set of BC 26 constants lived here briefly (BC_TESTPAGE_GETPAGE,
+         BC_XMLMETA_TIMESTAMP_RECORD, BC_XMLMETA_CTOR_TIMESTAMP, commit 0983df71) for the
+         three interface shapes the runner IMPLEMENTS or CONSTRUCTS and so cannot bridge by
+         reflection. They were removed with BC 26 support itself — see
+         docs/limitations.md#bc-26 — because nothing in CI could exercise them, and an
+         unexercised #if branch rots silently.
+
+         If a future BC version needs the same treatment, restore the pattern from 0983df71
+         rather than reinventing it: a constant per FEATURE (not a bare BCnn) keeps each #if
+         site self-explaining. -->
+    <!-- Cross-platform cache directory for the build-time BC service tier. MUST match the
+         runtime artifacts root (BcArtifacts.ArtifactsRoot = UserProfile/.local/share/al-runner/
+         artifacts on every OS) so a dev's downloaded artifacts serve both the build and the
+         run. USERPROFILE is the Windows equivalent of $HOME (SpecialFolder.UserProfile). -->
+    <_CacheBase Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(USERPROFILE)/.local/share/al-runner</_CacheBase>
     <_CacheBase Condition="!$([MSBuild]::IsOSPlatform('Windows'))">$(HOME)/.local/share/al-runner</_CacheBase>
   </PropertyGroup>
 
-  <!-- AL Compiler: resolve from dotnet tool store, then cache, then auto-download -->
-  <PropertyGroup Condition="'$(ALCompilerPath)' == ''">
-    <!-- 1. dotnet tool store (if installed manually) -->
-    <ALCompilerPath Condition="$([MSBuild]::IsOSPlatform('Linux')) And Exists('$(HOME)/.dotnet/tools/.store/microsoft.dynamics.businesscentral.development.tools.linux/$(_ALToolVersion)/microsoft.dynamics.businesscentral.development.tools.linux/$(_ALToolVersion)/tools/net8.0/any/Microsoft.Dynamics.Nav.CodeAnalysis.dll')">$(HOME)/.dotnet/tools/.store/microsoft.dynamics.businesscentral.development.tools.linux/$(_ALToolVersion)/microsoft.dynamics.businesscentral.development.tools.linux/$(_ALToolVersion)/tools/net8.0/any</ALCompilerPath>
-    <ALCompilerPath Condition="$([MSBuild]::IsOSPlatform('OSX')) And Exists('$(HOME)/.dotnet/tools/.store/microsoft.dynamics.businesscentral.development.tools.linux/$(_ALToolVersion)/microsoft.dynamics.businesscentral.development.tools.linux/$(_ALToolVersion)/tools/net8.0/any/Microsoft.Dynamics.Nav.CodeAnalysis.dll')">$(HOME)/.dotnet/tools/.store/microsoft.dynamics.businesscentral.development.tools.linux/$(_ALToolVersion)/microsoft.dynamics.businesscentral.development.tools.linux/$(_ALToolVersion)/tools/net8.0/any</ALCompilerPath>
-    <ALCompilerPath Condition="$([MSBuild]::IsOSPlatform('Windows')) And Exists('$(USERPROFILE)/.dotnet/tools/.store/microsoft.dynamics.businesscentral.development.tools/$(_ALToolVersion)/microsoft.dynamics.businesscentral.development.tools/$(_ALToolVersion)/tools/net8.0/any/Microsoft.Dynamics.Nav.CodeAnalysis.dll')">$(USERPROFILE)/.dotnet/tools/.store/microsoft.dynamics.businesscentral.development.tools/$(_ALToolVersion)/microsoft.dynamics.businesscentral.development.tools/$(_ALToolVersion)/tools/net8.0/any</ALCompilerPath>
-    <!-- 2. Cache directory (auto-downloaded) -->
-    <ALCompilerPath Condition="'$(ALCompilerPath)' == ''">$(_CacheBase)/alcompiler/$(_ALToolVersion)</ALCompilerPath>
-  </PropertyGroup>
-
-  <!-- Service Tier: resolve from local artifacts, then cache -->
+  <!-- BC service tier: local artifacts first, then cache directory.
+       v2 pulls Ncl/Types/Common/Language/CodeAnalysis from the service tier — the
+       AL compiler-and-emit infrastructure ships in BC service tier so no separate
+       AL compiler tool is required. -->
   <PropertyGroup Condition="'$(ServiceTierPath)' == ''">
-    <ServiceTierPath Condition="Exists('../artifacts/sandbox/$(_BCVersion)/platform/ServiceTier/PFiles64/Microsoft Dynamics NAV/270/Service')">../artifacts/sandbox/$(_BCVersion)/platform/ServiceTier/PFiles64/Microsoft Dynamics NAV/270/Service</ServiceTierPath>
+    <ServiceTierPath Condition="Exists('$(RepoRoot)/artifacts/sandbox/$(_BCVersion)/platform/ServiceTier/PFiles64/Microsoft Dynamics NAV/270/Service')">$(RepoRoot)/artifacts/sandbox/$(_BCVersion)/platform/ServiceTier/PFiles64/Microsoft Dynamics NAV/270/Service</ServiceTierPath>
     <ServiceTierPath Condition="'$(ServiceTierPath)' == ''">$(_CacheBase)/artifacts/$(_BCVersion)</ServiceTierPath>
   </PropertyGroup>
 
-  <!-- BC service tier runtime dependencies not included in the default .NET runtime -->
+  <!-- Common packages on every TFM -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" />
+    <PackageReference Include="Mono.Cecil" Version="0.11.6" />
+    <!-- Cross-platform terminal UI for the watch-mode live dashboard. MIT-licensed,
+         renders correctly on Windows/macOS/Linux and degrades to plain text on
+         non-interactive stdout (CI, pipes). See WatchDashboard.cs. -->
+    <PackageReference Include="Spectre.Console" Version="0.49.1" />
+  </ItemGroup>
+
+  <!-- BC service tier runtime dependencies not in the default .NET runtime.
+       BC's Common.dll references EventLog and ConfigurationManager APIs that
+       live in separate packages on cross-platform .NET. Versions pinned per TFM
+       to match the .NET runtime major. -->
   <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
     <PackageReference Include="System.Diagnostics.EventLog" Version="8.0.1" />
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="8.0.1" />
-  </ItemGroup>
-  <ItemGroup Condition="'$(TargetFramework)' == 'net9.0'">
-    <PackageReference Include="System.Diagnostics.EventLog" Version="9.0.4" />
-    <PackageReference Include="System.Configuration.ConfigurationManager" Version="9.0.4" />
-  </ItemGroup>
-  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
-    <PackageReference Include="System.Diagnostics.EventLog" Version="10.0.6" />
-    <PackageReference Include="System.Configuration.ConfigurationManager" Version="10.0.6" />
-  </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <!-- BC28 is a .NET 8 product (Server.runtimeconfig.json tfm=net8.0) but ships a
+         net8-targeted build of System.Text.Json 10 in its Service dir, and its
+         Types.dll binds System.Text.Json, Version=10.0.0.0. The net8 shared
+         framework only provides STJ 8, so BC's bind fails unless we deploy STJ 10
+         app-local (registered in deps.json, which overrides the framework copy).
+         This is what lets us run BC28 on its real runtime instead of net10, where
+         BCL drift (e.g. BitArray m_array→_array/int[]→byte[]) breaks BC's
+         UnsafeAccessor/precode assumptions. -->
+    <PackageReference Include="System.Text.Json" Version="10.0.0" />
+    <!-- Same STJ-10 story for DiagnosticSource: BC28's Diagnostic.dll binds
+         System.Diagnostics.DiagnosticSource 10.0.0.0 (reached in-process by the
+         report-execution chain via NavDiagnostics.TraceScopeMonitorCollection).
+         Deploy the net8-targeted DiagnosticSource 10 app-local so the bind
+         resolves on the net8 runtime. -->
+    <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="10.0.0" />
   </ItemGroup>
 
-  <!-- Copy stubs to output for runtime discovery -->
   <ItemGroup>
-    <None Include="stubs/**" CopyToOutputDirectory="PreserveNewest" LinkBase="stubs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- AL Compiler -->
-    <Reference Include="Microsoft.Dynamics.Nav.CodeAnalysis">
-      <HintPath>$(ALCompilerPath)/Microsoft.Dynamics.Nav.CodeAnalysis.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Dynamics.Nav.CodeAnalysis.Workspaces">
-      <HintPath>$(ALCompilerPath)/Microsoft.Dynamics.Nav.CodeAnalysis.Workspaces.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.CodeAnalysis">
-      <HintPath>$(ALCompilerPath)/Microsoft.CodeAnalysis.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.CodeAnalysis.CSharp">
-      <HintPath>$(ALCompilerPath)/Microsoft.CodeAnalysis.CSharp.dll</HintPath>
-    </Reference>
-    <Reference Include="System.IO.Packaging">
-      <HintPath>$(ALCompilerPath)/System.IO.Packaging.dll</HintPath>
-    </Reference>
-
-    <!-- BC Service Tier -->
-    <Reference Include="Microsoft.Dynamics.Nav.Ncl">
-      <HintPath>$(ServiceTierPath)/Microsoft.Dynamics.Nav.Ncl.dll</HintPath>
-    </Reference>
     <Reference Include="Microsoft.Dynamics.Nav.Types">
       <HintPath>$(ServiceTierPath)/Microsoft.Dynamics.Nav.Types.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Dynamics.Nav.Ncl">
+      <HintPath>$(ServiceTierPath)/Microsoft.Dynamics.Nav.Ncl.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Dynamics.Nav.Common">
       <HintPath>$(ServiceTierPath)/Microsoft.Dynamics.Nav.Common.dll</HintPath>
@@ -117,43 +183,68 @@
     <Reference Include="Microsoft.Dynamics.Nav.Language">
       <HintPath>$(ServiceTierPath)/Microsoft.Dynamics.Nav.Language.dll</HintPath>
     </Reference>
-    <Reference Include="Microsoft.Dynamics.Nav.Core">
-      <HintPath>$(ServiceTierPath)/Microsoft.Dynamics.Nav.Core.dll</HintPath>
+    <Reference Include="Microsoft.Dynamics.Nav.CodeAnalysis">
+      <HintPath>$(ServiceTierPath)/Microsoft.Dynamics.Nav.CodeAnalysis.dll</HintPath>
     </Reference>
-    <Reference Include="Microsoft.Dynamics.Nav.Types.Report">
-      <HintPath>$(ServiceTierPath)/Microsoft.Dynamics.Nav.Types.Report.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Dynamics.Nav.Types.Report.Base">
-      <HintPath>$(ServiceTierPath)/Microsoft.Dynamics.Nav.Types.Report.Base.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Dynamics.Nav.Types.Report.Runtime">
-      <HintPath>$(ServiceTierPath)/Microsoft.Dynamics.Nav.Types.Report.Runtime.dll</HintPath>
+    <!-- Needed only for INCLObjectXmlMetadataLoader.GetExtensionDeltasForAppObject's
+         parameter/return types (NavAppRuntimeMetadata / NavAppObjectMetadataRuntimeDeltas)
+         so RunnerXmlMetadataLoader.cs can implement that interface directly instead of via
+         a runtime DispatchProxy. Same artifact folder as the 5 references above. -->
+    <Reference Include="Microsoft.Dynamics.Nav.Apps">
+      <HintPath>$(ServiceTierPath)/Microsoft.Dynamics.Nav.Apps.dll</HintPath>
     </Reference>
   </ItemGroup>
 
-  <!-- Auto-download AL compiler if not present.
-       Runs in the outer build (BeforeTargets=DispatchToInnerBuilds) so DLLs are present
-       before either inner build starts its ResolveAssemblyReferences pass. Also runs in
-       single-target builds (BeforeTargets=ResolveAssemblyReferences) where there is no
-       outer/inner split. Skipped in inner builds (TargetFramework is set, TargetFrameworks
-       is also set) to avoid redundant downloads. -->
-  <Target Name="EnsureALCompiler"
-          BeforeTargets="DispatchToInnerBuilds;ResolveAssemblyReferences"
-          Condition="!Exists('$(ALCompilerPath)/Microsoft.Dynamics.Nav.CodeAnalysis.dll')
-                     AND ('$(TargetFrameworks)' == '' OR '$(TargetFramework)' == '')">
-    <Message Importance="high" Text="AL compiler not found. Downloading from NuGet..." />
-    <Exec Command="dotnet run --project &quot;$(MSBuildProjectDirectory)/../tools/DownloadArtifacts&quot; -- al-compiler $(_ALToolVersion) &quot;$(ALCompilerPath)&quot;" />
-  </Target>
+  <!-- BC Service Tier DLL provisioning. Downloading is an EXPLICIT, opt-in step
+       (-p:AllowBcArtifactDownload=true): the runner never auto-downloads. When the DLLs
+       are absent and the opt-in flag is not set, the build fails loud with the exact
+       download command. When they are present (the normal case) neither target runs.
 
-  <!-- Auto-download BC Service Tier DLLs if not present.
-       Same execution conditions as EnsureALCompiler. -->
+       Both targets run in the outer build (BeforeTargets=DispatchToInnerBuilds) so DLLs
+       are present before either inner build's ResolveAssemblyReferences pass, and in
+       single-target builds (BeforeTargets=ResolveAssemblyReferences); they skip inner
+       multi-target builds (TargetFramework + TargetFrameworks both set). -->
   <Target Name="EnsureBCServiceTierDlls"
           BeforeTargets="DispatchToInnerBuilds;ResolveAssemblyReferences"
-          DependsOnTargets="EnsureALCompiler"
           Condition="!Exists('$(ServiceTierPath)/Microsoft.Dynamics.Nav.Types.dll')
+                     AND '$(AllowBcArtifactDownload)' == 'true'
                      AND ('$(TargetFrameworks)' == '' OR '$(TargetFramework)' == '')">
-    <Message Importance="high" Text="BC Service Tier DLLs not found. Downloading via range request..." />
-    <Exec Command="dotnet run --project &quot;$(MSBuildProjectDirectory)/../tools/DownloadArtifacts&quot; -- service-tier $(_BCVersion) &quot;$(ServiceTierPath)&quot;" />
+    <Message Importance="high" Text="BC Service Tier DLLs not found at $(ServiceTierPath). Downloading via range request (AllowBcArtifactDownload=true)..." />
+    <Exec Command="dotnet run --project &quot;$(RepoRoot)/tools/DownloadArtifacts&quot; -- service-tier $(_BCVersion) &quot;$(ServiceTierPath)&quot;" />
   </Target>
+
+  <Target Name="FailIfBCServiceTierDllsMissing"
+          BeforeTargets="DispatchToInnerBuilds;ResolveAssemblyReferences"
+          Condition="!Exists('$(ServiceTierPath)/Microsoft.Dynamics.Nav.Types.dll')
+                     AND '$(AllowBcArtifactDownload)' != 'true'
+                     AND ('$(TargetFrameworks)' == '' OR '$(TargetFramework)' == '')">
+    <Error Text="BC Service Tier DLLs not found at $(ServiceTierPath). The runner does NOT auto-download. Either point ServiceTierPath at an existing artifact dir, or download explicitly:&#xA;  dotnet run --project &quot;$(RepoRoot)/tools/DownloadArtifacts&quot; -- service-tier $(_BCVersion) &quot;$(ServiceTierPath)&quot;&#xA;Or re-run the build with -p:AllowBcArtifactDownload=true to download as part of the build." />
+  </Target>
+
+  <!-- Version-agnosticism across a BC major's minors (verified 28.1<->28.2).
+
+       BC 28 modernised its runtime onto a large external closure — the Azure SDK
+       (Azure.*) and the Microsoft.Identity / Microsoft.IdentityModel / System.IdentityModel
+       token stack. Those DLLs are minor-version-pinned: a 28.2 R2R Base App binds
+       Microsoft.Identity.ServiceEssentials.Core 1.43.0.0 while 28.1 shipped 1.39.0.0.
+
+       RAR CopyLocal's the whole transitive closure of the 5 BC references into bin at
+       whatever version _BCVersion points at (build-time). If those copies sit in the
+       application base dir, the default ALC binds them FIRST by simple name; when a
+       different-minor R2R app then requests a higher version, the bind fails with
+       FileLoadException 0x80131621 and the app never loads.
+
+       Fix: keep these OUT of bin. The DependencyLoader ALC Resolving handler
+       (EnsureResolverInstalled) already serves any such assembly from the SELECTED
+       version's artifact dir (BcArtifacts.ServiceTierDir) on demand — so the runner
+       serves whichever minor the target project actually needs, from BC's own shipped
+       copy, instead of a build-time-pinned one. One engine binary spans a major's minors.
+       (The 5 BC references themselves — Ncl/Types/Common/Language/CodeAnalysis — stay in
+       bin: those ARE the engine and are covered by the MAJOR-only consistency contract.)
+
+       Cross-MAJOR still needs a matching engine build; this only relaxes the minors. -->
+  <!-- StripBcAppClosureFromCopyLocal moved to the repo-root Directory.Build.targets so it
+       also applies to referencing projects (AlRunner.Tests, SymbolProbe), which run their
+       own ResolveAssemblyReferences and would otherwise re-copy the closure into their bin. -->
 
 </Project>

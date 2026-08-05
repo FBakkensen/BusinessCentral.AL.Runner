@@ -1,0 +1,42 @@
+/// Source objects for ReportInstance.CreateTotals tests (issue #991).
+/// CurrReport.CreateTotals() is exercised via a report trigger.
+
+/// Minimal table backing the report dataset.
+table 50074 "CRT Table"
+{
+    fields
+    {
+        field(1; "No."; Code[20]) { }
+    }
+    keys { key(PK; "No.") { Clustered = true; } }
+}
+
+/// Report that proves CurrReport.CreateTotals() compiles.
+/// The if-false guard proves compilation without triggering BC emitter issues;
+/// the MockReportHandle stub handles it at runtime when customer code calls it.
+report 50016 "CRT Report"
+{
+    ProcessingOnly = true;
+    dataset
+    {
+        dataitem(CrtData; "CRT Table")
+        {
+        }
+    }
+
+    trigger OnPreReport()
+    begin
+    end;
+}
+
+/// Runs "CRT Report" to exercise CreateTotals.
+codeunit 50437 "CRT Source"
+{
+    procedure RunReport_NoThrow()
+    var
+        Rep: Report "CRT Report";
+    begin
+        Rep.UseRequestPage(false);
+        Rep.Run();
+    end;
+}

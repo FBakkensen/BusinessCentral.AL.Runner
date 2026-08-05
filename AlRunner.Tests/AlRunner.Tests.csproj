@@ -1,17 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+    <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <RootNamespace>AlRunner.Tests</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
+    <PackageReference Include="Spectre.Console.Testing" Version="0.49.1" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
@@ -21,47 +22,34 @@
     <ProjectReference Include="../AlRunner/AlRunner.csproj" />
   </ItemGroup>
 
-  <!-- Reference Roslyn and BC CodeAnalysis for cache tests that create SyntaxTrees directly -->
+  <!-- BC CodeAnalysis / Ncl types (SymbolReferenceSpecification, ISymbolReferenceLoader,
+       ITreeObject, TreeHandler, TreeSharedObjectContainer, …) used by
+       JsonLoaderDependencyFallthroughTests and SkeletonSharedObjectContainerLeakTests.
+       Same resolution as AlRunner.csproj — plain <Reference> items do not flow
+       transitively through the project reference. -->
+  <PropertyGroup>
+    <!-- Condition="'$(_BCVersion)' == ''" so a matrix build's -p:_BCVersion (AlRunner.slnx ->
+         AlRunner.csproj's own _BCVersion) reaches this project's direct BC references too.
+         Before this Condition, the plain assignment below always won regardless of the
+         command line, so these two <Reference> items (below) stayed pinned to 28.1 on every
+         CI leg while AlRunner.csproj's ProjectReference output correctly followed the matrix
+         version — the two disagreed, and in-process tests that read the BC DLL actually
+         copied into this project's own bin (not the subprocess-spawned runner) silently
+         exercised 28.1 no matter which leg was running. -->
+    <_BCVersion Condition="'$(_BCVersion)' == ''">28.1.49838.50794</_BCVersion>
+    <_CacheBase Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(USERPROFILE)/.local/share/al-runner</_CacheBase>
+    <_CacheBase Condition="!$([MSBuild]::IsOSPlatform('Windows'))">$(HOME)/.local/share/al-runner</_CacheBase>
+    <ServiceTierPath Condition="'$(ServiceTierPath)' == ''">$(_CacheBase)/artifacts/$(_BCVersion)</ServiceTierPath>
+  </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Microsoft.CodeAnalysis">
-      <HintPath>../AlRunner/bin/$(Configuration)/$(TargetFramework)/Microsoft.CodeAnalysis.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.CodeAnalysis.CSharp">
-      <HintPath>../AlRunner/bin/$(Configuration)/$(TargetFramework)/Microsoft.CodeAnalysis.CSharp.dll</HintPath>
-    </Reference>
     <Reference Include="Microsoft.Dynamics.Nav.CodeAnalysis">
-      <HintPath>../AlRunner/bin/$(Configuration)/$(TargetFramework)/Microsoft.Dynamics.Nav.CodeAnalysis.dll</HintPath>
-    </Reference>
-    <!-- BC runtime types needed for MockFile/MockInStream unit tests (issue #1021) -->
-    <Reference Include="Microsoft.Dynamics.Nav.Types">
-      <HintPath>../AlRunner/bin/$(Configuration)/$(TargetFramework)/Microsoft.Dynamics.Nav.Types.dll</HintPath>
+      <HintPath>$(ServiceTierPath)/Microsoft.Dynamics.Nav.CodeAnalysis.dll</HintPath>
+      <Private>true</Private>
     </Reference>
     <Reference Include="Microsoft.Dynamics.Nav.Ncl">
-      <HintPath>../AlRunner/bin/$(Configuration)/$(TargetFramework)/Microsoft.Dynamics.Nav.Ncl.dll</HintPath>
+      <HintPath>$(ServiceTierPath)/Microsoft.Dynamics.Nav.Ncl.dll</HintPath>
+      <Private>true</Private>
     </Reference>
   </ItemGroup>
-
-  <!-- Copy BC compiler and service tier DLLs from AlRunner output so in-process tests can find them -->
-  <PropertyGroup>
-    <_AlRunnerOut>$(MSBuildProjectDirectory)/../AlRunner/bin/$(Configuration)/$(TargetFramework)</_AlRunnerOut>
-  </PropertyGroup>
-  <Target Name="CopyBCDlls" AfterTargets="Build" Condition="'$(TargetFramework)' != ''">
-    <ItemGroup>
-      <BCDlls Include="$(_AlRunnerOut)/Microsoft.Dynamics.Nav.CodeAnalysis*.dll" />
-      <BCDlls Include="$(_AlRunnerOut)/Microsoft.CodeAnalysis*.dll" />
-      <BCDlls Include="$(_AlRunnerOut)/Microsoft.Dynamics.Nav.Ncl.dll" />
-      <BCDlls Include="$(_AlRunnerOut)/Microsoft.Dynamics.Nav.Types.dll" />
-      <BCDlls Include="$(_AlRunnerOut)/Microsoft.Dynamics.Nav.Language.dll" />
-      <BCDlls Include="$(_AlRunnerOut)/Microsoft.Dynamics.Nav.Core.dll" />
-      <BCDlls Include="$(_AlRunnerOut)/Microsoft.Dynamics.Nav.Types.Report*.dll" />
-      <BCDlls Include="$(_AlRunnerOut)/System.IO.Packaging.dll" />
-    </ItemGroup>
-    <Copy SourceFiles="@(BCDlls)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" />
-    <!-- Copy stubs directory -->
-    <ItemGroup>
-      <StubFiles Include="$(_AlRunnerOut)/stubs/**" />
-    </ItemGroup>
-    <Copy SourceFiles="@(StubFiles)" DestinationFolder="$(OutputPath)/stubs/%(RecursiveDir)" SkipUnchangedFiles="true" />
-  </Target>
 
 </Project>

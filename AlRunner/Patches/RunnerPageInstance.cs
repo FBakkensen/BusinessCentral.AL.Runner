@@ -1,0 +1,688 @@
+// RunnerPageInstance — a live AL page object behind a TestPage.
+//
+// WHY
+//   The runner's TestPage was a record cursor: it mapped only controls bound to a Rec
+//   field, and on a miss passed the control's own id to the record as a field number,
+//   producing "The supplied field number '1167935535' cannot be found in the 'X' table"
+//   — a control-name FNV hash landing where a field number was expected.
+//
+//   A control does not have to bind to a table field. Binding one to a page global
+//   variable is ordinary AL and the standard shape for a mode/filter selector above a
+//   repeater. Resolving those needs the page's own control -> value binding table, which
+//   only exists on an initialised NavForm: BC publishes it as NavForm.SourceExpressions,
+//   keyed "Control{controlId}".
+//
+// WHAT THIS DOES
+//   Constructs the compiled Page{id} (a real NavForm subclass carrying the page's AL
+//   triggers as methods), opts it into BC's real initialisation (RunnerFormInit), and calls
+//   SetSourceTable — which is BC's own front door: it funnels through EnsureMetadataLoaded
+//   -> InitializeFromMetadata, binding the record, resolving controls against the source
+//   table and running the page's own OnMetadataLoaded, the step that registers the source
+//   expressions.
+//
+//   Driving those sub-steps individually is NOT an option, and the failure is instructive:
+//   SetSourceTable already triggers them, so calling them again registers every expression
+//   twice ("An item with the same key has already been added. Key: Control1167935535").
+//   The service-tier state InitializeFromMetadata needs on the way (permissions, designer
+//   customizations, tenant personalization) is handled where it belongs — in
+//   NclCecilRewrite, once, for every caller — not by tiptoeing around the method here.
+//
+// SCOPE
+//   Only pages the runner compiled itself have the metadata to build a control tree from
+//   (see AlPageMetadataRegistry). For anything else TryCreate returns null and the caller
+//   keeps its record-only behaviour, which is exactly what it had before.
+using System.Reflection;
+using Microsoft.Dynamics.Nav.Runtime;
+
+namespace AlRunner.Patches;
+
+internal sealed class RunnerPageInstance
+{
+    private readonly object _form;
+    private readonly int _pageId;
+    private readonly System.Collections.IDictionary _sourceExpressions;
+
+    private RunnerPageInstance(object form, int pageId, System.Collections.IDictionary sourceExpressions)
+    {
+        _form = form;
+        _pageId = pageId;
+        _sourceExpressions = sourceExpressions;
+    }
+
+    internal object Form => _form;
+
+    /// <summary>
+    /// Whether the AL opened this page as a LOOKUP (<c>Picker.LookupMode(true)</c>), which
+    /// decides whether its closing built-in actions are OK/Cancel or LookupOK/LookupCancel.
+    /// Read off BC's own NavForm.LookupMode, so it reflects whatever the AL actually set.
+    /// </summary>
+    internal bool LookupMode
+        => _form.GetType()
+            .GetProperty("LookupMode", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)?
+            .GetValue(_form) is true;
+
+    /// <summary>
+    /// Build and initialise the AL page object for <paramref name="pageId"/>, bound to
+    /// <paramref name="record"/>. Returns null when the page has no compiled type or no
+    /// real metadata — never a half-initialised instance, because a page whose source
+    /// expressions were not registered would answer control lookups with silence rather
+    /// than with the page's actual bindings.
+    /// </summary>
+    internal static RunnerPageInstance? TryCreate(object parent, int pageId, NavRecord record)
+    {
+        if (RecordPatches.EnsureRealPageMetadata(pageId) == null)
+        {
+            // stdout on purpose throughout this class: the test-execution child's stderr is
+            // not captured, so a Console.Error line would be invisible exactly when needed.
+            if (Environment.GetEnvironmentVariable("AL_RUNNER_TRACE_PAGE_METADATA") == "1")
+                Console.Out.WriteLine(
+                    $"[RunnerPageInstance] page {pageId}: no emit-captured metadata, so no control tree; "
+                    + "TestPage stays record-only");
+            return null;
+        }
+
+        var pageType = FindPageType(pageId);
+        if (pageType == null)
+        {
+            Console.Out.WriteLine($"[RunnerPageInstance] page {pageId}: no compiled Page{pageId} type found");
+            return null;
+        }
+
+        var ctor = pageType.GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+            .FirstOrDefault(c => c.GetParameters().Length == 2
+                              && typeof(NavRecord).IsAssignableFrom(c.GetParameters()[1].ParameterType));
+        if (ctor == null)
+        {
+            Console.Out.WriteLine($"[RunnerPageInstance] page {pageId}: Page{pageId} has no (ITreeObject, NavRecord) ctor");
+            return null;
+        }
+
+        try
+        {
+            var form = ctor.Invoke(new object?[] { parent, record });
+            // Must precede every step below: the guarded NavForm bodies (GetMasterPage,
+            // RegisterSourceExpression, …) check this and no-op for anyone else.
+            RunnerFormInit.MarkRealInit(form);
+
+            // ONE call. SetSourceTable funnels through NavForm.EnsureMetadataLoaded ->
+            // InitializeFromMetadata, which binds the record, resolves the controls against
+            // the source table and runs the page's own OnMetadataLoaded — the step that
+            // registers the source expressions. Driving those three individually registers
+            // every expression twice ("An item with the same key has already been added.
+            // Key: Control1167935535"), because InitializeFromMetadata has already run them.
+            // clone: FALSE — the page must share the TestPage's cursor, not copy it. BC
+            // clones because a real page owns a cursor separate from whatever the caller
+            // passed; here the two are the same thing, and cloning gave the page its own
+            // unpositioned record. The page's AL then read a blank Rec: an OnAction that
+            // stamps Rec."No." wrote "" however the test had navigated. BC uses clone:false
+            // itself where the caller's record IS the page's (NavForm line ~3704).
+            Invoke(form, "SetSourceTable", new object?[] { record, false });
+
+            var expressions = ReadProperty(form, "SourceExpressions") as System.Collections.IDictionary;
+            if (expressions == null)
+            {
+                Console.Out.WriteLine(
+                    $"[RunnerPageInstance] page {pageId}: the page object initialised but published no "
+                    + "source-expression table; TestPage falls back to record-only access");
+                return null;
+            }
+            if (Environment.GetEnvironmentVariable("AL_RUNNER_TRACE_PAGE_METADATA") == "1")
+                Console.Out.WriteLine(
+                    $"[RunnerPageInstance] page {pageId}: built, {expressions.Count} source expression(s): "
+                    + string.Join(", ", expressions.Keys.Cast<object>().Select(k => k?.ToString())));
+            return new RunnerPageInstance(form, pageId, expressions);
+        }
+        catch (Exception ex)
+        {
+            var inner = ex is TargetInvocationException tie ? tie.InnerException ?? ex : ex;
+            // Loud, but not fatal: the caller falls back to record-only behaviour, which is
+            // strictly what it had before this existed. Silence here would turn a page-object
+            // failure into "that control does not exist", which is a different and wronger
+            // answer than "the runner could not build this page".
+            // stdout on purpose: the test-execution child's stderr is not captured, so a
+            // Console.Error line here would be invisible exactly when it is needed.
+            Console.Out.WriteLine(
+                $"[RunnerPageInstance] page {pageId}: could not build the AL page object "
+                + $"({inner.GetType().Name}: {inner.Message}); TestPage falls back to record-only access");
+            if (Environment.GetEnvironmentVariable("AL_RUNNER_TRACE_PAGE_METADATA") == "1")
+                Console.Out.WriteLine(inner.StackTrace);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Wrap a NavForm BC already built and initialised — a page opened from AL with
+    /// RunModal, which the runner never constructed and so cannot have marked or driven.
+    ///
+    /// Unlike TryCreate this does NOT initialise anything: the form is already live, and
+    /// re-running SetSourceTable would re-register every source expression ("An item with the
+    /// same key has already been added"). A form whose expressions were never registered (the
+    /// runner's init guard did not admit it) yields an empty binding table, so Rec-bound
+    /// controls still resolve and page-variable ones refuse by name — which is the same
+    /// answer TryCreate gives for a page it could not build.
+    /// </summary>
+    internal static RunnerPageInstance Adopt(object form, int pageId)
+    {
+        var expressions = ReadProperty(form, "SourceExpressions") as System.Collections.IDictionary
+                          ?? new System.Collections.Hashtable();
+        return new RunnerPageInstance(form, pageId, expressions);
+    }
+
+    /// <summary>
+    /// The page's binding for a control id, or null when the control is not one the page
+    /// publishes a source expression for (Rec-bound controls are resolved by the caller
+    /// against the record instead).
+    /// </summary>
+    internal object? TryGetSourceExpression(int controlId)
+        => _sourceExpressions[SourceExpressionKey(controlId)];
+
+    // ── control / action state properties (Editable, Enabled, Visible) ─────────────────
+    //
+    // A page states its read-only contract in these properties: `Editable = false` on a
+    // control that is never writable, `Editable = SomeVar` on one that depends on the row.
+    // The AL compiler emits both into the page metadata as the SAME attribute — a string
+    // that is either the literal "true"/"false" or the NAME of a registered expression:
+    //
+    //   Editable="false"
+    //   Editable="p62090p62090RowEditable"   <Expression Name="p62090p62090RowEditable"
+    //                                          SourceExpression="RowEditable" … />
+    //
+    // so resolving one is "parse the literal, else look the name up in the page's own
+    // binding table". The expression is live — reading it now returns whatever the page's
+    // AL last assigned, which is what makes a per-row property follow the cursor.
+
+    /// <summary>
+    /// The page's own editability, as <c>CurrPage.Editable(…)</c> leaves it. Separate from
+    /// any control's property: a page can be read-only while a control declares itself
+    /// editable, and BC shows the field read-only regardless.
+    /// </summary>
+    internal bool PageEditable => _form is not NavForm form || form.Editable;
+
+    /// <summary>Editable for a data-bound control, combined with the page's own state.</summary>
+    internal bool ControlEditable(int controlId)
+        => PageEditable && EvaluateProperty(ControlDefinition(controlId)?.Editable, "Editable", controlId);
+
+    internal bool ControlEnabled(int controlId)
+        => EvaluateProperty(ControlDefinition(controlId)?.Enabled, "Enabled", controlId);
+
+    internal bool ControlVisible(int controlId)
+        => EvaluateProperty(ControlDefinition(controlId)?.Visible, "Visible", controlId);
+
+    internal bool ActionEnabled(int actionId)
+        => EvaluateProperty(ActionDefinition(actionId)?.Enabled, "Enabled", actionId);
+
+    internal bool ActionVisible(int actionId)
+        => EvaluateProperty(ActionDefinition(actionId)?.Visible, "Visible", actionId);
+
+    private Microsoft.Dynamics.Nav.Types.Metadata.ControlDefinition? ControlDefinition(int controlId)
+        => _form is NavForm form && form.MetadataHelper.TryGetControlDefinitionById(controlId, out var d) ? d : null;
+
+    private Microsoft.Dynamics.Nav.Types.Metadata.ActionCommonPropsDefinition? ActionDefinition(int actionId)
+        => _form is NavForm form && form.MetadataHelper.TryGetCommonActionDefinitionById(actionId, out var d) ? d : null;
+
+    /// <summary>
+    /// Resolve one of the boolean control properties. Absent means the AL declared none, and
+    /// the AL default for all three is true.
+    /// </summary>
+    private bool EvaluateProperty(string? raw, string propertyName, int elementId)
+    {
+        if (string.IsNullOrEmpty(raw)) return true;
+
+        // The literal arrives in more than one spelling: the emitted XML carries "true" /
+        // "false" on controls and actions and "1" / "0" in the page's Properties block, and
+        // BC's own metadata merge normalises an ABSENT property to "True" / "False". An
+        // AL identifier cannot collide with these, so case-insensitive matching is safe.
+        if (string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase) || raw == "1") return true;
+        if (string.Equals(raw, "false", StringComparison.OrdinalIgnoreCase) || raw == "0") return false;
+
+        var expression = _sourceExpressions[raw];
+        if (expression == null)
+            // Loudly, not true-by-default: this property IS the page's read-only contract,
+            // and answering "editable" for one we could not evaluate makes every test of
+            // that contract unfailable. Naming the expression is what makes the gap fixable.
+            throw new AlRunner.Infrastructure.RunnerOutOfScopeException(
+                $"TestPage page {_pageId} element {elementId} — {propertyName}",
+                $"testpage-control-property — the property is bound to expression '{raw}', which "
+                + "the page publishes no binding for, so its value cannot be evaluated. "
+                + "See docs/scope.md");
+
+        var value = GetValue(expression);
+        return value?.ClientObject is bool b
+            ? b
+            : throw new AlRunner.Infrastructure.RunnerOutOfScopeException(
+                $"TestPage page {_pageId} element {elementId} — {propertyName}",
+                $"testpage-control-property — expression '{raw}' evaluated to "
+                + $"'{value?.ClientObject ?? "null"}', which is not a Boolean. See docs/scope.md");
+    }
+
+    /// <summary>
+    /// The control's OptionCaption list, split on ',', or null when the control declares
+    /// none. An Option control's captions live on the PAGE CONTROL, not on the option's
+    /// own metadata (NCLOptionMetadata carries only the member names), and a TestPage sets
+    /// an option by its caption, which is what the user sees.
+    ///
+    /// Read from <c>OptionCaptionML</c> rather than the plain <c>OptionCaption</c> sibling:
+    /// the AL compiler emits the caption as a multi-language attribute
+    /// (<c>OptionCaptionML="ENU=Fields,Blocks,Images,Fonts,Custom Fields,Labels"</c> in the
+    /// emit-captured page metadata XML), and ML is the form BC resolves per language. BC's
+    /// merge does also fill the plain OptionCaption, so both would answer today — ML is the
+    /// one that stays correct for a non-ENU session.
+    ///
+    /// GetText resolves the session language and falls back to 1033 on its own, so the
+    /// runner does not reimplement BC's language selection. BC's own indexed lookup does
+    /// the control search — ControlDefinitions is a flat FindAll over the master page, so
+    /// nesting (a control inside a repeater) needs no special handling here.
+    /// </summary>
+    internal string[]? TryGetOptionCaptions(int controlId)
+    {
+        var trace = Environment.GetEnvironmentVariable("AL_RUNNER_TRACE_PAGE_METADATA") == "2";
+        var helper = _form is NavForm form ? form.MetadataHelper : null;
+        if (helper == null)
+        {
+            if (trace) Console.Out.WriteLine($"[option-captions] control {controlId}: no MetadataHelper ({_form.GetType().Name})");
+            return null;
+        }
+        if (!helper.TryGetControlDefinitionById(controlId, out var definition) || definition == null)
+        {
+            if (trace)
+            {
+                Console.Out.WriteLine($"[option-captions] control {controlId}: not among the master page's control definitions");
+                var mp = ((NavForm)_form).MasterPage;
+                Console.Out.WriteLine($"[option-captions]   masterPage={(mp == null ? "NULL" : $"ID={mp.ID} {mp.GetType().Name}")}");
+                if (mp != null)
+                    Console.Out.WriteLine(
+                        $"[option-captions]   contentArea.Controls={mp.ContentArea?.Controls?.Count}"
+                        + $" removedControls={mp.RemovedControls?.Count}");
+                // ControlDefinitions is internal to Ncl, hence reflection for the dump only.
+                var defs = ReadProperty(helper, "ControlDefinitions");
+                Console.Out.WriteLine($"[option-captions]   ControlDefinitions={(defs == null ? "NULL" : defs.GetType().Name)}");
+                foreach (var d in defs as System.Collections.IEnumerable ?? Array.Empty<object>())
+                    Console.Out.WriteLine($"[option-captions]   have {d?.GetType().Name} ID={ReadProperty(d!, "ID")} Name={ReadProperty(d!, "Name")}");
+            }
+            return null;
+        }
+        if (trace)
+            Console.Out.WriteLine(
+                $"[option-captions] control {controlId} ({definition.Name}): OptionCaption='{definition.OptionCaption}' "
+                + $"OptionCaptionML='{definition.OptionCaptionML?.GetText(1033)}'");
+
+        // 1033 rather than a session lookup: the runner's skeleton session has a
+        // zero-initialized culture, so HelperShims.NavSession_GlobalLanguage_1033 already
+        // pins the whole runtime to en-US. Asking the session here would either return that
+        // same 1033 or throw. GetText also treats 1033 as its own fallback, so a page that
+        // somehow carried only a non-ENU caption set would still resolve.
+        var captions = definition.OptionCaptionML?.GetText(1033);
+        if (string.IsNullOrEmpty(captions)) return null;
+        return captions.Split(',');
+    }
+
+    /// <summary>
+    /// The page's definition for a subpage PART control, or null when the control id is not
+    /// a part on this page.
+    ///
+    /// A part is not a ControlDefinition — the AL compiler emits it as an
+    /// <c>InfopartPageDefinition</c> carrying the hosted page's id in <c>PagePartID</c> and
+    /// the SubPageLink as a <c>SubFormLink</c> list of FilterDefinitions — so it is reached
+    /// through MetadataHelper.InfoPartDefinitions rather than through the control lookup.
+    /// </summary>
+    internal Microsoft.Dynamics.Nav.Types.Metadata.InfopartPageDefinition? TryGetPartDefinition(int controlId)
+    {
+        if (_form is not NavForm form) return null;
+        foreach (var definition in form.MetadataHelper.InfoPartDefinitions)
+            if (definition is Microsoft.Dynamics.Nav.Types.Metadata.InfopartPageDefinition part
+                && part.ID == controlId)
+                return part;
+        return null;
+    }
+
+    /// <summary>BC's key convention for a control's source expression.</summary>
+    internal static string SourceExpressionKey(int controlId) => "Control" + controlId;
+
+    internal static NavValue? GetValue(object expression)
+        => (NavValue?)expression.GetType()
+            .GetMethod("Get", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance,
+                binder: null, types: Type.EmptyTypes, modifiers: null)!
+            .Invoke(expression, null);
+
+    internal static void SetValue(object expression, NavValue value)
+        => expression.GetType()
+            .GetMethod("Set", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance,
+                binder: null, types: new[] { typeof(NavValue) }, modifiers: null)!
+            .Invoke(expression, new object?[] { value });
+
+    /// <summary>
+    /// Run the control's OnValidate trigger, if it declares one.
+    ///
+    /// The AL compiler emits it as <c>{ControlName}_a{n}_OnValidate</c> on the page class.
+    /// The control is identified by RE-DERIVING BC's own control id from each candidate's
+    /// name — <c>IdSpace.GetMemberId(pageId, controlName)</c>, i.e. abs(FNV-1a over the
+    /// UTF-16 bytes of pageId + name) — and comparing it to the id being set. Matching on
+    /// the source expression's Name instead does not work: that is the bound VARIABLE's
+    /// name (SelectedMode), not the control's (Mode), and they are routinely different.
+    ///
+    /// A control with no OnValidate simply has no such method, which is not an error.
+    /// </summary>
+    internal void RaiseOnValidate(int controlId)
+    {
+        var trigger = FindTrigger(controlId, "_OnValidate", "OnValidate");
+        // A control with no OnValidate simply has no such method, which is not an error.
+        if (trigger != null) Invoke(trigger);
+    }
+
+    /// <summary>
+    /// Run the action's OnAction trigger.
+    ///
+    /// Unlike OnValidate, a missing trigger is NOT benign here: the AL test asked for the
+    /// action to happen. An action with no OnAction is one whose effect is RunObject (open
+    /// another page/report), which the runner cannot perform, so it refuses by name rather
+    /// than doing nothing — silently doing nothing is what made an unrun action surface one
+    /// step later as an assertion about its missing effect.
+    /// </summary>
+    internal void RaiseOnAction(int actionId)
+    {
+        var trigger = FindTrigger(actionId, "_OnAction", "OnAction")
+            ?? throw new AlRunner.Infrastructure.RunnerOutOfScopeException(
+                $"TestPage action {actionId} on page {_pageId}",
+                "testpage-action — the page declares no OnAction trigger for this action. An "
+                + "action whose effect is RunObject (opening another page or report) cannot be "
+                + "performed here. See docs/scope.md");
+        Invoke(trigger);
+    }
+
+    /// <summary>
+    /// Run the control's OnLookup trigger.
+    ///
+    /// Like OnAction and unlike OnValidate, a missing trigger is NOT benign: the test asked
+    /// for the lookup to happen. A control with no OnLookup gets its lookup from a TableRelation
+    /// (BC opens the related table's list page), which the runner cannot stand up, so it
+    /// refuses by name — doing nothing silently is what let a test compare two empty strings
+    /// and call it a pass.
+    /// </summary>
+    /// <summary>
+    /// Run the control's OnLookup trigger and return the value it selected, or null when the
+    /// trigger declined (returned false) — BC's lookup contract: the text the trigger wrote
+    /// back replaces the field's value only if it returned true, which is how "the user
+    /// cancelled the lookup" is expressed.
+    ///
+    /// The AL compiler emits <c>trigger OnLookup(var Text: Text): Boolean</c> as a method
+    /// taking <c>ByRef&lt;NavText&gt;</c> and returning bool, so unlike OnValidate/OnAction
+    /// this one is NOT parameterless — matching only zero-arity methods is why it read as
+    /// "the control declares no OnLookup trigger" for a control that plainly declares one.
+    ///
+    /// A control with genuinely no OnLookup gets its lookup from a TableRelation, which would
+    /// open the related table's list page; the runner cannot stand that up, so it refuses by
+    /// name rather than doing nothing — doing nothing let a test invoke a lookup, observe no
+    /// change, and compare two empty strings successfully.
+    /// </summary>
+    internal NavText? RaiseOnLookup(int controlId, NavText current)
+    {
+        var trigger = FindTrigger(controlId, "_OnLookup", "OnLookup", arity: 1)
+            ?? throw new AlRunner.Infrastructure.RunnerOutOfScopeException(
+                $"TestPage lookup on control {controlId} (page {_pageId})",
+                "testpage-lookup — the control declares no OnLookup trigger, so its lookup comes "
+                + "from a TableRelation and would open the related table's list page, which the "
+                + "runner cannot stand up. See docs/scope.md");
+
+        var value = current;
+        var byRef = new ByRef<NavText>(() => value, v => value = v);
+
+        object? result;
+        try { result = trigger.Invoke(_form, new object?[] { byRef }); }
+        catch (TargetInvocationException tie) when (tie.InnerException != null)
+        {
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(tie.InnerException).Throw();
+            throw; // unreachable
+        }
+
+        return result is true ? value : null;
+    }
+
+    /// <summary>
+    /// Run the page's own OnAfterGetRecord trigger.
+    ///
+    /// BC fires it every time the page loads a row, and it is where a page computes the
+    /// per-row state its control properties then read (<c>RowEditable := not Rec.Locked</c>,
+    /// <c>CurrPage.Editable(…)</c>). Never firing it left that state at its default for the
+    /// whole life of the page, so every row looked like the first one — and a page whose
+    /// read-only rule lives entirely in this trigger behaved as if it had no rule at all.
+    ///
+    /// Unlike an action's OnAction, a page with no OnAfterGetRecord is the common case and
+    /// not an error. The trigger is a plain parameterless method named for the trigger
+    /// itself, not a member trigger, so it carries no <c>_a{n}_</c> disambiguator.
+    /// </summary>
+    internal void RaiseOnAfterGetRecord()
+    {
+        InvokeRecordTrigger("OnAfterGetRecord", Type.EmptyTypes, Array.Empty<object>());
+        // OnAfterGetRecord does NOT re-fire for a record the page already fetched, so a page
+        // that must refresh derived state on every move puts it here instead. Both are part
+        // of "a row became current", so both belong on the same path.
+        InvokeRecordTrigger("OnAfterGetCurrRecord", Type.EmptyTypes, Array.Empty<object>());
+    }
+
+    /// <summary>
+    /// Run the page's OnOpenPage trigger.
+    ///
+    /// This is where a page establishes what it is looking at before anyone reads it — a
+    /// singleton buffer fetched or created for the current user, a filter narrowed to the
+    /// caller's context, derived state computed once. Skipping it left the page's record
+    /// unpositioned and blank, so the first thing the page's own AL did with it (a Modify,
+    /// a Validate) failed against a row that was never fetched — and the error named a
+    /// missing record rather than a trigger that never ran.
+    /// </summary>
+    internal void RaiseOnOpenPage()
+        => InvokeRecordTrigger("OnOpenPage", Type.EmptyTypes, Array.Empty<object>());
+
+    /// <summary>
+    /// Run the page's OnQueryClosePage / OnClosePage triggers, in BC's order. OnQueryClosePage
+    /// returning false vetoes the close, which is how a page refuses to be dismissed with
+    /// unsaved work; NavForm's base returns true, so a page declaring none closes normally.
+    /// </summary>
+    internal bool RaiseOnClosePage(Microsoft.Dynamics.Nav.Types.FormResult closeAction)
+    {
+        if (InvokeRecordTrigger("OnQueryClosePage",
+                new[] { typeof(Microsoft.Dynamics.Nav.Types.FormResult) },
+                new object[] { closeAction }) is false)
+            return false;
+        InvokeRecordTrigger("OnClosePage", Type.EmptyTypes, Array.Empty<object>());
+        return true;
+    }
+
+    /// <summary>
+    /// Run the page's OnNewRecord trigger — the one that seeds the defaults a blank record
+    /// does not have (<c>Rec.Validate(Scope, Scope::Tenant)</c> and friends). Skipping it
+    /// does not fail where the mistake is: the row still inserts, just carrying the field
+    /// defaults instead of the page's, and the test complains about a value.
+    /// </summary>
+    internal void RaiseOnNewRecord(bool belowXRec)
+        => InvokeRecordTrigger("OnNewRecord", new[] { typeof(bool) }, new object[] { belowXRec });
+
+    /// <summary>
+    /// Run the page's OnInsertRecord trigger and report whether the insert may proceed.
+    ///
+    /// The return value is the point of the trigger — it is the page's veto. NavForm's own
+    /// base implementation returns true, so a page that declares none still inserts, and no
+    /// separate "has a trigger" test is needed.
+    /// </summary>
+    internal bool RaiseOnInsertRecord(bool belowXRec)
+        => InvokeRecordTrigger("OnInsertRecord", new[] { typeof(bool) }, new object[] { belowXRec })
+           is not false;
+
+    /// <summary>
+    /// Start a new row the way the page itself would: BC's own NavForm.NewRecord, which does
+    /// ALInit, then InitializeFieldsFromFilters (so the row arrives already carrying the page's
+    /// filters — the header a subpage's line belongs to), then raises OnNewRecord.
+    ///
+    /// Reused rather than reimplemented on purpose. The filter step in particular depends on the
+    /// page's own metadata (SourceObject.PopulateAllFields) and on which FILTER GROUPS count —
+    /// a page's programmatic FilterGroup(2) scope is not the user's filter pane — and BC already
+    /// knows both. Hand-rolling it meant guessing at that, and guessing wrong is invisible: the
+    /// row simply arrives with blank keys.
+    /// </summary>
+    /// <returns>false when there is no form to ask, leaving the caller its own fallback.</returns>
+    internal bool TryNewRecord(bool belowXRec)
+    {
+        if (_form == null) return false;
+        var newRecord = _form.GetType().GetMethod("NewRecord",
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance,
+            binder: null, types: new[] { typeof(bool) }, modifiers: null);
+        if (newRecord == null) return false;
+
+        try { newRecord.Invoke(_form, new object[] { belowXRec }); }
+        catch (TargetInvocationException tie) when (tie.InnerException != null)
+        {
+            // OnNewRecord runs inside this call; an Error() it raises is the test's result.
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(tie.InnerException).Throw();
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// The page's last word before an EDIT to an existing row is written — the counterpart of
+    /// OnInsertRecord, and a veto in exactly the same way. A page that stamps a "last modified
+    /// by" field or refuses to save a row in a closed period does it here.
+    /// </summary>
+    internal bool RaiseOnModifyRecord()
+        => InvokeRecordTrigger("OnModifyRecord", Type.EmptyTypes, Array.Empty<object>()) is not false;
+
+    /// <summary>
+    /// Invoke a page record trigger by name. The AL compiler emits these as overrides of
+    /// NavForm's own protected virtuals, so reflection finds the base declaration and virtual
+    /// dispatch reaches the page's override; a page that declares none lands on NavForm's
+    /// implementation, which is the correct no-op/true.
+    /// </summary>
+    private object? InvokeRecordTrigger(string name, Type[] parameterTypes, object[] arguments)
+    {
+        var trigger = _form.GetType().GetMethod(name,
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance,
+            binder: null, types: parameterTypes, modifiers: null);
+        if (trigger == null) return null;
+        try { return trigger.Invoke(_form, arguments); }
+        catch (TargetInvocationException tie) when (tie.InnerException != null)
+        {
+            // An Error() inside the trigger is the trigger's own outcome, not a runner
+            // failure — rethrow it unwrapped so the AL stack survives.
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(tie.InnerException).Throw();
+            throw; // unreachable
+        }
+    }
+
+    /// <summary>
+    /// The page method carrying the trigger for <paramref name="memberId"/>.
+    ///
+    /// The AL compiler emits triggers as <c>{MemberName}_a{n}{suffix}</c> on the page class,
+    /// carrying the NAME but not the id. The member is identified by RE-DERIVING BC's own id
+    /// from each candidate's name — <c>IdSpace.GetMemberId(pageId, name)</c>, i.e. abs(FNV-1a
+    /// over the UTF-16 bytes of pageId + name) — and comparing it to the id being driven.
+    /// Matching a control on its source expression's Name does not work: that is the bound
+    /// VARIABLE's name (SelectedMode), not the control's (Mode), and they routinely differ.
+    /// </summary>
+    private MethodInfo? FindTrigger(int memberId, string suffix, string surface, int arity = 0)
+    {
+        MethodInfo? match = null;
+        foreach (var m in _form.GetType()
+            .GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
+        {
+            if (m.GetParameters().Length != arity) continue;
+            if (!m.Name.EndsWith(suffix, StringComparison.Ordinal)) continue;
+
+            var memberName = MemberNameFromTriggerMethod(m.Name, suffix);
+            if (memberName == null) continue;
+            if (MemberId(_pageId, memberName) != memberId) continue;
+
+            if (match != null)
+                throw new AlRunner.Infrastructure.RunnerOutOfScopeException(
+                    $"TestPage {surface} (member {memberId})",
+                    $"testpage-{surface.ToLowerInvariant()} — both '{match.Name}' and '{m.Name}' on "
+                    + $"{_form.GetType().Name} resolve to member {memberId}; the runner cannot "
+                    + "tell which trigger belongs to it. See docs/scope.md");
+            match = m;
+        }
+        return match;
+    }
+
+    private void Invoke(MethodInfo trigger)
+    {
+        try { trigger.Invoke(_form, null); }
+        catch (TargetInvocationException tie) when (tie.InnerException != null)
+        {
+            // An Error() inside the AL trigger is the trigger's own outcome, not a runner
+            // failure — rethrow it unwrapped so the AL stack survives.
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(tie.InnerException).Throw();
+        }
+    }
+
+    /// <summary>
+    /// "Mode_a45_OnValidate" -> "Mode". Returns null when the name does not carry the
+    /// compiler's <c>_a{digits}_</c> disambiguator, rather than guessing at a split point.
+    /// </summary>
+    private static string? MemberNameFromTriggerMethod(string methodName, string suffix)
+    {
+        var head = methodName.Substring(0, methodName.Length - suffix.Length);
+        var lastUnderscore = head.LastIndexOf('_');
+        if (lastUnderscore <= 0) return null;
+        var disambiguator = head.Substring(lastUnderscore + 1);
+        if (disambiguator.Length < 2 || disambiguator[0] != 'a') return null;
+        for (var i = 1; i < disambiguator.Length; i++)
+            if (!char.IsDigit(disambiguator[i])) return null;
+        return head.Substring(0, lastUnderscore);
+    }
+
+    /// <summary>
+    /// BC's IdSpace.GetMemberId(ancestorObjectId, name): abs of the FNV-1a hash of
+    /// <c>ancestorObjectId.ToString(InvariantCulture) + name</c> over its UTF-16 BYTES
+    /// (not its chars — hashing chars gives different, wrong ids), with int.MinValue
+    /// mapped to int.MaxValue because it has no positive counterpart.
+    /// </summary>
+    internal static int MemberId(int ancestorObjectId, string name)
+    {
+        var text = ancestorObjectId.ToString(System.Globalization.CultureInfo.InvariantCulture) + name;
+        var bytes = System.Text.Encoding.Unicode.GetBytes(text);
+        unchecked
+        {
+            uint hash = 2166136261u;
+            foreach (var b in bytes) hash = (hash ^ b) * 16777619u;
+            var signed = (int)hash;
+            return signed == int.MinValue ? int.MaxValue : Math.Abs(signed);
+        }
+    }
+
+    private static Type? FindPageType(int pageId)
+    {
+        var name = "Page" + pageId;
+        foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            Type?[] types;
+            try { types = asm.GetTypes(); }
+            catch (ReflectionTypeLoadException ex) { types = ex.Types; }
+            catch { continue; }
+            foreach (var t in types)
+                if (t != null && t.Name == name && typeof(NavForm).IsAssignableFrom(t))
+                    return t;
+        }
+        return null;
+    }
+
+    private static void Invoke(object form, string methodName, object?[] args)
+    {
+        for (var t = form.GetType(); t != null; t = t.BaseType)
+        {
+            var mi = t.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+                .FirstOrDefault(m => m.Name == methodName && m.GetParameters().Length == args.Length);
+            if (mi == null) continue;
+            mi.Invoke(form, args);
+            return;
+        }
+        throw new InvalidOperationException(
+            $"NavForm.{methodName} not found on {form.GetType().FullName} — BC page shape changed");
+    }
+
+    private static object? ReadProperty(object target, string name)
+    {
+        for (var t = target.GetType(); t != null; t = t.BaseType)
+        {
+            var pi = t.GetProperty(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+            if (pi != null) return pi.GetValue(target);
+        }
+        return null;
+    }
+}

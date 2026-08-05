@@ -1,0 +1,110 @@
+/// Helper codeunit exercising XmlDocumentType methods in standalone mode.
+/// Actual signatures: GetName(var Result: Text): Boolean, etc.
+codeunit 50072 "XDT Helper"
+{
+    // ── Already-covered: Create + GetName ────────────────────────────────────
+
+    procedure CreateAndGetName(name: Text): Text
+    var
+        docType: XmlDocumentType;
+        result: Text;
+    begin
+        docType := XmlDocumentType.Create(name);
+        docType.GetName(result);
+        exit(result);
+    end;
+
+    procedure CreateFull(name: Text; publicId: Text; systemId: Text; internalSubset: Text): Text
+    var
+        docType: XmlDocumentType;
+        result: Text;
+    begin
+        docType := XmlDocumentType.Create(name, publicId, systemId, internalSubset);
+        docType.GetName(result);
+        exit(result);
+    end;
+
+    procedure AddWithBonus(a: Integer; b: Integer): Integer
+    begin
+        exit(a + b + 1);
+    end;
+
+    // ── GetPublicId / GetSystemId / GetInternalSubset ─────────────────────────
+
+    procedure GetPublicIdFromFull(name: Text; publicId: Text; systemId: Text; internalSubset: Text): Text
+    var
+        docType: XmlDocumentType;
+        result: Text;
+    begin
+        docType := XmlDocumentType.Create(name, publicId, systemId, internalSubset);
+        docType.GetPublicId(result);
+        exit(result);
+    end;
+
+    procedure GetSystemIdFromFull(name: Text; publicId: Text; systemId: Text; internalSubset: Text): Text
+    var
+        docType: XmlDocumentType;
+        result: Text;
+    begin
+        docType := XmlDocumentType.Create(name, publicId, systemId, internalSubset);
+        docType.GetSystemId(result);
+        exit(result);
+    end;
+
+    procedure GetInternalSubsetFromFull(name: Text; publicId: Text; systemId: Text; internalSubset: Text): Text
+    var
+        docType: XmlDocumentType;
+        result: Text;
+    begin
+        docType := XmlDocumentType.Create(name, publicId, systemId, internalSubset);
+        docType.GetInternalSubset(result);
+        exit(result);
+    end;
+
+    // ── SetPublicId / SetSystemId / SetInternalSubset / SetName ──────────────
+
+    procedure SetPublicId_GetBack(publicId: Text): Text
+    var
+        docType: XmlDocumentType;
+        result: Text;
+    begin
+        docType := XmlDocumentType.Create('html', '', '', '');
+        docType.SetPublicId(publicId);
+        docType.GetPublicId(result);
+        exit(result);
+    end;
+
+    procedure SetSystemId_GetBack(systemId: Text): Text
+    var
+        docType: XmlDocumentType;
+        result: Text;
+    begin
+        docType := XmlDocumentType.Create('html', '', '', '');
+        docType.SetSystemId(systemId);
+        docType.GetSystemId(result);
+        exit(result);
+    end;
+
+    procedure SetInternalSubset_GetBack(internalSubset: Text): Text
+    var
+        docType: XmlDocumentType;
+        result: Text;
+    begin
+        docType := XmlDocumentType.Create('html', '', '', '');
+        docType.SetInternalSubset(internalSubset);
+        docType.GetInternalSubset(result);
+        exit(result);
+    end;
+
+    procedure SetName_GetBack(newName: Text): Text
+    var
+        docType: XmlDocumentType;
+        result: Text;
+    begin
+        docType := XmlDocumentType.Create('html');
+        docType.SetName(newName);
+        docType.GetName(result);
+        exit(result);
+    end;
+
+}

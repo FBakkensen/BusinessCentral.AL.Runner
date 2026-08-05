@@ -1,8 +1,8 @@
 # Copilot Instructions
 
-## Role: Implementation agent or reviewer
+## Role: implementation agent or reviewer
 
-When you receive an **issue assignment**, you are an **implementation agent**. Read the `agent:` label on the assigned issue — that is your identity (`impl-1`, `impl-2`). Follow the workflow below.
+When you receive an **issue assignment**, you are an **implementation agent**. The `agent:` label on the issue is your identity (`impl-1`, `impl-2`). Follow the workflow below.
 
 When you receive a **PR review request**, you are a **code reviewer**. Apply the checklist below.
 
@@ -11,130 +11,141 @@ When you receive a **PR review request**, you are a **code reviewer**. Apply the
 ## Implementation agent quick reference
 
 1. Create branch `agent/<your-id>/issue-<N>`.
-2. **Verify you understand the AL pattern that triggered the issue.** If the body lacks a runnable AL reproducer or specific failing assertion, do NOT guess. Add label `status: needs-input`, ask the reporter for the missing detail, and stop.
-3. Implement following TDD rules below — failing test first, then fix.
+2. **Verify you understand the AL pattern that triggered the issue.** If the body lacks a runnable AL reproducer or specific failing assertion, do not guess. Add label `status: needs-input`, ask the reporter for the missing detail, and stop. (`.claude/rules/no-assumption-fixes.md`)
+3. Implement following the TDD rules below — failing test first, then fix.
 4. Open PR with `Closes #N` in the body. Add labels `agent: <your-id>` and `status: review-ready`.
 5. Fix any CI failures or review comments that come back.
-6. Auto-merge fires once approved and CI is green — you are done.
+6. Auto-merge fires once approved and CI is green.
 
 **Hard rules:**
 - Never push directly to `main`.
 - Never edit `CHANGELOG.md` (auto-generated from squash-commit messages post-merge).
-- `docs/coverage.yaml` MUST be updated for every implemented feature, at overload level.
-- Object IDs must be unique within the top-level bucket (`tests/bucket-1/`, `tests/bucket-2/`, …).
-- No shipped real implementations of System Application codeunits. Auto-generated blank shells for dependency objects are normal; what is forbidden is the runner re-implementing SA behavior (Image, File Mgt., Crypto, Email, …) in `AlRunner/stubs/` or `AlRunner/Runtime/`. The only exceptions are test-automation libraries (`LibraryAssert` 130, `LibraryVariableStorage` 131004). If real SA behavior is needed, file a runner-gap issue.
+- Never edit anything under `tests/al-language/` — that submodule is read-only. Corpus bumps are their own PR (`.claude/rules/al-language-submodule.md`).
+- Honour the precompiled-DLL contract: do not rewrite method bodies or rename types in MS / ISV business-logic DLLs (`.claude/rules/precompiled-dll-respect.md`).
+- Every unsupported surface must throw `RunnerOutOfScopeException` with a named API and reason from `docs/scope.md`. Never silently return a default (`.claude/rules/loud-failures.md`).
 
 ---
 
-# Code Review Checklist
+## Repo layout (v2)
 
-These instructions apply to every pull request in this repository. Flag anything that is missing or incorrect.
+```
+AlRunner/                      — runner source
+  Program.cs                   — CLI entry, bundle iteration, --precompile dispatch
+  BcRuntime.cs                 — patch installation (BcRuntime.EnsureApplied())
+  BcCompiler.cs                — AL → IL via BC's Compilation.Emit
+  BcAssembler.cs               — Roslyn-compiled C# polyfill bodies
+  TestExecutor.cs              — [NavTest] discovery + isolation modes
+  AppLoader.cs                 — load real MS / ISV .app DLLs in-process
+  DependencyLoader.cs          — 3-tier dep resolution (precompiled / loose / compiled-from-source)
+  Reporter.cs                  — JSON classification output
+  Patches/*.cs                 — per-API JMP-hook patches
+  Infrastructure/
+    NclCecilRewrite.cs         — one-time Cecil rewrite of Ncl.dll, cached
+    JmpHook.cs                 — legacy JMP-hook mechanism (Cecil-freeze rule applies to new patches)
+    ExpectationManifest.cs     — schema + loader for tests/expectations (not yet wired into Reporter)
+    RunnerOutOfScopeException.cs — typed OOS exception
+tests/al-language/             — git submodule, canonical corpus (READ-ONLY)
+tests/expectations/            — JSON manifest declaring expected outcomes for corpus tests
+tests/runner-extras/           — runner-specific positive tests
+tests/archive/                 — v1 buckets and fixtures (frozen, scheduled for deletion)
+docs/                          — expectations.md, scope.md, limitations.md, cecil-migration.md, subsystems.md
+docs/archive/                  — v1-only documents (dap.md, extract-deps.md, coverage.{md,yaml}, etc.)
+tools/                         — DownloadArtifacts (used by AlRunner.csproj), RuntimeApiEnumerator, telemetry-triage
+scripts/                       — al-inventory.py, coverage-gen.js
+```
+
+The v1 layout (`tests/bucket-1/`, `tests/bucket-2/`, AlRunner.Tests/, stubs/, Runtime/MockX.cs, RoslynRewriter, DepCompiler, DAP server, `extract-deps`) has been removed. Do not reference it. There is no C# unit-test project.
 
 ---
+
+## Dev loop
+
+```bash
+# Clone with submodules
+git clone --recurse-submodules https://github.com/StefanMaron/BusinessCentral.AL.Runner
+
+# Build
+dotnet build AlRunner.slnx -c Release
+
+# Run the al-language corpus
+dotnet run --project AlRunner -c Release -- tests/al-language/tests/al-language
+
+# Useful flags
+dotnet run --project AlRunner -c Release -- --verbose --show-pass tests/al-language/tests/al-language
+dotnet run --project AlRunner -c Release -- --isolation test tests/al-language/tests/al-language
+dotnet run --project AlRunner -c Release -- --cache ~/.cache/al-runner/al-out tests/al-language/tests/al-language
+```
+
+Exit codes: `0` all pass, `1` real failures or arg error, `2` runner limitations, `3` AL compile error.
+
+---
+
+# Code review checklist
+
+These instructions apply to every PR in this repository. Flag anything that is missing or incorrect.
 
 ## Tests are mandatory
 
-Every change that touches behavior, mocks, or rewriter rules **must** include tests. Flag PRs that skip this:
+Every change must include a test. Flag PRs that skip this:
 
-- **New mock method or mock class** → requires a new test suite in `tests/<bucket>/<category>/NN-descriptive-name/` (or additions to an existing relevant suite).
-- **New rewriter rule** → requires a test with AL code that exercises the rewritten construct.
+- **New runtime behaviour / new patch** → cite the al-language test that fails before and passes after (or, if the corpus doesn't cover it, a new entry in `tests/runner-extras/`).
 - **Bug fix** → requires a test that fails without the fix.
 - **New CLI flag or exit code** → requires a test that exercises it.
+- **New OOS-by-design surface** → new entry in `tests/expectations/oos-<area>.json` per [`docs/expectations.md`](../docs/expectations.md).
 
 **Red flags:**
-- Source or runtime changes in `AlRunner/` with no corresponding change under `tests/`.
-- Test procedures ending with `Assert.IsTrue(true, ...)` or any unconditional assertion — those test compilation, not behavior.
-- Tests with only a happy-path case and no negative test (`asserterror` + `Assert.ExpectedError`).
-- A new C# infrastructure class with no xUnit test in `AlRunner.Tests/`.
-
----
+- Source changes under `AlRunner/` with no test reference.
+- Test procedures ending with `Assert.IsTrue(true, ...)` or any unconditional assertion.
+- Tests with only a happy-path case and no negative (`asserterror` + `Assert.ExpectedError`).
+- Tests that would still pass if the implementation always returned the default value (`0`, `''`, `false`).
+- "No-op stub" tests not named `*_NoThrow` / `*_IsNoOp` even though the only claim is crash-safety.
 
 ## Every test must cover both directions
 
-1. **Positive**: correct input produces the expected result (`Assert.AreEqual`, `Assert.IsTrue`, etc.).
-2. **Negative**: invalid input fails with the right error (`asserterror` + `Assert.ExpectedError`).
+1. **Positive** — correct input produces the expected concrete value.
+2. **Negative** — invalid input fails with the specific error (`asserterror` + `Assert.ExpectedError`).
 
-**Red flags that prove nothing:**
-- `if X <> expected then Error('...')` — use `Assert.AreEqual` instead.
-- `asserterror Foo();` with no `Assert.ExpectedError` — proves something fails, not what.
-- `Assert.IsTrue(true, ...)` — unconditional, always green.
-- A test where the assertion would pass for a mock returning a default value (`0`, `''`, `false`).
-- A "no-op stub" test named `*_NoThrow` / `*_IsNoOp` where the claim is NOT about crash safety — rename to reflect what is actually proven.
+## Precompiled-DLL respect
 
----
+Flag any PR that:
+- Rewrites method bodies in `*.SystemApplication.dll`, `*.BaseApplication.dll`, or any ISV business-logic DLL.
+- Renames or removes types/members in any precompiled DLL.
+- Changes method signatures of methods called from precompiled DLLs.
+
+Modifications to the runtime engine (`Microsoft.Dynamics.Nav.Ncl.dll`, `Microsoft.Dynamics.Nav.Types.dll`) and to skeleton state are allowed. New patches should use Cecil rewriting, not new JMP-hooks (Cecil migration freeze; existing JmpHook code stays for now).
+
+## Loud failures
+
+Flag any patch that silently returns a default value for an unsupported surface. The contract is: throw `RunnerOutOfScopeException` with the BC API name and a reason from `docs/scope.md`. Sentinel returns (`Action.Ok`, `FormResult.OK`, `S-1-0-0` SIDs, etc.) make green tests lie.
 
 ## Documentation checklist
 
-Flag any PR that changes observable behavior but skips these updates:
-
-| File | What to check |
+| File | When to update |
 |---|---|
-| `README.md` | Supported/unsupported feature list, CLI flags |
-| `PrintGuide()` in `AlRunner/Program.cs` | `--guide` output matches new capabilities |
-| `docs/limitations.md` | Updated if the change affects known gaps |
-| `docs/coverage.yaml` | **Required** for every implemented feature, at overload level |
+| `README.md` | CLI surface changed, new supported AL feature, new env var. |
+| `docs/limitations.md` | Hard architectural limit shifted. |
+| `docs/scope.md` | Per-API in/out-of-scope decision changed. |
+| `docs/expectations.md` | Schema or mode semantics changed. |
+| `tests/expectations/*.json` | New OOS-by-design surface or new known-gap. |
 
-`CHANGELOG.md` is auto-generated from squash-commit messages by `.github/scripts/generate_changelog.py` during release — flag any PR that edits it.
+`CHANGELOG.md` is auto-generated from squash-commit messages — flag any PR that edits it.
 
-If the change only touches internal implementation with no externally visible effect, README and guide updates may be skipped — but `docs/coverage.yaml` is still required when a feature/overload is added.
+## Submodule contract
 
----
-
-## Shipped SA implementations are forbidden (flag aggressively)
-
-Auto-generating **blank shells** for dependency codeunits is the runner's normal operating mode — that is fine and expected. What is forbidden is shipping a *real implementation* of a System Application codeunit inside the runner, so AL that calls into SA gets a "working" answer the runner cooked up.
-
-The only shipped real implementations are test-automation libraries:
-- `AlRunner/stubs/LibraryAssert.al` (codeunit 130)
-- `AlRunner/stubs/LibraryVariableStorage.al` (codeunit 131004)
-
-Flag any PR that:
-- Adds an AL file in `AlRunner/stubs/` implementing an SA business-logic codeunit (Image, Cryptography, File Mgt., Email, Document Sharing, Web Service Mgt., …).
-- Adds a C# class in `AlRunner/Runtime/` that re-creates SA business behavior and is wired in via `RoslynRewriter.cs`.
-- Modifies `RoslynRewriter.cs` to redirect SA codeunit calls to a runner-supplied real implementation rather than the auto-generated blank shell.
-
-The runner's contract is "compile and run any AL that does not need a service tier" — not "re-implement the System Application." If the AL under test really needs SA behavior, the answer is a filed runner-gap issue, not a quietly-shipped re-implementation.
-
----
+`tests/al-language/` is read-only. Flag any PR that:
+- Edits files under `tests/al-language/` directly.
+- Bundles a submodule pin bump with unrelated runner changes (corpus bumps are their own PR).
 
 ## Code quality
 
 Flag these patterns:
-
-- **Duplicate logic**: a method that already exists elsewhere in `AlRunner/Runtime/` being re-implemented instead of reused.
-- **Defensive checks the type system already prevents**: trust the contract; do not add null-guards for things that cannot be null.
-- **Speculative abstractions**: a new interface or base class added "for future use" with only one implementation.
-- **Shortcuts that create technical debt**: a simpler fix that leaves the codebase in worse shape than before — the right fix is preferred even if it touches more files.
-
----
+- **Duplicate logic** — a method that already exists elsewhere in `AlRunner/` re-implemented.
+- **Defensive checks the type system already prevents** — null-guards for things that cannot be null.
+- **Speculative abstractions** — interfaces / base classes added "for future use" with one implementation.
+- **Shortcuts that create debt** — a simpler fix that leaves the codebase in worse shape than the right one.
 
 ## Scope
 
-In scope: any AL language feature that can run without a real BC service tier — expanding mocks, new mock classes, new rewriter rules, new CLI capabilities.
+In scope: anything the runner can execute in-process against the real MS / ISV DLLs — records, codeunits, events, test toolkit, RecordRef/FieldRef, BLOB/streams, JSON/XML, in-process crypto, IsolatedStorage, synchronous TaskScheduler dispatch.
 
-Hard limits (cannot be fixed without BC service tier): parallel session semantics, real transaction isolation, page/report rendering, HTTP. These belong behind AL interfaces, not in the runner.
-
----
-
-## Test suite structure (for reference)
-
-Test suites are grouped into thematic categories under top-level buckets. AL object IDs must be unique within a top-level bucket; IDs may repeat across buckets.
-
-```
-tests/
-  bucket-1/                 ← backend logic
-    record-table/           — record / table / field / filter / database / permissions
-    codeunit-runtime/       — codeunit / event / dialog / error / scope / handler / session / library
-  bucket-2/                 ← presentation + data
-    page-report/            — page / testpage / report / xmlport / query / action / views / fieldgroup
-    data-formats/           — text / json / xml / date / numeric / format / stream / http / blob / media
-  bucket-feature-niw/       ← suites needing a separate compile unit (NoImplicitWith feature flag); flat layout
-  stubs/                    ← 39-stubs (run separately with --stubs)
-  excluded/                 ← fixtures not in the main loop
-
-tests/<bucket>/<category>/<NN-descriptive-name>/
-  src/    — AL source codeunit(s)
-  test/   — AL test codeunit (Subtype = Test)
-```
-
-When adding a new suite, pick the matching `<bucket>/<category>` folder and reuse the next free `NN-` prefix in that category.
+Out of scope (must throw `RunnerOutOfScopeException`): SMTP, HTTP egress, external file I/O, OData/SOAP publishing, physical printers, real job-queue scheduling, page/report rendering (handler callbacks fire; layout does not). See `docs/scope.md` for the precise list.

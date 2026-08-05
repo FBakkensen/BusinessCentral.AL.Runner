@@ -1,0 +1,14 @@
+{
+  "id": "b2000002-0000-0000-0000-000000000002",
+  "name": "AL Runner v2 Tests — Bucket 2",
+  "publisher": "AL Runner",
+  "version": "1.0.0.0",
+  "idRanges": [
+    {
+      "from": 50000,
+      "to": 99999
+    }
+  ],
+  "dependencies": [],
+  "target": "OnPrem"
+}
