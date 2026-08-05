@@ -6,6 +6,13 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+## [2.0.0.0] - 2026-08-05
+
+### Changed
+- feat(windows): real Windows support via VirtualProtect (#1650)
+- fix(release): dedupe the duplicated v2.0.0 CHANGELOG section, make publish.yml idempotent
+- fix(ci): publish.yml's test job was missing the platform-apps package cache
+
 ## [2.0.0] - 2026-08-05
 
 ### Fixed
