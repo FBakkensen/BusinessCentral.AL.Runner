@@ -552,6 +552,7 @@ public static partial class BcRuntime
     {
         if (_applied) return;
         _applied = true;
+
         Win32Stubs.Register();
 
         // Phase A diagnostic-only EventPipe JIT listener. Subscribing to the JIT
