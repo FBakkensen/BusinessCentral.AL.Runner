@@ -206,6 +206,10 @@ var isolation = AlRunner.TestIsolation.Codeunit;
 bool strictExitCode = true;
 // --test PATTERN: substring filter applied to "Codeunit.Method" — case-insensitive.
 string? testFilter = null;
+// --test-timeout SECONDS: per-test timeout override (v1 carryover; v2 previously
+// hardcoded 60s with no CLI override — see #1648). Takes precedence over the
+// AL_RUNNER_TEST_TIMEOUT_SEC env var. Null = env var / 60s default.
+int? testTimeoutSeconds = null;
 // --watch: stay resident with warm dependencies and re-run IN-PROCESS on every .al
 // change. Each cycle resets the per-bundle caches (BcRuntime.ResetForNewBundleReload),
 // re-emits warm (~1.6s — BcCompiler loader-signature reuse keeps the ~40s dep symbol
@@ -256,6 +260,17 @@ for (int i = 0; i < args.Length; i++)
     if (args[i] == "--strict") { strictExitCode = true; continue; }  // no-op: default since the v2 cut
     if (args[i] == "--no-strict-exit") { strictExitCode = false; continue; }
     if ((args[i] == "--test" || args[i] == "--filter") && i + 1 < args.Length) { testFilter = args[++i]; continue; }
+    if (args[i] == "--test-timeout" && i + 1 < args.Length)
+    {
+        var rawTimeout = args[++i];
+        if (!int.TryParse(rawTimeout, out var parsedTimeout) || parsedTimeout <= 0)
+        {
+            Console.Error.WriteLine($"--test-timeout: '{rawTimeout}' is not a positive integer number of seconds.");
+            return 2;
+        }
+        testTimeoutSeconds = parsedTimeout;
+        continue;
+    }
     if (args[i] == "--preprocessor-symbols" && i + 1 < args.Length)
     {
         foreach (var raw in args[++i].Split(','))
@@ -637,7 +652,7 @@ AlRunner.PerfTrace.Log($"BcRuntime.EnsureApplied {t0.ElapsedMilliseconds}ms");
 
 var emitter = new BcCompiler();
 var assembler = new BcAssembler();
-var executor = new TestExecutor { Isolation = isolation, TestFilter = testFilter };
+var executor = new TestExecutor { Isolation = isolation, TestFilter = testFilter, TimeoutSeconds = testTimeoutSeconds };
 var depLoader = new DependencyLoader(emitter, assembler);
 var results = new List<BucketResult>();
 
@@ -2442,6 +2457,10 @@ static void PrintHelp(TextWriter w)
     w.WriteLine("                            test      every [Test] gets a fresh state (BC's 130452)");
     w.WriteLine("                            disabled  no resets at all (BC's 130453)");
     w.WriteLine("                            method    v1 alias for 'test' (v1's per-method reset)");
+    w.WriteLine("  --test-timeout SECONDS  Per-test timeout override (v1 carryover). Default: 60s, or");
+    w.WriteLine("                          the AL_RUNNER_TEST_TIMEOUT_SEC env var if set; this flag");
+    w.WriteLine("                          takes precedence over both. On timeout the test fails with");
+    w.WriteLine("                          \"Test exceeded {N}s timeout.\" (v1-compatible message text).");
     w.WriteLine();
     w.WriteLine("EXECUTION");
     w.WriteLine("  --bc-version X          Select the BC artifact version (e.g. \"28.1\" or a full");
