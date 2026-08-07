@@ -40,6 +40,14 @@ public sealed class TestExecutor
     /// </summary>
     public string? TestFilter { get; set; }
 
+    /// <summary>
+    /// Per-test timeout, in seconds. v1's `--test-timeout &lt;seconds&gt;` CLI flag
+    /// (see #1648); wired from Program.cs. Null = use the
+    /// AL_RUNNER_TEST_TIMEOUT_SEC env var if set, else DefaultTestTimeoutSeconds.
+    /// Explicit CLI value takes precedence over the env var.
+    /// </summary>
+    public int? TimeoutSeconds { get; set; }
+
     public IReadOnlyList<TestResult> Run(Assembly assembly)
     {
         var totalSw = System.Diagnostics.Stopwatch.StartNew();
@@ -296,7 +304,7 @@ public sealed class TestExecutor
                 PerfTrace.Log($"TestExecutor.RunOne TIMEOUT {codeunit}.{m.Name} {sw.ElapsedMilliseconds}ms");
                 var alStack = AlRunner.Infrastructure.AlCallStackCapture.CaptureCurrent();
                 return new TestResult(codeunit, m.Name, TestOutcome.Error,
-                    $"TIMEOUT after {(int)timeout.TotalSeconds}s", null, sw.Elapsed, alStack, displayName);
+                    $"Test exceeded {(int)timeout.TotalSeconds}s timeout.", null, sw.Elapsed, alStack, displayName);
             }
             invokeResult.Exception?.Throw();
             // The body succeeded — now BC's own check that every handler the test DECLARED was
@@ -333,8 +341,12 @@ public sealed class TestExecutor
         }
     }
 
-    private static TimeSpan TestTimeout()
+    private TimeSpan TestTimeout()
     {
+        // Explicit --test-timeout (via TestExecutor.TimeoutSeconds) wins over the env var,
+        // which in turn wins over the hardcoded default. See #1648.
+        if (TimeoutSeconds is int explicitSeconds && explicitSeconds > 0)
+            return TimeSpan.FromSeconds(explicitSeconds);
         if (int.TryParse(Environment.GetEnvironmentVariable("AL_RUNNER_TEST_TIMEOUT_SEC"), out var seconds)
             && seconds > 0)
             return TimeSpan.FromSeconds(seconds);
@@ -360,7 +372,7 @@ public sealed class TestExecutor
     private static bool IsTimeout(TestResult result)
         => result.Outcome == TestOutcome.Error
            && result.Message != null
-           && result.Message.StartsWith("TIMEOUT after ", StringComparison.Ordinal);
+           && result.Message.StartsWith("Test exceeded ", StringComparison.Ordinal);
 
     private static Exception Unwrap(Exception ex)
     {
