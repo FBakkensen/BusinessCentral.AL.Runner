@@ -6,6 +6,21 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-08-07
+
+### Fixed
+- platform-table metadata lost when a dependency app extends the table
+- correct filter-only query-column slot aliasing in multi-dataitem joins
+
+### Changed
+- fix(dispatch): dedupe module identity across bundles to fix event-subscriber TargetException
+- fix(provision): fold bundle .alpackages into the platform-app R2R gate
+- feat(server): stream runTests as protocol-v2 NDJSON (second slice of #1641)
+- Port protocol-v2 building blocks (types, error/stack utilities, testIsolation)
+- fix(win32stubs): never intercept Win32 imports on Windows
+- feat(win32stubs): ship a prebuilt libwin32_stubs.so so Linux needs no C compiler
+- fix(deps): resolve relative --package-cache dirs before pkgdedup symlinks
+
 ## [2.0.1] - 2026-08-07
 
 ### Documentation
