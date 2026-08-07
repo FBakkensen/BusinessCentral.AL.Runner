@@ -6,6 +6,23 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-08-07
+
+### Documentation
+- fix v1-to-v2-migration.md --version row (v1 rejects it, not supports it)
+
+### Changed
+- feat(cli): restore --test-timeout and clarify the --run -> --test/--filter redesign
+- fix(record-metadata): strip quoted-identifier InitValue on enum fields so blank-named values evaluate
+- fix(cli): --output-json redirects progress banners to stderr, purifying stdout
+- fix(win32stubs): stop silently swallowing shim-build failures — throw loudly instead
+- fix(cli): --test-isolation method now maps to per-test reset, not codeunit isolation
+- fix(provisioning): --auto-provision downloads into the runner artifact cache, not the project's package cache
+- fix(enum): merge enumextension values into Enum.Ordinals()/Names()
+- fix(server): runTests/execute honour every sourcePaths entry, not just [0]
+- fix(provisioning): DownloadArtifacts fails loud, not with a raw stack trace, on a 404
+- fix(ci): Tests-updated gate now also matches AlRunner.Tests/
+
 ## [2.0.0.0] - 2026-08-05
 
 ### Changed
