@@ -6,6 +6,15 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+## [2.1.1] - 2026-08-08
+
+### Changed
+- fix(parser): AL comments no longer read as properties in the sibling parsers (#1697)
+- fix(deps): name the dependency no loader tier can implement (#1689)
+- fix(parser): AL comments no longer read as table/field properties (#1690)
+- fix(pkgdedup): transient Windows move failure no longer kills the run (#1691)
+- fix(reporter): --output-json crashed when two bundles shared a basename (#1692)
+
 ## [2.1.0] - 2026-08-07
 
 ### Fixed
