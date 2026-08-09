@@ -135,13 +135,19 @@ public static partial class RecordPatches
     {
         foreach (var t in _parsedTables.Values)
             yield return ("Table", t.TableId, t.TableName, SourceCaptionFor("Table", t.TableId));
+        // Pages and pageextensions live in separate dictionaries because AL gives them
+        // separate id namespaces (#1710) — both are enumerated, so an app declaring
+        // `page N` and `pageextension N` reports BOTH rows instead of only whichever
+        // one was parsed last.
         foreach (var p in _parsedPages.Values)
-        {
-            var kind = p.IsExtension ? "PageExtension" : "Page";
-            yield return (kind, p.Id, p.Name, SourceCaptionFor(kind, p.Id));
-        }
+            yield return ("Page", p.Id, p.Name, SourceCaptionFor("Page", p.Id));
+        foreach (var p in _parsedPageExtensions.Values)
+            yield return ("PageExtension", p.Id, p.Name, SourceCaptionFor("PageExtension", p.Id));
         foreach (var r in _parsedReports.Values)
-            yield return ("Report", r.Id, r.Name, r.Caption);
+            // SourceCaptionFor("Report", …) reads r.Caption itself — AlReportParser is the
+            // only pass that parses a report's Caption (#1714). Going through the same
+            // accessor as every other kind is what keeps that single source uniform.
+            yield return ("Report", r.Id, r.Name, SourceCaptionFor("Report", r.Id));
         foreach (var r in _parsedReportExtensions.Values)
             yield return ("ReportExtension", r.Id, r.Name, SourceCaptionFor("ReportExtension", r.Id));
         foreach (var q in _parsedQueries.Values)
