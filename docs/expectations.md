@@ -8,6 +8,16 @@ support in-process (report rendering, SMTP, HTTP egress, real task scheduler,
 etc.). The runner does not modify the corpus to make those tests pass; instead
 it declares its expectations about them in this directory.
 
+## Activation
+
+The manifest loads once at startup, before any BC initialisation. Without the
+flag, the runner probes `./tests/expectations` relative to the working
+directory and activates classification only when that directory exists — a run
+outside this repo behaves exactly as if the mechanism did not exist. Pass
+`--expectations <dir>` to point at another manifest directory explicitly (the
+directory must exist). A malformed manifest aborts the invocation with exit
+code 2 before a single test runs.
+
 ## Layout
 
 ```
@@ -65,6 +75,12 @@ when only some tests in a codeunit are affected.
 | `expect-oos` | throw `RunnerOutOfScopeException` with matching `Reason` | `pass-oos` | Surface is OOS by design (see `docs/scope.md`) — runner will never support it in-process |
 | `expect-fail-known-gap` | fail (any exception or assertion mismatch) | `pass-known-gap` | Surface is in scope but not yet implemented; `Issue` tracks the work |
 | `skip` | n/a — runner does not invoke the test | `skipped` | Test cannot compile against the current AL output, or otherwise must not run |
+
+`Reason` matches on the anchor: throw sites may append free-text detail after
+an ` — ` (em-dash) separator, while the entry holds only the leading
+`docs/scope.md` anchor (e.g. a throw site's
+`query-join-rightouterjoin-not-implemented — only InnerJoin and …` matches an
+entry declaring `query-join-rightouterjoin-not-implemented`).
 
 ### Result classification table
 
