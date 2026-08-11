@@ -259,6 +259,7 @@ public static class EventSubscriberPatches
             _seededScopeTypes.Clear();
             _lastScannedCount = 0;
         }
+        AlRunner.BcRuntime.ResetManualBindingCacheForReload();
     }
 
     private static Type? FindCodeunitClrType(int codeunitId)
