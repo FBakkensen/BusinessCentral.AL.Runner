@@ -267,7 +267,7 @@ public static class ExpectationClassifier
 
                 if (outcome.Exception is RunnerOutOfScopeException oos)
                 {
-                    if (oos.Reason == entry.Reason)
+                    if (ReasonAnchor(oos.Reason) == ReasonAnchor(entry.Reason!))
                         return new Classification(ExpectationResult.PassOos, null);
                     return new Classification(
                         ExpectationResult.FailManifestDrift,
@@ -293,5 +293,14 @@ public static class ExpectationClassifier
             default:
                 throw new InvalidOperationException($"Unhandled ExpectationMode: {entry.Mode}");
         }
+    }
+
+    // Manifest entries hold the bare docs/scope.md anchor ("query-join-rightouterjoin-
+    // not-implemented"), while throw sites append free-text detail after an em-dash
+    // ("<anchor> — only InnerJoin and …"). Reasons match on the anchor.
+    private static string ReasonAnchor(string reason)
+    {
+        int sep = reason.IndexOf(" — ", StringComparison.Ordinal);
+        return (sep >= 0 ? reason[..sep] : reason).Trim();
     }
 }

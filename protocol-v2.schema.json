@@ -34,7 +34,7 @@
       "properties": {
         "type": { "const": "test" },
         "name": { "type": "string" },
-        "status": { "enum": ["pass", "fail", "error"] },
+        "status": { "enum": ["pass", "fail", "error", "skipped"] },
         "durationMs": { "type": "integer", "minimum": 0 },
         "message": { "type": "string" },
         "errorKind": { "$ref": "#/definitions/ErrorKind" },

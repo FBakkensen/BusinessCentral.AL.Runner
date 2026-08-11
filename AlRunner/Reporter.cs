@@ -16,7 +16,8 @@ public static class Reporter
 {
     public static void PrintSummary(IReadOnlyList<BucketResult> buckets, TextWriter w)
     {
-        int totalTests = 0, pass = 0, fail = 0, err = 0;
+        int totalTests = 0, pass = 0, fail = 0, err = 0, skipped = 0;
+        int passOos = 0, passKnownGap = 0;
         int compileFailed = 0, execFailed = 0;
         TimeSpan emit = TimeSpan.Zero, comp = TimeSpan.Zero, run = TimeSpan.Zero;
         foreach (var b in buckets)
@@ -27,8 +28,14 @@ public static class Reporter
             foreach (var t in b.Tests)
             {
                 totalTests++;
-                if (t.Outcome == TestOutcome.Pass) pass++;
+                if (t.Outcome == TestOutcome.Pass)
+                {
+                    pass++;
+                    if (t.Expectation == Infrastructure.ExpectationResult.PassOos) passOos++;
+                    else if (t.Expectation == Infrastructure.ExpectationResult.PassKnownGap) passKnownGap++;
+                }
                 else if (t.Outcome == TestOutcome.Fail) fail++;
+                else if (t.Outcome == TestOutcome.Skipped) skipped++;
                 else err++;
             }
         }
@@ -42,8 +49,17 @@ public static class Reporter
         w.WriteLine($"  exec-fail:   {execFailed}");
         w.WriteLine($"Tests:         {totalTests} total");
         w.WriteLine($"  pass:        {pass}");
+        // Manifest reclassifications (docs/expectations.md) are surfaced DISTINCTLY so
+        // a green run that got there via quarantined tests does not read as an
+        // unqualified green. Zero-count lines are omitted: no manifest, no noise.
+        if (passOos > 0)
+            w.WriteLine($"    pass-oos:        {passOos}");
+        if (passKnownGap > 0)
+            w.WriteLine($"    pass-known-gap:  {passKnownGap}");
         w.WriteLine($"  fail:        {fail}");
         w.WriteLine($"  error:       {err}");
+        if (skipped > 0)
+            w.WriteLine($"  skipped:     {skipped}");
         w.WriteLine($"Time:");
         w.WriteLine($"  AL emit:     {emit.TotalSeconds:F1}s");
         w.WriteLine($"  C# compile:  {comp.TotalSeconds:F1}s");
@@ -84,9 +100,12 @@ public static class Reporter
             {
                 var label = t.Outcome switch
                 {
+                    TestOutcome.Pass when t.Expectation == Infrastructure.ExpectationResult.PassOos => "PASS (oos)",
+                    TestOutcome.Pass when t.Expectation == Infrastructure.ExpectationResult.PassKnownGap => "PASS (known-gap)",
                     TestOutcome.Pass => "PASS ",
                     TestOutcome.Fail => "FAIL ",
                     TestOutcome.Error => "ERROR",
+                    TestOutcome.Skipped => "SKIP ",
                     _ => "?    "
                 };
                 long ms = (long)t.Duration.TotalMilliseconds;
@@ -119,7 +138,7 @@ public static class Reporter
     {
         var groups = buckets
             .Where(b => b.Stage == BucketStage.Ran)
-            .SelectMany(b => b.Tests.Where(t => t.Outcome != TestOutcome.Pass))
+            .SelectMany(b => b.Tests.Where(t => t.Outcome is TestOutcome.Fail or TestOutcome.Error))
             .GroupBy(t => ClassifyTest(t.Message ?? "", t.FullException ?? ""))
             .Select(g => (Classification: g.Key, Count: g.Count(),
                           Sample: g.First()))
@@ -201,10 +220,22 @@ public static class Reporter
                 durationMs = (long)t.Duration.TotalMilliseconds,
                 message = t.Message,
                 stackTrace = (t.AlCallStack ?? t.FullException)?.TrimEnd(),
+                // Manifest reclassification (docs/expectations.md): "pass-oos",
+                // "pass-known-gap", "skipped" or "fail-manifest-drift". Omitted
+                // (null) for results the manifest did not touch.
+                expectation = t.Expectation switch
+                {
+                    Infrastructure.ExpectationResult.PassOos => "pass-oos",
+                    Infrastructure.ExpectationResult.PassKnownGap => "pass-known-gap",
+                    Infrastructure.ExpectationResult.Skipped => "skipped",
+                    Infrastructure.ExpectationResult.FailManifestDrift => "fail-manifest-drift",
+                    _ => null,
+                },
             }),
             passed = tests.Count(t => t.Outcome == TestOutcome.Pass),
             failed = tests.Count(t => t.Outcome == TestOutcome.Fail),
             errors = tests.Count(t => t.Outcome == TestOutcome.Error),
+            skipped = tests.Count(t => t.Outcome == TestOutcome.Skipped),
             total = tests.Count,
             exitCode,
             compilationErrors = compileErrors.Count > 0 ? compileErrors : null,
@@ -244,7 +275,7 @@ public static class Reporter
             }
             else
             {
-                foreach (var t in b.Tests.Where(t => t.Outcome != TestOutcome.Pass))
+                foreach (var t in b.Tests.Where(t => t.Outcome is TestOutcome.Fail or TestOutcome.Error))
                 {
                     failures.Add(new
                     {
