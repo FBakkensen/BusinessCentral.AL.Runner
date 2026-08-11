@@ -4578,7 +4578,12 @@ static string ComputeAlCacheKey(
     //    v8: sidecar also carries the AlXmlPortMetadataRegistry (per-xmlport runtime
     //        metadata XML) so cache HIT replays the real node schema that
     //        NCLMetaXmlPort.LoadMetadata() builds from it.
-    WriteLine("schema:v8");
+    //    v9: enum sidecar entries carry per-value Captions (issue #1775 —
+    //        Format(<enum value>) must return the declared Caption, not the member
+    //        name). A v8 sidecar deserialises with Captions null, which
+    //        AlEnumOptionMetadata already treats as "no captions captured" — silently
+    //        wrong for a cache HIT, not a cache miss, without this bump.
+    WriteLine("schema:v9");
 
     // 1. Runner assembly fingerprint — any rewriter / polyfill / patch change
     //    in the runner forces a cache miss.
@@ -4645,7 +4650,7 @@ static string? CommonDirectory(IReadOnlyList<string> files)
 
 // Sidecar: serialize AlEnumMetadataRegistry to <key>.enum-registry.json so
 // cache HIT can replay the side-effect that emit would have populated.
-// Schema (v3): { "enums": [ { "id": int, "name": string, "options": [string], "indexes": [int], "implementations": [[int]] }, ... ] }
+// Schema (v9): { "enums": [ { "id": int, "name": string, "options": [string], "indexes": [int], "implementations": [[int]], "captions": [string?] }, ... ] }
 static int SaveEnumRegistrySidecar(string path)
 {
     var entries = AlEnumMetadataRegistry.Snapshot();
@@ -4658,6 +4663,7 @@ static int SaveEnumRegistrySidecar(string path)
             options = e.Options,
             indexes = e.Indexes,
             implementations = e.Implementations,
+            captions = e.Captions,
         }).ToArray(),
         // v4: per-report runtime metadata XML captured from emit — replayed on
         // cache HIT so NavReportSync builds real MetaReport instances.
@@ -4745,7 +4751,19 @@ static int LoadEnumRegistrySidecar(string path)
                 implementations[vi++] = ids;
             }
         }
-        AlEnumMetadataRegistry.Register(id, name, opts, idxs, implementations);
+        // v9: per-value Captions (issue #1775). Absent in pre-v9 sidecars — fine, the
+        // cache key schema bump above makes those unreachable anyway.
+        string?[]? captions = null;
+        if (e.TryGetProperty("captions", out var capEl)
+            && capEl.ValueKind == System.Text.Json.JsonValueKind.Array
+            && capEl.GetArrayLength() == opts.Length)
+        {
+            captions = new string?[capEl.GetArrayLength()];
+            int ci = 0;
+            foreach (var c in capEl.EnumerateArray())
+                captions[ci++] = c.ValueKind == System.Text.Json.JsonValueKind.Null ? null : c.GetString();
+        }
+        AlEnumMetadataRegistry.Register(id, name, opts, idxs, implementations, captions);
         count++;
     }
     // v4: replay per-report metadata XML (absent in pre-v4 sidecars — fine,
