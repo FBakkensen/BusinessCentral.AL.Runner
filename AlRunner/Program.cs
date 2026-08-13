@@ -1093,6 +1093,19 @@ foreach (var bundle in bundles)
                 Console.Error.WriteLine();
                 return 1;
             }
+            catch (AlRunner.Infrastructure.AppIdCollisionException ex)
+            {
+                // Two different apps declare the same app.json id (#1850), discovered while
+                // resolving THIS bundle's dependencies. Must abort, not just log: the generic
+                // catch below only prints and continues, which would leave the run reporting
+                // "green" with a dependency silently missing — exactly the bug this exception
+                // exists to prevent. See loud-failures.md.
+                if (stdoutSilenced) { Console.SetOut(savedOut); Console.SetError(savedErr); }
+                Console.Error.WriteLine();
+                Console.Error.WriteLine($"FATAL: {ex.Message}");
+                Console.Error.WriteLine();
+                return 1;
+            }
             catch (Exception ex)
             {
                 Console.Error.WriteLine($"  [{rel}] DEP-RESOLVE-FAIL: {ex.Message}");
@@ -1229,9 +1242,33 @@ foreach (var bundle in bundles)
         // deps-stay-warm reason documented there) clear DependencyLoader's cross-bundle
         // cache, so this dedup stays scoped to genuinely distinct bundle args in one
         // one-shot invocation, never a same-bundle reload.
-        Assembly? reusedAsm = (!watchMode && appGroup.AppId is { } reuseCheckId)
-            ? DependencyLoader.TryGetByAppId(reuseCheckId)
-            : null;
+        Assembly? reusedAsm;
+        try
+        {
+            // Publisher/Version are non-null whenever AppId is: BuildAppGroups only ever
+            // constructs an AppGroup with all three set together (from InProcessAppPackager.
+            // ReadIdentity, which defaults an absent app.json field rather than leaving it
+            // null) or all three null (the orphan/no-app.json group, which never reaches
+            // here — this whole branch is gated on appGroup.AppId being non-null). The `!`
+            // asserts that invariant instead of silently masking a violation of it behind a
+            // fallback that would disagree with AppLoader's own default (see IdentityMatches'
+            // doc comment) — PR #1862 review.
+            reusedAsm = (!watchMode && appGroup.AppId is { } reuseCheckId)
+                ? DependencyLoader.TryGetByAppId(
+                    reuseCheckId, appGroup.ModuleName, appGroup.Publisher!,
+                    appGroup.Version!.ToString(), appGroup.SuiteDir)
+                : null;
+        }
+        catch (AlRunner.Infrastructure.AppIdCollisionException ex)
+        {
+            // Two different apps declare the same app.json id (#1850) — never silently
+            // reuse one app's module for the other's tests. See loud-failures.md.
+            if (stdoutSilenced) { Console.SetOut(savedOut); Console.SetError(savedErr); }
+            Console.Error.WriteLine();
+            Console.Error.WriteLine($"FATAL: {ex.Message}");
+            Console.Error.WriteLine();
+            return 1;
+        }
         bool needCompile = reusedAsm == null;
         if (reusedAsm != null)
             Console.Error.WriteLine(
@@ -1589,7 +1626,30 @@ foreach (var bundle in bundles)
                 // never overwrite iteration 1's stale entry, and any sibling bundle that
                 // later resolves this AppId as a real dependency would get the stale copy.
                 if (!watchMode && appGroup.AppId is { } newlyLoadedId)
-                    DependencyLoader.RegisterLoaded(newlyLoadedId, asm);
+                {
+                    try
+                    {
+                        // Publisher/Version are non-null whenever AppId is — see the
+                        // BuildAppGroups invariant note above the reusedAsm check (PR #1862
+                        // review); the `!` asserts it rather than silently masking a
+                        // violation behind a fallback that would disagree with AppLoader's
+                        // own default (see IdentityMatches' doc comment).
+                        DependencyLoader.RegisterLoaded(
+                            newlyLoadedId, asm, appGroup.ModuleName, appGroup.Publisher!,
+                            appGroup.Version!.ToString(), appGroup.SuiteDir);
+                    }
+                    catch (AlRunner.Infrastructure.AppIdCollisionException ex)
+                    {
+                        // Same defence as the TryGetByAppId check above, for the (in-process,
+                        // single-threaded loop) race window between that check and this
+                        // registration — see loud-failures.md.
+                        if (stdoutSilenced) { Console.SetOut(savedOut); Console.SetError(savedErr); }
+                        Console.Error.WriteLine();
+                        Console.Error.WriteLine($"FATAL: {ex.Message}");
+                        Console.Error.WriteLine();
+                        return 1;
+                    }
+                }
             }
             var registerSw = System.Diagnostics.Stopwatch.StartNew();
             // wireFieldTriggers:false — WireFieldTriggerHandlersAll walks EVERY table
@@ -1615,11 +1675,14 @@ foreach (var bundle in bundles)
             // per-assembly module registry behind NavApp.GetCurrentModuleInfo and the AL
             // call-stack frame decoration.
             if (appGroup.AppId is { } gid)
+                // Publisher/Version are non-null whenever AppId is — same BuildAppGroups
+                // invariant as the reusedAsm/RegisterLoaded call sites above (PR #1862
+                // review).
                 BcRuntime.SetCurrentBundleInfo(
                     gid,
                     appGroup.ModuleName,
-                    appGroup.Publisher ?? "Unknown",
-                    (appGroup.Version ?? new Version(1, 0, 0, 0)).ToString());
+                    appGroup.Publisher!,
+                    appGroup.Version!.ToString());
             BcRuntime.RegisterTestAssemblyInfo(asm);
             registerSw.Stop();
             AlRunner.PerfTrace.Log($"RegisterTestAssemblyInfo {rel}/{moduleName} {registerSw.ElapsedMilliseconds}ms");
