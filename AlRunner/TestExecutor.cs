@@ -108,6 +108,71 @@ public sealed class TestExecutor
     /// </summary>
     public Infrastructure.ExpectationManifest? Expectations { get; set; }
 
+    // #1867: process-lifetime cache of the dependency-assemblies' Install triggers +
+    // Company-Initialize (codeunit 2) — the invariant portion of the per-app-group
+    // "install-seed" sequence, keyed by InstallTriggerRunner.CurrentDependencySetKey()
+    // (the exact ordered set of loaded dependency assemblies, by Module Version ID).
+    // #1866 measured this pair at 62.4% + 20.1% = 82.5% of run_ms across 23 runner-extras
+    // app groups that all shared the identical 12-assembly dependency closure (issue's own
+    // "APP STAGES" table) — every one of the 23 re-executed the SAME MS System-Application
+    // Install codeunits (Email Installer, Plan Installer, ...) and re-ran codeunit 2 from
+    // scratch.
+    //
+    // WHY CACHING THE SNAPSHOT IS LOSSLESS — the structural argument, not an appeal to
+    // BC's Install-trigger contract:
+    //
+    // A HIT restores table rows only (RestoreInstallBaselineSnapshot →
+    // RecordPatches.InstallBaseline.cs), so at first glance any NON-table side effect a
+    // dependency Install trigger left in process-wide state — SingleInstance codeunit
+    // instance variables, the shared-object container, write-transaction state, MediaSet /
+    // RecordLink / IsolatedStorage entries stashed outside a table row — would not be
+    // reproduced on a HIT. That would be a real gap.
+    //
+    // It isn't one, because every codeunit boundary in this run — INCLUDING the app
+    // group's very first codeunit — calls RecordPatches.RestoreInstallBaseline() (see the
+    // TestIsolation.Codeunit / TestIsolation.Test branches further down in this file), and
+    // that call begins with ResetPerTestState() (RecordPatches.cs), which unconditionally
+    // wipes exactly those things: _dataAccessByTable per-table rows,
+    // RecordLinkPatches.ResetForTest(), TenantStoragePatches.ResetForTest(),
+    // MediaSetPatches.ResetForTest(), ALDatabasePatches.ResetWriteTransactionState(),
+    // BcRuntime.DisposeSkeletonSharedObjectContainerChildren(), and
+    // BcRuntime.ResetSingleInstanceCache(). So the set of install-seed state that can ever
+    // survive to the moment ANY test body runs is exactly
+    // {table rows, isolated storage, record links, auto-increment} — precisely the four
+    // things InstallBaselineSnapshot captures. A non-table side effect of a dependency
+    // Install trigger was already unobservable to every test BEFORE this cache existed;
+    // caching the snapshot doesn't create a new gap, it caches the only part of the
+    // dependency Install/Company-Initialize output that was ever able to reach a test in
+    // the first place.
+    //
+    // Two supporting facts, both verified rather than assumed: rows are CloneValues-copied
+    // (with NavBLOB.DeepCopy for BLOB fields) on BOTH capture (buffer.ToArray()) and
+    // restore (new ReadOnlyRecordBuffer(..., CloneValues(values))), so no live row can alias
+    // into the process-lifetime snapshot — this matters more here than for the
+    // CaptureInstallBaseline singleton this is modelled on, because one aliased row here
+    // would corrupt every subsequent app group sharing this dep key, not just one. And the
+    // virtual/system metadata tables (Field, AllObj, AllObjWithCaption, table id ≥
+    // 2,000,000,000) that grow monotonically as more test assemblies load in-process are not
+    // a staleness hazard for a HIT either: GetDataAccessForTableCore re-populates them on
+    // EVERY access as an idempotent top-up, so restoring an earlier app group's narrower
+    // subset self-corrects on the next read.
+    //
+    // NOT cached here: the bundle's OWN test assembly's Install triggers
+    // (InstallTriggerRunner.RunTestAssemblyOnly, genuinely per-app-group, always re-run) and
+    // CaptureInstallBaseline's per-app-group singleton (which layers the bundle's own
+    // install-seeded rows on top of whichever dep+company snapshot below was used, and is
+    // what RestoreInstallBaseline's per-codeunit/per-test boundary restores — unaffected by
+    // this cache either way).
+    //
+    // Kill switch: set AL_RUNNER_NO_DEP_COMPANY_CACHE=1 to force every lookup to MISS (see
+    // the cache-or-compute call site below). Exists for diagnostic blast radius — this cache
+    // is process-lifetime and shared across every app group in the process, so it is
+    // hypothesis #1 for any future "passes alone, fails in the suite" report, and without a
+    // switch the only way to test that hypothesis is a patched rebuild.
+    private static readonly Dictionary<string, AlRunner.Patches.RecordPatches.InstallBaselineSnapshot>
+        _depCompanyBaselineCache = new();
+    private static readonly object _depCompanyBaselineCacheLock = new();
+
     /// <summary>
     /// Runs every [Test] method in <paramref name="assembly"/>. When
     /// <paramref name="onTestComplete"/> is supplied it fires synchronously right
@@ -194,13 +259,50 @@ public sealed class TestExecutor
             CompanyInitializer.ResetForNewBundle();
         using (AlRunner.Infrastructure.PhaseLog.AppStage("install-seed-set-test-assembly"))
             InstallTriggerRunner.SetTestAssembly(assembly);
-        using (AlRunner.Infrastructure.PhaseLog.AppStage("install-seed-run-install-triggers"))
-            InstallTriggerRunner.RunAll();
-        // Install triggers do not create a company's baseline rows — company CREATION does,
-        // via codeunit 2 "Company-Initialize". Run it before the baseline snapshot so its rows
-        // (Company Information, Source Code Setup, …) are part of what every test is restored to.
-        using (AlRunner.Infrastructure.PhaseLog.AppStage("install-seed-ensure-company-initialized"))
-            CompanyInitializer.EnsureCompanyInitialized();
+        // #1867: install-seed-run-install-triggers + install-seed-ensure-company-initialized
+        // were 62.4% + 20.1% = 82.5% of run_ms (#1866's own APP STAGES measurement), and both
+        // are re-executing the SAME dependency assemblies' Install triggers / the SAME
+        // codeunit 2 body every app group even though the dependency closure had not changed.
+        // The dep+company baseline cache field doc above has the full justification; this is
+        // just the cache-or-compute call site. Install triggers do not create a company's
+        // baseline rows — company CREATION does, via codeunit 2 "Company-Initialize" — so on a
+        // miss it still runs right after the dependency triggers, before the snapshot is taken,
+        // exactly matching the order the uncached path always ran in.
+        using (AlRunner.Infrastructure.PhaseLog.AppStage("install-seed-dep-company-baseline"))
+        {
+            var depKey = InstallTriggerRunner.CurrentDependencySetKey();
+            AlRunner.Patches.RecordPatches.InstallBaselineSnapshot? cached;
+            // Permanent kill switch (see the field's doc comment above for why it exists):
+            // forces every lookup to MISS, as if the cache were never populated, so the
+            // fresh-computation path can always be re-run on demand for diagnosis or to
+            // re-verify the speedup without a patched rebuild.
+            if (Environment.GetEnvironmentVariable("AL_RUNNER_NO_DEP_COMPANY_CACHE") == "1")
+                cached = null;
+            else
+                lock (_depCompanyBaselineCacheLock)
+                    _depCompanyBaselineCache.TryGetValue(depKey, out cached);
+            if (cached != null)
+            {
+                AlRunner.Patches.RecordPatches.RestoreInstallBaselineSnapshot(cached);
+                // #1867 proving-test hook: a stable, directly-assertable signal that this app
+                // group reused a prior computation instead of re-running dependency Install
+                // triggers + Company-Initialize. See InstallSeedDepCompanyCacheTests.
+                PerfTrace.Log($"InstallBaseline.DepCompanyCache HIT {depKey[..Math.Min(8, depKey.Length)]}");
+            }
+            else
+            {
+                InstallTriggerRunner.RunDependenciesOnly();
+                CompanyInitializer.EnsureCompanyInitialized();
+                var snapshot = AlRunner.Patches.RecordPatches.CaptureInstallBaselineSnapshot();
+                lock (_depCompanyBaselineCacheLock)
+                    _depCompanyBaselineCache[depKey] = snapshot;
+                PerfTrace.Log($"InstallBaseline.DepCompanyCache MISS {depKey[..Math.Min(8, depKey.Length)]}");
+            }
+        }
+        // Genuinely per-app-group — the bundle's own Install codeunits (if any) are never
+        // shared across app groups, so this always runs fresh, cache or no cache.
+        using (AlRunner.Infrastructure.PhaseLog.AppStage("install-seed-run-own-install-triggers"))
+            InstallTriggerRunner.RunTestAssemblyOnly();
         using (AlRunner.Infrastructure.PhaseLog.AppStage("install-seed-capture-baseline"))
             AlRunner.Patches.RecordPatches.CaptureInstallBaseline();
         seedSw.Stop();
