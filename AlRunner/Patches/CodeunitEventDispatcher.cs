@@ -509,13 +509,33 @@ public static partial class BcRuntime
     /// be unwrapped to its ordinal here. The mirror case (subscriber declares the param as
     /// the NavOption carrier, field is an int) is handled too. This is faithful: a NavOption
     /// is exactly its integer ordinal as far as an AL Option/Integer parameter observes.
+    ///
+    /// A precompiled application DLL additionally stores a scope field
+    /// <c>ByRef&lt;T&gt;</c>-wrapped when the publishing method captured the value slot by
+    /// reference before raising the event (issue #1816: Base App
+    /// <c>Item.CheckDocuments</c>'s <c>currentFieldNo</c>), while the subscriber's
+    /// parameter is by value. The wrapper is a getter/setter pair over the slot, so the
+    /// faithful by-value observation is the slot's current value at dispatch time —
+    /// unwrap it and re-coerce (the inner value may itself be a NavOption). When the
+    /// subscriber's parameter IS the ByRef&lt;T&gt; (AL <c>var</c>), the assignability
+    /// early-return above already passed the wrapper through untouched, keeping writeback.
+    ///
     /// All other types pass through unchanged.
     /// </summary>
-    private static object? CoerceArg(object? value, Type paramType)
+    internal static object? CoerceArg(object? value, Type paramType)
     {
         if (value == null) return null;
         var vt = value.GetType();
         if (paramType.IsAssignableFrom(vt)) return value;
+
+        if (vt.IsGenericType
+            && vt.GetGenericTypeDefinition() == typeof(Microsoft.Dynamics.Nav.Runtime.ByRef<>))
+        {
+            object? inner = vt
+                .GetProperty("Value", BindingFlags.Public | BindingFlags.Instance)!
+                .GetValue(value);
+            return CoerceArg(inner, paramType);
+        }
 
         EnsureNavOptionReflection();
 
