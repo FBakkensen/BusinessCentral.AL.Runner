@@ -1866,9 +1866,20 @@ public static partial class BcRuntime
         }
         // NavXmlPortHandle.CreateTarget is Cecil-owned (see NclCecilRewrite.cs, CreateTarget family).
 
-        // NavXmlPort instance methods — Export/Import/Run all call Session.BeginTransaction
-        // or ApplicationObjectRootScope which NRE on the skeleton; SetTableView iterates
-        // empty nodes then throws NavNCLXmlPortNodeNotFoundException. Return no-op stubs.
+        // NavXmlPort instance methods.
+        //
+        // #1800: Export(DataError)/Import(DataError)/Run()/SetTableView(NavRecord) used to be
+        // Hook(...) call sites right here — orphaned, like every other JmpHook registration this
+        // issue is about (JmpHook is disabled by default, so none of these ever fired; BC's real,
+        // unpatched bodies ran instead). Investigating why they were hooked at all led to trying
+        // to Cecil-own them to a hard "not-yet-implemented" throw — but the full al-language
+        // corpus run then showed 14 previously-passing tests (Codeunit60206/60207: nested-table
+        // export/import, text-variable triggers, auto-update/auto-replace, SetTableView row
+        // filtering) regress, because BC's own real bodies for these four already handle
+        // well-formed AL usage correctly once construction succeeds (see BeginInitialization
+        // below). So the Hook(...) call sites for these four were deleted outright, not just left
+        // dead: there is nothing to redirect to, BC's body is already correct, and leaving a dead
+        // registration here would misdescribe the intent to the next reader auditing orphans.
         var navXmlPortType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavXmlPort");
         if (navXmlPortType != null)
         {
@@ -1878,19 +1889,13 @@ public static partial class BcRuntime
                     .FirstOrDefault(t => t.Name == "DataError");
             var xmlPortNavRecordType = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavRecord");
 
+            // Static XMLPORT.EXPORT(id, stream) / XMLPORT.IMPORT(id, stream) overloads — NOT
+            // covered by the #1800 investigation above (that was scoped to the four instance
+            // methods; no corpus test was found exercising this static surface either way), so
+            // left as-is pending a dedicated follow-up. See tests/runner-extras/standalone-suites
+            // /xmlport-cluster-hooks-1800 and the #1800 PR body for the full orphan inventory.
             if (tDataError != null)
             {
-                var exportMethod = navXmlPortType.GetMethod("Export",
-                    BindingFlags.Public | BindingFlags.Instance, null, new[] { tDataError }, null);
-                if (exportMethod != null)
-                    Hook(exportMethod, nameof(NavXmlPort_Export), "NavXmlPort.Export(DataError)");
-
-                var importMethod = navXmlPortType.GetMethod("Import",
-                    BindingFlags.Public | BindingFlags.Instance, null, new[] { tDataError }, null);
-                if (importMethod != null)
-                    Hook(importMethod, nameof(NavXmlPort_Import), "NavXmlPort.Import(DataError)");
-
-                // Static XMLPORT.EXPORT(id, stream) / XMLPORT.IMPORT(id, stream) overloads.
                 var tNavOutStream = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavOutStream");
                 var tNavInStream  = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavInStream");
                 var tNavRecord    = navNcl.GetType("Microsoft.Dynamics.Nav.Runtime.NavRecord");
@@ -1912,11 +1917,6 @@ public static partial class BcRuntime
                 }
             }
 
-            var runMethod = navXmlPortType.GetMethod("Run",
-                BindingFlags.Public | BindingFlags.Instance, null, Type.EmptyTypes, null);
-            if (runMethod != null)
-                Hook(runMethod, nameof(NavXmlPort_Run), "NavXmlPort.Run()");
-
             // DISABLED: NavXmlPort.RunXmlPort() is R2R-compiled/inlined; RuntimeHelpers.PrepareMethod
             // SIGSEGVs the process during patch installation. Cecil migration pending.
             // TODO: convert to Cecil IL rewrite (replace body with RunnerOutOfScopeException throw).
@@ -1927,9 +1927,12 @@ public static partial class BcRuntime
             //     Hook(runXmlPortMethod, nameof(NavXmlPort_RunXmlPort), "NavXmlPort.RunXmlPort()");
 
             // XMLPORT.RUN(id [, reqPage [, import [, record]]]) in AL compiles to static
-            // NavXmlPort.Run(int, ...) overloads. Without these hooks, BC tries to look up the
-            // XmlPort in NCLMetadata → ThrowMetaApplicationObjectNotFound for every test-assembly
-            // XmlPort. Hook all four overloads as no-ops.
+            // NavXmlPort.Run(int, ...) overloads — a genuine, permanent OOS surface (see the
+            // canonical comment above NavXmlPort_StaticRun1..4 in
+            // AlRunner/Patches/XmlPortPatches.cs). Hook all four overloads to our typed OOS
+            // throw. JmpHook itself is disabled by default (Cecil ownership in
+            // NclCecilRewrite.cs is what actually fires); registered here too for defence in
+            // depth against an AL_RUNNER_ENABLE_JMPHOOK=1 diagnostic pass.
             {
                 int staticRunHooked = 0;
                 var sr1 = navXmlPortType.GetMethod("Run",
@@ -1958,56 +1961,22 @@ public static partial class BcRuntime
                 Console.Error.WriteLine($"[BcRuntime] NavXmlPort.Run static overloads: {staticRunHooked} hooked");
             }
 
-            if (xmlPortNavRecordType != null)
-            {
-                var setTableViewMethod = navXmlPortType.GetMethod("SetTableView",
-                    BindingFlags.Public | BindingFlags.Instance, null, new[] { xmlPortNavRecordType }, null);
-                if (setTableViewMethod != null)
-                    Hook(setTableViewMethod, nameof(NavXmlPort_SetTableView), "NavXmlPort.SetTableView(NavRecord)");
-            }
+            // NavXmlPort.SetTableView(NavRecord) — see the #1800 note above the Export/Import
+            // block: no longer hooked here at all. BC's real body works correctly for well-formed
+            // usage (row-filtered export, proven by the al-language corpus), so there is nothing
+            // to redirect to.
 
-            // BeginInitialization/EndInitialization — called from the BC-generated XmlPort{ID}
-            // constructor. BeginInitialization dereferences Session.MetadataProvider (null on
-            // skeleton) → NRE. EndInitialization uses metadata/requestOptionsPage (null when
-            // BeginInit is a no-op). Both must be stubbed to let the constructor complete safely.
-            var beginInitMethod = navXmlPortType.GetMethod("BeginInitialization",
-                BindingFlags.NonPublic | BindingFlags.Instance, null, Type.EmptyTypes, null);
-            if (beginInitMethod != null)
-                Hook(beginInitMethod, nameof(NavXmlPort_BeginInitialization), "NavXmlPort.BeginInitialization()");
-
-            var endInitMethod = navXmlPortType.GetMethod("EndInitialization",
-                BindingFlags.NonPublic | BindingFlags.Instance, null, Type.EmptyTypes, null);
-            if (endInitMethod != null)
-                Hook(endInitMethod, nameof(NavXmlPort_EndInitialization), "NavXmlPort.EndInitialization()");
-
-            // Add(NavXmlPortTableNode/FieldNode/TextNode) — all three overloads access
-            // metadata.Nodes[nodes.Count] which is null after BeginInitialization is no-op'd.
-            // Hook to no-op; the node list is not needed for our Export/Import/Run stubs.
+            // BeginInitialization/EndInitialization/Add(TableNode|FieldNode|TextNode) used to
+            // be Hook(...) call sites right here — orphaned, like Export/Import/Run/SetTableView
+            // above (JmpHook is disabled by default, so none of these ever fired; BC's real,
+            // unpatched bodies ran instead). Deleted outright, not left dead: BC's own body is
+            // already correct on the skeleton. Full misdiagnosis-and-correction record (an
+            // earlier revision Cecil-owned BeginInitialization on a false premise and regressed
+            // 14 corpus tests before being reverted) lives once, canonically, in the big comment
+            // block above NavXmlPort_StaticRun1..4 in AlRunner/Patches/XmlPortPatches.cs — see
+            // there, not here.
             var nclAssembly = navXmlPortType.Assembly;
             var tableNodeType = nclAssembly.GetType("Microsoft.Dynamics.Nav.Runtime.NavXmlPortTableNode");
-            var fieldNodeType = nclAssembly.GetType("Microsoft.Dynamics.Nav.Runtime.NavXmlPortFieldNode");
-            var textNodeType  = nclAssembly.GetType("Microsoft.Dynamics.Nav.Runtime.NavXmlPortTextNode");
-            if (tableNodeType != null)
-            {
-                var addTable = navXmlPortType.GetMethod("Add",
-                    BindingFlags.NonPublic | BindingFlags.Instance, null, new[] { tableNodeType }, null);
-                if (addTable != null)
-                    Hook(addTable, nameof(NavXmlPort_AddTableNode), "NavXmlPort.Add(NavXmlPortTableNode)");
-            }
-            if (fieldNodeType != null)
-            {
-                var addField = navXmlPortType.GetMethod("Add",
-                    BindingFlags.NonPublic | BindingFlags.Instance, null, new[] { fieldNodeType }, null);
-                if (addField != null)
-                    Hook(addField, nameof(NavXmlPort_AddFieldNode), "NavXmlPort.Add(NavXmlPortFieldNode)");
-            }
-            if (textNodeType != null)
-            {
-                var addText = navXmlPortType.GetMethod("Add",
-                    BindingFlags.NonPublic | BindingFlags.Instance, null, new[] { textNodeType }, null);
-                if (addText != null)
-                    Hook(addText, nameof(NavXmlPort_AddTextNode), "NavXmlPort.Add(NavXmlPortTextNode)");
-            }
 
             // NavXmlPortTableNode(NavRecordHandle) constructor — called from the generated
             // XmlPort{ID}.InitializeComponent() for each tableelement. Calls record.Target which

@@ -137,6 +137,25 @@ public static class NclCecilRewrite
         "Microsoft.Dynamics.Nav.Runtime.NavReport::RunModal/2",
         "Microsoft.Dynamics.Nav.Runtime.NavReport::RunModal/3",
         "Microsoft.Dynamics.Nav.Runtime.NavReport::RunModal/4",
+        // NavXmlPort static Run(id[, requestWindow[, import[, record]]]) — #1800. These four
+        // overloads are a genuine, permanent out-of-scope surface (docs/scope.md#file-storage,
+        // same bucket as NavFile.ALUpload/ALDownload's browser round-trip): BC's real body
+        // always routes through NavFile.InternalUpload/InternalDownload → the client-callback
+        // file-browse dialog, for every overload and argument combination. Cecil-own them to
+        // our typed OOS throw instead of a JmpHook registration that can silently fail to bind.
+        // The instance Export/Import/Run/RunXmlPort/SetTableView/BeginInitialization/
+        // EndInitialization/Add(*Node) methods in the same cluster are the OPPOSITE case — BC's
+        // real body is already correct there, nothing to redirect to — and are deliberately NOT
+        // listed below. Full evidence (decompiled source) and the
+        // misdiagnosis-and-correction record for the eight already-correct methods live once,
+        // canonically, in the big comment block above NavXmlPort_StaticRun1..4 in
+        // AlRunner/Patches/XmlPortPatches.cs. See also
+        // tests/runner-extras/standalone-suites/xmlport-cluster-hooks-1800 for the RED→GREEN
+        // proof.
+        "Microsoft.Dynamics.Nav.Runtime.NavXmlPort::Run/1",
+        "Microsoft.Dynamics.Nav.Runtime.NavXmlPort::Run/2",
+        "Microsoft.Dynamics.Nav.Runtime.NavXmlPort::Run/3",
+        "Microsoft.Dynamics.Nav.Runtime.NavXmlPort::Run/4",
         // NavApplicationObjectBase..ctor keystone (Batch 4) — the 3-arg
         // (ITreeObject, ApplicationObjectId, NCLStaticMetadata) ctor.
         "Microsoft.Dynamics.Nav.Runtime.NavApplicationObjectBase::.ctor/3",
@@ -4996,6 +5015,84 @@ public static class NclCecilRewrite
             // (dataItems, TableViewRecord, TableViewIsSet), so there is nothing to stand in
             // for — the original is both correct and sufficient.
             Console.Error.WriteLine($"[Cecil] Rewrote {reportRewrites} NavReport/DataItemIterator method(s) (Run/RunModal→SyncRun; Add→ReportAdd; RunRequestPage→OOS-throw)");
+        }
+
+        // NavXmlPort static Run(id[, requestWindow[, import[, record]]]) — #1800.
+        //
+        // These four overloads are a genuine, permanent out-of-scope surface
+        // (docs/scope.md#file-storage — the same "browser round-trip" bucket as
+        // NavFile.ALUpload/ALDownload, see FilePatches.cs): decompiling BC's real, unpatched
+        // Ncl.dll body shows every overload's RunXmlPort() unconditionally calls
+        // NavFile.InternalUpload/InternalDownload with displayDialog:true, which resolves to
+        // Session.ClientCallback.UploadFileAction/DownloadFileAction — a client callback the
+        // runner's non-interactive skeleton session cannot satisfy. Cecil-own them to our
+        // typed OOS throw instead of a JmpHook registration that can silently fail to bind.
+        //
+        // The instance Export/Import/Run/RunXmlPort/SetTableView/BeginInitialization/
+        // EndInitialization/Add(*Node) methods in the same cluster are the OPPOSITE case — BC's
+        // real body is already correct there, nothing to redirect to — and are deliberately NOT
+        // Cecil-owned. Full decompiled-source evidence and the misdiagnosis-and-correction
+        // record for those eight already-correct methods live once, canonically, in the big
+        // comment block above NavXmlPort_StaticRun1..4 in AlRunner/Patches/XmlPortPatches.cs.
+        // See also tests/runner-extras/standalone-suites/xmlport-cluster-hooks-1800 for the
+        // RED→GREEN proof.
+        {
+            var navXmlPortT = asm.MainModule.Types
+                .FirstOrDefault(t => t.FullName == "Microsoft.Dynamics.Nav.Runtime.NavXmlPort");
+            int xmlPortRewrites = 0;
+            const string NavRecordName = "Microsoft.Dynamics.Nav.Runtime.NavRecord";
+
+            // Static XMLPORT.RUN(id[, requestWindow[, import[, record]]]) — 4 overloads, all
+            // redirected to a typed OOS throw (see the comment above this block).
+            if (navXmlPortT != null)
+            {
+                void RedirectStaticRun(TypeReference[] sig, string replName)
+                {
+                    var m = navXmlPortT.Methods.FirstOrDefault(mm =>
+                        mm.Name == "Run" && mm.IsStatic
+                        && mm.Parameters.Count == sig.Length
+                        && mm.Parameters.Select(p => p.ParameterType.FullName).SequenceEqual(sig.Select(s => s.FullName)));
+                    if (m == null || !m.HasBody) return;
+
+                    var replParamTypes = sig.Select(s => s.FullName switch
+                    {
+                        "System.Int32" => typeof(int),
+                        "System.Boolean" => typeof(bool),
+                        _ => typeof(object),
+                    }).ToArray();
+                    var replInfo = typeof(AlRunner.BcRuntime).GetMethod(replName,
+                        BindingFlags.Static | BindingFlags.Public, null, replParamTypes, null)
+                        ?? throw new InvalidOperationException($"BcRuntime.{replName} not found via reflection — do not commit");
+                    var replRef = asm.MainModule.ImportReference(replInfo);
+
+                    var body = m.Body;
+                    body.Instructions.Clear();
+                    body.ExceptionHandlers.Clear();
+                    body.Variables.Clear();
+                    var il = body.GetILProcessor();
+                    for (int i = 0; i < sig.Length; i++)
+                        il.Append(il.Create(OpCodes.Ldarg, i));
+                    il.Append(il.Create(OpCodes.Call, replRef));
+                    il.Append(il.Create(OpCodes.Ret));
+                    body.MaxStackSize = Math.Max(1, sig.Length);
+                    xmlPortRewrites++;
+                }
+
+                var tInt32 = asm.MainModule.ImportReference(typeof(int));
+                var tBool = asm.MainModule.ImportReference(typeof(bool));
+                // NavRecord is defined IN Ncl.dll itself (Runtime namespace, unlike DataError
+                // above), so — unlike the FindType/MainModule.Types trap that silently dropped
+                // Export/Import — resolving it via MainModule.Types here is safe and correct.
+                var navRecordT = asm.MainModule.Types.FirstOrDefault(t => t.FullName == NavRecordName);
+                var refNavRecordForStatic = navRecordT != null ? asm.MainModule.ImportReference(navRecordT) : null;
+                RedirectStaticRun(new[] { tInt32 }, nameof(AlRunner.BcRuntime.NavXmlPort_StaticRun1));
+                RedirectStaticRun(new[] { tInt32, tBool }, nameof(AlRunner.BcRuntime.NavXmlPort_StaticRun2));
+                RedirectStaticRun(new[] { tInt32, tBool, tBool }, nameof(AlRunner.BcRuntime.NavXmlPort_StaticRun3));
+                if (refNavRecordForStatic != null)
+                    RedirectStaticRun(new[] { tInt32, tBool, tBool, refNavRecordForStatic }, nameof(AlRunner.BcRuntime.NavXmlPort_StaticRun4));
+            }
+
+            Console.Error.WriteLine($"[Cecil] Rewrote {xmlPortRewrites} NavXmlPort static Run overload(s) to OOS-throw (ctor-scaffolding and instance Export/Import/Run/SetTableView left to BC's real, unpatched body)");
         }
 
         // §report-processor-factory — the TRUE out-of-scope boundary for report
