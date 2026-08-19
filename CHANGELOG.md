@@ -6,6 +6,12 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+## [2.3.1] - 2026-08-19
+
+### Changed
+- fix(ci): publish.yml must run the BC engine tests, not skip them
+- chore(corpus): bump al-language pin to 0a30b00 (adds #59)
+
 ## [2.3.0] - 2026-08-19
 
 ### Changed
