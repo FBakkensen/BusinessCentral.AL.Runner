@@ -6,6 +6,31 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-08-19
+
+### Changed
+- fix(watch): stale page-metadata bookkeeping and cross-cycle AL stack leak
+- fix(events): preserve subscriber stack traces on rethrow; recognize a table publisher's INavRecordHandle sender
+- chore(corpus): bump al-language pin to 41013f6 (adds #58)
+- fix(hooks): resolve the single-Hook()-call-site cluster of orphaned JmpHook registrations
+- chore(corpus): bump al-language pin to 2f892b1 (adds #55, #56, #57)
+- fix(pages): Rec resolves inside a pageextension-contributed OnAction
+- docs(graphify): note the optional local knowledge graph, and which build to install
+- fix(tests): WatchBurstSwitchTests no longer scores a verdict off the burst's own cycle(s)
+- perf(watch): incremental recompile for a single content-edited object
+- fix(transactions): DeleteAll()/ModifyAll() open a write transaction even with zero matches
+- fix(transactions): a failed Delete() no longer wipes rows a nested BC transaction already committed
+- fix(testpage): pageextension-contributed action Invoke() dispatches its own OnAction
+- chore(corpus): bump al-language pin to 46d6ec66
+- fix(pages): resolve real MasterPage for a precompiled dependency page
+- fix(runtime): TestField's navigate-action lookup no longer hijacks the real TestField error
+- fix(navapp): NavApp.GetCurrentModuleInfo source polyfill returns void — CS0023 on boolean-context calls
+- fix(tests): final-cycle window must exclude earlier burst cycles
+- fix(compiler): manifest-derived ParseOptions/CompilationOptions on every compile path
+- fix(xmlport): delete 3 more orphaned JmpHook registrations in the NavXmlPort cluster (#1883)
+- fix(watch): make WatchBurstSwitchTests's burst assertion deterministic, not real-clock-dependent
+- perf(boot): remove ~18s of fixed per-invocation overhead (GetTypes scan, install-baseline reseed, manifest re-reads)
+
 ## [2.2.0] - 2026-08-17
 
 ### Added
