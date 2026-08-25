@@ -6,6 +6,20 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+## [2.4.1] - 2026-08-25
+
+### Changed
+- fix(provision): default auto-provisioning to the engine's own build, not latest
+- fix(provision): auto-provision the BC artifact cache by default
+- fix(pack): stop shipping Microsoft.Dynamics.Nav.Ncl.dll in the tool nupkg
+- fix(pack): stop shipping BC service-tier/Aspose/Graph binaries in the tool nupkg
+- fix(diagnostics): stop the Field virtual-table ctor-failure message from asserting an unverified cause
+- fix(hooks): delete the 8-registration ALDatabase orphaned-JmpHook cluster, Cecil-own get_ALSerialNumber
+- fix(testpage): dispatch [ModalPageHandler] for a page with no SourceTable
+- fix(watch): make RadSelfBaselineLoader's "not mine" signal agree with the rest of the composite chain
+- fix(hooks): delete the NavCancellationToken orphaned-JmpHook cluster
+- fix(provision): reject a warm app set below the manifest's version floor
+
 ## [2.4.0] - 2026-08-25
 
 ### Changed
