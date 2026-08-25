@@ -951,6 +951,9 @@ var assembler = new BcAssembler();
 var executor = new TestExecutor { Isolation = isolation, TestFilter = testFilter, TimeoutSeconds = testTimeoutSeconds, Expectations = expectations };
 var depLoader = new DependencyLoader(emitter, assembler);
 var results = new List<BucketResult>();
+// --tdd (issue #2001) acceptance criterion 8: every member generated across the WHOLE run
+// (every bundle's Emit call), printed as one list at the end — see the print site below.
+var allTddGeneratedMembers = new List<TddGeneratedMember>();
 
 // #1905 (defect 4): the reason a --watch cycle fell back to a full rebuild (instead
 // of the proportional-cost incremental path), one entry per module that fell back
@@ -1408,6 +1411,46 @@ foreach (var bundle in bundles)
     var bundleErrors = new List<string>();
     var bundleStage = BucketStage.Ran;
     int sP = 0, sF = 0, sE = 0;
+    // --tdd (orchestrator review on #2005): "ObjectDisplayName.MethodName" -> every member
+    // that test's compile depended on --tdd generating. Populated below wherever this
+    // bundle's emitOutput.TddGeneratedMembers is collected; consumed by
+    // OverrideTddDependentResults right before either execution loop's real TestResult set
+    // is counted/added, so a test that only ran against scaffolding can never report pass —
+    // see TddGeneratedMember.DependentTests' doc comment for why a generated field is a fully
+    // functional fake, not a default return, and must be treated as strictly WORSE.
+    var bundleTddDependents = new Dictionary<string, List<TddGeneratedMember>>();
+    // --tdd (orchestrator review on #2005): forces every TestResult whose compile depended on
+    // a --tdd-generated member to report FAIL, regardless of what actually happened when it
+    // ran. The test still executes in full — "keep running the test... only the reported
+    // outcome changes" — a generated PROCEDURE stub already fails on its own (it raises
+    // Error()), but a generated FIELD or enum value has nothing to fail on: it is real,
+    // functioning storage, so a test that only writes and reads it back legitimately passes,
+    // and a green result there would be the exact lie loud-failures.md's first paragraph
+    // describes — worse than a default return, because it's a fully working fake. Message is
+    // rewritten uniformly for BOTH cases (not just the field/enum one) so the failure always
+    // names the generated member(s) and their inferred type(s) explicitly, per the review.
+    List<TestResult> OverrideTddDependentResults(IReadOnlyList<TestResult> raw)
+    {
+        if (bundleTddDependents.Count == 0) return raw as List<TestResult> ?? raw.ToList();
+        var overridden = new List<TestResult>(raw.Count);
+        foreach (var t in raw)
+        {
+            var label = string.IsNullOrEmpty(t.CodeunitDisplayName) ? t.Codeunit : t.CodeunitDisplayName!;
+            if (bundleTddDependents.TryGetValue($"{label}.{t.Method}", out var deps) && deps.Count > 0)
+            {
+                var depList = string.Join("; ", deps.Select(d => $"{d.ObjectDisplayName}: {d.MemberKind} {d.Signature}"));
+                var msg = $"--tdd: this test depends on {deps.Count} generated member(s) the " +
+                    $"implementing app has not defined yet: {depList}";
+                if (!string.IsNullOrEmpty(t.Message)) msg += $" (underlying result: {t.Message})";
+                overridden.Add(t with { Outcome = TestOutcome.Fail, Message = msg });
+            }
+            else
+            {
+                overridden.Add(t);
+            }
+        }
+        return overridden;
+    }
     // #1880: counts app groups (bundled mode) / suites (--per-suite) that actually
     // reached test execution and contributed to bundleTests — incremented at the
     // SAME point as bundleTests.AddRange below, in both loops, so a group that threw
@@ -1738,6 +1781,23 @@ foreach (var bundle in bundles)
                     var emitOutput = emitTask.Result;
                     sources = emitOutput.Sources;
                     alDiagnostics = emitOutput.Diagnostics;
+                    // --tdd (issue #2001): collect regardless of whether anything ended up
+                    // excluded afterward — generation can fully resolve an object with NO
+                    // exclusion remaining, and that case still belongs in criterion 8's list.
+                    if (emitOutput.TddGeneratedMembers != null)
+                    {
+                        allTddGeneratedMembers.AddRange(emitOutput.TddGeneratedMembers);
+                        // Invert DependentTests (member -> tests) into (test -> members), so
+                        // OverrideTddDependentResults can look a REAL TestResult up by its own
+                        // (CodeunitDisplayName ?? Codeunit, Method) in O(1).
+                        foreach (var m in emitOutput.TddGeneratedMembers)
+                            foreach (var testLabel in m.DependentTests)
+                            {
+                                if (!bundleTddDependents.TryGetValue(testLabel, out var list))
+                                    bundleTddDependents[testLabel] = list = new List<TddGeneratedMember>();
+                                list.Add(m);
+                            }
+                    }
 
                     // An emit-retry exclusion means one or more AL objects are NOT in the
                     // compiled module. Any test they declared is now absent from the run —
@@ -2072,7 +2132,7 @@ foreach (var bundle in bundles)
                     BcRuntime.SetTestAssembly(asm, wireFieldTriggers: false);
                 BcRuntime.OosHooksActive = true;
                 var execSw = System.Diagnostics.Stopwatch.StartNew();
-                tests = executor.Run(asm);
+                tests = OverrideTddDependentResults(executor.Run(asm));
                 execSw.Stop();
                 AlRunner.PerfTrace.Log($"TestExecutor.Run {rel} {execSw.ElapsedMilliseconds}ms");
             }
@@ -2181,7 +2241,7 @@ foreach (var bundle in bundles)
                     BcRuntime.RegisterTestAssemblyInfo(asm);
                 }
                 BcRuntime.OosHooksActive = true;
-                tests = executor.Run(asm);
+                tests = OverrideTddDependentResults(executor.Run(asm));
             }
             catch (Exception ex)
             {
@@ -2477,20 +2537,27 @@ else
 }
 if (tddMode)
 {
-    // issue #1997 acceptance criterion 8: print the members --tdd generated this run —
-    // the API the implementing app still has to provide, derived from the tests rather
-    // than written by hand. This build's --tdd deliberately REFUSES to infer a missing
-    // member's type (see TddSupport's doc comment / .claude/rules/loud-failures.md — a
-    // wrong guess compiles and produces a test that is red for the wrong reason), so the
-    // list is always empty for now; the excluded [Test] results above already name every
-    // missing symbol individually. Printed either way so the summary's shape doesn't
-    // silently change once generation ships.
+    // issue #2001 acceptance criterion 8: print the members --tdd actually generated this
+    // run — the API the implementing app still has to provide, derived from the tests
+    // rather than written by hand. A symbol --tdd could not confidently infer (or that
+    // resolved onto a precompiled dependency, out of scope) still falls through to
+    // TddSupport's refuse path and shows up as a FAILED test above, never in this list —
+    // this list is only what was actually inferred, generated, and recompiled clean.
     var tddOut = outputJson ? Console.Error : Console.Out;
     tddOut.WriteLine();
-    tddOut.WriteLine(
-        "--tdd: no members were generated this run — every missing symbol was reported " +
-        "as a failed test instead (type inference is not implemented yet; see the FAILED " +
-        "test messages above for each missing symbol).");
+    if (allTddGeneratedMembers.Count == 0)
+    {
+        tddOut.WriteLine(
+            "--tdd: no members were generated this run — every missing symbol was reported " +
+            "as a failed test instead (see the FAILED test messages above for each missing " +
+            "symbol).");
+    }
+    else
+    {
+        tddOut.WriteLine($"--tdd: generated {allTddGeneratedMembers.Count} member(s) this run:");
+        foreach (var m in allTddGeneratedMembers)
+            tddOut.WriteLine($"  {m.ObjectDisplayName}: {m.MemberKind} {m.Signature}");
+    }
 }
 if (outPath != null)
 {
@@ -3739,6 +3806,48 @@ static void PrintGuide(TextWriter w)
     w.WriteLine("  echoed live — a probe that writes to stdout will appear to produce nothing.");
     w.WriteLine("  Write diagnostics to a FILE instead.");
     w.WriteLine("  In --server mode stdout carries ONLY the JSON protocol; all logs go to stderr.");
+    w.WriteLine();
+
+    w.WriteLine("TDD MODE (--tdd) — starting a red-green cycle before the app has the symbol yet");
+    w.WriteLine("  Local development only. Not for CI: it deliberately runs tests that reference");
+    w.WriteLine("  symbols the implementing app doesn't have yet, instead of failing the compile.");
+    w.WriteLine();
+    w.WriteLine("  Normally, a test written before its implementation is a compile error —");
+    w.WriteLine("  method-body errors drop the WHOLE app group (BC's continue-on-error does not");
+    w.WriteLine("  cover them), so the run reports exit 3 and zero test results, not a red test.");
+    w.WriteLine("  --tdd infers the missing member's type from how the test uses it (a field's");
+    w.WriteLine("  type from what's assigned to it, a procedure's parameter/return types from its");
+    w.WriteLine("  call site), generates it into the implementing app's source in memory, and");
+    w.WriteLine("  recompiles. The generated body raises a distinctive error naming itself as a");
+    w.WriteLine("  generated stub, so the test runs up to that point and fails there — a genuine");
+    w.WriteLine("  RED test, for the reason you intended, instead of a compile failure:");
+    w.WriteLine("    al-runner --tdd MyApp MyApp.Test");
+    w.WriteLine();
+    w.WriteLine("  Where nothing anchors a confident guess (a bare-statement call — no way to");
+    w.WriteLine("  tell a void procedure from a discarded return value — or both sides of an");
+    w.WriteLine("  assignment unresolved), --tdd REFUSES rather than invents: that test is still");
+    w.WriteLine("  reported FAILED, naming the missing symbol, exactly as before generation");
+    w.WriteLine("  existed. A wrong guess that compiled cleanly would be worse than no guess —");
+    w.WriteLine("  a test red for the wrong reason. At the end of the run, --tdd prints every");
+    w.WriteLine("  member it actually generated: that list is the API surface the implementing");
+    w.WriteLine("  app still has to hand-write to replace the stubs.");
+    w.WriteLine();
+    w.WriteLine("  Exit code is 1 (a test failed), not 3 (compile failed) — --tdd's whole point");
+    w.WriteLine("  is turning that 3 into a 1 you can iterate against.");
+    w.WriteLine();
+    w.WriteLine("  --tdd disables the AL-output cache for the run (its generated members and");
+    w.WriteLine("  synthetic results are derived fresh from source every time; a cache HIT would");
+    w.WriteLine("  silently skip generation and serve stale or missing results).");
+    w.WriteLine();
+    w.WriteLine("  --tdd + --watch is REJECTED (exit 2), not silently combined. --watch's whole");
+    w.WriteLine("  premise is a stable, unchanging source tree it can diff between cycles — a");
+    w.WriteLine("  --tdd run mutates the app's own in-memory source every cycle by design, so");
+    w.WriteLine("  the two are fundamentally incompatible rather than merely untested together.");
+    w.WriteLine("  --tdd + --server is rejected the same way.");
+    w.WriteLine();
+    w.WriteLine("  Scope: source-compiled implementing apps only. A precompiled .app dependency's");
+    w.WriteLine("  missing member is not generated — precompiled-dll-respect.md forbids rewriting");
+    w.WriteLine("  compiled bodies, and that diagnostic falls through to the same refuse path.");
     w.WriteLine();
 
     w.WriteLine("REPORTING A RUNNER GAP");
