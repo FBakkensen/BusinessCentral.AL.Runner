@@ -6,6 +6,12 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-08-26
+
+### Changed
+- feat(pack): select and shadow-swap a per-BC-minor engine variant at startup
+- prep(engine): centralize the engine's hardcoded AssemblyLoadContext.Default assumptions
+
 ## [2.4.1] - 2026-08-25
 
 ### Changed
