@@ -6,6 +6,21 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+## [2.6.0] - 2026-08-26
+
+### Fixed
+- print startup reporting once per invocation, not once per re-exec generation
+- gate the explicit-engine-minor warning on shipped variants, surface re-exec explanations
+
+### Changed
+- fix(tests): stop a swallowed cleanup failure in StartupOutputReexecDedupTests from breaking its sibling
+- feat(dap): real step granularity for next/stepIn/stepOut
+- fix(dap): surface --dap variable ToString() failures instead of flattening to null
+- fix(capture-values): surface field-read/ToString() failures instead of dropping or faking them
+- docs(dap): correct VS Code launch-config guidance for --dap (#2046)
+- feat(dap): restore --dap breakpoint debugging on v2 (slice 1 of #1642)
+- feat(server): implement --capture-values on execute via NavMethodScope.Exit()
+
 ## [2.5.0] - 2026-08-26
 
 ### Changed
