@@ -92,6 +92,58 @@ public static class AlDapSession
     /// pattern as AlCoverageTracker.Enabled / AlValueCapture.Enabled.</summary>
     public static volatile bool Enabled;
 
+    // Diagnostic-only trace for issue #2070 (step-over test timing out on CI under
+    // load): opt-in via AL_DAP_STEP_TRACE=1, off by default so a real --dap session's
+    // stderr stays quiet. Only ever consulted from code paths already gated behind
+    // Enabled (an active --dap session), so this adds no cost to the !Enabled fast
+    // path a 2130-test corpus run takes on every statement. Emits to stderr with BOTH
+    // a monotonic per-process elapsed time (useful for intra-server ordering) AND a
+    // wall-clock UTC timestamp — the wall clock is the load-bearing half: this trace
+    // runs in the SPAWNED al-runner --dap CHILD process, a different process from the
+    // DapClient test harness that has its own independent trace (see DapClient.cs),
+    // and two different processes' Stopwatch.StartNew() epochs are NOT comparable to
+    // each other. Wall-clock UTC (same machine, same clock) is what lets a reader put
+    // "server FIRE'd at T" and "client gave up waiting at T+60s" on one timeline and
+    // answer issue #2070's actual question: did the server do its job and the client
+    // simply not get scheduled to read it, or did the server never fire at all.
+    private static readonly bool _traceEnabled = Environment.GetEnvironmentVariable("AL_DAP_STEP_TRACE") == "1";
+    private static readonly System.Diagnostics.Stopwatch _traceClock = System.Diagnostics.Stopwatch.StartNew();
+
+    /// <summary>
+    /// internal, not private: issue #2070's follow-up found the actual bug this whole
+    /// trace exists to catch lives OUTSIDE this class — Program.cs's Stopped-event
+    /// handler (RunDapLoop) swallows an AlDapStackWalker.Walk exception via a bare
+    /// Console.Error.WriteLine and returns normally, which OnStmtHit then reads as "the
+    /// stop was reported" and proceeds straight into gate.Wait() — a silently-lost
+    /// "stopped" event, not a missed step and not client-side starvation (see that
+    /// handler's own trace calls for the three-way split: Walk threw, WriteEvent threw,
+    /// or the write genuinely completed and the bytes did not arrive). Exposed here so
+    /// that handler's diagnostics land in the SAME trace stream instead of a second,
+    /// differently-gated Console.Error path that the original bare
+    /// Console.Error.WriteLine used — a second path a two-reader DapClient bug (fixed
+    /// earlier in this issue) could just as easily have eaten silently, which is
+    /// exactly why this failure mode went unnoticed for as long as it did.
+    /// </summary>
+    internal static void Trace(string msg)
+    {
+        if (!_traceEnabled) return;
+        // InvariantCulture explicitly: ":" in a custom DateTime format string is the
+        // CURRENT CULTURE's time-separator placeholder, not a literal colon — caught
+        // this rendering as "08.28.01.165Z" (dots) while building this trace on a
+        // machine whose OS locale (en-DK) uses "." as its time separator. Comparing
+        // this against DapClient's own wall-clock trace only works if both use the
+        // exact same, culture-independent rendering.
+        var wall = DateTime.UtcNow.ToString("HH:mm:ss.fff", System.Globalization.CultureInfo.InvariantCulture);
+        // Same InvariantCulture trap as the wall-clock stamp above: interpolation's
+        // ":F1" shorthand uses CURRENT CULTURE's decimal separator too (would render
+        // "13053,9" on a comma-decimal locale). This half of the line is intra-process
+        // only (never compared against another process's Stopwatch epoch) so it isn't
+        // load-bearing for #2070's cross-process comparison the way "wall" is, but a
+        // decimal point that silently isn't one is still a footgun worth closing here.
+        var elapsedMs = _traceClock.Elapsed.TotalMilliseconds.ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
+        Console.Error.WriteLine($"[dap-step-trace] t={elapsedMs}ms wall={wall}Z {msg}");
+    }
+
     private static readonly HashSet<(Type ScopeType, int Stmt)> _breakpoints = new();
     private static readonly object _bpLock = new();
 
@@ -187,6 +239,7 @@ public static class AlDapSession
         // either — arm nothing rather than compare against a meaningless depth.
         _stepFromDepth = scope != null ? ComputeChainDepth(scope) : int.MinValue;
         _stepKind = kind;
+        Trace($"ARM kind={kind} fromDepth={_stepFromDepth} pausedScope={scope?.GetType().Name ?? "<null>"} pausedStmt={_pausedStatement}");
         _pauseGate?.Release();
     }
 
@@ -199,6 +252,8 @@ public static class AlDapSession
     /// stale armed step is a live hazard, not just clutter.</summary>
     public static void OnTestBoundary()
     {
+        if (_stepKind != AlDapStepKind.None)
+            Trace($"BOUNDARY disarming a step still armed at test end: kind={_stepKind} fromDepth={_stepFromDepth} — MISSED, no qualifying StmtHit arrived before the test finished");
         _stepKind = AlDapStepKind.None;
         _stepFromDepth = int.MinValue;
     }
@@ -209,6 +264,8 @@ public static class AlDapSession
     /// no silent hang is acceptable either).</summary>
     public static void Detach()
     {
+        if (_stepKind != AlDapStepKind.None)
+            Trace($"DETACH with a step still armed: kind={_stepKind} fromDepth={_stepFromDepth}");
         _detached = true;
         _pauseGate?.Release();
     }
@@ -232,7 +289,16 @@ public static class AlDapSession
         lock (_bpLock) breakpointHit = _breakpoints.Contains((scope.GetType(), currentStatementNumber));
 
         var stepKind = _stepKind;
-        bool stepHit = stepKind != AlDapStepKind.None && StepQualifies(stepKind, scope);
+        bool stepHit = false;
+        if (stepKind != AlDapStepKind.None)
+        {
+            stepHit = StepQualifies(stepKind, scope);
+            if (_traceEnabled)
+            {
+                var depth = ComputeChainDepth(scope);
+                Trace($"EVAL kind={stepKind} fromDepth={_stepFromDepth} scope={scope.GetType().Name} stmt={currentStatementNumber} depth={depth} qualifies={stepHit}");
+            }
+        }
 
         if (!breakpointHit && !stepHit) return;
 
@@ -243,6 +309,7 @@ public static class AlDapSession
         // it has either been consumed or superseded by an explicit breakpoint.
         var reason = breakpointHit ? "breakpoint" : "step";
         _stepKind = AlDapStepKind.None;
+        Trace($"FIRE reason={reason} scope={scope.GetType().Name} stmt={currentStatementNumber}");
 
         var gate = new System.Threading.SemaphoreSlim(0, 1);
         _pauseGate = gate;
@@ -251,7 +318,9 @@ public static class AlDapSession
         try
         {
             Stopped?.Invoke(scope, currentStatementNumber, reason);
+            Trace($"WAIT entering gate.Wait() reason={reason} scope={scope.GetType().Name} stmt={currentStatementNumber}");
             gate.Wait(); // blocks the AL execution thread until Continue()/Step*()/Detach()
+            Trace($"RESUME left gate.Wait() reason={reason} scope={scope.GetType().Name} stmt={currentStatementNumber}");
         }
         finally
         {
