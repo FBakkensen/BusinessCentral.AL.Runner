@@ -6,6 +6,18 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+## [2.7.0] - 2026-08-27
+
+### Changed
+- dap: add a stdio transport so VS Code can launch the adapter directly
+- chore(corpus): bump al-language pin to ab43ec0 for #66/#67, bump count-baseline to 2140
+- chore(agent-docs): cleanup pass on the agent instruction surface
+- fix(testpage): GoToRecord on a precompiled page derives the key from the record's metadata
+- fix(testpage): build a linkless subpage part without demanding the host's record
+- fix(dap): bypass the per-test watchdog while a DAP session has the thread paused
+- fix(testpage): type-aware conversion for page-global Code/Date/Enum controls
+- feat(server): per-statement hit counts + position table (coverage:true)
+
 ## [2.6.0] - 2026-08-26
 
 ### Fixed
