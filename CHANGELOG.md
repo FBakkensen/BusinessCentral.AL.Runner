@@ -7,6 +7,7 @@ All notable changes to this project are documented here. Format based on
 ## [Unreleased]
 
 ### Fixed
+- **server:** stop execute from silently discarding Message() output
 - **ci:** reject CI-skip directives in PR title/body, recover sync workflow by hand or on schedule
 - **changelog:** classify scoped conventional-commit prefixes, strip repeated (#N), sync [Unreleased]
 - **publish:** stop hardcoding main in the release-commit push, fail fast on an unpushable ref
