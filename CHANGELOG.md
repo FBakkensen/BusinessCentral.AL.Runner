@@ -31,6 +31,9 @@ All notable changes to this project are documented here. Format based on
 - **agents:** say how to wait for CI, not just how to read it
 - **rules:** fold pr-ci-monitoring.md into ci-verdicts.md
 
+### Changed
+- reject PR bodies with missing or unintended closing references
+
 ## [2.7.0] - 2026-08-27
 
 ### Changed
