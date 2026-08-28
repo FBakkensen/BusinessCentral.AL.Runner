@@ -7,6 +7,7 @@ All notable changes to this project are documented here. Format based on
 ## [Unreleased]
 
 ### Fixed
+- **capture-values:** record one value per statement execution, not one end-of-test snapshot
 - **metadata:** evict base NCLMetaTable on precompiled tableextension merge too
 - resolve TestPage field controls on pages precompiled in dependency .apps
 - **help:** describe execute for what it does, add --dap to USAGE, drop stale debug-adapter TODO
