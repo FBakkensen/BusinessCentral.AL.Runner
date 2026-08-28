@@ -6,6 +6,26 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+### Fixed
+- **ci:** reject CI-skip directives in PR title/body, recover sync workflow by hand or on schedule
+- **changelog:** classify scoped conventional-commit prefixes, strip repeated (#N), sync [Unreleased]
+- **publish:** stop hardcoding main in the release-commit push, fail fast on an unpushable ref
+- **startup:** report the true final package-cache search set
+- **tests:** make SiblingSourceDep_CompilesWithZeroPackageCacheDirs hermetic
+- **startup:** defer the remaining per-generation startup lines past re-exec
+- declare _BCVersion default once in Directory.Build.props
+- **provisioning:** derive transitive no-fallback platform-app need via a closure walk, not a hand-maintained list
+- **deps:** report missing/too-old third-party deps as provisioning gaps, not COMPILE-FAIL
+- **startup:** defer startup trio across every re-exec generation, not just the shadow hop
+- **provision:** expose platform-apps/test-apps/service-tier download from the shipped binary
+- **cli:** -v/-V/version alias --version, --help prints version, --guide tells agents where and how to report gaps
+- **provision:** detect transitive Application Test Library need, provision the selected BC version not the cache's
+
+### Documentation
+- **rules:** a backgrounded foreground command promises nothing either
+- **agents:** say how to wait for CI, not just how to read it
+- **rules:** fold pr-ci-monitoring.md into ci-verdicts.md
+
 ## [2.7.0] - 2026-08-27
 
 ### Changed
