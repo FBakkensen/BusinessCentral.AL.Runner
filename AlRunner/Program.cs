@@ -1210,8 +1210,15 @@ foreach (var deferredLine in deferredStartupLines) deferredLine();
 var packageCacheDirs = packageCacheArgs.Count > 0
     ? ExpandPackageCacheDirs(packageCacheArgs).ToList()
     : DefaultPackageCacheDirs().ToList();
-Console.WriteLine($"  package caches: {packageCacheDirs.Count} dir(s)");
-AlRunner.Infrastructure.PhaseLog.SetPackageCacheDirs(packageCacheDirs.Count);
+// #2107: labeled "(requested)" — this is the explicit/default set ONLY, before
+// packageCacheDirs gains the fold-ins below (extraProvisionSearchDirs, then
+// platformAppsOut/testAppsOut inside the provisioning block). A generic "package
+// caches: N dir(s)" label read as the whole story here, so a reader who only saw this
+// line (the provisioning block between it and the final count can print a multi-minute
+// download) could reasonably conclude nothing was searched — exactly backwards from
+// what #2067 needed. SourceDepSymbolsWithoutPackageCacheTests/SourceDepCacheEnumMetadataTests
+// pin this exact label + count as a precondition on the explicit-arg branch.
+Console.WriteLine($"  package caches (requested): {packageCacheDirs.Count} dir(s)");
 AlRunner.Infrastructure.PhaseLog.SetBundles(bundles);
 
 // Issue #1678: the platform-app R2R gate below used to scan ONLY packageCacheDirs
@@ -1439,6 +1446,22 @@ if (!provisionSubcommand)
         }
     }
 }
+
+// #2107: packageCacheDirs is now complete — every fold-in above (extraProvisionSearchDirs,
+// then platformAppsOut/testAppsOut inside the provisioning block just closed) has already
+// run, whichever branch of `if (!provisionSubcommand)` was taken. This is the number
+// dependency resolution (PlatformCheckDirs, DependencyResolver's resolverDirs) actually
+// searches — the "(requested)" line above is scoped to before these folds by its label.
+AlRunner.Infrastructure.PhaseLog.SetPackageCacheDirs(packageCacheDirs.Count);
+Console.WriteLine($"  package caches (final search set): {packageCacheDirs.Count} dir(s)");
+// --verbose: name the directories themselves, not just the count. The count alone was
+// exactly what made #2067 hard to read — "0" on a machine that went on to search several
+// dirs — so the natural companion to the --verbose "[dep] Publisher/Name" line below (which
+// names which package WON each dependency slot) is naming what got SEARCHED to produce that
+// winner in the first place.
+if (AlRunner.Log.Verbose)
+    foreach (var d in packageCacheDirs)
+        Console.WriteLine($"    [pkg-cache] {d}");
 
 // One-time runtime setup. Must happen BEFORE any BC type is touched.
 // Install the assembly Resolving handler FIRST so patch reflection or generic
@@ -4776,6 +4799,12 @@ static void PrintGuide(TextWriter w)
     w.WriteLine("      [dep] <Publisher>/<Name> <Version>  <- /path/to/the/winning.app");
     w.WriteLine("    That is the resolved set. Check the path and version of each dependency that");
     w.WriteLine("    is actually on the failing call's path, not just the one that threw.");
+    w.WriteLine();
+    w.WriteLine("    The [dep] winner comes FROM somewhere: --verbose also lists every directory");
+    w.WriteLine("    actually searched to produce it, as [pkg-cache] lines under the \"package");
+    w.WriteLine("    caches (final search set): N dir(s)\" count — not the earlier \"(requested)\"");
+    w.WriteLine("    count, which is the explicit/default set only. If a package you expect to");
+    w.WriteLine("    win is missing, check whether its directory is even in the final list.");
     w.WriteLine();
     w.WriteLine("  VERSION SKEW ACROSS A FAMILY. When a workspace's .alpackages reference two");
     w.WriteLine("  different minors of the same platform family, stage BOTH minors in the");
