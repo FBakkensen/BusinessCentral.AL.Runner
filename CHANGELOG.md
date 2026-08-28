@@ -7,6 +7,7 @@ All notable changes to this project are documented here. Format based on
 ## [Unreleased]
 
 ### Fixed
+- reject a non-rooted $HOME resolution instead of silently passing on a relative artifact/cache root
 - **server:** stop execute from silently discarding Message() output
 - **ci:** reject CI-skip directives in PR title/body, recover sync workflow by hand or on schedule
 - **changelog:** classify scoped conventional-commit prefixes, strip repeated (#N), sync [Unreleased]
