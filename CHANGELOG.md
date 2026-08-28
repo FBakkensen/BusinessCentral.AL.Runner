@@ -28,6 +28,7 @@ All notable changes to this project are documented here. Format based on
 - **provision:** detect transitive Application Test Library need, provision the selected BC version not the cache's
 
 ### Documentation
+- correct limitations.md's stale claims on transactions and query support
 - **rules:** a backgrounded foreground command promises nothing either
 - **agents:** say how to wait for CI, not just how to read it
 - **rules:** fold pr-ci-monitoring.md into ci-verdicts.md
