@@ -177,13 +177,37 @@ public static partial class RecordPatches
             // Result columns.
             foreach (var col in diSym.Columns)
             {
-                int fieldNo = ResolveFieldNo(fieldNoByName, col.SourceColumn);
-                if (fieldNo < 0)
+                int fieldNo;
+                if (string.IsNullOrEmpty(col.SourceColumn))
                 {
-                    QLog($"BuildMetaQueryDesign({queryId}): field '{col.SourceColumn}' not found on table {tableNo} ('{diSym.RelatedTable}') — abandoning build");
-                    return null;
+                    // Issue #2137/#2150: real BC's compiler REJECTS a Method=Count column
+                    // that names a source field at all (AL0353) -- the only valid AL is
+                    // `column(X) { Method = Count; }`, with no field. NCLMetaQueryColumn.
+                    // SourceTableField never reads FieldNo for a Count column anyway (BC's
+                    // own Ncl.dll special-cases it to always return the table's OWN primary
+                    // key field, regardless of what FieldNo says) -- the same fact
+                    // ComputeAggregate's Count branch already relies on by never touching
+                    // TableSlot. So a source-less column is legitimate ONLY when it is a
+                    // Count column; abandoning the build for missing a field it was never
+                    // going to use would silently make every Count-only query fail to
+                    // build at all. FieldNo is a placeholder (0) that is never read for it.
+                    if (col.Method != "Count")
+                    {
+                        QLog($"BuildMetaQueryDesign({queryId}): column '{col.Name}' has no SourceColumn and is not Method=Count — abandoning build");
+                        return null;
+                    }
+                    fieldNo = 0;
                 }
-                AddColumn(di, id: col.Id, name: col.Name, fieldNo: fieldNo, index: resultColumnIndex++, caption: col.Caption);
+                else
+                {
+                    fieldNo = ResolveFieldNo(fieldNoByName, col.SourceColumn);
+                    if (fieldNo < 0)
+                    {
+                        QLog($"BuildMetaQueryDesign({queryId}): field '{col.SourceColumn}' not found on table {tableNo} ('{diSym.RelatedTable}') — abandoning build");
+                        return null;
+                    }
+                }
+                AddColumn(di, id: col.Id, name: col.Name, fieldNo: fieldNo, index: resultColumnIndex++, caption: col.Caption, method: col.Method);
                 columnIdByName[col.Name] = col.Id;
             }
 
@@ -338,7 +362,7 @@ public static partial class RecordPatches
 
     private static MethodInfo? _mMultiLanguageParse;
 
-    private static void AddColumn(object dataItem, int id, string name, int fieldNo, int index, string? caption = null)
+    private static void AddColumn(object dataItem, int id, string name, int fieldNo, int index, string? caption = null, string? method = null)
     {
         var col = Activator.CreateInstance(_tMetaQueryColumn!)!;
         SetProp(col, "Id", id);
@@ -346,6 +370,19 @@ public static partial class RecordPatches
         SetProp(col, "FieldNo", fieldNo);
         SetProp(col, "QueryColumnIndex", index);
         SetProp(col, "FilterOnly", false);
+        // Issue #2137: the AL `Method = Sum/Count/Average/Min/Max` property, carried verbatim
+        // from the compiled column's SymbolReference.json Properties bag. MetaQueryColumn.
+        // FieldTotalingMethod (Microsoft.Dynamics.Nav.Types.AggregationType) is what
+        // NCLMetaQuery.CreateDynamicQuery reads to populate the real NCLMetaQueryColumn.
+        // AggregationType this runner-synthesized reconstruction otherwise leaves at its
+        // default (None) — RecordPatches.QueryProjection.cs's GROUP BY aggregation, and the
+        // OOS guards for join+aggregate / HAVING-style filters, all key off that value, so a
+        // query with an unset FieldTotalingMethod would silently behave as if it had no
+        // Method column at all. Symbol property values are the AggregationType member names
+        // verbatim ("Sum", "Count", "Average", "Min", "Max"), so SetProp's Enum.Parse needs no
+        // translation. Left at the design object's own default (None) when absent.
+        if (!string.IsNullOrEmpty(method) && !string.Equals(method, "None", StringComparison.OrdinalIgnoreCase))
+            SetProp(col, "FieldTotalingMethod", method);
         if (caption != null)
         {
             // MetaQueryColumn.CaptionML (MultiLanguage) feeds NCLMetaQueryColumn.columnCaptions
