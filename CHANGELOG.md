@@ -10,6 +10,7 @@ All notable changes to this project are documented here. Format based on
 - **coverage:** attribute per-statement coverage to the test that executed it
 
 ### Fixed
+- **query:** aggregate Method columns instead of returning raw rows
 - **number-sequence:** restore in-memory runtime support
 - **isolation:** make --isolation codeunit roll the database back per test to match BC's 130450
 - **deps:** stop misreporting a dependency-load failure as a missing member, widen precompile's compile search path
