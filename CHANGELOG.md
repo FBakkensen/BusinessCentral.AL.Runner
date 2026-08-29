@@ -41,6 +41,7 @@ All notable changes to this project are documented here. Format based on
 - **rules:** fold pr-ci-monitoring.md into ci-verdicts.md
 
 ### Changed
+- **corpus:** bump the al-language pin to pick up the NumberSequence tests
 - reject PR bodies with missing or unintended closing references
 
 ## [2.7.0] - 2026-08-27
