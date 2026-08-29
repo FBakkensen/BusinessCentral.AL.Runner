@@ -10,6 +10,7 @@ All notable changes to this project are documented here. Format based on
 - **coverage:** attribute per-statement coverage to the test that executed it
 
 ### Fixed
+- **compiler:** resolve a report's file-relative LayoutFile against its declaring .al file
 - **isolation:** --isolation codeunit rolls the database back per codeunit, as BC does
 - **compiler:** extend the AL-diagnostic compile-failure gate to --per-suite, --server, --precompile
 - **compiler:** gate module runs on AL error diagnostics, not zero sources
