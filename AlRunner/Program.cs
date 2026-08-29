@@ -2570,6 +2570,66 @@ foreach (var bundle in bundles)
                     Console.Error.WriteLine($"  {d}");
                 bundleErrors.Add($"<bundled>: EMIT-ZERO ({alDiagnostics.Count} AL error(s))");
             }
+            // AL-diagnostic compile-failure guard (#2150). BC's ContinueBuildOnError keeps
+            // compiling an object's SIBLINGS after a declaration-stage error on one object
+            // (e.g. a query column declaring both a data source AND `Method = Count`, AL0353)
+            // — the broken object's metadata can still emit alongside everything else, so
+            // `sources` comes back non-empty even though `alDiagnostics` (built from
+            // GetDeclarationDiagnostics()/emitResult.Diagnostics, always Error-severity only,
+            // see BcCompiler.Emit) is also non-empty. Neither guard above catches this: it
+            // isn't PARTIAL-EMIT-DROP (there ARE diagnostics explaining the gap) and it isn't
+            // EMIT-ZERO (sources isn't empty). Real BC never publishes an app with ANY error
+            // diagnostic regardless of how many other objects compiled clean, so this must
+            // fail the same way — a real service tier would reject this module outright.
+            // Skip when EMIT-EXCLUDED already handled it (that branch empties `sources`).
+            //
+            // AL1081 carve-out (#2151): turning this guard on for the first time surfaced 6
+            // PRE-EXISTING AL1081 diagnostics in the al-language corpus ("Unable to update
+            // report layout ... Could not find file"), all one root cause — the runner's
+            // Tier-3 source compile resolves a report's LayoutFile relative to the app root
+            // instead of the .al file's own directory, which is what real BC does and what
+            // the corpus's own upstream CI (a real service tier) confirms works. That is a
+            // genuine, separately-tracked runner gap (#2151), not new AL invalidity #2150
+            // needs to enforce.
+            //
+            // The carve-out is scoped to the SPECIFIC condition #2151 describes, not the bare
+            // error code: IsKnownLayoutPathResolutionBug only tolerates an AL1081 whose named
+            // file genuinely EXISTS somewhere else under this app's own directory tree — i.e.
+            // BC found the right file at the wrong (app-root-relative) path, which is exactly
+            // our bug. An AL1081 naming a file that does not exist ANYWHERE under the app — a
+            // real "your report names a layout that was never shipped" mistake — does NOT
+            // match and stays blocking. Silently swallowing every AL1081 regardless of cause
+            // would hide a genuinely broken report the same way #2150 itself needs fixing;
+            // loud-failures.md requires saying so, not going quiet for one error code.
+            var toleratedAl1081 = alDiagnostics
+                .Where(d => IsKnownLayoutPathResolutionBug(d, appGroup.SuiteDir)).ToList();
+            var blockingAlDiagnostics = alDiagnostics
+                .Where(d => !IsKnownLayoutPathResolutionBug(d, appGroup.SuiteDir)).ToList();
+            if (toleratedAl1081.Count > 0)
+            {
+                Console.Error.WriteLine(
+                    $"<bundled>: AL1081-TOLERATED — {moduleName}: {toleratedAl1081.Count} report-layout " +
+                    $"diagnostic(s) tolerated as a KNOWN RUNNER BUG, not invalid AL (see " +
+                    $"https://github.com/StefanMaron/BusinessCentral.AL.Runner/issues/2151 — the runner's " +
+                    $"Tier-3 source compile resolves a report's LayoutFile relative to the app root instead " +
+                    $"of the .al file's own directory). The named file genuinely exists elsewhere under this " +
+                    $"app, so this is OUR path-resolution defect, not yours:");
+                foreach (var d in toleratedAl1081)
+                    Console.Error.WriteLine($"  {d}");
+            }
+            if (sources.Count > 0 && blockingAlDiagnostics.Count > 0)
+            {
+                Console.Error.WriteLine(
+                    $"<bundled>: AL-DIAGNOSTIC-FAIL — {moduleName}: {sources.Count} object(s) emitted but " +
+                    $"{blockingAlDiagnostics.Count} AL error(s) were reported by BC's own compiler; a real " +
+                    $"service tier would refuse to publish this module:");
+                foreach (var d in blockingAlDiagnostics)
+                    Console.Error.WriteLine($"  {d}");
+                bundleErrors.Add(
+                    $"<bundled>: AL-DIAGNOSTIC-FAIL for {moduleName}: {blockingAlDiagnostics.Count} AL error(s) " +
+                    $"reported even though {sources.Count} object(s) emitted.");
+                sources = Array.Empty<EmittedSource>(); // do not run a module BC would refuse to publish
+            }
             if (sources.Count > 0)
             {
                 var ct = System.Diagnostics.Stopwatch.StartNew();
@@ -4764,6 +4824,33 @@ static List<string> DiffServerFiles(Dictionary<string, string>? prev, Dictionary
 // WaitForSourceChange / ArmSourceWatch moved to AlRunner.WatchSource (see #1822):
 // local functions declared here cannot be unit-tested, and the arm-before-announce
 // ordering contract needed a deterministic test.
+
+// #2151 / #2150: an AL1081 ("Unable to update report layout ... Reason: Could not find
+// file '<path>'") gets tolerated by the AL-diagnostic compile-failure guard ONLY when the
+// named file genuinely exists somewhere else under this app's own directory tree — i.e.
+// BC found the right file at the wrong (app-root-relative, rather than .al-file-relative)
+// path, which is our Tier-3 LayoutFile resolution bug, not invalid AL. Any other AL1081 —
+// a different "Reason", or a file that truly does not exist anywhere under the app — does
+// NOT match and must stay blocking, or a genuinely broken report (a layout that was never
+// shipped) would go silently unreported exactly like #2150 itself.
+static bool IsKnownLayoutPathResolutionBug(string diagnostic, string? appRootDir)
+{
+    if (string.IsNullOrEmpty(appRootDir) || !Directory.Exists(appRootDir))
+        return false;
+    var match = System.Text.RegularExpressions.Regex.Match(
+        diagnostic, @": error AL1081: .*Could not find file '([^']+)'");
+    if (!match.Success)
+        return false;
+    var missingFileName = Path.GetFileName(match.Groups[1].Value);
+    if (string.IsNullOrEmpty(missingFileName))
+        return false;
+    try
+    {
+        return Directory.EnumerateFiles(appRootDir, missingFileName, SearchOption.AllDirectories).Any();
+    }
+    catch (IOException) { return false; }
+    catch (UnauthorizedAccessException) { return false; }
+}
 
 static void DumpCsharpSources(string dir, string moduleName, IReadOnlyList<EmittedSource> sources)
 {
