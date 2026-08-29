@@ -7,6 +7,7 @@ All notable changes to this project are documented here. Format based on
 ## [Unreleased]
 
 ### Fixed
+- **isolation:** make --isolation codeunit roll the database back per test to match BC's 130450
 - **deps:** stop misreporting a dependency-load failure as a missing member, widen precompile's compile search path
 - **capture-values:** record one value per statement execution, not one end-of-test snapshot
 - **metadata:** evict base NCLMetaTable on precompiled tableextension merge too
