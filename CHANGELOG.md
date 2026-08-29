@@ -36,6 +36,7 @@ All notable changes to this project are documented here. Format based on
 - **provision:** detect transitive Application Test Library need, provision the selected BC version not the cache's
 
 ### Documentation
+- **runner-extras:** correct the microsoft-dependencies Query 777 header
 - **agents:** make the audit-the-surrounding-shape step standing instruction
 - correct limitations.md's stale claims on transactions and query support
 - **rules:** a backgrounded foreground command promises nothing either
