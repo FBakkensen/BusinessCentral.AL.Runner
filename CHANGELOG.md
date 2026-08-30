@@ -6,6 +6,8 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+## [2.8.0] - 2026-08-30
+
 ### Added
 - **coverage:** attribute per-statement coverage to the test that executed it
 
