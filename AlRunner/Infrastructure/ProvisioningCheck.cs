@@ -504,6 +504,52 @@ public static class ProvisioningCheck
     };
 
     /// <summary>
+    /// The Microsoft app names <see cref="AlRunner.Provisioning.ArtifactDownloader.PlatformApps"/>
+    /// actually supplies — the four w1 <c>Extensions/</c> apps, Application Test Library,
+    /// and the platform artifact's <c>System.app</c>. This is a description of the DOWNLOAD
+    /// SET's contents, not a policy list: it exists so a manifest need can only ever be
+    /// declared for something the download can satisfy (a Microsoft app outside it — an
+    /// unrelated MS extension, say — must never become an unsatisfiable requirement).
+    /// </summary>
+    public static readonly IReadOnlyList<string> PlatformAppSetContents = new[]
+    {
+        "Application",
+        "System",
+        "System Application",
+        "Base Application",
+        "Business Foundation",
+        "Application Test Library",
+    };
+
+    /// <summary>
+    /// Which apps a manifest need may be declared for — the whole contents of the curated
+    /// platform-apps download set (issue #2205), asked one app at a time against what the
+    /// manifests actually name.
+    ///
+    /// It used to be <see cref="KnownNoFallbackPlatformApps"/> alone, on the premise that
+    /// System/Base Application and Business Foundation always have a service-tier DLL
+    /// dispatch fallback, so only PRESENT-but-symbol-only could ever be a gap for them and
+    /// requiring the whole set would regress every corpus bundle (they all carry implicit
+    /// `application`/`platform` roots) into a spurious "needs download".
+    ///
+    /// The premise is false on a cold cache. The DLL fallback serves RUNTIME DISPATCH; it
+    /// does not supply COMPILE-TIME SYMBOLS. With engine-only artifacts on disk an ordinary
+    /// AL app — `"dependencies": []` plus `application`/`platform`, the default shape of
+    /// virtually every real extension — never compiles, so there is no runtime for the
+    /// fallback to serve: the run ended in EMIT-EXCLUDED preceded by two unframed
+    /// `[deps] dependency not found in cache, skipping` lines. CI never saw it because CI
+    /// machines always already have platform-apps/ on disk.
+    ///
+    /// The spurious-download worry the old premise was protecting against does not follow
+    /// from broadening the targets, because the decision is not "is this app named in a
+    /// list" — it is <see cref="FindMissingPlatformApps"/>, "is this app ABSENT from every
+    /// searched cache", asked only of the apps the manifests named. A warm machine has them,
+    /// so a warm bundle still decides "no download"; a cold one does not, which is the whole
+    /// point. And a bundle that names, say, no Business Foundation is never asked for it.
+    /// </summary>
+    private static readonly IReadOnlyList<string> PlatformNeedTargets = PlatformAppSetContents;
+
+    /// <summary>
     /// True iff <paramref name="appName"/> itself is in <paramref name="targets"/>, or
     /// reaches a member of it by following <paramref name="edges"/> through any number of
     /// hops. Pure graph BFS — the general closure-walk mechanism issue #2087 asked for,
@@ -670,8 +716,15 @@ public static class ProvisioningCheck
         "Permissions Mock",
     };
 
-    /// <summary>Manifest-derived provisioning need, independent of what's currently on disk.</summary>
-    public sealed record ManifestNeeds(bool NeedsPlatformApps, bool NeedsTestApps);
+    /// <summary>
+    /// Manifest-derived provisioning need, independent of what's currently on disk.
+    /// <paramref name="RequiredPlatformApps"/> names the individual apps out of the curated
+    /// platform-apps set that these manifests actually require, so callers can check
+    /// presence of exactly those (and name the absent ones) instead of a fixed list —
+    /// see <see cref="FindMissingPlatformApps"/>.
+    /// </summary>
+    public sealed record ManifestNeeds(
+        bool NeedsPlatformApps, bool NeedsTestApps, IReadOnlyList<string> RequiredPlatformApps);
 
     /// <summary>
     /// Classifies a bundle's unioned dependency roots (see Program.ReadBundleDependencyRoots)
@@ -694,8 +747,28 @@ public static class ProvisioningCheck
         IReadOnlyDictionary<string, IReadOnlyList<string>>? dependencyEdges = null)
     {
         var edges = dependencyEdges ?? EmptyDependencyEdges;
-        bool needsPlatform = false, needsTest = false;
-        foreach (var d in roots)
+        var rootList = roots as IReadOnlyCollection<AlRunner.DependencyRef> ?? roots.ToList();
+        bool needsTest = false;
+
+        // Which apps out of the curated platform-apps set do these manifests require?
+        // Asked per-app, over whatever the manifests NAME (directly, or reach through
+        // recorded edges) — never a fixed exemption list. Iterating the set in its declared
+        // order keeps the result deterministic for messages and tests.
+        var requiredPlatformApps = new List<string>();
+        foreach (var candidate in PlatformNeedTargets)
+        {
+            var single = new[] { candidate };
+            foreach (var d in rootList)
+            {
+                if (!string.Equals(d.Publisher, "Microsoft", StringComparison.OrdinalIgnoreCase)) continue;
+                if (!ReachesAnyOf(d.Name, edges, single)) continue;
+                requiredPlatformApps.Add(candidate);
+                break;
+            }
+        }
+        bool needsPlatform = requiredPlatformApps.Count > 0;
+
+        foreach (var d in rootList)
         {
             if (!string.Equals(d.Publisher, "Microsoft", StringComparison.OrdinalIgnoreCase)) continue;
             // Issue #2087: ONE closure walk replaces what used to be two separate checks —
@@ -706,7 +779,6 @@ public static class ProvisioningCheck
             // edge is recorded — no new list, no per-shape entry.
             if (ReachesAnyOf(d.Name, edges, KnownNoFallbackPlatformApps))
             {
-                needsPlatform = true;
                 // Confirmed via a live BC 28.1 platform-apps download (issue #1996): App
                 // Test Library's OWN manifest transitively depends on the MS test toolkit
                 // (Any, and from there Library Assert/Business Foundation Test Libraries)
@@ -718,7 +790,7 @@ public static class ProvisioningCheck
             if (KnownTestFrameworkAppNames.Any(n => string.Equals(n, d.Name, StringComparison.OrdinalIgnoreCase)))
                 needsTest = true;
         }
-        return new ManifestNeeds(needsPlatform, needsTest);
+        return new ManifestNeeds(needsPlatform, needsTest, requiredPlatformApps);
     }
 
     // ── Issue #2003: manifest-driven version floors ──────────────────────────
@@ -757,6 +829,45 @@ public static class ProvisioningCheck
                 floors[d.Name] = d.Version;
         }
         return floors;
+    }
+
+    /// <summary>
+    /// <paramref name="versionFloors"/> minus every floor that <paramref name="provisionableVersion"/>
+    /// could not possibly satisfy — a floor whose major.minor is ABOVE the BC version being
+    /// provisioned.
+    ///
+    /// Issue #2003's floor rule was measured on a stale PATCH: 28.0 present, 28.1 declared,
+    /// a newer build obtainable — so "found but too old" is a real gap a download fixes.
+    /// A floor above the selected version is a different thing entirely and no download can
+    /// ever clear it. The al-language corpus declares System Application / Base Application
+    /// &gt;= 27.5.0.0 and is nonetheless run — green — on the BC 27.0 and 27.3 legs, because
+    /// the runner tolerates that gap deliberately (<c>BcFloorGate</c> owns the case where it
+    /// is genuinely incompatible). Counting it as "absent" once issue #2205 made these apps
+    /// a real requirement would have turned both legs into "platform apps still missing
+    /// after download", exit 2, on every cold run.
+    ///
+    /// An unparseable <paramref name="provisionableVersion"/> rules nothing out: every floor
+    /// is kept, because "we cannot tell" must not read as "relax them all". Pure.
+    /// </summary>
+    public static IReadOnlyDictionary<string, Version> DropUnsatisfiableFloors(
+        IReadOnlyDictionary<string, Version>? versionFloors, string? provisionableVersion)
+    {
+        var empty = new Dictionary<string, Version>(StringComparer.OrdinalIgnoreCase);
+        if (versionFloors == null || versionFloors.Count == 0) return empty;
+        if (string.IsNullOrWhiteSpace(provisionableVersion)) return versionFloors;
+
+        var parts = provisionableVersion.Split('.');
+        if (parts.Length < 2 || !int.TryParse(parts[0], out var major) || !int.TryParse(parts[1], out var minor))
+            return versionFloors;
+
+        var kept = new Dictionary<string, Version>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (name, floor) in versionFloors)
+        {
+            var floorMinor = floor.Minor < 0 ? 0 : floor.Minor;
+            if (floor.Major > major || (floor.Major == major && floorMinor > minor)) continue;
+            kept[name] = floor;
+        }
+        return kept;
     }
 
     /// <summary>One app found below the version floor its manifests declared for it.</summary>
@@ -809,8 +920,24 @@ public static class ProvisioningCheck
     public static bool NoFallbackPlatformAppsPresent(
         IReadOnlyList<string> packageCacheDirs,
         IReadOnlyDictionary<string, Version>? versionFloors = null)
+        => FindMissingPlatformApps(KnownNoFallbackPlatformApps, packageCacheDirs, versionFloors).Count == 0;
+
+    /// <summary>
+    /// The subset of <paramref name="requiredAppNames"/> that is NOT found as a
+    /// Microsoft-published <c>.app</c> anywhere across <paramref name="packageCacheDirs"/>
+    /// at or above the floor <paramref name="versionFloors"/> declares for it — i.e. the
+    /// apps that are genuinely ABSENT (a found-but-below-floor app counts as absent, issue
+    /// #2003; a found-but-symbol-only app is a DIFFERENT gap, reported by
+    /// <see cref="CheckPlatformApps"/>). Order follows <paramref name="requiredAppNames"/>,
+    /// so messages built from it are deterministic. Pure filesystem scan — no network.
+    /// </summary>
+    public static IReadOnlyList<string> FindMissingPlatformApps(
+        IReadOnlyList<string> requiredAppNames,
+        IReadOnlyList<string> packageCacheDirs,
+        IReadOnlyDictionary<string, Version>? versionFloors = null)
     {
-        foreach (var required in KnownNoFallbackPlatformApps)
+        var missing = new List<string>();
+        foreach (var required in requiredAppNames)
         {
             var floor = versionFloors != null && versionFloors.TryGetValue(required, out var f) ? f : null;
             bool found = false;
@@ -829,9 +956,9 @@ public static class ProvisioningCheck
                 }
                 if (found) break;
             }
-            if (!found) return false;
+            if (!found) missing.Add(required);
         }
-        return true;
+        return missing;
     }
 
     /// <summary>
@@ -846,7 +973,9 @@ public static class ProvisioningCheck
         bool TestComplete,
         bool ShouldDownloadPlatform,
         bool ShouldDownloadTest,
-        IReadOnlyList<string> UnreadablePackages)
+        IReadOnlyList<string> UnreadablePackages,
+        IReadOnlyList<string> RequiredPlatformApps,
+        IReadOnlyList<string> MissingPlatformApps)
     {
         public bool ShouldDownloadAny => ShouldDownloadPlatform || ShouldDownloadTest;
     }
@@ -876,14 +1005,23 @@ public static class ProvisioningCheck
         var rootsList = manifestRoots as ICollection<AlRunner.DependencyRef> ?? manifestRoots.ToList();
         var scan = ScanDependencyEdges(searchDirs);
         var needs = DetermineManifestNeeds(rootsList, scan.Edges);
-        var versionFloors = DetermineVersionFloors(rootsList);
-        var platformComplete = NoFallbackPlatformAppsPresent(searchDirs, versionFloors);
+        // A floor the BC version under provision could never supply must not create a
+        // demand no download can clear — see DropUnsatisfiableFloors. The report carries
+        // the selected version, which is exactly the version a download would target.
+        var versionFloors = DropUnsatisfiableFloors(
+            DetermineVersionFloors(rootsList), legacySymbolOnlyReport.Version);
+        // Presence is asked of exactly the apps the manifests required — so an app the
+        // bundle never names cannot make the set look incomplete, and an app it DOES name
+        // cannot be silently exempted from the check.
+        var missingPlatformApps = FindMissingPlatformApps(needs.RequiredPlatformApps, searchDirs, versionFloors);
+        var platformComplete = missingPlatformApps.Count == 0;
         var testComplete = TestToolkitPresent(searchDirs, versionFloors);
         var shouldDownloadPlatform = !legacySymbolOnlyReport.Ok || (needs.NeedsPlatformApps && !platformComplete);
         var shouldDownloadTest = needs.NeedsTestApps && !testComplete;
         return new ManifestProvisionDecision(
             needs.NeedsPlatformApps, needs.NeedsTestApps, platformComplete, testComplete,
-            shouldDownloadPlatform, shouldDownloadTest, scan.UnreadablePackages);
+            shouldDownloadPlatform, shouldDownloadTest, scan.UnreadablePackages,
+            needs.RequiredPlatformApps, missingPlatformApps);
     }
 
     /// <summary>
@@ -917,12 +1055,41 @@ public static class ProvisioningCheck
     }
 
     /// <summary>
+    /// What `al-runner provision` prints when it is NOT going to fetch the platform-app
+    /// set. Issue #2073 removed an unverified "already present" claim here; issue #2205
+    /// found the replacement had swapped it for a different unverified claim — "target
+    /// bundle(s) do not need the platform R2R apps set" was printed for a bundle that
+    /// demonstrably needed it, because the need was never detected in the first place.
+    ///
+    /// The honest form states what was CHECKED and what was FOUND, and never asserts that
+    /// a need does not exist:
+    /// <list type="bullet">
+    /// <item>apps were required and all were found → presence is claimed, because it was
+    /// verified, and the apps are named;</item>
+    /// <item>no app was required → say that the manifests named none, and where we looked,
+    /// so a reader who disagrees knows exactly which fact to go check.</item>
+    /// </list>
+    /// Pure — does no I/O.
+    /// </summary>
+    public static string BuildPlatformProvisionSkippedMessage(
+        IReadOnlyList<string> requiredPlatformApps, IReadOnlyList<string> searchedDirs)
+    {
+        var where = searchedDirs.Count > 0 ? string.Join(", ", searchedDirs) : "(no package cache directories)";
+        if (requiredPlatformApps.Count > 0)
+            return "[provision] platform R2R apps already present for the target bundle(s): " +
+                   $"{string.Join(", ", requiredPlatformApps)} — found in {where}.";
+        return "[provision] no Microsoft platform app is named by the target bundle(s)' app.json " +
+               $"(neither `dependencies` nor `application`/`platform`); searched {where} — nothing to fetch.";
+    }
+
+    /// <summary>
     /// Loud message for the case DecideManifestProvisioning identifies: the manifest
     /// declares a need, nothing satisfying it was found anywhere, and --auto-provision
     /// was NOT given (issue #1996 acceptance criterion #10: no download without opt-in).
     /// </summary>
     public static string BuildManifestNeedsMissingMessage(
-        bool needsPlatform, bool needsTest, IReadOnlyList<string> searchedDirs)
+        bool needsPlatform, bool needsTest, IReadOnlyList<string> searchedDirs,
+        IReadOnlyList<string>? missingPlatformApps = null)
     {
         var lines = new List<string>
         {
@@ -931,13 +1098,24 @@ public static class ProvisioningCheck
             "",
         };
         if (needsPlatform)
-            lines.Add("  Needs: the Microsoft platform-app set (Base Application / System Application / " +
-                "Business Foundation / Application / Application Test Library).");
+            lines.Add(missingPlatformApps is { Count: > 0 }
+                // Issue #2205: name the apps that are actually absent. "the Microsoft
+                // platform-app set" alone left the reader no way to tell which dependency
+                // the run was about to die on.
+                ? "  Needs: the Microsoft platform-app set — missing from every searched cache: " +
+                  string.Join(", ", missingPlatformApps) + "."
+                : "  Needs: the Microsoft platform-app set (Base Application / System Application / " +
+                  "Business Foundation / Application / Application Test Library).");
         if (needsTest)
             lines.Add("  Needs: the Microsoft test-toolkit set (Business Foundation Test Libraries / " +
                 "Library Assert / Test Runner / …).");
         lines.Add("");
-        lines.Add($"  Searched: {string.Join(", ", searchedDirs)}");
+        // "Searched: " followed by nothing reads as a missing value rather than as the
+        // fact it is — on a genuinely cold cache there is no package cache directory yet,
+        // and that is precisely the thing the reader needs told (issue #2205).
+        lines.Add(searchedDirs.Count > 0
+            ? $"  Searched: {string.Join(", ", searchedDirs)}"
+            : "  Searched: nothing — no package cache directory exists yet on this machine.");
         lines.Add("");
         lines.Add("  Resolve it ONE of these ways:");
         lines.Add("");
