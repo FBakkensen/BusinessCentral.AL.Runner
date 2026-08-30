@@ -10,6 +10,9 @@ All notable changes to this project are documented here. Format based on
 - **shadow-runtime:** make load-by-path assemblies real copies, not symlinks
 - **ci:** add 'edited' to pr-check.yml's pull_request trigger
 
+### Documentation
+- **rules:** settle a claim about BC by asking the corpus CI, not by reading
+
 ## [2.8.0] - 2026-08-30
 
 ### Added
