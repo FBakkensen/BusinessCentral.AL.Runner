@@ -7,6 +7,7 @@ All notable changes to this project are documented here. Format based on
 ## [Unreleased]
 
 ### Fixed
+- **codeunit:** refuse a guarded Codeunit.Run while a write is uncommitted
 - **singleinstance:** make a reset invalidate handles that already resolved the instance
 - **layered:** feed each source app the workspace output of the apps built before it
 - **query:** implement HAVING-style runtime filters and JOIN+GROUP BY aggregation
