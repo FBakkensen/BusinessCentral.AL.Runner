@@ -7,6 +7,7 @@ All notable changes to this project are documented here. Format based on
 ## [Unreleased]
 
 ### Fixed
+- **testpage:** drive a subpage part whose own page has no SourceTable
 - **testpage:** follow an actionref to its target action's OnAction trigger
 - **testpage:** drive a no-SourceTable host live instead of demoting it to the navigation mock
 - **provision:** read Microsoft app dependency edges from the real manifests, not a hand table
