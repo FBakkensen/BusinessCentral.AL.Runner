@@ -12,6 +12,7 @@ All notable changes to this project are documented here. Format based on
 - **ci:** add 'edited' to pr-check.yml's pull_request trigger
 
 ### Documentation
+- **rules:** correct what an expect-fail-known-gap entry may rest on
 - **rules:** settle a claim about BC by asking the corpus CI, not by reading
 
 ### Changed
