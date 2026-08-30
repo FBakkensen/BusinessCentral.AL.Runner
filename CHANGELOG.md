@@ -7,6 +7,7 @@ All notable changes to this project are documented here. Format based on
 ## [Unreleased]
 
 ### Fixed
+- **precompile:** take the shadow hop before rewriting Ncl.dll, so --precompile stops leaving it in AlRunner/bin
 - **cli:** a bundle directory passed twice runs once
 - **codeunit:** refuse a guarded Codeunit.Run while a write is uncommitted
 - **singleinstance:** make a reset invalidate handles that already resolved the instance
