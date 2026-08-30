@@ -14,6 +14,9 @@ All notable changes to this project are documented here. Format based on
 ### Documentation
 - **rules:** settle a claim about BC by asking the corpus CI, not by reading
 
+### Changed
+- **perf:** record StartupOutputReexecDedupTests' measured weight
+
 ## [2.8.0] - 2026-08-30
 
 ### Added
