@@ -24,6 +24,7 @@ All notable changes to this project are documented here. Format based on
 - **ci:** add 'edited' to pr-check.yml's pull_request trigger
 
 ### Documentation
+- **agents:** state that impl identities are a reusable pool, not a counter
 - **cli:** archive the v1 subsystems essay --help and --guide advertised as a map
 - **rules:** give the RED-baseline recipe a commit-first precondition and cover its index side effect
 - **rules:** correct what an expect-fail-known-gap entry may rest on
