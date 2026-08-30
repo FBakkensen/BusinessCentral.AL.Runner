@@ -7,6 +7,7 @@ All notable changes to this project are documented here. Format based on
 ## [Unreleased]
 
 ### Fixed
+- **provision:** read Microsoft app dependency edges from the real manifests, not a hand table
 - **testpage:** Next() past the last data row lands on the implicit new-row line
 - **precompile:** take the shadow hop before rewriting Ncl.dll, so --precompile stops leaving it in AlRunner/bin
 - **cli:** a bundle directory passed twice runs once
