@@ -7,6 +7,7 @@ All notable changes to this project are documented here. Format based on
 ## [Unreleased]
 
 ### Fixed
+- **provision:** resolve default BC version from the engine build, not the bundle major
 - **cli:** survive unreadable directories when scanning a user-supplied tree
 - **testpage:** drive a subpage part whose own page has no SourceTable
 - **testpage:** follow an actionref to its target action's OnAction trigger
