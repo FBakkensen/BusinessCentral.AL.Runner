@@ -33,9 +33,22 @@ public sealed class ProvisionExplicitModesTests
     // A real, already-published BC version — this test needs the CDN to actually have it
     // (unlike AutoProvisionDefaultTests's deliberately-nonexistent 1.2.3.4, which exists
     // purely to prove "an attempt was made" via a fast 404). Also the version this repo's
-    // own AlRunner.csproj/AlRunner.Tests.csproj build against by default, so it is already
-    // in wide use and unlikely to be withdrawn from the CDN out from under this test.
+    // own AlRunner.csproj/AlRunner.Tests.csproj build against by DEFAULT (a bare `dotnet
+    // build`/`dotnet test`, no `-p:_BCVersion`) — see Directory.Build.props — so it is
+    // already in wide use and unlikely to be withdrawn from the CDN out from under this
+    // test. Only usable where the version is passed EXPLICITLY (`--bc-version RealVersion`)
+    // — a matrix CI leg builds against a DIFFERENT `-p:_BCVersion`, so any test that
+    // resolves the version IMPLICITLY (no `--bc-version` on the command line) must use
+    // <see cref="ThisBuildsEngineVersion"/> instead, which reads the actual value baked
+    // into THIS test binary rather than assuming the dev-machine default (#2208: a matrix
+    // leg built for 28.1.49838.54044 failed here when this constant was used for that).
     private const string RealVersion = "28.1.49838.53910";
+
+    // The exact BC version THIS test assembly (and the AlRunner binary it spawns, built in
+    // the same `dotnet build AlRunner.slnx -p:_BCVersion=...` invocation) was built
+    // against — see the comment on RealVersion above for why this must NOT be a constant.
+    private static readonly string ThisBuildsEngineVersion =
+        AlRunner.Infrastructure.BcArtifacts.EngineBuiltVersion()?.ToString() ?? RealVersion;
 
     private static (int ExitCode, string StdErr) Run(string isolatedHome, params string[] args)
     {
@@ -84,8 +97,8 @@ public sealed class ProvisionExplicitModesTests
     // bc-tests.yml actually provisions), not spelled out here — TestArtifactsGateTests'
     // OnlyTheSharedHelperNamesTheArtifactCachePathsInCode enforces that only TestArtifacts
     // itself may name the raw ".local/share/al-runner/artifacts" path segments in code.
-    private static string TestAppsDirFor(string home) =>
-        Path.Combine(TestArtifacts.StandardCacheDir(home), RealVersion, "test-apps");
+    private static string TestAppsDirFor(string home, string version = RealVersion) =>
+        Path.Combine(TestArtifacts.StandardCacheDir(home), version, "test-apps");
 
     /// <summary>
     /// Positive direction: `provision --test-apps --bc-version &lt;ver&gt;` downloads the
@@ -218,6 +231,124 @@ public sealed class ProvisionExplicitModesTests
         var resolved = stdout.Trim();
         Assert.StartsWith("28.1.", resolved);
         Assert.Equal(4, resolved.Split('.').Length);
+    }
+
+    /// <summary>
+    /// Issue #2208 secondary defect: a provisioning failure exited 1, the code the
+    /// documented exit ladder (`docs/server-mode.md`'s "Exit codes" section) reserves for
+    /// "at least one test failed" — but `provision` never runs a test, so that code lies
+    /// about what happened. A resolution failure here is an execution error (exit 2), the
+    /// same code every other "provisioning went wrong before a run could start" path uses
+    /// (see `BC version selection failed: ...` returning 2 elsewhere in Program.cs).
+    /// Exercises a real failure (a version prefix the public BC CDN index does not carry),
+    /// not a mocked one.
+    /// </summary>
+    [Fact]
+    public void ResolveVersion_NonexistentPrefix_ExitsExecutionErrorNotTestFailureCode()
+    {
+        var argLine = TestBuildConfig.RunArgs(Path.Combine(RepoRoot, "AlRunner"))
+            + " provision --resolve-version 999.9";
+        var psi = new ProcessStartInfo
+        {
+            FileName = "dotnet",
+            Arguments = argLine,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            WorkingDirectory = RepoRoot,
+        };
+        psi.Environment["HOME"] = NewIsolatedHome();
+        using var proc = Process.Start(psi)!;
+        var stderr = proc.StandardError.ReadToEnd();
+        Assert.True(proc.WaitForExit(30_000), "a nonexistent-prefix lookup must fail fast (one 404 index miss).");
+        Assert.Equal(2, proc.ExitCode);
+        Assert.Contains("could not resolve a full BC version for prefix '999.9'", stderr, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Issue #2208 defect 1: with no `--bc-version`, no engine DLL shipped in `bin/` (the
+    /// ordinary shadow-copy/re-exec layout — `EngineMajor(AppContext.BaseDirectory)` returns
+    /// null there), and no bundle argument, the resolver used to give up and print "cannot
+    /// determine which BC version to provision" even though the binary's own build version
+    /// (`BcArtifacts.EngineBuiltVersion()`, baked in at compile time — no file needed) answers
+    /// the question on every other code path ("selecting BC 28.1.49838.53910, the exact build
+    /// this binary was compiled against"). This test proves the fix resolves and downloads
+    /// into the canonical directory for THAT exact version — not merely that the process
+    /// doesn't crash.
+    /// </summary>
+    [Fact]
+    public void TestApps_NoBcVersionNoBundle_ResolvesEngineBuiltVersion()
+    {
+        var home = NewIsolatedHome();
+        try
+        {
+            var testAppsDir = TestAppsDirFor(home, ThisBuildsEngineVersion);
+            Assert.False(Directory.Exists(testAppsDir), "precondition: fresh cache must not already have this dir");
+
+            var (exit, stderr) = Run(home, "provision", "--test-apps");
+
+            Assert.True(exit == 0,
+                $"provision --test-apps with no --bc-version must resolve the engine's own build. stderr:\n{stderr}");
+            Assert.DoesNotContain("cannot determine which BC version to provision", stderr, StringComparison.Ordinal);
+            Assert.True(Directory.Exists(testAppsDir),
+                $"expected {testAppsDir} (this binary's own engine build, {ThisBuildsEngineVersion}) to exist. stderr:\n{stderr}");
+            var apps = Directory.GetFiles(testAppsDir, "*.app");
+            Assert.True(apps.Length > 10,
+                $"expected more than 10 .app files, got {apps.Length}: {string.Join(", ", apps.Select(Path.GetFileName))}");
+        }
+        finally
+        {
+            try { Directory.Delete(home, recursive: true); } catch { }
+        }
+    }
+
+    /// <summary>
+    /// Issue #2208 defect 2: given a bundle whose app.json declares a lower `application`
+    /// major than this binary's engine (a project's manifest floor, not the version to
+    /// provision against), the resolver used to derive the provisioning target FROM that
+    /// manifest field and silently fetch the wrong major's platform-apps set into a
+    /// directory the actual engine never scans. This proves the fix ignores the manifest
+    /// major for version SELECTION (a mismatch is a warning only) and still targets this
+    /// binary's own engine build — asserting on the concrete resulting directory name, not
+    /// just "some directory got created".
+    /// </summary>
+    [Fact]
+    public void TestApps_BundleDeclaresOlderMajor_StillTargetsEngineMajor()
+    {
+        // The bundle's declared major must genuinely differ from THIS build's engine
+        // major — a CI matrix leg builds against 27.x as often as 28.x (bc-tests.yml), so
+        // a hardcoded "27" collided with the engine's own major on a 27.x leg and made
+        // the negative assertion below fail on real, CORRECT output (#2208 follow-up).
+        var engineMajor = Version.Parse(ThisBuildsEngineVersion).Major;
+        var bundleMajor = engineMajor - 1;
+        var home = NewIsolatedHome();
+        var bundleDir = Path.Combine(Path.GetTempPath(), "al-runner-provision-explicit-bundle", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(bundleDir);
+        File.WriteAllText(Path.Combine(bundleDir, "app.json"),
+            "{ \"id\": \"11111111-1111-1111-1111-111111111111\", \"name\": \"Fixture\", " +
+            "\"publisher\": \"Fixture\", \"version\": \"1.0.0.0\", \"application\": \"" + bundleMajor + ".0.0.0\" }");
+        try
+        {
+            var testAppsDir = TestAppsDirFor(home, ThisBuildsEngineVersion); // the ENGINE's own build, not the bundle's major
+            Assert.False(Directory.Exists(testAppsDir), "precondition: fresh cache must not already have this dir");
+
+            var (exit, stderr) = Run(home, "provision", "--test-apps", "--force", bundleDir);
+
+            Assert.True(exit == 0, $"provision --test-apps must exit 0. stderr:\n{stderr}");
+            Assert.True(Directory.Exists(testAppsDir),
+                $"expected {testAppsDir} (the engine's own build {ThisBuildsEngineVersion}, not the bundle's major {bundleMajor}) to exist. stderr:\n{stderr}");
+            var cacheRoot = TestArtifacts.StandardCacheDir(home);
+            var versionDirs = Directory.Exists(cacheRoot)
+                ? Directory.GetDirectories(cacheRoot).Select(Path.GetFileName).ToArray()
+                : Array.Empty<string?>();
+            Assert.DoesNotContain(versionDirs, d => d != null && d.StartsWith(bundleMajor + ".", StringComparison.Ordinal));
+        }
+        finally
+        {
+            try { Directory.Delete(home, recursive: true); } catch { }
+            try { Directory.Delete(bundleDir, recursive: true); } catch { }
+        }
     }
 
     /// <summary>
