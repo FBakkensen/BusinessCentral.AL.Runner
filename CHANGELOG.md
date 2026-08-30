@@ -7,6 +7,7 @@ All notable changes to this project are documented here. Format based on
 ## [Unreleased]
 
 ### Fixed
+- **singleinstance:** make a reset invalidate handles that already resolved the instance
 - **layered:** feed each source app the workspace output of the apps built before it
 - **query:** implement HAVING-style runtime filters and JOIN+GROUP BY aggregation
 - **shadow-runtime:** make Win32Stubs/ a real copy in the ncl-shadow dir, not a symlink
