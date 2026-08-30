@@ -7,6 +7,7 @@ All notable changes to this project are documented here. Format based on
 ## [Unreleased]
 
 ### Fixed
+- **layered:** feed each source app the workspace output of the apps built before it
 - **query:** implement HAVING-style runtime filters and JOIN+GROUP BY aggregation
 - **shadow-runtime:** make Win32Stubs/ a real copy in the ncl-shadow dir, not a symlink
 - **record:** stop a trigger-caused rollback from erasing an earlier write
