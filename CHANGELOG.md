@@ -7,6 +7,7 @@ All notable changes to this project are documented here. Format based on
 ## [Unreleased]
 
 ### Fixed
+- **bundled:** make --verbose actually print the AL diagnostics that identified an excluded object
 - **provisioning:** detect the Microsoft platform-app need on a cold cache, and stop `provision` reporting success without fixing it
 - **provision:** resolve default BC version from the engine build, not the bundle major
 - **cli:** survive unreadable directories when scanning a user-supplied tree
