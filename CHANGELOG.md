@@ -7,6 +7,7 @@ All notable changes to this project are documented here. Format based on
 ## [Unreleased]
 
 ### Fixed
+- **shadow-runtime:** make Win32Stubs/ a real copy in the ncl-shadow dir, not a symlink
 - **record:** stop a trigger-caused rollback from erasing an earlier write
 - **shadow-runtime:** make load-by-path assemblies real copies, not symlinks
 - **ci:** add 'edited' to pr-check.yml's pull_request trigger
