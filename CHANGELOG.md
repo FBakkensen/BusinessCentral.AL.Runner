@@ -6,6 +6,9 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+### Fixed
+- **ci:** add 'edited' to pr-check.yml's pull_request trigger
+
 ## [2.8.0] - 2026-08-30
 
 ### Added
