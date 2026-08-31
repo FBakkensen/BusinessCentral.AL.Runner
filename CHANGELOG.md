@@ -12,6 +12,9 @@ All notable changes to this project are documented here. Format based on
 ### Fixed
 - **compile:** dependency apps containing a profile object no longer crash the whole module
 
+### Changed
+- **profile:** bump corpus pin for RoleCenter profile coverage
+
 ## [2.9.0] - 2026-08-31
 
 ### Fixed
