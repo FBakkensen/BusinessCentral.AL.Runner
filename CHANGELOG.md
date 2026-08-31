@@ -10,6 +10,7 @@ All notable changes to this project are documented here. Format based on
 - **provisioning:** add --country to auto-provision the localized BC artifact set
 
 ### Fixed
+- **release:** Authenticode-sign the unsigned binaries in the published NuGet package
 - **cli:** move startup bookkeeping behind --verbose
 - **compile:** dependency apps containing a profile object no longer crash the whole module
 
