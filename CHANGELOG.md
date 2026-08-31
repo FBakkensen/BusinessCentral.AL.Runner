@@ -9,6 +9,9 @@ All notable changes to this project are documented here. Format based on
 ### Added
 - **provisioning:** add --country to auto-provision the localized BC artifact set
 
+### Fixed
+- **compile:** dependency apps containing a profile object no longer crash the whole module
+
 ## [2.9.0] - 2026-08-31
 
 ### Fixed
