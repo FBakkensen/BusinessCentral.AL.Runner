@@ -7,6 +7,7 @@ All notable changes to this project are documented here. Format based on
 ## [Unreleased]
 
 ### Fixed
+- **provisioning:** give placeholder-floor test fixtures no floor, not the runner a heuristic
 - **provisioning:** need detection now searches every patch dir the run path does
 - **cli:** reword the cross-major startup note and stop printing it twice
 - **cli:** correct three false --help/--guide claims about version selection and --package-cache
