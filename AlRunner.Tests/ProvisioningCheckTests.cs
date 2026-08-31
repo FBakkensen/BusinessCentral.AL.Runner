@@ -1335,6 +1335,47 @@ public sealed class ProvisioningCheckTests : IDisposable
         Assert.False(needs.NeedsTestApps);
     }
 
+    // ── Issue #2229 (regression, not a fix here) ──────────────────────────────
+    // The FIRST attempt at #2229 filtered the implicit Application/System roots out of
+    // the platform-app requirement whenever their floor's major was below 10 (a
+    // "no real BC build has ever shipped below 10.0" placeholder heuristic). That is
+    // wrong: a `1.0.0.0` floor and genuine Base/System Application usage are NOT
+    // mutually exclusive. Measured directly — an ordinary app, `"dependencies": []`,
+    // `application`/`platform` of `1.0.0.0`, one test using `Codeunit "Environment
+    // Information"` (System Application) — regressed from `2P/0F/0E` on main to
+    // `EMIT-ZERO`/AL0185 "Codeunit 'Environment Information' is missing" on that attempt,
+    // because the placeholder-floor heuristic can't see what the AL source references —
+    // only the manifest, which is IDENTICAL for "never touches Microsoft" and "touches
+    // Microsoft AND set no real floor". #2232 already reaches this for the mirror shape:
+    // separating "declared" from "actually used" needs a compile attempt, not a version
+    // sentinel. These two pin the correct, unconditional behavior permanently.
+    [Fact]
+    public void DetermineManifestNeeds_ImplicitMicrosoftRootsAtPlaceholderFloor_StillRequireTheAppsTheyName()
+    {
+        var needs = ProvisioningCheck.DetermineManifestNeeds(ImplicitMicrosoftRoots("1.0.0.0"));
+
+        // The floor value must never launder away a real requirement — only the AL
+        // source (unavailable here) could ever tell "unused" apart from "used", and the
+        // manifest alone can't see it. So absent that information, over-including (this)
+        // is the only safe default; under-including regressed a real, minimal repro.
+        Assert.True(needs.NeedsPlatformApps);
+        Assert.Equal(new[] { "Application", "System" }, needs.RequiredPlatformApps.OrderBy(n => n).ToArray());
+    }
+
+    [Fact]
+    public void DecideManifestProvisioning_ColdCache_PlaceholderFloorApp_StillNeedsDownload()
+    {
+        var legacyReport = ProvisioningCheck.CheckPlatformApps("28.1.49838.53910", Array.Empty<string>());
+
+        var decision = ProvisioningCheck.DecideManifestProvisioning(
+            ImplicitMicrosoftRoots("1.0.0.0"), legacyReport, Array.Empty<string>());
+
+        Assert.True(decision.NeedsPlatformApps);
+        Assert.True(decision.ShouldDownloadPlatform);
+        Assert.True(decision.ShouldDownloadAny);
+        Assert.Equal(new[] { "Application", "System" }, decision.MissingPlatformApps.OrderBy(n => n).ToArray());
+    }
+
     [Fact]
     public void DecideManifestProvisioning_ColdCache_OrdinaryAlApp_NeedsPlatformApps()
     {
