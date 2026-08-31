@@ -7,6 +7,7 @@ All notable changes to this project are documented here. Format based on
 ## [Unreleased]
 
 ### Fixed
+- **cli:** reword the cross-major startup note and stop printing it twice
 - **cli:** correct three false --help/--guide claims about version selection and --package-cache
 - **bundled:** make --verbose actually print the AL diagnostics that identified an excluded object
 - **provisioning:** detect the Microsoft platform-app need on a cold cache, and stop `provision` reporting success without fixing it
