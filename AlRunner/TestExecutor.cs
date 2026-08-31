@@ -233,6 +233,29 @@ public sealed class TestExecutor
     }
 
     /// <summary>
+    /// The key BOTH install-baseline cache tiers are consulted by: the in-memory
+    /// <c>_depCompanyBaselineCache</c> directly, and the disk tier via
+    /// <c>InstallBaselineDiskCache.BuildKeyText(depKey, schemaVersion)</c>.
+    ///
+    /// #2258: the dependency-assembly set alone is NOT a complete identity once --test-data
+    /// exists. Neither tier knows anything about test data, so a key built from the
+    /// dependency set alone lets a snapshot captured from an EMPTY database be restored into
+    /// a run that asked for the backup's rows — and that run then proceeds against an empty
+    /// database with no error anywhere, which is the silent-wrong-answer class
+    /// .claude/rules/loud-failures.md exists to prevent. Folding
+    /// <see cref="AlRunner.Infrastructure.TestDataOptions.CacheIdentity"/> in here makes the
+    /// two runs different cache entries.
+    ///
+    /// A named function rather than an expression inlined at the call site so the claim is
+    /// directly assertable — see TestDataProvisioningTests.
+    /// CacheIdentity() returns the empty string when --test-data is off, so a default run's
+    /// key is byte-identical to what it was before #2258.
+    /// </summary>
+    internal static string CurrentInstallBaselineCacheKey()
+        => InstallTriggerRunner.CurrentDependencySetKey()
+         + AlRunner.Infrastructure.TestDataOptions.CacheIdentity();
+
+    /// <summary>
     /// Runs every [Test] method in <paramref name="assembly"/>. When
     /// <paramref name="onTestComplete"/> is supplied it fires synchronously right
     /// after each <see cref="TestResult"/> is appended to the returned list — the
@@ -329,7 +352,7 @@ public sealed class TestExecutor
         // exactly matching the order the uncached path always ran in.
         using (AlRunner.Infrastructure.PhaseLog.AppStage("install-seed-dep-company-baseline"))
         {
-            var depKey = InstallTriggerRunner.CurrentDependencySetKey();
+            var depKey = CurrentInstallBaselineCacheKey();
             AlRunner.Patches.RecordPatches.InstallBaselineSnapshot? cached;
             // Permanent kill switch (see the field's doc comment above for why it exists):
             // forces every lookup to MISS, as if the cache were never populated, so the
@@ -381,6 +404,13 @@ public sealed class TestExecutor
                 }
                 else
                 {
+                    // #2258: provision from the backup FIRST, then run setup code, then run
+                    // tests — the ordering real BC has, where the database with its data
+                    // exists before any extension is installed. The rows then become part of
+                    // the snapshot captured three lines down, so the per-test restore at each
+                    // codeunit boundary puts them back and InstallBaselineDisk persists them
+                    // across processes for free. No-op unless --test-data was passed.
+                    TestDataProvisioner.HydrateAll();
                     InstallTriggerRunner.RunDependenciesOnly();
                     CompanyInitializer.EnsureCompanyInitialized();
                     var snapshot = AlRunner.Patches.RecordPatches.CaptureInstallBaselineSnapshot();

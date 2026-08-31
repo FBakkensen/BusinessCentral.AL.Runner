@@ -385,6 +385,14 @@ for (int i = 0; i < args.Length; i++)
     if (args[i] == "--auto-provision") { autoProvision = true; continue; }
     if (args[i] == "--no-auto-provision") { autoProvision = false; continue; }
     if (args[i] == "--country" && i + 1 < args.Length) { countryArg = args[++i]; continue; }
+    // #2258: --test-data / --test-data=PATH. Off by default; absent the flag nothing about
+    // the run changes (no backup opened, no reader located, install-baseline cache key
+    // unchanged). The optional value uses the EQUALS form on purpose — a space-separated
+    // optional value could not be told apart from the bundle path that follows it, so
+    // `al-runner --test-data tests/foo` would be ambiguous. See TestDataOptions.
+    if (args[i] == "--test-data-company" && i + 1 < args.Length)
+    { AlRunner.Infrastructure.TestDataOptions.CompanyOverride = args[++i]; continue; }
+    if (AlRunner.Infrastructure.TestDataOptions.TryParseArg(args[i])) { continue; }
     if (args[i] == "--bc-version" && i + 1 < args.Length) { bcVersionArg = args[++i]; continue; }
     if (args[i] == "--artifact-path" && i + 1 < args.Length) { artifactPathArg = args[++i]; continue; }
     if (args[i] == "--out" && i + 1 < args.Length) { outPath = args[++i]; printClassification = true; continue; }
@@ -5244,6 +5252,22 @@ static void PrintGuide(TextWriter w)
     w.WriteLine("    al-runner --auto-provision --country us <bundle-dir>");
     w.WriteLine("  A country set is provisioned into its own \"platform-apps-<code>\" cache directory,");
     w.WriteLine("  separate from w1's, so provisioning both leaves both usable.");
+    w.WriteLine();
+    w.WriteLine("  DEMO / TEST DATA (issue #2258). By default the database starts EMPTY: install");
+    w.WriteLine("  triggers and Company-Initialize seed it, and nothing else does. AL that expects a");
+    w.WriteLine("  real environment's setup records (No. Series, posting groups, Source Code Setup)");
+    w.WriteLine("  therefore fails with \"... must have a value in ...\" — that is missing data, not a");
+    w.WriteLine("  bug in your test. Pass --test-data to load those rows from the BC backup shipped");
+    w.WriteLine("  inside the artifact, BEFORE install triggers run (the ordering real BC has):");
+    w.WriteLine("    al-runner --test-data <bundle-dir>              # the shipped backup for the selected version/country");
+    w.WriteLine("    al-runner --test-data=/path/to/X.bak <dirs>     # an explicit backup");
+    w.WriteLine("    al-runner --test-data --test-data-company NAME  # a specific company inside it");
+    w.WriteLine("  It needs the `bcbak` backup reader on PATH or at $AL_RUNNER_BCBAK. The first run");
+    w.WriteLine("  pays a one-time extraction; the rows then live in the cached install baseline and");
+    w.WriteLine("  later runs pay nothing. A missing backup FAILS the run naming every path probed —");
+    w.WriteLine("  it never continues against an empty database. The first slice does not hydrate");
+    w.WriteLine("  everything (table-extension data, dates/times, BLOB/media): every skipped or");
+    w.WriteLine("  refused table is named on stderr with the reason. See docs/limitations.md.");
     w.WriteLine("  If a provisioning-gap message names a specific missing set, force just that one");
     w.WriteLine("  (bypasses need-detection entirely — useful when the default `provision` mis-detects,");
     w.WriteLine("  issue #2085):");
@@ -5492,6 +5516,26 @@ static void PrintHelp(TextWriter w)
     w.WriteLine("                          \"platform-apps-<code>\" cache directory, separate from the");
     w.WriteLine("                          w1 \"platform-apps\" one, so provisioning both leaves both");
     w.WriteLine("                          usable.");
+    w.WriteLine("  --test-data             Hydrate the in-memory database from the BC backup shipped");
+    w.WriteLine("                          in the artifact cache BEFORE install triggers run, so");
+    w.WriteLine("                          tests find the setup records a real environment has. OFF");
+    w.WriteLine("                          BY DEFAULT; absent the flag no backup is opened and");
+    w.WriteLine("                          nothing about the run changes. Resolves");
+    w.WriteLine("                          sandbox/<version>/<country>/BusinessCentral-<CC>.bak for");
+    w.WriteLine("                          the selected BC version and --country; when that is");
+    w.WriteLine("                          missing the run FAILS naming every path it probed,");
+    w.WriteLine("                          rather than continuing against an empty database.");
+    w.WriteLine("                          Needs the `bcbak` backup reader on PATH or at");
+    w.WriteLine("                          $AL_RUNNER_BCBAK. First use pays a one-time extraction;");
+    w.WriteLine("                          the rows then live in the cached install baseline.");
+    w.WriteLine("                          THIS SLICE hydrates tables with no table-extension data");
+    w.WriteLine("                          and no date/time/BLOB/media values; everything else is");
+    w.WriteLine("                          reported as skipped or refused, never silently dropped.");
+    w.WriteLine("  --test-data=PATH        As --test-data, but from an explicit .bak file.");
+    w.WriteLine("  --test-data-company NAME");
+    w.WriteLine("                          Company inside the backup to hydrate. Default: the first");
+    w.WriteLine("                          company the backup reports, which is printed at the start");
+    w.WriteLine("                          of the run.");
     w.WriteLine("  --auto-provision        Download the BC artifacts for the project's version if");
     w.WriteLine("                          they are missing, then continue the run. ON BY DEFAULT");
     w.WriteLine("                          since issue #2024 — this flag is now redundant with a");
