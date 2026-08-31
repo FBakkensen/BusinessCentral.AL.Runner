@@ -6,6 +6,8 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+## [2.9.0] - 2026-08-31
+
 ### Fixed
 - **provisioning:** give placeholder-floor test fixtures no floor, not the runner a heuristic
 - **provisioning:** need detection now searches every patch dir the run path does
