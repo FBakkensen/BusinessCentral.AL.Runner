@@ -6,6 +6,9 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+### Added
+- **provisioning:** add --country to auto-provision the localized BC artifact set
+
 ## [2.9.0] - 2026-08-31
 
 ### Fixed
