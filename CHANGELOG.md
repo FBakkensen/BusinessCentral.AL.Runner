@@ -7,6 +7,7 @@ All notable changes to this project are documented here. Format based on
 ## [Unreleased]
 
 ### Added
+- **test-data:** merge table-extension fields when hydrating from the backup
 - **test-data:** hydrate the in-memory database from the shipped BC backup
 - **provisioning:** add --country to auto-provision the localized BC artifact set
 
