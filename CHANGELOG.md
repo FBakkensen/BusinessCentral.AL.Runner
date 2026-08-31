@@ -18,6 +18,7 @@ All notable changes to this project are documented here. Format based on
 - **compile:** dependency apps containing a profile object no longer crash the whole module
 
 ### Changed
+- **test-data:** load tables on first touch instead of all at once
 - **profile:** bump corpus pin for RoleCenter profile coverage
 
 ## [2.9.0] - 2026-08-31
