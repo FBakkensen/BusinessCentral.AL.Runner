@@ -288,6 +288,9 @@ public static partial class RecordPatches
     private static Type? _tFilterFieldDictionary;
     private static Type? _tUnaryFilterExpr;
     private static Type? _tBinaryFilterExpr;
+    private static Type? _tWildcardFilterExpr;
+    private static Type? _tRangeFilterExpr;
+    private static Type? _tBooleanConstFilterExpr;
     private static Type? _tFilterExpr;
     private static Type? _tNavFieldMetadata;
     private static bool _filterReflectionReady;
@@ -311,6 +314,9 @@ public static partial class RecordPatches
         _tFilterFieldDictionary = asm.GetType(rt + "FilterFieldDictionary");
         _tUnaryFilterExpr = asm.GetType(rt + "UnaryFilterExpression");
         _tBinaryFilterExpr = asm.GetType(rt + "BinaryFilterExpression");
+        _tWildcardFilterExpr = asm.GetType(rt + "WildcardFilterExpression");
+        _tRangeFilterExpr = asm.GetType(rt + "RangeFilterExpression");
+        _tBooleanConstFilterExpr = asm.GetType(rt + "BooleanConstantFilterExpression");
         _tFilterExpr = asm.GetType(rt + "FilterExpression");
         _tNavFieldMetadata = asm.GetType(rt + "INavFieldMetadata");
         _tNCLMetaQueryColumn = asm.GetType(rt + "NCLMetaQueryColumn");
@@ -503,10 +509,51 @@ public static partial class RecordPatches
                 .First(c => c.GetParameters().Length == 3 && c.GetParameters()[0].ParameterType.Name == "FilterExpressionType");
             return ctor.Invoke(new object?[] { exprType, newLeft, newRight });
         }
-        // Other expression kinds (wildcard/fieldEqualsField/etc.) are not produced by
-        // single-column SetRange/SetFilter; leave them (will not match a table field and
-        // is a documented follow-up if a test relies on them).
-        return expr;
+        // #2299 — SetFilter(col, 'ABC*') parses to a WildcardFilterExpression and
+        // SetFilter(col, '10..20') to a RangeFilterExpression. Both carry their own
+        // FilterExpressionContext, so passing them through unchanged left them bound to the
+        // NCLMetaQueryColumn, and BC's RecordBufferEvaluatorVisitor then cast that context's
+        // metadata to NCLMetaField and threw InvalidCastException at the first Read().
+        if (_tWildcardFilterExpr != null && _tWildcardFilterExpr.IsInstanceOfType(expr))
+        {
+            // new WildcardFilterExpression(bool isNegated, string pattern, bool isCaseAndAccentInsensitive, FilterExpressionContext)
+            var isNegated = t.GetProperty("IsNegated", BindingFlags.Public | BindingFlags.Instance)!.GetValue(expr);
+            var pattern = t.GetProperty("Pattern", BindingFlags.Public | BindingFlags.Instance)!.GetValue(expr);
+            var insensitive = t.GetProperty("IsCaseAndAccentInsensitive", BindingFlags.Public | BindingFlags.Instance)!.GetValue(expr);
+            var ctor = _tWildcardFilterExpr.GetConstructors()
+                .First(c => c.GetParameters().Length == 4 && c.GetParameters()[1].ParameterType == typeof(string));
+            return ctor.Invoke(new object?[] { isNegated, pattern, insensitive, targetCtx });
+        }
+        if (_tRangeFilterExpr != null && _tRangeFilterExpr.IsInstanceOfType(expr))
+        {
+            // new RangeFilterExpression(FilterExpressionType, NavValue lowValue, NavValue highValue, FilterExpressionContext)
+            var exprType = _tFilterExpr!.GetProperty("ExpressionType", BindingFlags.Public | BindingFlags.Instance)!.GetValue(expr);
+            var low = ReadMember(expr, "LowValue", "lowValue");
+            var high = ReadMember(expr, "HighValue", "highValue");
+            var ctor = _tRangeFilterExpr.GetConstructors()
+                .First(c => c.GetParameters().Length == 4 && c.GetParameters()[0].ParameterType.Name == "FilterExpressionType");
+            return ctor.Invoke(new object?[] { exprType, low, high, targetCtx });
+        }
+        if (_tBooleanConstFilterExpr != null && _tBooleanConstFilterExpr.IsInstanceOfType(expr))
+            return expr; // carries no field context — nothing to retarget.
+
+        // Anything else (FieldEqualsField, FullText, …) is not produced by a single-column
+        // SetRange/SetFilter on a Query. Passing it through would leave it bound to the query
+        // column and fail deep inside BC's evaluator with an unrelated-looking cast, so refuse
+        // loudly, naming the expression kind (loud-failures rule).
+        throw new AlRunner.Infrastructure.RunnerOutOfScopeException(
+            "NavQuery.SetFilter",
+            $"query-filter-expression-kind — a {t.Name} filter on a query column cannot be retargeted to " +
+            "the column's source field yet; see docs/scope.md");
+
+        static object? ReadMember(object o, string propertyName, string fieldName)
+        {
+            var type = o.GetType();
+            var prop = type.GetProperty(propertyName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            if (prop != null) return prop.GetValue(o);
+            var field = type.GetField(fieldName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            return field?.GetValue(o);
+        }
     }
 
     private static object CloneRequestWithFilters(object request, object newFiltersAndMarks)
