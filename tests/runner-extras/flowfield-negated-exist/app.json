@@ -1,0 +1,19 @@
+{
+  "id": "b4e2d7a9-1c6f-4f3b-9a8e-5d0c2f7b1e94",
+  "name": "Runner Extras - Negated Exist FlowField",
+  "publisher": "AL Runner",
+  "version": "1.0.0.0",
+  "brief": "Issue #2294: a Boolean FlowField with CalcFormula = -exist(...) threw InvalidCastException (NavBoolean -> NavBigInteger) inside NCLMetaCalculationFormula.NegateValue, and CalcFields answered false.",
+  "description": "The runner routed every negated CalcFormula through BC's NCLMetaCalculationFormula.NegateValue, which switches on the SOURCE field's NavType and only knows Decimal/BigInteger/Integer. BC itself never calls it for exist: FlowFieldsHelper.CalcExistsAsync answers NavBoolean.Create(!exists) when NegateResult is set, and CalcCountAsync negates the raw count. This suite proves the Base Application field Item.\"Cost is Posted to G/L\" (CalcFormula = -exist(\"Post Value Entry to G/L\" where(\"Item No.\" = field(\"No.\")))) calculates: CalcFields returns true, the field is true with no matching row and false with one. The oracle values were measured on a real BC 28.1 service tier in the issue; the plain-BC claim belongs upstream in the corpus.",
+  "dependencies": [],
+  "idRanges": [
+    {
+      "from": 64590,
+      "to": 64599
+    }
+  ],
+  "platform": "27.0.0.0",
+  "application": "27.0.0.0",
+  "runtime": "15.0",
+  "target": "Cloud"
+}

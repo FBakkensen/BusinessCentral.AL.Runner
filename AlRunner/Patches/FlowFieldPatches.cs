@@ -471,12 +471,18 @@ public static class FlowFieldPatches
             System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(tie.InnerException);
             return default;
         }
+        // #2294 — DataError.TrapError is BC's contract for exactly two data errors, not a
+        // licence to swallow anything: RecordImplementation.CalcFieldsAsync traps a
+        // NavCSideException with ErrorCode 18023674 or ErrorNumber 1005 and rethrows the
+        // rest (the NavRecord wrapper above it adds nothing broader). Trapping every
+        // exception here turned a runner InvalidCastException into `CalcFields = false`
+        // plus a stderr line, which AL that does not check the return value reads as a
+        // green test — the silent default .claude/rules/loud-failures.md forbids.
         catch (TargetInvocationException tie) when (tie.InnerException != null)
         {
             Console.Error.WriteLine($"[FlowFieldPatches] inner ex: {tie.InnerException.GetType().Name}: {tie.InnerException.Message}");
             Console.Error.WriteLine(tie.InnerException.StackTrace ?? "");
-            // Rethrow honoring DataError contract
-            if (errorLevel == DataError.TrapError)
+            if (IsTrappableCalcFieldsError(tie.InnerException, errorLevel))
                 return new System.Threading.Tasks.ValueTask<bool>(false);
             System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(tie.InnerException);
             return default;
@@ -485,11 +491,20 @@ public static class FlowFieldPatches
         {
             Console.Error.WriteLine($"[FlowFieldPatches] ex: {ex.GetType().Name}: {ex.Message}");
             Console.Error.WriteLine(ex.StackTrace ?? "");
-            if (errorLevel == DataError.TrapError)
+            if (IsTrappableCalcFieldsError(ex, errorLevel))
                 return new System.Threading.Tasks.ValueTask<bool>(false);
             throw;
         }
     }
+
+    /// <summary>
+    /// The exact predicate BC's RecordImplementation.CalcFieldsAsync uses to answer
+    /// <c>false</c> under <see cref="DataError.TrapError"/> instead of throwing.
+    /// </summary>
+    private static bool IsTrappableCalcFieldsError(Exception ex, DataError errorLevel)
+        => errorLevel == DataError.TrapError
+           && ex is Microsoft.Dynamics.Nav.Types.Exceptions.NavCSideException cside
+           && (cside.ErrorCode == 18023674 || cside.ErrorNumber == 1005);
 
     /// <summary>
     /// #1757 — stands in for BC's own <c>FlowFieldsHelper.CalcFieldsAsync</c> (the 9-arg
@@ -838,7 +853,20 @@ public static class FlowFieldPatches
             // NCLMetaCalculationFormula.NegateValue rather than a local `-x`, so every
             // CalculationMethod gets the semantics BC gives it (the Base Application ships
             // both `-sum(...)` and `-exist(...)`, and negating a Boolean is not arithmetic).
-            if (negate && result != null)
+            //
+            // #2294 — except that BC itself never hands an Exists or Count result to
+            // NegateValue. NegateValue switches on the SOURCE field's NavType and only knows
+            // Decimal/BigInteger/Integer; `exist`/`count` formulas have no source field
+            // (sourceFieldId 0 → BigInteger arm → `castclass NavBigInteger` on a
+            // NavBoolean → InvalidCastException). BC's FlowFieldsHelper.CalcExistsAsync
+            // answers `NavBoolean.Create(!exists)` and its count path negates the raw
+            // integer (`NegateResult ? -result : result`) before wrapping it — so those two
+            // are mirrored here, and NegateValue keeps the aggregates it was written for.
+            if (negate && Equals(calcMethod, _cmExist))
+                result = NavValue.CreateNavValueFromObject((NCLMetaField)fieldObj, !anyMatch);
+            else if (negate && Equals(calcMethod, _cmCount))
+                result = NavValue.CreateNavValueFromObject((NCLMetaField)fieldObj, -matchCount);
+            else if (negate && result != null)
             {
                 if (_mCalcFormulaNegateValue == null)
                     // Writing the POSITIVE aggregate instead would be the exact silent
