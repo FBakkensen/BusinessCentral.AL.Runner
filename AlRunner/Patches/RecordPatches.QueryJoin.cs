@@ -95,6 +95,7 @@ public static partial class RecordPatches
         Set("ToNavValueArray", FieldType("ToNavValueArray"), nameof(Join_ToNavValueArray));
         Set("TypedDefaultForField", FieldType("TypedDefaultForField"), nameof(Join_TypedDefaultForField));
         Set("ComputeAggregate", FieldType("ComputeAggregate"), nameof(Join_ComputeAggregate));
+        Set("CalcFlowFieldValue", FieldType("CalcFlowFieldValue"), nameof(Join_CalcFlowFieldValue));
         Set("Log", FieldType("Log"), nameof(Join_Log));
         Set("OutOfScope", FieldType("OutOfScope"), nameof(Join_OutOfScope));
         return ctx;
@@ -141,6 +142,15 @@ public static partial class RecordPatches
     // argument. We call that same factory by reflection so the LeftOuter slot carries a real,
     // correctly-typed NavValue (never a null slot, which NREs NavQuery.GetColumnValue).
     private static MethodInfo? _mGetDefaultNavValue;
+    // #2300: a FlowField column of a joined dataitem — the executor hands back the owning
+    // dataitem's row and the NCLMetaField; the FlowField engine answers for that row, in the
+    // company the current query request runs in (captured by ProjectIfQuery).
+    private static object? Join_CalcFlowFieldValue(object rowBuffer, object flowField)
+    {
+        var nclMetaQueryLike = flowField; // any Ncl-typed object resolves NavCurrentThread.Session
+        return CalcFlowFieldColumn(nclMetaQueryLike, rowBuffer, flowField);
+    }
+
     private static object? Join_TypedDefaultForField(object field)
     {
         var nclAsm = field.GetType().Assembly;

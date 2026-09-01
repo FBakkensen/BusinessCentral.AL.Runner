@@ -426,6 +426,16 @@ public static partial class RecordPatches
                 ?.SetValue(sqlDbProps, new object());
             tSqlDbProps.GetField("databasePropertiesReady", BindingFlags.NonPublic | BindingFlags.Instance)
                 ?.SetValue(sqlDbProps, true);
+            // #2300 — NCLMetaTable.SqlTableName → NavSqlStatementHelper.ConvertToSqlIdentifier
+            // iterates SqlDatabaseProperties.InvalidIdentifierChars; BC reaches it while building
+            // the FlowField sub-dataitem of any query that selects a FlowField column. With the
+            // uninitialised object the string is null and the foreach NREs. BC's own value when
+            // no database property overrides it is its DefaultInvalidIdentifierChars constant, so
+            // that constant is what the skeleton reports — read from the type, never retyped.
+            var fDefaultInvalidChars = tSqlDbProps.GetField("DefaultInvalidIdentifierChars",
+                BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+            tSqlDbProps.GetField("invalidIdentifierChars", BindingFlags.NonPublic | BindingFlags.Instance)
+                ?.SetValue(sqlDbProps, fDefaultInvalidChars?.GetValue(null) as string ?? ".\"\\/'%][");
             fSqlDbProps.SetValue(_skeletonDatabase, sqlDbProps);
         }
         // companyTokens — BC's own NavDatabase ctor does `companyTokens = new CompanyTokens(this)`,

@@ -50,6 +50,15 @@ public sealed class JoinContext
     /// </summary>
     public required Func<object /*column*/, object?[] /*rawValues*/, object?> ComputeAggregate;
 
+    /// <summary>
+    /// (row buffer of the FlowField's own table as object, NCLMetaField as object) → the
+    /// FlowField's calculated NavValue (boxed as object) for that row. Issue #2300: BC turns a
+    /// FlowField column into an OUTER APPLY sub-dataitem (NCLMetaQueryDataItem.SourceFlowField
+    /// != null); al-runner owns the FlowField engine that stands in for that sub-query, so the
+    /// executor asks it per row instead of joining the sub-dataitem like a table.
+    /// </summary>
+    public required Func<object /*rowBuffer*/, object /*flowField*/, object?> CalcFlowFieldValue;
+
     /// <summary>Diagnostic log sink (al-runner's QLog).</summary>
     public required Action<string> Log;
 
