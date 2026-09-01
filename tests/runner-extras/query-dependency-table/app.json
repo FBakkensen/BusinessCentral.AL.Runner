@@ -1,0 +1,19 @@
+{
+  "id": "7c3f9a12-5e4b-4d8a-b6f1-2a9c0e7d3b58",
+  "name": "Runner Extras - Query Over Dependency Table",
+  "publisher": "AL Runner",
+  "version": "1.0.0.0",
+  "brief": "Issue #2295: a source-defined Query whose dataitem is a table from a dependency app (Base Application Item) was built with NCLMetaQuery=NULL, so SetRange() and Open() threw NullReferenceException.",
+  "description": "The symbol reference for a Query dataitem bound to a table from another module carries a module-qualified RelatedTable ('#<appId>#Item'). BcAppSymbolCache.TryParseQueryDataItem kept the qualifier, so RecordPatches.ResolveTableIdByName could not resolve the table, BuildMetaQueryDesign gave up, and the Query ran with no metadata. Report dataitems already strip that qualifier; this suite proves Query dataitems do too, end to end: Open/Read over Item, SetRange narrowing to one row, and an application-local Query as the control arm. The runner-specific half (the symbol-cache parse and the CacheVersion bump) is covered in AlRunner.Tests/BcAppSymbolCacheQueryDataItemQualifierTests.cs. The plain-BC claim (a Query over Item opens and reads) was verified on a real service tier in the issue and belongs upstream in the corpus.",
+  "dependencies": [],
+  "idRanges": [
+    {
+      "from": 64580,
+      "to": 64589
+    }
+  ],
+  "platform": "27.0.0.0",
+  "application": "27.0.0.0",
+  "runtime": "15.0",
+  "target": "Cloud"
+}

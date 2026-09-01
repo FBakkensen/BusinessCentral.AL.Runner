@@ -62,7 +62,14 @@ internal static partial class BcAppSymbolCache
     // aggregated column as an ordinary one again, returning raw ungrouped rows: the exact
     // #2137 bug reintroduced on any machine whose symbol cache predates this change, not a
     // cache miss, hence the bump.
-    private const int CacheVersion = 14;
+    // v15: Query data items now have their #appId# module qualifier stripped from
+    // RelatedTable, the same normalisation v6 applied to report data items (issue #2295 —
+    // a source-defined Query over a dependency table such as Base Application Item arrived
+    // as '#437dbf0e84ff417a965ded2bb9650972#Item', ResolveTableIdByName could not match it,
+    // and the Query was constructed with NCLMetaQuery=NULL, so SetRange()/Open() NRE'd). A
+    // v14 payload written by the old parse still carries the qualified name and would
+    // replay the NRE on every machine whose symbol cache predates this change, hence the bump.
+    private const int CacheVersion = 15;
     private static readonly ConcurrentDictionary<string, AppSymbols> ProcessCache = new(StringComparer.OrdinalIgnoreCase);
     // Issue #1820 — path -> content-hash memo. ComputeAppContentHash needs to read the
     // WHOLE .app to hash it (unlike the FileInfo.Length/LastWriteTimeUtc stat it replaced,
@@ -698,7 +705,11 @@ internal static partial class BcAppSymbolCache
     private static QueryDataItemSymbol? TryParseQueryDataItem(JsonElement el)
     {
         var name = el.TryGetProperty("Name", out var nameProp) ? nameProp.GetString() ?? string.Empty : string.Empty;
-        var relatedTable = el.TryGetProperty("RelatedTable", out var rtProp) ? rtProp.GetString() ?? string.Empty : string.Empty;
+        // A dataitem bound to a table from another module arrives module-qualified
+        // ('#<appId>#Item'); strip it exactly as CollectReportDataItems does, or
+        // ResolveTableIdByName never matches and the Query gets no metadata (issue #2295).
+        var relatedTable = StripModuleQualifier(
+            el.TryGetProperty("RelatedTable", out var rtProp) ? rtProp.GetString() : null) ?? string.Empty;
         int id = el.TryGetProperty("Id", out var idProp) && idProp.TryGetInt32(out var i) ? i : 0;
         var props = SymbolProperties(el);
         props.TryGetValue("SqlJoinType", out var sqlJoinType);
