@@ -511,6 +511,33 @@ public static class FlowFieldPatches
     /// virtual-table FlowField source, so BC's virtual/non-virtual split has nothing to select
     /// between and every requested field is computed from the in-memory store.
     /// </remarks>
+    /// <summary>
+    /// #2300 — the value of ONE FlowField for a query source row. BC computes a FlowField
+    /// column of a query through an OUTER APPLY sub-query it builds at NCLMetaQuery
+    /// construction time (NCLMetaQuery.CreateSubQueryForFlowFieldCalculation); the runner has
+    /// no SQL to run that sub-query on, so the query executors ask this engine for the value
+    /// per row instead — the same core CalcFields uses, over the same in-memory tables, with
+    /// the same CalcFormula where-condition resolution. <paramref name="rowBuffer"/> is the
+    /// owning dataitem's table-shaped row (a ReadOnlyRecordBuffer of the FlowField's own
+    /// table), which is exactly what the formula's field(...) links read from.
+    /// </summary>
+    internal static NavValue? CalcFlowFieldForQueryRow(object session, int companyToken, object rowBuffer, object flowFieldObj)
+    {
+        if (flowFieldObj is not NCLMetaField field)
+            throw new ArgumentException("expected an NCLMetaField", nameof(flowFieldObj));
+        var calculated = new List<Tuple<INavFieldMetadata, NavValue>>();
+        CalcFlowFieldValuesCore(session, companyToken, rowBuffer, _emptyFm, null, null,
+            new object[] { field }, 0, calculated);
+        var hit = calculated.FirstOrDefault(t => ReferenceEquals(t.Item1, field));
+        if (hit == null)
+            throw new RunnerOutOfScopeException(
+                "NavQuery FlowField column",
+                $"not-yet-implemented — the CalcFormula of '{field.FieldName}' on "
+                + $"'{field.Parent?.TableName}' could not be evaluated for a query row, so the "
+                + "value BC's FlowField sub-query would produce cannot be answered (#2300)");
+        return hit.Item2;
+    }
+
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static object FlowFieldsHelper_CalcFieldsAsync(
         object session, int companyToken, object recordBuffer, object? filtersAndMarks,

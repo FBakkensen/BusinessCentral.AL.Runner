@@ -28,6 +28,7 @@ public static class JoinExecutor
     // Reflection handles over Microsoft.Dynamics.Nav.Runtime.* (resolved once, lazily,
     // from whatever assembly the live queryDefinition object came from).
     private static PropertyInfo? _pQueryDefDataItems;
+    private static PropertyInfo? _pDataItemSourceFlowField;
     private static PropertyInfo? _pQueryDefOrderBy;
     private static PropertyInfo? _pDataItemMetaTable;
     private static PropertyInfo? _pDataItemLinks;
@@ -70,6 +71,11 @@ public static class JoinExecutor
         _pDataItemLinkType = tDataItem.GetProperty("DataItemLinkType", F)!;
         _pDataItemName = tDataItem.GetProperty("Name", F)!;
         _pDataItemQueryColumns = tDataItem.GetProperty("QueryColumns", F)!;
+        // NCLMetaQueryDataItem.SourceFlowField (internal) — set only on the OUTER APPLY
+        // sub-dataitem BC creates for a FlowField column (issue #2300). Such a dataitem has no
+        // table of its own (TableNo 0, SubQueryDefinition != null) and must never be read or
+        // joined like one; its column is computed per row by al-runner's FlowField engine.
+        _pDataItemSourceFlowField = tDataItem.GetProperty("SourceFlowField", F);
         _pLinkLinkType = tLink.GetProperty("LinkType", F)!;
         _pLinkSourceColumn = tLink.GetProperty("SourceColumn", F)!;
         _pLinkDestinationColumn = tLink.GetProperty("DestinationColumn", F)!;
@@ -100,9 +106,17 @@ public static class JoinExecutor
     public static bool IsMultiDataItem(object queryDefinition)
     {
         EnsureReflection(queryDefinition);
-        var items = (ICollection)_pQueryDefDataItems!.GetValue(queryDefinition)!;
-        return items.Count > 1;
+        return RealDataItems(queryDefinition).Count > 1;
     }
+
+    /// <summary>The FlowField of the OUTER APPLY sub-dataitem BC built for a FlowField column, or null for a real (table) dataitem.</summary>
+    private static object? SourceFlowFieldOf(object dataItem)
+        => _pDataItemSourceFlowField?.GetValue(dataItem);
+
+    /// <summary>The dataitems that are real tables — every dataitem except BC's FlowField sub-dataitems (#2300).</summary>
+    private static List<object> RealDataItems(object queryDefinition)
+        => ((IEnumerable)_pQueryDefDataItems!.GetValue(queryDefinition)!).Cast<object>()
+            .Where(di => SourceFlowFieldOf(di) == null).ToList();
 
     private static void Log(JoinContext ctx, string m) => ctx.Log(m);
 
@@ -154,7 +168,7 @@ public static class JoinExecutor
         EnsureReflection(queryDef);
         Log(ctx, "reflection ready");
 
-        var dataItems = ((IEnumerable)_pQueryDefDataItems!.GetValue(queryDef)!).Cast<object>().ToList();
+        var dataItems = RealDataItems(queryDef);
 
         // 1. Read every dataitem's rows (honouring its own table filters). Validate the join
         //    shape up-front so an unsupported case throws BEFORE any partial output.
@@ -219,6 +233,11 @@ public static class JoinExecutor
                 var fields = new object?[plan.SlotCount];
                 foreach (var col in plan.Columns)
                 {
+                    if (col.FlowField != null)
+                    {
+                        fields[col.QuerySlot] = ResolveComboValue(ctx, col, combo);
+                        continue;
+                    }
                     if (col.TableSlot < 0) continue; // unsupported column → default
                     if (!combo.TryGetValue(col.OwnerName, out var buf) || buf == null)
                     {
@@ -390,7 +409,15 @@ public static class JoinExecutor
     private static object? ResolveComboValue(JoinContext ctx, JoinColumn col, Dictionary<string, object?> combo)
     {
         if (!combo.TryGetValue(col.OwnerName, out var buf) || buf == null)
-            return col.SourceField != null ? ctx.TypedDefaultForField(col.SourceField) : null;
+        {
+            // An unmatched LeftOuterJoin child: its FlowField column, like any other of its
+            // columns, projects to the FlowField's own typed default (BC's SQL NULL).
+            var dflt = col.FlowField ?? col.SourceField;
+            return dflt != null ? ctx.TypedDefaultForField(dflt) : null;
+        }
+        // #2300: a FlowField column is computed from the owning dataitem's row by al-runner's
+        // FlowField engine — the in-memory stand-in for BC's OUTER APPLY sub-query.
+        if (col.FlowField != null) return ctx.CalcFlowFieldValue(buf, col.FlowField);
         if (col.TableSlot < 0 || col.TableSlot >= BufFieldCount(buf)) return null;
         return BufGet(buf, col.TableSlot);
     }
@@ -487,6 +514,11 @@ public static class JoinExecutor
         public string OwnerName = "";
         public int TableSlot = -1;
         public object? SourceField; // NCLMetaField (object) — for typed left-outer defaults
+        // #2300: non-null for a FlowField column — the NCLMetaField whose CalcFormula al-runner
+        // evaluates per owning-dataitem row (BC would run an OUTER APPLY sub-query for it).
+        // Such a column is a Normal, non-aggregated column of its OWNER dataitem: it takes part
+        // in the implicit GROUP BY exactly like any other Normal column.
+        public object? FlowField;
         public object ColumnObj = null!; // NCLMetaQueryColumn (object) — for ctx.ComputeAggregate
         // "None" unless Method = Sum/Count/Average/Min/Max (issue #2146). Every non-filter-only
         // column is either a GROUP BY key (Aggregation == "None") or aggregated — never both.
@@ -520,10 +552,32 @@ public static class JoinExecutor
         var dataItems = ((IEnumerable)_pQueryDefDataItems!.GetValue(queryDef)!).Cast<object>().ToList();
 
         // Pass 1: genuinely-projected (non-filter-only) columns get their real ColumnIndex slot.
+        object? previousRealDataItem = null;
         foreach (var di in dataItems)
         {
             var name = (string)_pDataItemName!.GetValue(di)!;
             var cols = ((IEnumerable?)_pDataItemQueryColumns!.GetValue(di))?.Cast<object>() ?? Enumerable.Empty<object>();
+            var flowField = SourceFlowFieldOf(di);
+            if (flowField != null)
+            {
+                // #2300: BC's OUTER APPLY sub-dataitem for one FlowField column. Its single
+                // defined column carries the query's real ColumnIndex slot, but its
+                // SourceTableField and AggregationType describe BC's SQL sub-query (an
+                // aggregate over the FlowField's SOURCE table), not anything this executor can
+                // read from a joined row. Project it as a Normal column of the dataitem the
+                // FlowField belongs to, computed per row by al-runner's FlowField engine.
+                var ownerName = OwnerNameOfFlowFieldDataItem(ctx, name, previousRealDataItem);
+                foreach (var col in cols)
+                {
+                    if (IsFilterOnlyColumn(col)) continue;
+                    int querySlot = (int)_pColColumnIndex!.GetValue(col)!;
+                    if (querySlot < 0) continue;
+                    if (querySlot > maxSlot) maxSlot = querySlot;
+                    plan.Columns.Add(new JoinColumn { QuerySlot = querySlot, OwnerName = ownerName, TableSlot = -1, FlowField = flowField, ColumnObj = col, Aggregation = "None" });
+                }
+                continue;
+            }
+            previousRealDataItem = di;
             foreach (var col in cols)
             {
                 if (IsFilterOnlyColumn(col)) continue; // handled in pass 2 below.
@@ -548,6 +602,7 @@ public static class JoinExecutor
         int nextExtraSlot = maxSlot + 1;
         foreach (var di in dataItems)
         {
+            if (SourceFlowFieldOf(di) != null) continue; // #2300: no table row to read a filter-only column from.
             var name = (string)_pDataItemName!.GetValue(di)!;
             var cols = ((IEnumerable?)_pDataItemQueryColumns!.GetValue(di))?.Cast<object>() ?? Enumerable.Empty<object>();
             foreach (var col in cols)
@@ -559,6 +614,25 @@ public static class JoinExecutor
 
         plan.SlotCount = Math.Max(maxSlot + 1, nextExtraSlot);
         return plan;
+    }
+
+    /// <summary>
+    /// Which real dataitem a FlowField sub-dataitem belongs to. BC names the sub-dataitem
+    /// <c>SUB$&lt;owner&gt;$&lt;column&gt;</c> (NCLMetaQuery.CreateSubQueryForFlowFieldCalculation) and
+    /// appends it right after the owner's own columns are created, so the name is authoritative
+    /// and the previously seen real dataitem is the fallback when the name does not parse.
+    /// </summary>
+    private static string OwnerNameOfFlowFieldDataItem(JoinContext ctx, string subDataItemName, object? previousRealDataItem)
+    {
+        if (subDataItemName.StartsWith("SUB$", StringComparison.Ordinal))
+        {
+            int last = subDataItemName.LastIndexOf('$');
+            if (last > 4) return subDataItemName.Substring(4, last - 4);
+        }
+        if (previousRealDataItem != null) return (string)_pDataItemName!.GetValue(previousRealDataItem)!;
+        throw ctx.OutOfScope(
+            "NavQuery FlowField column",
+            $"query-flowfield-owner-unresolved — cannot tell which dataitem the FlowField sub-dataitem '{subDataItemName}' belongs to; see docs/scope.md");
     }
 
     private static int ResolveTableSlot(object col, out object? srcField)

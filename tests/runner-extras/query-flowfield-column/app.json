@@ -1,0 +1,19 @@
+{
+  "id": "a2c6e9f3-4d1b-4e7a-b8c5-6f0d3a9e1c77",
+  "name": "Runner Extras - Query FlowField Column",
+  "publisher": "AL Runner",
+  "version": "1.0.0.0",
+  "brief": "Issue #2300: a Query selecting a FlowField column threw NullReferenceException in NCLMetaTable.SqlTableName while BC built the FlowField sub-dataitem, before any row was read.",
+  "description": "BC turns every FlowField column of a query into an OUTER APPLY sub-dataitem (NCLMetaQuery.CreateSubQueryForFlowFieldCalculation) whose name is derived from NCLMetaTable.SqlTableName; the skeleton NavSqlDatabaseProperties had no InvalidIdentifierChars, so the name computation NRE'd. Once the metadata builds, the runner has no SQL to run the sub-query on, so both query executors now recognise the sub-dataitem (SourceFlowField != null), leave it out of dataitem counting and join execution, and compute its column per owning-dataitem row through FlowFieldPatches -- the same engine CalcFields uses. This suite proves: a local sum(...) FlowField column on a single dataitem (value and the zero-source-rows case), a Base Application FlowField column (\"Item Ledger Entry\".\"Cost Amount (Actual)\"), the same FlowField on a joined dataitem, the originally reported join + Method = Sum + FlowField shape grouping per Item Ledger Entry, and a SetRange on a FlowField column evaluated against the calculated value. The oracle values for the first four were measured on a real BC 28.4 service tier in the issue; the plain-BC claims belong upstream in the corpus.",
+  "dependencies": [],
+  "idRanges": [
+    {
+      "from": 64620,
+      "to": 64629
+    }
+  ],
+  "platform": "27.0.0.0",
+  "application": "27.0.0.0",
+  "runtime": "15.0",
+  "target": "Cloud"
+}

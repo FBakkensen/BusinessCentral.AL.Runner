@@ -174,6 +174,16 @@ public static partial class RecordPatches
         bool allSame = accesses.All(a => ReferenceEquals(a, accesses[0]));
         if (singleDataItem && allSame)
             return accesses[0];
+        if (singleDataItem)
+        {
+            // #2300: one real dataitem, but IncludedTables also lists the SOURCE table of each
+            // FlowField column's sub-query (BC reads them for its OUTER APPLY). The runner
+            // scans only the real dataitem's table and computes those columns per row, so hand
+            // back that table's DataAccess — never a FlowField source table's.
+            var rootTable = RootDataItemTable(queryDefinition);
+            if (rootTable != null)
+                return NavDataAccessSource_GetDataAccessForTable(self, rootTable, false);
+        }
 
         // Multi-dataitem JOIN. We execute the join ourselves in the projection layer
         // (ExecuteJoinQuery), reading every dataitem's table via this DataAccessSource.
@@ -184,6 +194,20 @@ public static partial class RecordPatches
         StashJoinSource(queryDefinition, self);
         QLog($"GetDataAccessForQuery: {tableList.Count}-dataitem join → in-memory join via root DataAccess");
         return accesses[0];
+    }
+
+    /// <summary>The MetaTable of the query's first real (non-FlowField-sub) dataitem.</summary>
+    private static NCLMetaTable? RootDataItemTable(object queryDefinition)
+    {
+        var pDataItems = queryDefinition.GetType().GetProperty("DataItems", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        var items = pDataItems?.GetValue(queryDefinition) as System.Collections.IEnumerable;
+        if (items == null) return null;
+        foreach (var di in items)
+        {
+            if (SourceFlowFieldOfDataItem(di) != null) continue;
+            return di.GetType().GetProperty("MetaTable", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)?.GetValue(di) as NCLMetaTable;
+        }
+        return null;
     }
 
     private static void EnsureGetDataAccessForQueryReflection(object dataAccessSource)
@@ -420,6 +444,18 @@ public static partial class RecordPatches
             var expr = item.GetType().GetProperty("Item2")!.GetValue(item);
             if (key != null && _tNCLMetaQueryColumn != null && _tNCLMetaQueryColumn.IsInstanceOfType(key))
             {
+                if (SourceFlowFieldOfDataItem(((NCLMetaQueryColumn)key).ParentDataItem) != null)
+                {
+                    // #2300: a runtime filter on a FlowField column. BC's SQL applies it to the
+                    // OUTER APPLY sub-query's result column, i.e. to the CALCULATED value of each
+                    // row — the same post-projection evaluation the HAVING path already does by
+                    // result slot. Retargeting it to the sub-query's SourceTableField would filter
+                    // the wrong table; pushing it through unchanged would cast the sub-dataitem to
+                    // a table (the InvalidCastException of #2299's shape).
+                    havingFilters.Add((key!, expr!));
+                    anyTranslated = true;
+                    continue;
+                }
                 if (((NCLMetaQueryColumn)key).AggregationType != AggregationType.None)
                 {
                     // HAVING-clause filter — exclude from the WHERE-style push-down (pushing it
@@ -573,6 +609,10 @@ public static partial class RecordPatches
         var metaAppObj = _pReqMetaAppObj!.GetValue(request);
         if (metaAppObj == null || _tNCLMetaQuery == null || !_tNCLMetaQuery.IsInstanceOfType(metaAppObj))
             return rows; // ordinary table read — pass through unchanged.
+
+        // #2300: FlowField columns are computed per row in the company this request targets.
+        var companyTokenObj = request.GetType().GetProperty("CompanyToken", BindingFlags.Public | BindingFlags.Instance)?.GetValue(request);
+        _currentQueryCompanyToken = companyTokenObj is int ct ? ct : 0;
 
         // Multi-dataitem JOIN: ignore the single-table `rows` (the root scan the engine
         // requested) and produce the joined+projected result set ourselves by reading
@@ -790,6 +830,9 @@ public static partial class RecordPatches
         // straight to NavValue.CreateNavValueFromObject / FlowFieldPatches.TypedDefaultForField
         // to produce a value of the COLUMN's own declared type, not the source field's.
         public NCLMetaQueryColumn Column = null!;
+        // #2300: non-null for a FlowField column — the base table's NCLMetaField whose
+        // CalcFormula is evaluated per source row (BC would run an OUTER APPLY sub-query).
+        public NCLMetaField? FlowField;
     }
 
     private sealed class ProjectionPlan
@@ -837,8 +880,7 @@ public static partial class RecordPatches
         var groupOrder = new List<GroupKey>();
         foreach (var row in sourceRows)
         {
-            var key = new GroupKey(groupKeyColumns.Select(c =>
-                c.TableSlot >= 0 && c.TableSlot < row.FieldCount ? row[c.TableSlot] : null).ToArray());
+            var key = new GroupKey(groupKeyColumns.Select(c => SourceValueOf(nclMetaQuery, c, row)).ToArray());
             if (!groups.TryGetValue(key, out var groupRows))
             {
                 groupRows = new List<ReadOnlyRecordBuffer>();
@@ -892,6 +934,47 @@ public static partial class RecordPatches
     /// value (every row in a real group shares it by construction); aggregated columns compute
     /// over the whole group via ComputeAggregate.
     /// </summary>
+    /// <summary>
+    /// A non-aggregated column's value for one source row: the base row's slot for an
+    /// ordinary column, or (#2300) the FlowField engine's answer for a FlowField column.
+    /// </summary>
+    private static NavValue? SourceValueOf(object nclMetaQuery, ColumnPlan c, ReadOnlyRecordBuffer row)
+    {
+        if (c.FlowField != null)
+            return CalcFlowFieldColumn(nclMetaQuery, row, c.FlowField) as NavValue;
+        return c.TableSlot >= 0 && c.TableSlot < row.FieldCount ? row[c.TableSlot] : null;
+    }
+
+    // #2300 — the company the current query request runs in, captured by ProjectIfQuery so
+    // the FlowField engine (which is company-scoped, like every table read) can be asked for
+    // a query row's FlowField value from either executor without threading it everywhere.
+    [ThreadStatic] private static int _currentQueryCompanyToken;
+
+    internal static object? CalcFlowFieldColumn(object nclMetaQuery, object rowBuffer, object flowField)
+    {
+        var session = TryGetCurrentSession(nclMetaQuery)
+            ?? throw new AlRunner.Infrastructure.RunnerOutOfScopeException(
+                "NavQuery FlowField column",
+                "query-flowfield-no-session — no NavCurrentThread.Session to evaluate a FlowField column against; see docs/scope.md");
+        return FlowFieldPatches.CalcFlowFieldForQueryRow(session, _currentQueryCompanyToken, rowBuffer, flowField);
+    }
+
+    private static PropertyInfo? _pDataItemSourceFlowFieldQ;
+    private static bool _dataItemSourceFlowFieldResolved;
+
+    /// <summary>NCLMetaQueryDataItem.SourceFlowField (internal): the FlowField of BC's OUTER APPLY sub-dataitem, null for a real table dataitem.</summary>
+    private static object? SourceFlowFieldOfDataItem(object? dataItem)
+    {
+        if (dataItem == null) return null;
+        if (!_dataItemSourceFlowFieldResolved)
+        {
+            _dataItemSourceFlowFieldResolved = true;
+            _pDataItemSourceFlowFieldQ = dataItem.GetType().GetProperty("SourceFlowField",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        }
+        return _pDataItemSourceFlowFieldQ?.GetValue(dataItem);
+    }
+
     private static ReadOnlyRecordBuffer BuildRow(object nclMetaQuery, ProjectionPlan plan, IReadOnlyList<ReadOnlyRecordBuffer> groupRows)
     {
         var fields = new object?[plan.SlotCount];
@@ -900,6 +983,11 @@ public static partial class RecordPatches
             if (c.Aggregation != AggregationType.None)
             {
                 fields[c.QuerySlot] = ComputeAggregate(c, groupRows);
+                continue;
+            }
+            if (c.FlowField != null)
+            {
+                if (groupRows.Count > 0) fields[c.QuerySlot] = SourceValueOf(nclMetaQuery, c, groupRows[0]);
                 continue;
             }
             if (c.TableSlot < 0 || groupRows.Count == 0 || c.TableSlot >= groupRows[0].FieldCount)
@@ -1029,6 +1117,21 @@ public static partial class RecordPatches
         {
             int querySlot = col.ColumnIndex;
             if (querySlot > maxSlot) maxSlot = querySlot;
+
+            // #2300: a FlowField column lives on the OUTER APPLY sub-dataitem BC built for it.
+            // Its SourceTableField/AggregationType describe BC's SQL sub-query over the
+            // FlowField's SOURCE table — not a slot of the base row. Project it as a Normal
+            // column (a GROUP BY key like any other) computed per row by the FlowField engine.
+            var flowField = SourceFlowFieldOfDataItem(col.ParentDataItem) as NCLMetaField;
+            if (flowField != null)
+            {
+                columnPlans.Add(new ColumnPlan
+                {
+                    QuerySlot = querySlot, TableSlot = -1, Aggregation = AggregationType.None,
+                    IsGroupKey = true, Column = col, FlowField = flowField,
+                });
+                continue;
+            }
 
             int tableSlot = -1;
             // SourceTableField throws NotSupportedException for a ConstValue column (no
