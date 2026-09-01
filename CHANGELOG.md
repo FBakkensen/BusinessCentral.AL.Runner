@@ -15,6 +15,7 @@ All notable changes to this project are documented here. Format based on
 - **provisioning:** add --country to auto-provision the localized BC artifact set
 
 ### Fixed
+- **test-data:** seed AutoIncrement from storage and force hydration first
 - **signing:** validate signatures for real, and stop the catalog fallback that can never resolve
 - **release:** Authenticode-sign the unsigned binaries in the published NuGet package
 - **cli:** move startup bookkeeping behind --verbose
