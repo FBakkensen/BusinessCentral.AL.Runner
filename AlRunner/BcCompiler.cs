@@ -2658,7 +2658,10 @@ public sealed partial class BcCompiler
                 }
                 else
                 {
-                    AlEnumMetadataRegistry.Register(enumSym.Id, enumSym.Name, options, indexes, implementations, captions);
+                    // Issue #2302 — the enum-level DefaultImplementation property; an enum
+                    // extension cannot declare one, so only a base enum reads it.
+                    AlEnumMetadataRegistry.Register(enumSym.Id, enumSym.Name, options, indexes, implementations, captions,
+                        ReadEnumDefaultImplementations(symbol));
                 }
             }
             // Capture the per-report runtime metadata XML the emit pipeline hands us
@@ -2896,6 +2899,35 @@ public sealed partial class BcCompiler
         /// just for prebuilt MS/ISV apps. Without this the runner returned -1 and
         /// threw "Unable to cast enum '…' to interface at index N".
         /// </summary>
+        /// <summary>
+        /// Issue #2302 — the ENUM-level <c>DefaultImplementation</c> property, resolved by the
+        /// compiler to the same comma-separated codeunit-id list as a value's
+        /// <c>Implementation</c>. Every value without its own Implementation resolves to it
+        /// (Base Application enum 205 "Alt. Cust VAT Reg. Doc." declares only this, so
+        /// <c>Sales Header.InitRecord</c> could never reach its implementation codeunit).
+        /// Null when the enum declares none.
+        /// </summary>
+        private static int[]? ReadEnumDefaultImplementations(NavCA.IApplicationObjectTypeSymbol symbol)
+        {
+            try
+            {
+                var impl = symbol.GetProperty(NavCA.PropertyKind.DefaultImplementation);
+                var text = impl?.ValueText;
+                if (string.IsNullOrEmpty(text))
+                    return null;
+                var parts = text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                var ids = new List<int>(parts.Length);
+                foreach (var part in parts)
+                    if (int.TryParse(part, out var id))
+                        ids.Add(id);
+                return ids.Count > 0 ? ids.ToArray() : null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         private static int[] ReadEnumValueImplementations(NavCA.IEnumValueSymbol value)
         {
             try

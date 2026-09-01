@@ -56,7 +56,10 @@ public static class AlEnumMetadataRegistry
     // for field-level Caption. A null Captions array (not just a null element) means
     // "captured before caption-ingestion existed / caller didn't supply one" and is
     // treated exactly like an array of all-nulls.
-    public sealed record Entry(int Id, string Name, string[] Options, int[] Indexes, int[][] Implementations, string?[]? Captions = null);
+    // DefaultImplementations (issue #2302): the enum's enum-level DefaultImplementation — one
+    // codeunit id per implemented interface — consulted for any value (base or extension)
+    // whose own Implementations entry has nothing at that interface index.
+    public sealed record Entry(int Id, string Name, string[] Options, int[] Indexes, int[][] Implementations, string?[]? Captions = null, int[]? DefaultImplementations = null);
 
     // Base-enum registrations, keyed by the enum's own object Id. This also
     // absorbs precompiled-dependency enums (RegisterFromAppPath) and cache
@@ -81,7 +84,7 @@ public static class AlEnumMetadataRegistry
     /// <summary>Last-writer-wins for the base enum itself; bundle-wide enum-id
     /// collisions are quarantined upstream. Enumextension values are tracked
     /// separately — see <see cref="RegisterExtension"/>.</summary>
-    public static void Register(int id, string name, string[] options, int[] indexes, int[][]? implementations = null, string?[]? captions = null)
+    public static void Register(int id, string name, string[] options, int[] indexes, int[][]? implementations = null, string?[]? captions = null, int[]? defaultImplementations = null)
     {
         if (options == null || indexes == null) return;
         if (options.Length != indexes.Length) return;
@@ -90,7 +93,7 @@ public static class AlEnumMetadataRegistry
             implementations = Array.Empty<int[]>();
         if (captions != null && captions.Length != options.Length)
             captions = null;
-        _byId[id] = new Entry(id, name ?? string.Empty, options, indexes, implementations, captions);
+        _byId[id] = new Entry(id, name ?? string.Empty, options, indexes, implementations, captions, defaultImplementations);
     }
 
     /// <summary>
@@ -162,7 +165,8 @@ public static class AlEnumMetadataRegistry
         foreach (var ext in extensions)
             AddValues(ext);
 
-        entry = new Entry(id, name, options.ToArray(), indexes.ToArray(), implementations.ToArray(), captions.ToArray());
+        // Only the base enum can declare DefaultImplementation; an extension's values inherit it.
+        entry = new Entry(id, name, options.ToArray(), indexes.ToArray(), implementations.ToArray(), captions.ToArray(), baseEntry?.DefaultImplementations);
         return true;
     }
 
@@ -186,7 +190,8 @@ public static class AlEnumMetadataRegistry
                     enumSymbol.Options.ToArray(),
                     enumSymbol.Indexes.ToArray(),
                     enumSymbol.Implementations.Select(i => i.ToArray()).ToArray(),
-                    enumSymbol.Captions?.ToArray());
+                    enumSymbol.Captions?.ToArray(),
+                    enumSymbol.DefaultImplementations?.ToArray());
         }
         catch (Exception ex)
         {
@@ -341,7 +346,7 @@ internal sealed class AlEnumOptionMetadata : NCLOptionMetadata
     private readonly string _name;
     private readonly int _id;
 
-    public AlEnumOptionMetadata(string name, int id, string[] options, int[] indexes, int[][]? implementations = null, string?[]? captions = null)
+    public AlEnumOptionMetadata(string name, int id, string[] options, int[] indexes, int[][]? implementations = null, string?[]? captions = null, int[]? defaultImplementations = null)
         : base(JoinOptions(options))
     {
         _name = name;
@@ -350,6 +355,7 @@ internal sealed class AlEnumOptionMetadata : NCLOptionMetadata
         _implementations = implementations != null && implementations.Length == options.Length
             ? implementations
             : Array.Empty<int[]>();
+        _defaultImplementations = defaultImplementations ?? Array.Empty<int>();
         _captions = captions != null && captions.Length == options.Length
             ? captions
             : new string?[options.Length];
@@ -443,16 +449,23 @@ internal sealed class AlEnumOptionMetadata : NCLOptionMetadata
 
     private readonly string[] _optionNames;
 
+    // #2302: the enum-level DefaultImplementation, one codeunit id per implemented interface.
+    private readonly int[] _defaultImplementations;
+
     public int GetImplementationCodeunitIdPublic(int ordinalValue, int interfaceIndex)
     {
-        if (interfaceIndex < 0 || _implementations.Length == 0)
+        if (interfaceIndex < 0)
             return -1;
         for (int i = 0; i < _ordinalValues.Length; i++)
         {
             if (_ordinalValues[i] != ordinalValue)
                 continue;
-            var implementations = _implementations[i];
-            return interfaceIndex < implementations.Length ? implementations[interfaceIndex] : -1;
+            // The value's own `Implementation` wins; otherwise the enum's `DefaultImplementation`
+            // for that interface (BC: a value declaring no Implementation resolves to the
+            // default; an enum declaring neither cannot be cast, which is the -1 below).
+            if (i < _implementations.Length && interfaceIndex < _implementations[i].Length)
+                return _implementations[i][interfaceIndex];
+            return interfaceIndex < _defaultImplementations.Length ? _defaultImplementations[interfaceIndex] : -1;
         }
         return -1;
     }
@@ -508,7 +521,7 @@ public static partial class BcRuntime
         {
             try
             {
-                var meta = new AlEnumOptionMetadata(e.Name, e.Id, e.Options, e.Indexes, e.Implementations, e.Captions);
+                var meta = new AlEnumOptionMetadata(e.Name, e.Id, e.Options, e.Indexes, e.Implementations, e.Captions, e.DefaultImplementations);
                 return _alEnumCache.GetOrAdd(id, meta);
             }
             catch
@@ -529,7 +542,8 @@ public static partial class BcRuntime
             : TryGetImplementationCodeunitIdViaReflection(optionValue.NavOptionMetadata, optionValue.Value, interfaceIndex);
         if (implementationCodeunitId < 0)
             throw new InvalidOperationException(
-                $"Unable to cast enum '{optionValue.NavOptionMetadata.OptionString}' value '{optionValue}' to interface at index {interfaceIndex}.");
+                $"Unable to cast enum '{optionValue.NavOptionMetadata.OptionString}' value '{optionValue}' to interface at index {interfaceIndex} "
+                + $"(metadata {optionValue.NavOptionMetadata.GetType().Name}; no Implementation or DefaultImplementation codeunit is known for it).");
 
         // Build the implementing codeunit handle and wrap its live target in the interface
         // handle. We must NOT dispose `handle` afterwards: disposing the NavCodeunitHandle

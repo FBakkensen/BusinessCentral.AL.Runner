@@ -1,0 +1,19 @@
+{
+  "id": "5e9c3b7d-1a4f-4d2e-8b6c-0f7a2d9e5c44",
+  "name": "Runner Extras - Enum DefaultImplementation",
+  "publisher": "AL Runner",
+  "version": "1.0.0.0",
+  "brief": "Issue #2302: an enum-level DefaultImplementation was ignored, so casting any value without its own Implementation to the interface threw 'Unable to cast enum ... to interface', which broke every Sales Header.Insert(true).",
+  "description": "The AL compiler resolves DefaultImplementation to an enum-level symbol property carrying one codeunit id per implemented interface, the same shape as a value's Implementation. None of the runner's enum-metadata producers (BcAppSymbolCache.TryParseEnumSymbol, BcCompiler.CaptureOutputter, the AL-output cache sidecar) read it, and NclMetaTableBuilder built an enum-typed field's metadata without it, so AlEnumOptionMetadata answered -1 for every value without its own list. This suite proves a local enum's Default/Quiet values resolve to the DefaultImplementation codeunit, a value-level Implementation still overrides it, an enumextension value without its own Implementation inherits the base enum's default, Base Application enum 205 \"Alt. Cust VAT Reg. Doc.\"::Default converts to its interface, and Sales Header.Insert(true) (codeunit 200 -> 207 performs that cast) completes. The runner-specific half (symbol-cache parse and CacheVersion bump) is covered in AlRunner.Tests/BcAppSymbolCacheEnumDefaultImplementationTests.cs. The plain-BC claims were measured on a real BC 28.4 service tier in the issue and belong upstream in the corpus.",
+  "dependencies": [],
+  "idRanges": [
+    {
+      "from": 64630,
+      "to": 64639
+    }
+  ],
+  "platform": "27.0.0.0",
+  "application": "27.0.0.0",
+  "runtime": "15.0",
+  "target": "Cloud"
+}
