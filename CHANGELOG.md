@@ -6,6 +6,8 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+## [2.10.0] - 2026-09-01
+
 ### Added
 - **diagnostics:** explain a failure caused by an empty setup table
 - **test-data:** rebuild Blob, Media, MediaSet and RecordId values from a backup
