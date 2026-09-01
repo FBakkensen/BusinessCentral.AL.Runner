@@ -8210,6 +8210,7 @@ static int SaveEnumRegistrySidecar(string path)
             indexes = e.Indexes,
             implementations = e.Implementations,
             captions = e.Captions,
+            defaultImplementations = e.DefaultImplementations,
         }).ToArray(),
         // v4: per-report runtime metadata XML captured from emit — replayed on
         // cache HIT so NavReportSync builds real MetaReport instances.
@@ -8309,7 +8310,18 @@ static int LoadEnumRegistrySidecar(string path)
             foreach (var c in capEl.EnumerateArray())
                 captions[ci++] = c.ValueKind == System.Text.Json.JsonValueKind.Null ? null : c.GetString();
         }
-        AlEnumMetadataRegistry.Register(id, name, opts, idxs, implementations, captions);
+        // #2302: enum-level DefaultImplementation (absent in older sidecars — those are
+        // unreachable anyway, the cache key carries the runner build stamp).
+        int[]? defaultImplementations = null;
+        if (e.TryGetProperty("defaultImplementations", out var defImplEl)
+            && defImplEl.ValueKind == System.Text.Json.JsonValueKind.Array)
+        {
+            defaultImplementations = new int[defImplEl.GetArrayLength()];
+            int di = 0;
+            foreach (var implId in defImplEl.EnumerateArray())
+                defaultImplementations[di++] = implId.GetInt32();
+        }
+        AlEnumMetadataRegistry.Register(id, name, opts, idxs, implementations, captions, defaultImplementations);
         count++;
     }
     // v4: replay per-report metadata XML (absent in pre-v4 sidecars — fine,

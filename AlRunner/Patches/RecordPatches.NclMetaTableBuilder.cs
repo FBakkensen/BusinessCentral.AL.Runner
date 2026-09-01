@@ -1435,7 +1435,11 @@ public static partial class RecordPatches
                 if (!byName.TryGetValue(pair.Value, out var entry)) continue;
                 try
                 {
-                    var meta = new AlEnumOptionMetadata(entry.Name, entry.Id, entry.Options, entry.Indexes, entry.Implementations);
+                    // Issue #2302: an enum-typed FIELD's metadata must carry the enum's
+                    // DefaultImplementation too — Base Application codeunit 207 casts the value
+                    // it reads from such a field to "Alt. Cust. VAT Reg. Doc." while Sales
+                    // Header.InitRecord runs, and enum 205 declares only a DefaultImplementation.
+                    var meta = new AlEnumOptionMetadata(entry.Name, entry.Id, entry.Options, entry.Indexes, entry.Implementations, entry.Captions, entry.DefaultImplementations);
                     AlRunner.Infrastructure.FieldPoke.SetInstance(_fNCLMetaFieldFieldOptionMetadata, nclField, meta);
                 }
                 catch (Exception ex)
