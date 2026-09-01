@@ -7,6 +7,7 @@ All notable changes to this project are documented here. Format based on
 ## [Unreleased]
 
 ### Added
+- **diagnostics:** explain a failure caused by an empty setup table
 - **test-data:** rebuild Blob, Media, MediaSet and RecordId values from a backup
 - **test-data:** rebuild Date, DateTime, Time and DateFormula values from a backup
 - **test-data:** merge table-extension fields when hydrating from the backup
