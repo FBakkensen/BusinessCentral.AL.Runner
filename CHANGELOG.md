@@ -20,6 +20,9 @@ All notable changes to this project are documented here. Format based on
 - **cli:** move startup bookkeeping behind --verbose
 - **compile:** dependency apps containing a profile object no longer crash the whole module
 
+### Documentation
+- **agents:** give agents real code navigation instead of grep
+
 ### Changed
 - **baseline:** exclude self-populating virtual tables from the install baseline
 - **test-data:** load tables on first touch instead of all at once
