@@ -55,12 +55,13 @@ public static partial class RecordPatches
     // deserialises cleanly under new semantics is the one failure mode a cache cannot
     // detect for itself.
     private const uint InstallBaselineDiskMagic = 0x42494C41;
-    internal const int InstallBaselineDiskSchemaVersion = 1;
+    internal const int InstallBaselineDiskSchemaVersion = 2;
 
     // Pool-entry kinds. Kind is stored per DISTINCT NavValue instance, not per row slot.
     private const byte KindBytes = 1;       // NavValue.GetBytes() + NavValue.CreateNavValueFromBytes
     private const byte KindNullString = 2;  // NavText/NavCode with IsNull (DB NULL, GetBytes cannot say so)
     private const byte KindBlob = 3;        // NavBLOB — GetBytes has no CreateNavValueFromBytes counterpart
+    private const byte KindMedia = 4;       // NavMedia/NavMediaSet — same gap, and #2270 made it reachable
 
     /// <summary>Table ids whose rows are a projection of the loaded-assembly set rather than
     /// install-trigger output, and which
@@ -293,6 +294,30 @@ public static partial class RecordPatches
                 tableIndex, fieldIndex, bytes);
         }
 
+        if (self.NclType is NavNclType.NavMedia or NavNclType.NavMediaSet)
+        {
+            // Media and MediaSet are absent from NavValue.CreateNavValueFromBytes's switch, so
+            // they cannot ride the KindBytes path even though NavMediaValueBase.GetBytes() is
+            // exactly the 16 GUID bytes their own CreateFromBytes consumes. Before #2270 that
+            // was academic — nothing put a Media in the baseline — but one unencodable value
+            // makes TrySerializeInstallBaselineSnapshot return null for the WHOLE snapshot, so
+            // hydrating Customer/Vendor/Item Variant with their Image/Picture would have cost
+            // every --test-data run its disk baseline, silently, and reported only a DiskLog
+            // line.
+            //
+            // The parent id is deliberately NOT persisted. It is -1 on a freshly read row and
+            // NavRecord.GetFieldValue overwrites it via SetOwnerRecordInformation before AL
+            // sees the value, so round-tripping it would preserve a number nothing reads.
+            if (value is not NavMediaValueBase media)
+            {
+                DiskLog($"not persisting: table {tableId} field index {fieldIndex} is {self.NclType} "
+                      + $"but the value is {value.GetType().Name}");
+                return null;
+            }
+            return new PoolEntry(KindMedia, (int)self.NclType, 0, 0, tableIndex, fieldIndex,
+                EncodeInstallBaselineMedia(media));
+        }
+
         var isStringLike = self.NclType is NavNclType.NavText or NavNclType.NavCode;
         if (value.IsNull)
         {
@@ -307,8 +332,10 @@ public static partial class RecordPatches
         }
 
         // Every kind below is one BC's own NavValue.CreateNavValueFromBytes switch can rebuild
-        // from NavValue.GetBytes(). Kinds absent from that switch (Media, MediaSet, ByteArray,
-        // Char, …) fall through to the refusal at the bottom rather than being guessed at.
+        // from NavValue.GetBytes(). Kinds absent from that switch (ByteArray, Char, …) fall
+        // through to the refusal at the bottom rather than being guessed at. Media and
+        // MediaSet are absent from it too, and are handled above by KindMedia — their own
+        // CreateFromBytes does consume what their GetBytes produces.
         var encodable = self.NclType is NavNclType.NavBigInteger or NavNclType.NavBigText
             or NavNclType.NavBoolean or NavNclType.NavByte or NavNclType.NavCode
             or NavNclType.NavDate or NavNclType.NavDateFormula or NavNclType.NavDateTime
@@ -469,6 +496,21 @@ public static partial class RecordPatches
         }
     }
 
+    /// <summary>The KindMedia payload: the 16 GUID bytes NavMediaValueBase.GetBytes() produces
+    /// and NavMedia/NavMediaSet.CreateFromBytes consumes. Split out from the encoder so the
+    /// round trip is exercisable without a skeleton session — see
+    /// TestDataLobValueHydrationTests.</summary>
+    internal static byte[] EncodeInstallBaselineMedia(NavMediaValueBase media) => media.GetBytes();
+
+    /// <summary>The other half of <see cref="EncodeInstallBaselineMedia"/>.</summary>
+    internal static NavValue DecodeInstallBaselineMedia(NavNclType nclType, byte[] bytes)
+        => nclType switch
+        {
+            NavNclType.NavMedia => NavMedia.CreateFromBytes(bytes, 0, bytes.Length),
+            NavNclType.NavMediaSet => NavMediaSet.CreateFromBytes(bytes, 0, bytes.Length),
+            _ => throw new InvalidDataException($"{nclType} is not a media kind"),
+        };
+
     private static NavValue DecodeValue(
         byte kind, NavNclType nclType, int definedLength, int flags,
         NCLMetaTable meta, int fieldIndex, byte[] bytes)
@@ -492,6 +534,9 @@ public static partial class RecordPatches
                 _blobIsDirty!.SetValue(blob, (flags & 2) != 0);
                 return blob;
             }
+
+            case KindMedia:
+                return DecodeInstallBaselineMedia(nclType, bytes);
 
             case KindBytes:
             {

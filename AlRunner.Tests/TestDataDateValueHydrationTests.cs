@@ -59,8 +59,16 @@ public sealed class TestDataDateValueHydrationTests
     private static NavValue Convert(INavValueMetadata metadata, string rawJsonValue)
     {
         using var doc = JsonDocument.Parse(rawJsonValue);
+        // The four date/time branches read nothing off the field but its NCL type, so the
+        // other two facts are supplied as "the codec must not ask" — see
+        // TestDataLobValueHydrationTests for the branches that do read them.
+        var facts = new RecordPatches.TestDataFieldFacts(
+            metadata,
+            () => throw new InvalidOperationException(
+                "a date/time branch must not reach for the field's empty value"),
+            storedCompressed: false);
         return RecordPatches.ConvertTestDataValue(
-            metadata, doc.RootElement.Clone(), 312, "Purchases & Payables Setup", 46,
+            facts, doc.RootElement.Clone(), 312, "Purchases & Payables Setup", 46,
             "Allow Document Deletion Before");
     }
 
@@ -254,14 +262,14 @@ public sealed class TestDataDateValueHydrationTests
     [Fact]
     public void TypesThisBuildStillCannotRebuild_KeepRefusing()
     {
-        // #2245 tracks Blob/Media/MediaSet. RecordId is a 448-byte structure with no textual
-        // wire form. None of them acquired a branch here, and the refusal must name the type
-        // so the reason reaches whoever reads the run's output.
-        foreach (var nclType in new[]
-                 { NavNclType.NavBlob, NavNclType.NavMedia, NavNclType.NavMediaSet, NavNclType.NavRecordId })
-        {
-            var ex = Refusal(new ValueMetadata(nclType, NavType.BLOB), "\"1753-01-01 00:00:00.000\"");
-            Assert.Contains(nclType.ToString(), ex.Message, StringComparison.Ordinal);
-        }
+        // Blob, Media, MediaSet, RecordId and Duration acquired branches in #2270 — see
+        // TestDataLobValueHydrationTests. TableFilter did not, because no table in the shipped
+        // demo data stores one and the reader's wire shape for it has never been measured
+        // (#2271). The refusal must name the type so the reason reaches whoever reads the
+        // run's output.
+        var ex = Refusal(
+            new ValueMetadata(NavNclType.NavTableFilter, NavType.TableFilter),
+            "\"1753-01-01 00:00:00.000\"");
+        Assert.Contains(NavNclType.NavTableFilter.ToString(), ex.Message, StringComparison.Ordinal);
     }
 }
