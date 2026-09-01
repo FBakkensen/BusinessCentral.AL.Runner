@@ -1,0 +1,19 @@
+{
+  "id": "3f8a1d6c-7b2e-4c9f-a5d3-9e1b4c7f2a60",
+  "name": "Runner Extras - Query Column Wildcard Filter",
+  "publisher": "AL Runner",
+  "version": "1.0.0.0",
+  "brief": "Issue #2299: Query.SetFilter with a wildcard on a Query column threw InvalidCastException (NCLMetaQueryColumn -> NCLMetaField) at Read().",
+  "description": "NavQuery.SetFilter stores the filter keyed by the NCLMetaQueryColumn; the runner retargets each FilterExpression to the column's SourceTableField before handing the request to BC's TempTableDataProvider, but RetargetFilterExpression only knew Unary and Binary expressions and silently passed a WildcardFilterExpression (and a RangeFilterExpression) through still bound to the query column, which BC's RecordBufferEvaluatorVisitor then cast to NCLMetaField. This suite proves the wildcard, negated-wildcard, range, and no-match cases on an application-local table, plus the SetRange control. The oracle row counts were measured on a real BC 28.4 service tier in the issue; the plain-BC claim belongs upstream in the corpus.",
+  "dependencies": [],
+  "idRanges": [
+    {
+      "from": 64600,
+      "to": 64609
+    }
+  ],
+  "platform": "27.0.0.0",
+  "application": "27.0.0.0",
+  "runtime": "15.0",
+  "target": "Cloud"
+}
