@@ -107,6 +107,19 @@ public static partial class RecordPatches
             var meta = _mCreateDynamicQuery.Invoke(null,
                 new object?[] { token, metaQuery, clrType, _baseAppGroup });
             QLog($"BuildRealNCLMetaQuery({queryId}): built {(meta == null ? "NULL" : meta.GetType().Name)} clrType={clrType.FullName}");
+            if (meta != null && Environment.GetEnvironmentVariable("AL_RUNNER_QDIAG") == "1")
+            {
+                try
+                {
+                    var def = meta.GetType().GetProperty("QueryDefinition", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(meta)!;
+                    var cols = (System.Collections.IEnumerable)def.GetType().GetProperty("AllColumns", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(def)!;
+                    foreach (Microsoft.Dynamics.Nav.Runtime.NCLMetaQueryColumn c in cols)
+                        QLog($"  col id={c.Id} name={c.Name} idx={c.ColumnIndex} filterIdx={c.FilterIndex} type={c.ColumnType} agg={c.AggregationType} fieldNo={c.FieldNo}");
+                    var cf = (System.Collections.IEnumerable?)meta.GetType().GetProperty("ColumnFilters", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(meta);
+                    if (cf != null) foreach (var pair in cf) QLog($"  colfilter {pair}");
+                }
+                catch (Exception dx) { QLog($"  dump failed: {dx.GetType().Name}: {dx.Message}"); }
+            }
             return meta;
         }
         catch (Exception ex)

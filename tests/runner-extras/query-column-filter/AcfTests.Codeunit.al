@@ -126,6 +126,27 @@ codeunit 64673 "Acf Tests"
             Error('expected A=0;B=5; (runtime filter replaces the static one), got %1 row(s): %2', Rows, Items);
     end;
 
+    // The consumer shape that regressed while fixing #2418: a SetRange on the SECOND filter
+    // element of a query that also carries a static ColumnFilter.
+    [Test]
+    procedure ColumnFilterOnSum_WithSetRangeOnSecondFilterElement()
+    var
+        Q: Query "Acf Balances";
+        Rows: Integer;
+        Items: Text;
+    begin
+        Seed();
+        Q.SetRange(ProjectNoFilter, 'P1');
+        Q.SetRange(ItemNoFilter, 'B');
+        Q.Open();
+        while Q.Read() do begin
+            Rows += 1;
+            Items += Q.ItemNo + '=' + Format(Q.AssignedQuantity) + ';';
+        end;
+        if Items <> 'B=5;' then
+            Error('expected B=5; got %1 row(s): %2', Rows, Items);
+    end;
+
     local procedure Seed()
     var
         E: Record "Acf Entry";
