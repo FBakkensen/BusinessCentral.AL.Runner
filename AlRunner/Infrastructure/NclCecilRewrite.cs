@@ -1765,30 +1765,36 @@ public static class NclCecilRewrite
             Console.Error.WriteLine("[Cecil] Rewrote SessionTransactionExtensions.Rollback → row-store rollback");
         }
 
-        // 8g. SessionTransactionExtensions.EndTransaction / EndTransactionWorldAndTransaction —
-        //     see RecordPatches.NoteTransactionEnd.
+        // 8g. SessionTransactionExtensions.EndTransactionWorldAndTransaction — see
+        //     RecordPatches.NoteTransactionEnd.
         //
-        //     AL Runner#1946: BC's own APIs wrap their internal work in an explicit nested
-        //     transaction (decompiled, unmodified Ncl body of the static overload of
-        //     NavXmlPort.Import — the one the corpus proved this against:
-        //     Session.BeginTransaction(); ...; finally { Session.EndTransaction(commit); } for
-        //     DataError.ThrowError, or Session.BeginTransactionWorldAndTransaction(); ...;
-        //     finally { Session.EndTransactionWorldAndTransaction(commit); } for
-        //     DataError.TrapError — AL's compiler picks TrapError whenever the call's boolean
-        //     result is captured into a variable, e.g. `Ok := XmlPort.Import(...)`, which is
-        //     the common, idiomatic AL shape and the one that actually reaches this bug).
-        //     A real commit there is exactly as durable, from AL's point of view, as an
-        //     explicit Commit() statement — but only MarkCommitPoint's two existing call sites
-        //     (AL's own Commit() and the per-test isolation boundary) ever advanced the
-        //     rollback baseline, so a LATER, unrelated asserterror in the caller rolled all the
-        //     way back to test-method start, wiping out rows a nested BC API had already
-        //     committed. Reproducible with no XmlPort involved at all — see
-        //     RecordPatches.NoteTransactionEnd's doc comment.
+        //     AL Runner#1946 / #2413: BC's own APIs wrap their internal work in an explicit
+        //     nested transaction, and BC has two kinds (decompiled, unmodified Ncl body of the
+        //     static overload of NavXmlPort.Import shows both):
+        //       * Session.BeginTransaction(); ...; finally { Session.EndTransaction(commit); }
+        //         for DataError.ThrowError — a PLAIN nested transaction that joins the caller's.
+        //         TransactionManager pushes a logical transaction and EndTransaction(true) only
+        //         pops it; nothing reaches the database until the outermost transaction commits.
+        //         Query.Open (NavQuery.RunOnBeforeOpenTriggerAsync) and statement-form
+        //         XmlPort.Import are this kind.
+        //       * Session.BeginTransactionWorldAndTransaction(); ...;
+        //         finally { Session.EndTransactionWorldAndTransaction(commit); } for
+        //         DataError.TrapError — an isolated transaction WORLD, which AL's compiler picks
+        //         whenever the call's boolean result is consumed (`Ok := XmlPort.Import(...)`,
+        //         `if Codeunit.Run(...)`). Completing it with commit == true IS a durable commit,
+        //         exactly as durable as an explicit Commit() statement.
+        //     Measured on a real BC 28.4 service tier (#2413): an uncommitted Insert followed by
+        //     Query.Open or a statement-form XmlPort.Import is still rolled back by a later
+        //     trapped error, and so is a Modify made before a Query.Open inside the failing
+        //     statement itself; a row inserted by `Ok := XmlPort.Import(...)` or a guarded
+        //     Codeunit.Run survives. #1946 hooked BOTH methods, so a Query.Open anywhere between
+        //     a write and the error (Base App's Item Application Entry.CheckIsCyclicalLoop runs
+        //     one during item posting) silently made the write durable. Only the
+        //     transaction-world method is hooked now.
         //
-        //     Prepend, not replace: the original bodies (SessionTransactionManager.EndTransaction
-        //     / EndTransactionWorldAndTransaction) already run safely today (every passing
-        //     XmlPort Export/Import test goes through one of them), so this only adds the
-        //     missing commit-point bookkeeping alongside them.
+        //     Prepend, not replace: the original body already runs safely today (every passing
+        //     `Ok := XmlPort.Import` test goes through it), so this only adds the missing
+        //     commit-point bookkeeping alongside it.
         {
             var sessTxType2 = asm.MainModule.Types
                 .FirstOrDefault(t => t.FullName == "Microsoft.Dynamics.Nav.Runtime.SessionTransactionExtensions")
@@ -1801,7 +1807,7 @@ public static class NclCecilRewrite
                 ?? throw new InvalidOperationException(
                     "[Cecil] RecordPatches.NoteTransactionEnd not found");
 
-            foreach (var methodName in new[] { "EndTransaction", "EndTransactionWorldAndTransaction" })
+            foreach (var methodName in new[] { "EndTransactionWorldAndTransaction" })
             {
                 var endTransactionMethod = sessTxType2.Methods
                     .FirstOrDefault(m => m.Name == methodName && m.IsStatic
