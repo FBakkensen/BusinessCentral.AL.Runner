@@ -10,6 +10,7 @@ All notable changes to this project are documented here. Format based on
 - **all-profile:** populate the All Profile system virtual table (2000000178)
 
 ### Fixed
+- **numbersequence:** raise BC's trappable NavALException, not BCL exceptions
 - **alsid:** answer Sid(name) with BC's not-mapped empty string on a host with no Windows identity store
 
 ### Changed
