@@ -345,15 +345,15 @@ public static class ALDatabasePatches
         if (record is Microsoft.Dynamics.Nav.Runtime.NavRecord { IsTemporary: true }) return;
         System.Threading.Interlocked.Increment(ref _rowVersion);
         System.Threading.Volatile.Write(ref _inWriteTransaction, true);
-        // Take the rollback snapshot now, before this write lands — refreshed on EVERY
-        // write, not just the first since the last commit point (AlRunner#2142; see
-        // RecordPatches.NoteTransactionWrite's doc for why the refresh can't be skipped).
+        // Take the rollback snapshot now, before this write lands — on the first write to
+        // the table since the last commit point, plus one re-baseline per asserterror
+        // statement (AlRunner#2142, #2402; see RecordPatches.NoteTransactionWrite's doc).
         RecordPatches.NoteTransactionWrite(record);
     }
 
     /// <summary>Record an AL-visible Insert. Prepended to NavRecord.ALInsertAsync only
     /// (AlRunner#2142) — identical to <see cref="NoteRecordWrite"/> (same rowversion /
-    /// write-transaction bookkeeping, same rollback-snapshot refresh, so an uncommitted
+    /// write-transaction bookkeeping, same rollback-snapshot note, so an uncommitted
     /// Insert() still rolls back normally when a LATER, unrelated statement fails — see
     /// TestAssertErrorRollback.al), PLUS a note of the attempt for
     /// <see cref="RecordPatches.ForceDurableFailedInserts"/>: measured real BC keeps an

@@ -43,12 +43,17 @@
 //   Real BC passes all three (confirmed against CI run 33273501078, BC 27.5 and 28.3) — they
 //   are NOT contradictory, so whatever distinguishes them is a real BC mechanism this runner
 //   does not yet reproduce, not a corpus defect to invert. See #2167 for what's been ruled
-//   in/out so far (a per-session primary-key read cache in Ncl.dll's TransactionalDataCache
-//   that Get()-by-key can be satisfied from without invalidating on a local rollback, versus
-//   TryGetCount's unconditional EnsureReadTransactionStarted — plausible, decompiled, but not
-//   confirmed as the complete answer). This runner currently does NOT special-case that
-//   shape at all — Test04 and Error_After_Insert_Before_Commit_RecordPersists both fail here,
-//   openly, with no known-gaps entry masking it, exactly as on unmodified main.
+//   in/out so far. SETTLED by measurement on a real BC 28.4 service tier (AlRunner#2402,
+//   2026-09-02): the shape run ALONE — DeleteAll, Insert(1), `asserterror Error(...)`,
+//   Get(1) — leaves the row ABSENT, i.e. the uncommitted Insert IS rolled back, no read
+//   cache involved; the same shape run AFTER a test method that inserted row 1 and
+//   Commit()ed it finds row 1 PRESENT with the COMMITTED values, not the values this
+//   test's Insert wrote. So what keeps the row in Test04 and
+//   Error_After_Insert_Before_Commit_RecordPersists is the earlier test method's committed
+//   row: this test's own uncommitted DeleteAll removed it, the rollback puts it back. That
+//   is plain commit-point rollback, and the lazy first-write baseline below reproduces it
+//   (the every-write refresh of #2170 could not: the Insert's refresh had already captured
+//   the post-DeleteAll, empty table). Both former known-gap entries are gone.
 //
 //   Without any of this the runner either never rolled anything back (silently wrong for a
 //   test that checks the table afterwards) or rolled back to the wrong boundary.
@@ -63,18 +68,22 @@
 //   RecordPatches.InstallBaseline already knows how to copy rows out of them and put rows
 //   back. A commit point is the same snapshot, kept separately; a rollback restores it.
 //
-//   The snapshot is taken on EVERY write to a table (see ALDatabasePatches.NoteRecordWrite /
-//   NoteRecordInsertWrite, prepended to every NavRecord AL write entry), always refreshed to
-//   the table's CURRENT live state — not just once, lazily, on the first write since the
-//   last commit point. Refreshing on every write is what keeps
-//   OnDelete_Throws_RecordStillExists correct: Insert() establishes a baseline, and Delete()
-//   — even though its own trigger throws before any physical delete happens — refreshes that
-//   baseline to include the Insert's row, so a rollback restores exactly that (a no-op, since
-//   nothing physically changed) instead of reaching back to the pre-Insert baseline and
-//   erasing the earlier, unrelated write. This does not change TestAssertErrorRollback's
-//   "unrelated Error() rolls back everything since commit" cases: none of them write to the
-//   same table twice without an intervening Commit(), so there's only ever one baseline to
-//   refresh into.
+//   The snapshot is taken on the FIRST write to a table since the last commit point (see
+//   ALDatabasePatches.NoteRecordWrite / NoteRecordInsertWrite, prepended to every NavRecord
+//   AL write entry) and then kept: that is the table's state at the commit point, which is
+//   what a rollback must restore. #2170 instead refreshed it on EVERY write, which made the
+//   baseline "the state before the most recent write" — a statement that wrote the same
+//   table twice and then failed had only its LAST write undone (AlRunner#2402; real BC
+//   undoes every write since the commit point). The one thing the every-write refresh was
+//   buying is kept in a narrower form: the first write to a table INSIDE the statement
+//   asserterror is currently wrapping re-baselines that table once (BeginAssertErrorScope /
+//   _rebaselinedInScope). That is what keeps OnDelete_Throws_RecordStillExists green —
+//   Insert() (outside the scope) establishes a baseline, `asserterror Delete(true)` whose
+//   trigger throws before any physical delete re-baselines to include the Insert's row, so
+//   the rollback is a no-op instead of erasing the earlier, uncommitted Insert. A second
+//   write to the same table inside the same statement never moves the baseline again.
+//   TestAssertErrorRollback's "unrelated Error() rolls back everything since commit" cases
+//   are untouched: the wrapped statement writes nothing, so nothing is re-baselined.
 //
 //   Insert() gets one further, narrower exception: measured real BC keeps an Insert() row
 //   durable even when THAT SAME Insert() statement's own OnInsert trigger throws
@@ -88,7 +97,12 @@
 //   InsertRecordAsync is never reached and the row is never written — RollbackToCommitPoint
 //   has nothing to undo, because there was nothing to undo. The row still needs to end up in
 //   the table to match real BC's measured outcome, and ForceDurableFailedInserts (below)
-//   does that directly, reusing the record's own live field buffer — but WHY real BC's
+//   does that directly, reusing the record's own live field buffer. It acts ONLY on an
+//   Insert() that never reached the physical write: NoteInsertLanded, prepended to
+//   RecordImplementation.InsertRecordAsync, retires the attempt the moment the row is
+//   handed to the provider, so a completed Insert() is an ordinary write the rollback
+//   undoes (AlRunner#2402 — measured, two completed Insert()s then Error() inside one
+//   asserterror statement leave zero rows on real BC). But WHY real BC's
 //   Count() sees a row that its own InsertRecordAsync-equivalent was never called for is not
 //   established here; see the WHAT AL PROMISES section and #2167. Scoped to Insert()
 //   attempts made during the statement asserterror is CURRENTLY wrapping
@@ -128,6 +142,16 @@ public static partial class RecordPatches
     [ThreadStatic]
     private static Stack<List<object>>? _pendingInsertsScopeStack;
 
+    // Tables whose commit-point snapshot has already been re-baselined ONCE inside the
+    // CURRENTLY executing asserterror-wrapped statement — see NoteTransactionWrite. Scoped
+    // exactly like _pendingInsertsInScope. Outside any asserterror scope this is null and a
+    // table is snapshotted only on its first write since the last commit point.
+    [ThreadStatic]
+    private static HashSet<(object Source, int TableId)>? _rebaselinedInScope;
+
+    [ThreadStatic]
+    private static Stack<HashSet<(object Source, int TableId)>?>? _rebaselinedScopeStack;
+
     /// <summary>
     /// Establish a commit point: everything written up to now survives a later rollback.
     /// Called at each test-method boundary and from AL's <c>Commit()</c>.
@@ -145,6 +169,8 @@ public static partial class RecordPatches
     {
         (_pendingInsertsScopeStack ??= new()).Push(_pendingInsertsInScope ?? new List<object>());
         _pendingInsertsInScope = new List<object>();
+        (_rebaselinedScopeStack ??= new()).Push(_rebaselinedInScope);
+        _rebaselinedInScope = new HashSet<(object, int)>();
     }
 
     /// <summary>
@@ -158,6 +184,8 @@ public static partial class RecordPatches
     {
         var stack = _pendingInsertsScopeStack;
         _pendingInsertsInScope = (stack != null && stack.Count > 0) ? stack.Pop() : null;
+        var rebaselined = _rebaselinedScopeStack;
+        _rebaselinedInScope = (rebaselined != null && rebaselined.Count > 0) ? rebaselined.Pop() : null;
     }
 
     /// <summary>
@@ -170,6 +198,41 @@ public static partial class RecordPatches
     {
         if (record == null) return;
         (_pendingInsertsInScope ??= new()).Add(record);
+    }
+
+    /// <summary>
+    /// The physical write of an Insert() is about to happen (AlRunner#2402). Prepended by
+    /// Cecil to <c>RecordImplementation.InsertRecordAsync</c> — the ONLY call in
+    /// NavRecord.InsertAsync that hands the row to the data provider, reached only after
+    /// OnInsert (and every other pre-write step) has returned normally. An Insert() that
+    /// gets here is an ordinary, completed write: the commit-point rollback undoes it like
+    /// any Modify/Delete, and it must NOT be re-inserted by
+    /// <see cref="ForceDurableFailedInserts"/>, whose whole subject is the Insert() whose
+    /// OWN trigger threw before this point (measured on real BC: two completed Insert()s
+    /// followed by Error() inside one asserterror statement leave zero rows). So the pending
+    /// entry for this record is retired here; only attempts that never reached the
+    /// physical write stay pending. Matched by the NavRecord's own recordImplementation
+    /// (the argument is that implementation, `this` of the prepended method), newest
+    /// attempt first so an Insert() nested inside another's OnInsert retires its own entry.
+    /// </summary>
+    public static void NoteInsertLanded(object? recordImplementation)
+    {
+        var pending = _pendingInsertsInScope;
+        if (recordImplementation == null || pending == null || pending.Count == 0) return;
+        _fNavRecordRecordImplementation ??= typeof(NavRecord).GetField(
+            "recordImplementation", BindingFlags.NonPublic | BindingFlags.Instance);
+        if (_fNavRecordRecordImplementation == null) return;
+        for (int i = pending.Count - 1; i >= 0; i--)
+        {
+            object? impl;
+            try { impl = _fNavRecordRecordImplementation.GetValue(pending[i]); }
+            catch { continue; }
+            if (ReferenceEquals(impl, recordImplementation))
+            {
+                pending.RemoveAt(i);
+                return;
+            }
+        }
     }
 
     /// <summary>
@@ -222,11 +285,14 @@ public static partial class RecordPatches
     }
 
     /// <summary>
-    /// Snapshot the record's table to its CURRENT live state on every write — see the file
-    /// header's "always refresh" note for why this must not skip when a snapshot already
-    /// exists for the table (that lazy-first-write-only version is what let
-    /// OnDelete_Throws_RecordStillExists's rollback reach back past an earlier, unrelated
-    /// Insert to a stale, pre-Insert baseline). Called from
+    /// Snapshot the record's table to its CURRENT live state before this write lands — but
+    /// only on the FIRST write to that table since the last commit point, plus at most one
+    /// re-baseline per asserterror-wrapped statement (see the file header's "re-baseline
+    /// once per statement" note). Refreshing on EVERY write (the #2170 version of this
+    /// method) collapsed the baseline to "the state before the most recent write": a
+    /// statement that wrote the same table twice and then failed had only its LAST write
+    /// rolled back (AlRunner#2402, measured against real BC: every write since the commit
+    /// point is undone). Called from
     /// <see cref="ALDatabasePatches.NoteRecordWrite"/> / <see cref="ALDatabasePatches.NoteRecordInsertWrite"/>,
     /// which BC's own AL write entry points run before doing anything.
     /// </summary>
@@ -241,6 +307,22 @@ public static partial class RecordPatches
         {
             if (!perTable.TryGetValue(tableId, out var dataAccess)) continue;
             var key = (source, tableId);
+
+            if (_txCommitPoint.ContainsKey(key))
+            {
+                // A baseline already exists for this table. Keep it — unless this is the
+                // first write to the table inside the CURRENT asserterror statement, in
+                // which case re-baseline to the state at (effectively) the statement's
+                // start: that is what keeps OnDelete_Throws_RecordStillExists' earlier,
+                // uncommitted Insert alive across its trapped Delete. A SECOND write to the
+                // same table inside the same statement must not move the baseline again.
+                var rebaselined = _rebaselinedInScope;
+                if (rebaselined == null || !rebaselined.Add(key)) continue;
+            }
+            else
+            {
+                _rebaselinedInScope?.Add(key);
+            }
 
             var provider = GetDataProvider(dataAccess);
             if (provider == null || provider.GetType().Name != "TempTableDataProvider") continue;

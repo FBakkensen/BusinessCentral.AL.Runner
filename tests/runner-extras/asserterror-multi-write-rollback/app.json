@@ -1,0 +1,18 @@
+{
+  "id": "b7e4c2a9-6d13-4f58-9a0e-3c5b8d1f7e26",
+  "name": "Runner Extras - AssertError Multi-Write Rollback",
+  "publisher": "AL Runner",
+  "version": "1.0.0.0",
+  "brief": "Regression for issue #2402: when the single statement asserterror wraps writes the same table more than once and then fails, the runner rolled back only the LAST write to that table (the per-table rollback snapshot was refreshed on every write, so the second write's snapshot already contained the first) and re-inserted every Insert() the statement made rather than only the one whose own trigger threw.",
+  "description": "The BC-language contract this exercises - an error rolls the database back to the last commit point, undoing EVERY write since it regardless of how many hit the same table - is a plain BC-behaviour claim and belongs upstream in the al-language corpus (see the runner repo's bc-behavior-tests-go-upstream.md); both shapes here were measured green on a real BC 28.4 service tier before the issue was filed. This suite is the runner-repo-local stopgap so this repo's own CI gates the fix now; once the corpus test lands and the pin moves it may be retired.",
+  "dependencies": [],
+  "idRanges": [
+    {
+      "from": 64600,
+      "to": 64609
+    }
+  ],
+  "platform": "1.0.0.0",
+  "runtime": "14.0",
+  "features": []
+}
