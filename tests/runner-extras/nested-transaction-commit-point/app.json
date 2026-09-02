@@ -1,0 +1,18 @@
+{
+  "id": "c8d9e0f1-2a3b-4c4d-9e5f-6a7b8c9d0e13",
+  "name": "Runner Extras - Nested Transaction Commit Point",
+  "publisher": "AL Runner",
+  "version": "1.0.0.0",
+  "brief": "Regression for issue #2413: a BC API that opens a PLAIN nested transaction (Query.Open, statement-form XmlPort.Import) was treated as a durable commit point, so an asserterror stopped rolling back writes made before it. Only a completed transaction WORLD (guarded Codeunit.Run, Ok := XmlPort.Import) is a commit.",
+  "description": "The BC-language contract this exercises - which nested BC transactions move the rollback boundary and which do not - is a plain BC-behaviour claim and belongs upstream in the al-language corpus (see the runner repo's bc-behavior-tests-go-upstream.md); every shape here was measured on a real BC 28.4 service tier before the issue was filed, in both directions (the plain-transaction shapes roll back, the transaction-world shapes stay). This suite is the runner-repo-local stopgap so this repo's own CI gates the fix now; once the corpus test lands and the pin moves it may be retired.",
+  "dependencies": [],
+  "idRanges": [
+    {
+      "from": 64650,
+      "to": 64659
+    }
+  ],
+  "platform": "1.0.0.0",
+  "runtime": "14.0",
+  "features": []
+}
