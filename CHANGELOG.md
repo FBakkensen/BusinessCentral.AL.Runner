@@ -12,6 +12,7 @@ All notable changes to this project are documented here. Format based on
 - **all-profile:** populate the All Profile system virtual table (2000000178)
 
 ### Fixed
+- **codeunit:** a guarded Codeunit.Run must end its own transaction
 - **record:** create the User Property companion row BC's User insert trigger creates
 - **flowfield:** negate -exist(...) logically, not through NegateValue
 - **company:** put the runner's own company in the Company table
