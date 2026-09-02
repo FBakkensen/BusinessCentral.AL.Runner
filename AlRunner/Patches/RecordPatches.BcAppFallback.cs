@@ -425,6 +425,36 @@ public static partial class RecordPatches
     internal static int ResolveTableIdByName(string tableName)
     {
         if (string.IsNullOrEmpty(tableName)) return -1;
+
+        // Issue #2419: in a namespaced app the AL compiler writes a cross-app reference into
+        // the symbol reference as `#<app id, 32 hex digits>#<object name>` — a query dataitem
+        // `dataitem(ItemLedgerEntry; "Item Ledger Entry")` under `using Microsoft.Inventory.Ledger;`
+        // arrives as "#437dbf0e84ff417a965ded2bb9650972#Item Ledger Entry". The prefix says
+        // which app the name belongs to, so when that app's symbols are loaded the lookup is
+        // scoped to it first; the bare name is the fallback either way. Nothing else in the
+        // dataitem symbol carries the prefix (SourceColumn and DataItemLink are field names).
+        string? appIdScope = null;
+        if (tableName.Length > 34 && tableName[0] == '#' && tableName[33] == '#')
+        {
+            appIdScope = tableName.Substring(1, 32);
+            tableName = tableName.Substring(34);
+        }
+        if (appIdScope != null)
+        {
+            lock (_bcTableIndexLock)
+            {
+                EnsureBcSymbolTableIndex();
+                if (_bcSymbolTableIndex != null)
+                    foreach (var (id, entry) in _bcSymbolTableIndex)
+                        if (string.Equals(entry.Table.TableName, tableName, StringComparison.OrdinalIgnoreCase)
+                            && AppIdMatches(entry.AppPath, appIdScope))
+                        {
+                            _parsedTables.TryAdd(id, entry.Table);
+                            return id;
+                        }
+            }
+        }
+
         // First check already-parsed tables (test-source tables + previously-faulted-in BC tables).
         foreach (var t in _parsedTables.Values)
             if (string.Equals(t.TableName, tableName, StringComparison.OrdinalIgnoreCase))
@@ -442,6 +472,21 @@ public static partial class RecordPatches
                     }
         }
         return -1;
+    }
+
+    /// <summary>
+    /// Does the symbol reference at <paramref name="appPath"/> belong to the app whose id
+    /// (dashes removed, case-insensitive) is <paramref name="appIdNoDashes"/>? False when the
+    /// symbols carry no app identity (pre-v17 symbol references) — the caller then falls back
+    /// to the unscoped name lookup.
+    /// </summary>
+    private static bool AppIdMatches(string appPath, string appIdNoDashes)
+    {
+        string? appId;
+        try { appId = BcAppSymbolCache.Get(appPath).AppId; }
+        catch { return false; }
+        if (string.IsNullOrEmpty(appId)) return false;
+        return string.Equals(appId.Replace("-", string.Empty), appIdNoDashes, StringComparison.OrdinalIgnoreCase);
     }
 
     private static void EnsureBcSymbolTableIndex()

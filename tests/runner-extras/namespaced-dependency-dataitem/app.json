@@ -1,0 +1,19 @@
+{
+  "id": "b3c4d5e6-7f8a-4b9c-8d0e-1f2a3b4c5d68",
+  "name": "Runner Extras - Namespaced Dependency Dataitem",
+  "publisher": "AL Runner",
+  "version": "1.0.0.0",
+  "brief": "Regression for issue #2419: a query dataitem naming a dependency table through a namespace `using` reaches the runner as the app-qualified symbol form '#<appid>#Item Ledger Entry', which the table resolver did not recognise, so the query got no metadata and every SetRange/Open on it NREd inside NavQuery.",
+  "description": "The BC-language contract this exercises - a namespaced query joining a Base Application table through a `using` reads its joined row - is a plain BC-behaviour claim and belongs upstream in the al-language corpus (see the runner repo's bc-behavior-tests-go-upstream.md); the shape was measured green on a real BC 28.4 service tier before the issue was filed. This suite is the runner-repo-local stopgap so this repo's own CI gates the fix now; once the corpus test lands and the pin moves it may be retired. Needs the Base Application floor because the joined table is Item Ledger Entry.",
+  "dependencies": [],
+  "idRanges": [
+    {
+      "from": 64680,
+      "to": 64689
+    }
+  ],
+  "platform": "27.0.0.0",
+  "application": "27.0.0.0",
+  "runtime": "14.0",
+  "target": "Cloud"
+}
