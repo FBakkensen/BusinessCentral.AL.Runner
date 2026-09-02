@@ -150,7 +150,7 @@ assembly for `[NavEventSubscriber]` methods at startup and calls matching subscr
 **What works:**
 - Custom `[IntegrationEvent]` / `[BusinessEvent]` publishers with any subscriber signature.
 - Subscribers that receive `var` parameters (e.g. `var Rec: Record X`, `var IsHandled: Boolean`) — the rewriter forwards all event parameters, and `var` arguments are wrapped in `ByRef<T>` so mutations propagate back to the publisher.
-- `IncludeSender = true` — the sender codeunit instance is prepended as the first argument.
+- `IncludeSender = true` — the sender (codeunit instance or table record) is bound to the subscriber parameter carrying the publisher's type, at any position in the signature — first, middle, or last (as in Base Application's `MfgItemJnlPostLine.OnPostOutput`).
 - Database event subscribers (`OnAfterModify`, `OnBeforeInsert`, etc.) receive `Rec` and can read or modify fields; the mutations are visible to the caller after the trigger returns.
 
 ### No UI rendering

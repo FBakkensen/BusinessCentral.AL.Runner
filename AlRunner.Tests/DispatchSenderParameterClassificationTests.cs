@@ -44,6 +44,7 @@ public class DispatchSenderParameterClassificationTests
     private static void TwoParams_RecordFirst(INavRecordHandle first, int second) { }
     private static void UnrelatedLeadingType(string notASender) { }
     private static void NonLeadingRecordHandle(int first, INavRecordHandle notLeading) { }
+    private static void CodeunitSenderLast(int value, string tag, NavCodeunitHandle sender) { }
 
     private static ParameterInfo FirstParamOf(string methodName) =>
         typeof(DispatchSenderParameterClassificationTests)
@@ -71,25 +72,41 @@ public class DispatchSenderParameterClassificationTests
     }
 
     [Fact]
-    public void RecordHandleTypedParameter_NotAtLeadingPosition_IsNotSender()
+    public void RecordHandleTypedParameter_NotAtLeadingPosition_IsStillSender()
     {
-        // Position matters independent of type-shape: only a LEADING parameter can be a
-        // sender. A record-typed parameter declared later is a genuinely different argument.
+        // #2348: position is not a discriminator. Real BC binds the sender wherever it is
+        // declared (Base App's MfgItemJnlPostLine.OnPostOutput has `var sender` LAST), and the
+        // emitted C# keeps that order. A declared record-typed event ARGUMENT is kept apart
+        // from the sender by InvokeOneSubscriber's field-lookup-first ordering, not by index.
         var p = typeof(DispatchSenderParameterClassificationTests)
             .GetMethod(nameof(NonLeadingRecordHandle), BindingFlags.NonPublic | BindingFlags.Static)!
             .GetParameters()[1];
 
-        Assert.False(BcRuntime.IsSenderParameter(p, paramIndex: 1));
+        Assert.True(BcRuntime.IsSenderParameter(p, paramIndex: 1));
     }
 
     [Fact]
-    public void RecordHandleTypedLeadingParameter_ButPassedIndexOne_IsNotSender()
+    public void CodeunitHandleTypedParameter_AtLastPosition_IsSender()
     {
-        // Same "leading" requirement, expressed the other way: even a record-shaped, textually
-        // first parameter is not a sender if the caller reports it at a non-zero position.
-        var p = FirstParamOf(nameof(TwoParams_RecordFirst));
+        // The exact shape from #2348: `(var Value; Tag; var sender: Codeunit X)` emits
+        // `(ByRef<int>, NavCode, NavCodeunitHandle sender)` — sender at index 2.
+        var p = typeof(DispatchSenderParameterClassificationTests)
+            .GetMethod(nameof(CodeunitSenderLast), BindingFlags.NonPublic | BindingFlags.Static)!
+            .GetParameters()[2];
 
-        Assert.False(BcRuntime.IsSenderParameter(p, paramIndex: 1));
+        Assert.True(BcRuntime.IsSenderParameter(p, paramIndex: 2));
+    }
+
+    [Fact]
+    public void UnrelatedTypedParameter_AtNonLeadingPosition_IsNotSender()
+    {
+        // Dropping the index guard must not widen the type test: a plain int at index 0 of
+        // NonLeadingRecordHandle is still not a sender.
+        var p = typeof(DispatchSenderParameterClassificationTests)
+            .GetMethod(nameof(NonLeadingRecordHandle), BindingFlags.NonPublic | BindingFlags.Static)!
+            .GetParameters()[0];
+
+        Assert.False(BcRuntime.IsSenderParameter(p, paramIndex: 0));
     }
 
     [Fact]
