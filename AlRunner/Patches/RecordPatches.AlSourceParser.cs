@@ -421,7 +421,7 @@ public static partial class RecordPatches
                     list.Add(new ParsedCalcFilter(
                         Unquote(fe.LeftHandSide?.ToString()?.Trim() ?? ""),
                         ParsedCalcFilterKind.Filter,
-                        Value: fe.Filter?.ToString()?.Trim() ?? ""));
+                        Value: FilterValueText(fe.Filter?.ToString())));
                     break;
 
                 default:
@@ -653,7 +653,7 @@ public static partial class RecordPatches
                         filters.Add(new ParsedCalcFilter(
                             Unquote(fe.LeftHandSide?.ToString()?.Trim() ?? ""),
                             ParsedCalcFilterKind.Filter,
-                            Value: fe.Filter?.ToString()?.Trim() ?? ""));
+                            Value: FilterValueText(fe.Filter?.ToString())));
                         break;
 
                     // #1716 — the three flow-filter forms. All of them are FIELD links in
@@ -717,6 +717,155 @@ public static partial class RecordPatches
         if (s.Length >= 2 && s[0] == '"' && s[^1] == '"') return s[1..^1].Replace("\"\"", "\"");
         if (s.Length >= 2 && s[0] == '\'' && s[^1] == '\'') return s[1..^1].Replace("''", "'");
         return s;
+    }
+
+    /// <summary>
+    /// The expression of a <c>filter(...)</c> condition, as text BC's filter grammar can read.
+    /// <para>#2305. AL quotes an identifier with DOUBLE quotes; BC's filter grammar quotes a
+    /// literal with SINGLE quotes and treats <c>"</c> as an ordinary character — Ncl 28.1's
+    /// <c>FilterExpressionTokenizer.GetTokens</c> has a case for <c>'</c> (with <c>''</c> as its
+    /// escape) and none for <c>"</c>. So each AL quoted identifier is re-quoted here: AL's
+    /// <c>""</c> escape is resolved, then any <c>'</c> in the resulting name is doubled.</para>
+    /// <para>This is NOT <see cref="ConstValueText"/>'s rule, and the difference matters. A
+    /// const value is evaluated as a bare value, so its quotes simply come off; a filter value
+    /// is PARSED AS AN EXPRESSION, and Base App members such as
+    /// <c>Payment Discount (VAT Excl.)</c> carry parentheses the tokenizer would otherwise read
+    /// as grouping. <c>filter(&lt;&gt; " ")</c> is the same hazard with whitespace: bare, the
+    /// space is discarded and <c>&lt;&gt;</c> is left with no operand.</para>
+    /// <para>Carried through verbatim, <c>filter("Initial Entry")</c> reached the runtime as the
+    /// 15-character literal <c>"Initial Entry"</c>, which matches no option member, so
+    /// <c>Vendor Ledger Entry."Original Amount"</c> — and the 87 Base App CalcFormulas with a
+    /// <c>filter(...)</c> condition, 44 of them quoted — threw
+    /// <c>NavInvalidFilterExpressionException</c> instead of calculating.</para>
+    /// </summary>
+    private static string FilterValueText(string? text)
+    {
+        var s = (text ?? "").Trim();
+        if (s.IndexOf('"') < 0) return s;
+
+        var sb = new System.Text.StringBuilder(s.Length + 8);
+        for (int i = 0; i < s.Length; i++)
+        {
+            if (s[i] != '"') { sb.Append(s[i]); continue; }
+
+            var name = new System.Text.StringBuilder();
+            var closed = false;
+            for (i++; i < s.Length; i++)
+            {
+                if (s[i] != '"') { name.Append(s[i]); continue; }
+                // AL escapes a literal double quote inside an identifier by doubling it.
+                if (i + 1 < s.Length && s[i + 1] == '"') { name.Append('"'); i++; continue; }
+                closed = true;
+                break;
+            }
+            if (!closed)
+            {
+                // Unterminated quote: the AL parser would not have produced this node, so
+                // there is nothing to convert. Keep the text as written rather than invent
+                // a closing quote.
+                sb.Append('"').Append(name);
+                break;
+            }
+            sb.Append('\'').Append(name.ToString().Replace("'", "''")).Append('\'');
+        }
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// A report data item's <c>DataItemTableView</c>, rewritten from AL's spelling into the
+    /// runtime table-view form BC's own parser reads.
+    /// <para>#2305. BC applies this string with <c>NavRecord.ALSetView</c>
+    /// (<c>DataItemIterator.ApplyDataItemTableViewAndRequestFormFilters</c>), and
+    /// <c>TableViewParser</c>'s grammar uses a DIFFERENT quote character per clause:
+    /// <c>SORTING</c> field names and a <c>CONST(...)</c> value read with <c>"</c>, while a
+    /// <c>FILTER(...)</c> body reads with <c>'</c> — it is a filter expression, so it goes
+    /// through the same grammar as <c>SetFilter</c>. Only the inside of a <c>filter(...)</c>
+    /// is therefore rewritten; field names keep their AL quotes because the view grammar
+    /// already reads them that way.</para>
+    /// <para>Left alone, Base App's Report 321 "Vendor - Balance to Date" —
+    /// <c>where("Entry Type" = filter(&lt;&gt; "Initial Entry"))</c> — threw
+    /// <c>NavInvalidFilterExpressionException</c> the moment the report ran.</para>
+    /// </summary>
+    internal static string? TableViewText(string? view)
+    {
+        if (string.IsNullOrEmpty(view) || view.IndexOf('"') < 0) return view;
+
+        var sb = new System.Text.StringBuilder(view.Length + 8);
+        for (int i = 0; i < view.Length; i++)
+        {
+            // A quoted identifier outside filter(...) is a field name: BC's view grammar
+            // reads it with '"' as the quote char, so it is copied through untouched — and
+            // skipped over, so the `filter` keyword is never matched inside one (a field
+            // named "Date Filter" is otherwise a false positive).
+            if (view[i] == '"')
+            {
+                var end = SkipAlQuoted(view, i);
+                sb.Append(view, i, end - i);
+                i = end - 1;
+                continue;
+            }
+
+            if (StartsFilterCall(view, i, out var open))
+            {
+                var close = MatchingCloseParen(view, open);
+                if (close > 0)
+                {
+                    sb.Append(view, i, open + 1 - i);
+                    sb.Append(FilterValueText(view.Substring(open + 1, close - open - 1)));
+                    sb.Append(')');
+                    i = close;
+                    continue;
+                }
+            }
+
+            sb.Append(view[i]);
+        }
+        return sb.ToString();
+    }
+
+    /// <summary>Index just past the closing quote of the AL quoted identifier starting at
+    /// <paramref name="i"/> (which must be the opening <c>"</c>), treating <c>""</c> as an
+    /// escape. An unterminated identifier returns the end of the string.</summary>
+    private static int SkipAlQuoted(string s, int i)
+    {
+        for (i++; i < s.Length; i++)
+        {
+            if (s[i] != '"') continue;
+            if (i + 1 < s.Length && s[i + 1] == '"') { i++; continue; }
+            return i + 1;
+        }
+        return s.Length;
+    }
+
+    /// <summary>True when <paramref name="i"/> begins the keyword <c>filter</c> as a whole
+    /// word followed by <c>(</c>, whose index is returned in <paramref name="open"/>.</summary>
+    private static bool StartsFilterCall(string s, int i, out int open)
+    {
+        open = -1;
+        const string Keyword = "filter";
+        if (i + Keyword.Length > s.Length) return false;
+        if (string.Compare(s, i, Keyword, 0, Keyword.Length, StringComparison.OrdinalIgnoreCase) != 0) return false;
+        if (i > 0 && (char.IsLetterOrDigit(s[i - 1]) || s[i - 1] == '_')) return false;
+        var j = i + Keyword.Length;
+        while (j < s.Length && s[j] == ' ') j++;
+        if (j >= s.Length || s[j] != '(') return false;
+        open = j;
+        return true;
+    }
+
+    /// <summary>Index of the <c>)</c> closing the <c>(</c> at <paramref name="open"/>, or -1.
+    /// Parentheses inside a quoted identifier do not count — an option member such as
+    /// <c>Payment Discount (VAT Excl.)</c> carries a balanced pair of its own.</summary>
+    private static int MatchingCloseParen(string s, int open)
+    {
+        var depth = 0;
+        for (var i = open; i < s.Length; i++)
+        {
+            if (s[i] == '"') { i = SkipAlQuoted(s, i) - 1; continue; }
+            if (s[i] == '(') depth++;
+            else if (s[i] == ')' && --depth == 0) return i;
+        }
+        return -1;
     }
 
     /// <summary>
