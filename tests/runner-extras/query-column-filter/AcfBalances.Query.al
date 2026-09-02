@@ -13,6 +13,7 @@ query 64671 "Acf Balances"
                 Method = Sum;
             }
             filter(ProjectNoFilter; "Project No.") { }
+            filter(ItemNoFilter; "Item No.") { }
         }
     }
 }
