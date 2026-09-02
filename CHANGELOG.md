@@ -12,6 +12,7 @@ All notable changes to this project are documented here. Format based on
 - **all-profile:** populate the All Profile system virtual table (2000000178)
 
 ### Fixed
+- **page:** dispatch non-modal Page.Run instead of NREing on a null ServiceConnection
 - **session:** give the skeleton NavDatabase a tenant so BC can answer the execution context
 - **testpage:** resolve a dependency-declared page's SourceTable in GetMetaTable
 - **codeunit:** a guarded Codeunit.Run must end its own transaction
@@ -22,6 +23,7 @@ All notable changes to this project are documented here. Format based on
 - **alsid:** answer Sid(name) with BC's not-mapped empty string on a host with no Windows identity store
 
 ### Changed
+- **test-data:** read backup tables over serve mode, and stop paying per-call costs on the hottest hooks
 - **corpus:** bump the pin to the four backfilled BC-behavior tests
 - normalise a Time field's InitValue to the format BC evaluates it with
 - capture DefaultImplementation and UnknownValueImplementation
