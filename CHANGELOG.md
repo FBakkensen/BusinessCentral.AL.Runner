@@ -6,6 +6,9 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+### Fixed
+- **alsid:** answer Sid(name) with BC's not-mapped empty string on a host with no Windows identity store
+
 ### Changed
 - capture DefaultImplementation and UnknownValueImplementation
 - match option text the way BC does, not ordinal-exact
