@@ -12,6 +12,7 @@ All notable changes to this project are documented here. Format based on
 - **all-profile:** populate the All Profile system virtual table (2000000178)
 
 ### Fixed
+- **events:** bind IncludeSender to the sender parameter at any position
 - **events:** lazily inject table-trigger subscribers at metatable-build time
 - **agents:** allowlist the bc-decompiler MCP tools the agent definitions already document
 - **testpage:** await the AL page trigger's ValueTask so a control's OnValidate error is not silently discarded
