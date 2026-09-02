@@ -17,6 +17,7 @@ All notable changes to this project are documented here. Format based on
 - **alsid:** answer Sid(name) with BC's not-mapped empty string on a host with no Windows identity store
 
 ### Changed
+- **corpus:** bump the pin to the four backfilled BC-behavior tests
 - normalise a Time field's InitValue to the format BC evaluates it with
 - capture DefaultImplementation and UnknownValueImplementation
 - match option text the way BC does, not ordinal-exact
