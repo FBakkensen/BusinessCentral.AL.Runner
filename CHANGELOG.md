@@ -27,6 +27,7 @@ All notable changes to this project are documented here. Format based on
 - **agents:** opening a corpus PR needs no approval
 
 ### Changed
+- **tests:** stop loading the Base Application closure in fixtures that never read it
 - **orchestrating-a-session:** capture the coordinator contract so it stops being re-explained
 - **agents:** make code navigation the path agents are actually told about
 - **tests:** route the three worst spawn-heavy test classes through the warm --server fixture
