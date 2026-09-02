@@ -23,7 +23,11 @@ All notable changes to this project are documented here. Format based on
 - **numbersequence:** raise BC's trappable NavALException, not BCL exceptions
 - **alsid:** answer Sid(name) with BC's not-mapped empty string on a host with no Windows identity store
 
+### Documentation
+- **agents:** opening a corpus PR needs no approval
+
 ### Changed
+- **agents:** make code navigation the path agents are actually told about
 - **tests:** route the three worst spawn-heavy test classes through the warm --server fixture
 - **corpus:** bump the pin to the TestPage-over-a-platform-page suite
 - **test-data:** read backup tables over serve mode, and stop paying per-call costs on the hottest hooks
