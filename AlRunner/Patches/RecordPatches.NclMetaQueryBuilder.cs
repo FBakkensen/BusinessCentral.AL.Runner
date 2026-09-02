@@ -26,6 +26,7 @@ public static partial class RecordPatches
 
     // Reflection handles for the MetaQuery design model + CreateDynamicQuery.
     private static Type? _tMetaQuery;
+    private static Type? _tMetaQueryColumnFilter;
     private static Type? _tMetaQueryDataItem;
     private static Type? _tMetaQueryColumn;
     private static Type? _tMetaQueryOrderBy;
@@ -50,6 +51,7 @@ public static partial class RecordPatches
         _tMetaQueryColumn = typesAsm?.GetType(md + "MetaQueryColumn");
         _tMetaQueryOrderBy = typesAsm?.GetType(md + "MetaQueryOrderBy");
         _tMetaQueryDataItemLink = typesAsm?.GetType(md + "MetaQueryDataItemLink");
+        _tMetaQueryColumnFilter = typesAsm?.GetType(md + "MetaQueryColumnFilter");
 
         // public static NCLMetaQuery CreateDynamicQuery(ApplicationObjectId, MetaQuery, Type, NavAppGroup)
         if (_tNCLMetaQuery != null)
@@ -244,6 +246,36 @@ public static partial class RecordPatches
             isRoot = false;
         }
 
+        // Static ColumnFilter properties (issue #2418). Each column may carry
+        // `ColumnFilter = <Col> = filter(<expr>) [, <Col2> = const(<value>) ...]`, and the
+        // named column can be any column of the query, not only the one declaring it. BC's
+        // design model keeps these on the query as MetaQueryColumnFilter { QueryColumnId,
+        // TypeOfFilter, Value }; NCLMetaQuery.CreateDynamicQuery turns them into
+        // NCLMetaQuery.ColumnFilters (column, FilterExpression) pairs, which
+        // RecordPatches.QueryProjection folds into execution. Done after every dataitem so a
+        // filter can name a column declared later or on another dataitem.
+        foreach (var diSym in FlattenDataItems(sym.DataItems))
+            foreach (var col in diSym.Columns)
+            {
+                if (string.IsNullOrWhiteSpace(col.ColumnFilter)) continue;
+                foreach (var (targetName, isConst, value) in ParseColumnFilterProperty(col.ColumnFilter!))
+                {
+                    if (!columnIdByName.TryGetValue(targetName, out var targetId))
+                    {
+                        QLog($"BuildMetaQueryDesign({queryId}): ColumnFilter on '{col.Name}' names unknown column '{targetName}' — abandoning build");
+                        return null;
+                    }
+                    if (_tMetaQueryColumnFilter == null)
+                        throw new InvalidOperationException("Microsoft.Dynamics.Nav.Types.Metadata.MetaQueryColumnFilter not found — BC metadata shape changed");
+                    var cf = Activator.CreateInstance(_tMetaQueryColumnFilter)!;
+                    SetProp(cf, "QueryColumnId", targetId);
+                    SetProp(cf, "TypeOfFilter", isConst ? "CONST" : "FILTER");
+                    SetProp(cf, "Value", value);
+                    GetList(mq, "ColumnFilters").Add(cf);
+                    QLog($"BuildMetaQueryDesign({queryId}): ColumnFilter on '{col.Name}' → column '{targetName}' (id {targetId}) {(isConst ? "CONST" : "FILTER")} '{value}'");
+                }
+            }
+
         // OrderBy: SymbolReference carries "ascending(Col1,Col2)" / "descending(...)". Map
         // each named column → its column id. Unknown columns are skipped (best-effort).
         AddOrderBys(mq, sym.OrderBy, columnIdByName);
@@ -333,6 +365,70 @@ public static partial class RecordPatches
 
     private static string Unquote(string s)
         => s.Length >= 2 && s[0] == '"' && s[^1] == '"' ? s[1..^1] : s;
+
+    /// <summary>
+    /// Parse the AL <c>ColumnFilter</c> property text — one or more comma-separated
+    /// <c>&lt;Column&gt; = filter(&lt;expr&gt;)</c> / <c>&lt;Column&gt; = const(&lt;value&gt;)</c>
+    /// terms, column names optionally double-quoted, commas allowed inside the parentheses
+    /// and inside single-quoted values. A <c>const</c> value's surrounding single quotes are
+    /// stripped, matching what the design-time MetaQueryColumnFilter.Value carries for a
+    /// compiled query. Issue #2418.
+    /// </summary>
+    internal static List<(string Column, bool IsConst, string Value)> ParseColumnFilterProperty(string text)
+    {
+        var result = new List<(string, bool, string)>();
+        int i = 0;
+        while (i < text.Length)
+        {
+            while (i < text.Length && (char.IsWhiteSpace(text[i]) || text[i] == ',')) i++;
+            if (i >= text.Length) break;
+            string name;
+            if (text[i] == '"')
+            {
+                int close = text.IndexOf('"', i + 1);
+                if (close < 0) throw new FormatException($"ColumnFilter: unterminated quoted column name in '{text}'");
+                name = text.Substring(i + 1, close - i - 1);
+                i = close + 1;
+            }
+            else
+            {
+                int start = i;
+                while (i < text.Length && text[i] != '=') i++;
+                name = text.Substring(start, i - start).Trim();
+            }
+            while (i < text.Length && char.IsWhiteSpace(text[i])) i++;
+            if (i >= text.Length || text[i] != '=') throw new FormatException($"ColumnFilter: expected '=' after column '{name}' in '{text}'");
+            i++;
+            while (i < text.Length && char.IsWhiteSpace(text[i])) i++;
+            int kwStart = i;
+            while (i < text.Length && char.IsLetter(text[i])) i++;
+            var keyword = text.Substring(kwStart, i - kwStart);
+            bool isConst = keyword.Equals("const", StringComparison.OrdinalIgnoreCase);
+            if (!isConst && !keyword.Equals("filter", StringComparison.OrdinalIgnoreCase))
+                throw new FormatException($"ColumnFilter: expected filter(...) or const(...) for column '{name}' in '{text}'");
+            while (i < text.Length && char.IsWhiteSpace(text[i])) i++;
+            if (i >= text.Length || text[i] != '(') throw new FormatException($"ColumnFilter: expected '(' after {keyword} in '{text}'");
+            i++;
+            int depth = 1, valueStart = i;
+            bool inQuote = false;
+            while (i < text.Length)
+            {
+                char c = text[i];
+                if (inQuote) { if (c == '\'') inQuote = false; }
+                else if (c == '\'') inQuote = true;
+                else if (c == '(') depth++;
+                else if (c == ')' && --depth == 0) break;
+                i++;
+            }
+            if (i >= text.Length) throw new FormatException($"ColumnFilter: unterminated {keyword}(...) for column '{name}' in '{text}'");
+            var value = text.Substring(valueStart, i - valueStart).Trim();
+            i++; // ')'
+            if (isConst && value.Length >= 2 && value[0] == '\'' && value[^1] == '\'')
+                value = value.Substring(1, value.Length - 2).Replace("''", "'");
+            result.Add((name, isConst, value));
+        }
+        return result;
+    }
 
     private static void AddOrderBys(object mq, string? orderBy, Dictionary<string, int> columnIdByName)
     {

@@ -1,0 +1,18 @@
+{
+  "id": "f1a2b3c4-5d6e-4f7a-8b9c-0d1e2f3a4b46",
+  "name": "Runner Extras - Query Column Filter",
+  "publisher": "AL Runner",
+  "version": "1.0.0.0",
+  "brief": "Regression for issue #2418: a query column's static ColumnFilter property was dropped on the way from the symbol reference into the runner-synthesized query metadata, and the runner's query execution never consulted NCLMetaQuery.ColumnFilters, so a filter(> 0) on a Method = Sum column did not drop the groups whose total fails it.",
+  "description": "The BC-language contract this exercises - a ColumnFilter on an aggregated column filters the aggregated value, on a plain column it filters the source rows, and a runtime SetFilter/SetRange on the same column replaces the static filter - is a plain BC-behaviour claim and belongs upstream in the al-language corpus (see the runner repo's bc-behavior-tests-go-upstream.md); every shape here was measured on a real BC 28.4 service tier before the issue was filed. This suite is the runner-repo-local stopgap so this repo's own CI gates the fix now; once the corpus test lands and the pin moves it may be retired.",
+  "dependencies": [],
+  "idRanges": [
+    {
+      "from": 64670,
+      "to": 64679
+    }
+  ],
+  "platform": "1.0.0.0",
+  "runtime": "14.0",
+  "features": []
+}

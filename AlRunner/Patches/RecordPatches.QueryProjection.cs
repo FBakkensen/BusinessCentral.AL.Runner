@@ -460,17 +460,46 @@ public static partial class RecordPatches
             return request; // ordinary table read — nothing to translate.
 
         EnsureFilterReflection();
+        // A request with no runtime filters at all can still carry static ColumnFilters
+        // (issue #2418), so a null FiltersAndMarks / Filters is "no runtime items", not an
+        // early exit.
         var filtersAndMarks = request.GetType().GetProperty("FiltersAndMarks", BindingFlags.Public | BindingFlags.Instance)!
             .GetValue(request);
-        if (filtersAndMarks == null) return request;
-        var filters = _tFiltersAndMarks!.GetProperty("Filters", BindingFlags.Public | BindingFlags.Instance)!
-            .GetValue(filtersAndMarks);
-        if (filters == null) return request;
+        var filters = filtersAndMarks == null ? null
+            : _tFiltersAndMarks!.GetProperty("Filters", BindingFlags.Public | BindingFlags.Instance)!.GetValue(filtersAndMarks);
 
         // FilterFieldDictionary.Items : Tuple<INavFieldMetadata, FilterExpression>[]
-        var items = (Array?)_tFilterFieldDictionary!.GetProperty("Items", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)?
-            .GetValue(filters);
-        if (items == null || items.Length == 0) return request; // no field filters → nothing to do.
+        var items = filters == null ? null
+            : (Array?)_tFilterFieldDictionary!.GetProperty("Items", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)?.GetValue(filters);
+        var allItems = new List<object>();
+        if (items != null) foreach (var it in items) allItems.Add(it!);
+
+        // Static ColumnFilter properties (issue #2418): NCLMetaQuery.ColumnFilters holds one
+        // (NCLMetaQueryColumn, FilterExpression) pair per design-time filter. Real BC applies
+        // them exactly like a runtime SetFilter on that column — a HAVING filter on an
+        // aggregated column, a WHERE filter on a plain one — with one measured rule: a runtime
+        // SetRange/SetFilter on the SAME column REPLACES the static filter (BC 28.4, static
+        // `filter(> 0)` plus runtime '<4' on a Sum column returned the zero-total group and
+        // dropped the 5-total one). So a static pair is folded in only when no runtime filter
+        // is keyed by its column, and then travels the same translation below.
+        var pColumnFilters = _tNCLMetaQuery.GetProperty("ColumnFilters", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        var staticPairs = pColumnFilters?.GetValue(metaAppObj) as System.Collections.IEnumerable;
+
+        if (staticPairs != null)
+        {
+            foreach (var pair in staticPairs)
+            {
+                if (pair == null) continue;
+                var col = pair.GetType().GetProperty("Item1")!.GetValue(pair);
+                var expr = pair.GetType().GetProperty("Item2")!.GetValue(pair);
+                if (col == null || expr == null) continue;
+                bool overridden = allItems.Any(it => Equals(it.GetType().GetProperty("Item1")!.GetValue(it), col));
+                if (overridden) continue;
+                allItems.Add(MakeFieldTuple(col, expr));
+            }
+        }
+        if (allItems.Count == 0) return request; // no field filters → nothing to do.
+        items = allItems.ToArray();
 
         var translatedTuples = new List<object>();
         bool anyTranslated = false;
@@ -509,8 +538,11 @@ public static partial class RecordPatches
 
         // Build FilterFieldDictionary(IEnumerable<Tuple<INavFieldMetadata, FilterExpression>>)
         var newFilters = BuildFilterFieldDictionary(translatedTuples);
-        var markedRecords = _tFiltersAndMarks.GetProperty("MarkedRecords", BindingFlags.Public | BindingFlags.Instance)!.GetValue(filtersAndMarks);
-        var newFam = Activator.CreateInstance(_tFiltersAndMarks, newFilters, markedRecords)!;
+        var markedRecords = filtersAndMarks == null ? null
+            : _tFiltersAndMarks!.GetProperty("MarkedRecords", BindingFlags.Public | BindingFlags.Instance)!.GetValue(filtersAndMarks);
+        var newFam = markedRecords == null
+            ? Activator.CreateInstance(_tFiltersAndMarks!, newFilters)!
+            : Activator.CreateInstance(_tFiltersAndMarks!, newFilters, markedRecords)!;
         return CloneRequestWithFilters(request, newFam);
     }
 
