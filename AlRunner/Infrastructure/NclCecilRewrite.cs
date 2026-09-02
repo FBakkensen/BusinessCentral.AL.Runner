@@ -4529,6 +4529,30 @@ public static class NclCecilRewrite
                 $"[Cecil] Prepended NoteRecordWrite/NoteRecordInsertWrite → {bumped} NavRecord AL write entry point(s)");
         }
 
+        // ── Insert() physical-write note (AlRunner#2402) ─────────────────────────────
+        // NoteRecordInsertWrite above notes every Insert() ATTEMPT for
+        // RecordPatches.ForceDurableFailedInserts. That method must only ever act on an
+        // Insert() whose own OnInsert threw before the row was written — a completed
+        // Insert() is an ordinary write the commit-point rollback undoes. The one place
+        // that distinguishes the two is RecordImplementation.InsertRecordAsync: the sole
+        // call in NavRecord.InsertAsync that hands the row to the data provider, reached
+        // only after OnInsert returned normally. Prepend a note there so the attempt is
+        // retired the moment the physical write starts.
+        {
+            var recImplType = asm.MainModule.GetType("Microsoft.Dynamics.Nav.Runtime.RecordImplementation")
+                ?? throw new InvalidOperationException(
+                    "[Cecil] RecordImplementation type not found — Ncl shape changed; do not commit");
+            var insertRecord = recImplType.Methods.FirstOrDefault(m =>
+                m.Name == "InsertRecordAsync" && m.HasBody && !m.IsStatic)
+                ?? throw new InvalidOperationException(
+                    "[Cecil] RecordImplementation.InsertRecordAsync not found — Ncl shape changed; do not commit");
+            var landedMi = typeof(AlRunner.Patches.RecordPatches).GetMethod(
+                nameof(AlRunner.Patches.RecordPatches.NoteInsertLanded),
+                BindingFlags.Public | BindingFlags.Static)
+                ?? throw new InvalidOperationException("RecordPatches.NoteInsertLanded not found");
+            PrependStaticCall(asm.MainModule, insertRecord, landedMi, argSlots: 1);
+        }
+
 
         // -- All Profile (2000000178) write rules ------------------------------------
         // The in-memory store behind All Profile accepts any write, but a real tier does
