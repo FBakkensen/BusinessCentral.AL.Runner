@@ -1,0 +1,18 @@
+{
+  "id": "f7a8b9c0-1d2e-4f3a-8b4c-5d6e7f8a9b02",
+  "name": "Runner Extras - Query FlowField Column",
+  "publisher": "AL Runner",
+  "version": "1.0.0.0",
+  "brief": "Regression for issue #2428: a query column over a FlowField could not be opened. BC builds a sub-query for the FlowField while creating the query metadata and reads NCLMetaTable.SqlTableName, whose NavSqlStatementHelper.ConvertToSqlIdentifier dereferenced the null NavGlobal.AppDatabase on the runner's skeleton session.",
+  "description": "The BC-language contract this exercises - a query column over a FlowField carries the calculated value - is a plain BC-behaviour claim and belongs upstream in the al-language corpus (see the runner repo's bc-behavior-tests-go-upstream.md); the shape was measured green on a real BC 28.4 service tier before the issue was filed. This suite is the runner-repo-local stopgap so this repo's own CI gates the fix now; once the corpus test lands and the pin moves it may be retired.",
+  "dependencies": [],
+  "idRanges": [
+    {
+      "from": 64710,
+      "to": 64719
+    }
+  ],
+  "platform": "1.0.0.0",
+  "runtime": "14.0",
+  "features": []
+}

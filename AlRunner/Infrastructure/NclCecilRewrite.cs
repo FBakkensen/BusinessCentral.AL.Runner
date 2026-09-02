@@ -7176,6 +7176,20 @@ public static class NclCecilRewrite
             var telemetry     = typeof(AlRunner.BcRuntime);          // NavServerEventSource_* are BcRuntime partials too
             var navRecordIdP  = typeof(AlRunner.Patches.NavRecordIdPatches);
 
+            // ── NavSqlStatementHelper.ConvertToSqlIdentifier (issue #2428) ─────────
+            // Reached with no SQL backend while BC builds a query's FlowField sub-query
+            // (NCLMetaTable.SqlTableName); the original NREs on the null NavGlobal.AppDatabase.
+            // See SqlIdentifierPatches for the faithfulness argument.
+            {
+                var sqlIdP = typeof(AlRunner.Patches.SqlIdentifierPatches);
+                ReplaceBodyWithHelper(nclMod,
+                    ByParams(Rt + "NavSqlStatementHelper", "ConvertToSqlIdentifier", "String"),
+                    H(sqlIdP, "NavSqlStatementHelper_ConvertToSqlIdentifier"));
+                ReplaceBodyWithHelper(nclMod,
+                    ByParams(Rt + "NavSqlStatementHelper", "ConvertToSqlIdentifier", "StringBuilder"),
+                    H(sqlIdP, "NavSqlStatementHelper_ConvertToSqlIdentifierSb"));
+            }
+
             // ── NCLMetadata lookups (RecordPatches.cs:150-189) ──────────────────
             ReplaceBodyWithHelper(nclMod,
                 ByParams(Rt + "NCLMetadata", "GetMetaTableById", "Int32", "Boolean", "Int32"),
