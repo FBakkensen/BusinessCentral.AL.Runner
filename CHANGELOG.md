@@ -7,6 +7,7 @@ All notable changes to this project are documented here. Format based on
 ## [Unreleased]
 
 ### Changed
+- capture DefaultImplementation and UnknownValueImplementation
 - match option text the way BC does, not ordinal-exact
 - drop an unmappable column, not the whole table
 - re-quote a filter() identifier for BC's filter grammar
