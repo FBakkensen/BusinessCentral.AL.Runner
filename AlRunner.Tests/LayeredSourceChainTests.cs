@@ -35,6 +35,25 @@ namespace AlRunner.Tests;
 /// the runner's OWN workspace dirs, not about artifact provisioning.
 ///
 /// Spawns the real runner; needs the BC artifact cache. Skips (visibly) when absent.
+///
+/// #2377: MEASURED and left spawning. Two of the three facts below could technically be
+/// served by a shared --server fixture, and converting them made the class SLOWER —
+/// 128.8s -> 139.9s of per-test time in a back-to-back matched pair. A warm server only
+/// pays for itself when a class issues SEVERAL expensive requests against one BC boot
+/// (LayeredCacheTests: 150.6s -> 28.9s, two expensive runs collapsing onto one boot).
+/// Here exactly one fact is expensive; the negative fact costs 5s because it dies in
+/// dependency resolution before BC boots at all; and the sibling-source fact CANNOT move
+/// (see below). So the conversion added a whole second BC boot to a class that still had
+/// to spawn a CLI anyway, and bought back 5 seconds.
+///
+/// The sibling-source fact is stuck for a different reason worth knowing about:
+/// RunAllBundlesForServer puts BOTH source pre-passes behind `if (sourcePaths.Length > 1)`,
+/// while the CLI gates only RunLayeredPrePass on bundle count and runs
+/// BuildSiblingSourceDeps unconditionally. Measured on this fixture's shape: the CLI exits
+/// 0, the identical single-bundle runTests request exits 3 with "DEP-RESOLVE-FAIL:
+/// Dependency not found". That is a runner bug (tracked in #2380), not a property of this
+/// test — a --server client such as the VS Code extension, which sends one bundle at a
+/// time, cannot resolve a sibling source dependency at all today.
 /// </summary>
 public class LayeredSourceChainTests
 {
