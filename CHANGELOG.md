@@ -12,6 +12,7 @@ All notable changes to this project are documented here. Format based on
 - **all-profile:** populate the All Profile system virtual table (2000000178)
 
 ### Fixed
+- **query:** compute single-dataitem FlowField query columns instead of NRE-ing or corrupting the value
 - **test-exec:** make a watchdog-timeout suite abort loud, not silent
 - **query:** retarget wildcard filters on query columns to the source field
 - **events:** bind IncludeSender to the sender parameter at any position
