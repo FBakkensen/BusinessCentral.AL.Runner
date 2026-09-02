@@ -294,15 +294,37 @@ public static partial class BcRuntime
     [MethodImpl(MethodImplOptions.NoInlining)] public static bool ReturnFalse2(object? a, object? b) => false;
 
     /// <summary>
-    /// Diagnostic helper used for the RecordImplementation.IsOpen hook — logs the call
-    /// site so we can trace which patched receiver is being asked. Always returns true
-    /// (record is open) because by the time the test harness asks, we want the read path
-    /// to proceed against TempTableDataProvider rather than throw NotOpened.
+    /// Replacement for <c>RecordImplementation.get_IsOpen</c>. Always returns true (the
+    /// record is open) because by the time the test harness asks, we want the read path to
+    /// proceed against TempTableDataProvider rather than throw NotOpened.
+    ///
+    /// THIS IS THE HOTTEST HOOK IN THE RUNNER — keep the body free of allocation and I/O.
+    /// <c>NavRecord.GetFieldValue</c> asks for IsOpen on every field read, so whatever this
+    /// method does happens millions of times in a single test. It used to build an
+    /// interpolated string (including a reflective <c>a.GetType().Name</c>) and push it
+    /// through Console.Error unconditionally, as a leftover tracing aid. The line was never
+    /// even visible: Log's FilteredWriter drops bracket-tagged lines at default verbosity, so
+    /// the allocation, the reflection, the compiled-Regex match and the synchronized write all
+    /// bought nothing. CPU sampling of the test in issue 2304 caught it directly —
+    /// SyncTextWriter.WriteLine under BcRuntime.ReturnTrue under NavRecord.GetFieldValue.
+    /// The trace is kept behind a gate that is read ONCE, for whoever needs it next.
     /// </summary>
+    /// <summary>
+    /// One gate for every per-call hook trace, read ONCE. A hook that fires per field read or
+    /// per record construction cannot afford an environment read, let alone a formatted
+    /// console write, and two of them were doing both. Set AL_RUNNER_TRACE_HOOKS=1 to get the
+    /// traces back.
+    /// </summary>
+    private static readonly bool _traceHooks =
+        Environment.GetEnvironmentVariable("AL_RUNNER_TRACE_HOOKS") == "1";
+
+    internal static bool HookTraceEnabled => _traceHooks;
+
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static bool ReturnTrue(object? a)
     {
-        Console.Error.WriteLine($"[ReturnTrue] IsOpen hook fired for {a?.GetType().Name}");
+        if (_traceHooks)
+            Console.Error.WriteLine($"[ReturnTrue] IsOpen hook fired for {a?.GetType().Name}");
         return true;
     }
 }
