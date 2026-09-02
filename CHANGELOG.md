@@ -7,6 +7,7 @@ All notable changes to this project are documented here. Format based on
 ## [Unreleased]
 
 ### Changed
+- drop an unmappable column, not the whole table
 - re-quote a filter() identifier for BC's filter grammar
 
 ## [2.10.0] - 2026-09-01
