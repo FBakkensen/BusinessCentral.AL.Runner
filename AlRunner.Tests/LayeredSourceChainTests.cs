@@ -78,7 +78,6 @@ public class LayeredSourceChainTests
           "version": "1.0.0.0",
           "dependencies": [],
           "platform": "1.0.0.0",
-          "application": "1.0.0.0",
           "idRanges": [ { "from": 60050, "to": 60059 } ],
           "runtime": "14.0"
         }
@@ -128,7 +127,6 @@ public class LayeredSourceChainTests
             { "id": "{{baseId}}", "name": "LSC Chain Base", "publisher": "AL Runner", "version": "1.0.0.0" }
           ],
           "platform": "1.0.0.0",
-          "application": "1.0.0.0",
           "idRanges": [ { "from": 60060, "to": 60069 } ],
           "runtime": "14.0"
         }
@@ -183,7 +181,6 @@ public class LayeredSourceChainTests
             { "id": "{{middleId}}", "name": "LSC Chain Middle", "publisher": "AL Runner", "version": "1.0.0.0" }
           ],
           "platform": "1.0.0.0",
-          "application": "1.0.0.0",
           "idRanges": [ { "from": 60070, "to": 60079 } ],
           "runtime": "14.0"
         }
