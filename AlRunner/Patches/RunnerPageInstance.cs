@@ -829,7 +829,10 @@ internal sealed class RunnerPageInstance
         var byRef = new ByRef<NavText>(() => value, v => value = v);
 
         object? result;
-        try { result = trigger.Method.Invoke(trigger.Target, new object?[] { byRef }); }
+        // AwaitTriggerResult, not a bare Invoke: BC emits `trigger OnLookup(...): Boolean` as
+        // `ValueTask<bool>`, so the raw Invoke result never pattern-matches `is true` and every
+        // lookup read as "the user cancelled" — see AwaitTriggerResult's remarks.
+        try { result = AwaitTriggerResult(trigger.Method.Invoke(trigger.Target, new object?[] { byRef })); }
         catch (TargetInvocationException tie) when (tie.InnerException != null)
         {
             System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(tie.InnerException).Throw();
@@ -1052,13 +1055,31 @@ internal sealed class RunnerPageInstance
     /// dispatch reaches the page's override; a page that declares none lands on NavForm's
     /// implementation, which is the correct no-op/true.
     /// </summary>
+    /// <summary>
+    /// Invoke one of the page's own record triggers (OnOpenPage, OnQueryClosePage, OnNewRecord,
+    /// OnInsertRecord, …) and answer with what it produced.
+    ///
+    /// Routed through <see cref="AwaitTriggerResult"/> for the same reason the control-trigger
+    /// path is (#2359), and the consequences here are worse, because two of these triggers'
+    /// RETURN VALUES are load-bearing:
+    ///
+    /// <list type="bullet">
+    /// <item><c>RaiseOnClosePage</c> tests <c>is false</c> to honour OnQueryClosePage's veto,
+    /// and <c>RaiseOnInsertRecord</c> tests <c>is not false</c> to honour OnInsertRecord's.
+    /// Against a raw <c>ValueTask&lt;bool&gt;</c> neither pattern can ever match, so a page that
+    /// refused to close, or refused an insert, was closed and inserted anyway.</item>
+    /// <item>An <c>Error()</c> raised in OnOpenPage or OnQueryClosePage was parked on the
+    /// discarded awaitable and never reached the AL that called <c>OpenNew()</c> /
+    /// <c>Close()</c> — the same silent success the control-trigger half produced.</item>
+    /// </list>
+    /// </summary>
     private object? InvokeRecordTrigger(string name, Type[] parameterTypes, object[] arguments)
     {
         var trigger = _form.GetType().GetMethod(name,
             BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance,
             binder: null, types: parameterTypes, modifiers: null);
         if (trigger == null) return null;
-        try { return trigger.Invoke(_form, arguments); }
+        try { return AwaitTriggerResult(trigger.Invoke(_form, arguments)); }
         catch (TargetInvocationException tie) when (tie.InnerException != null)
         {
             // An Error() inside the trigger is the trigger's own outcome, not a runner
@@ -1321,7 +1342,9 @@ internal sealed class RunnerPageInstance
                 ?? TryFindActionRefTargetTriggerOnExtension(instance, extensionId, actionId);
             if (match == null) continue;
 
-            try { match.Value.Method.Invoke(match.Value.Target, null); }
+            // AwaitTriggerResult for the same reason Invoke uses it: this OnAction is emitted
+            // async too, so dropping the awaitable swallowed any Error() the action raised.
+            try { AwaitTriggerResult(match.Value.Method.Invoke(match.Value.Target, null)); }
             catch (TargetInvocationException tie) when (tie.InnerException != null)
             {
                 System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(tie.InnerException).Throw();
@@ -1350,13 +1373,98 @@ internal sealed class RunnerPageInstance
 
     private void Invoke(TriggerMatch trigger)
     {
-        try { trigger.Method.Invoke(trigger.Target, null); }
+        try { AwaitTriggerResult(trigger.Method.Invoke(trigger.Target, null)); }
         catch (TargetInvocationException tie) when (tie.InnerException != null)
         {
             // An Error() inside the AL trigger is the trigger's own outcome, not a runner
             // failure — rethrow it unwrapped so the AL stack survives.
             System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(tie.InnerException).Throw();
         }
+    }
+
+    /// <summary>
+    /// Block on the Task / ValueTask an AL page trigger returned, and answer with the value it
+    /// produced (null for a void trigger).
+    ///
+    /// BC's AL compiler emits EVERY page trigger as an async method — measured on the Base App's
+    /// precompiled page 9170 "Profile Card": <c>ProfileIdField_a45_OnValidate</c> returns
+    /// <c>ValueTask</c> and <c>RoleCenterIdField_a45_OnLookup</c> returns
+    /// <c>ValueTask&lt;bool&gt;</c>. <c>MethodInfo.Invoke</c> therefore hands back the awaitable,
+    /// not the outcome, and an <c>Error()</c> the trigger raised is parked on it as a faulted
+    /// state rather than thrown. Every call site here used to drop that value on the floor, so:
+    ///
+    /// <list type="bullet">
+    /// <item>a page control's OnValidate could raise, and TestPage SetValue reported success —
+    /// the AL Error() was measurably present (<c>status=Faulted</c>, e.g.
+    /// "You cannot disable the profile that is used as default.") and simply discarded, which is
+    /// the silent-out-of-scope failure loud-failures.md forbids; and</item>
+    /// <item>OnLookup's <c>result is true</c> pattern-matched a <c>ValueTask&lt;bool&gt;</c>
+    /// against a <c>bool</c>, which is never true, so every lookup on such a page reported
+    /// "the user cancelled" no matter what the trigger returned.</item>
+    /// </list>
+    ///
+    /// Blocking is the correct shape here for the same reason it already is in
+    /// <c>CodeunitPatches.AwaitIfTask</c> and <c>CodeunitEventDispatcher.ObserveAsyncResult</c>
+    /// (the two sibling AL dispatchers that already do this): the runner drives AL synchronously,
+    /// so these are complete or complete inline, and <c>GetAwaiter().GetResult()</c> rethrows the
+    /// ORIGINAL exception rather than an AggregateException — which is what the AL caller,
+    /// including <c>asserterror</c>, has to observe.
+    ///
+    /// A trigger that returned an ordinary (non-awaitable) value is passed through unchanged, so
+    /// a future non-async emit shape keeps working.
+    /// </summary>
+    internal static object? AwaitTriggerResult(object? result)
+    {
+        switch (result)
+        {
+            case null:
+                return null;
+            case System.Threading.Tasks.Task task:
+                task.GetAwaiter().GetResult();
+                return TaskResultOrNull(task);
+            case System.Threading.Tasks.ValueTask valueTask:
+                valueTask.GetAwaiter().GetResult();
+                return null;
+        }
+
+        var type = result.GetType();
+        if (type.IsGenericType
+            && type.GetGenericTypeDefinition() == typeof(System.Threading.Tasks.ValueTask<>))
+        {
+            // ValueTask<T> has no non-generic surface to await through, so go via AsTask() —
+            // the same route CodeunitEventDispatcher.ObserveAsyncResult takes.
+            var asTask = type.GetMethod("AsTask", BindingFlags.Public | BindingFlags.Instance)
+                ?? throw new InvalidOperationException(
+                    $"ValueTask<T>.AsTask not found while awaiting an AL page trigger ({type.FullName}) "
+                    + "— BC/runtime shape changed.");
+            var task = (System.Threading.Tasks.Task)asTask.Invoke(result, null)!;
+            task.GetAwaiter().GetResult();
+            return TaskResultOrNull(task);
+        }
+
+        // Not awaitable — an ordinary return value.
+        return result;
+    }
+
+    /// <summary>
+    /// <c>Task&lt;T&gt;.Result</c> for a completed generic task; null for a task that carries no
+    /// value.
+    ///
+    /// "Carries no value" is not the same as "is not generic": an <c>async Task</c> method
+    /// materialises at runtime as <c>Task&lt;VoidTaskResult&gt;</c>, where <c>VoidTaskResult</c>
+    /// is the BCL's internal placeholder struct. Reading <c>.Result</c> off that hands back a
+    /// boxed placeholder — a non-null object standing in for a void trigger — which would then
+    /// flow out of AwaitTriggerResult as if the trigger had returned something. Filter it out by
+    /// name; the type is internal to System.Private.CoreLib so there is nothing to compare
+    /// against.
+    /// </summary>
+    private static object? TaskResultOrNull(System.Threading.Tasks.Task task)
+    {
+        var type = task.GetType();
+        if (!type.IsGenericType) return null;
+        var resultType = type.GetGenericArguments()[0];
+        if (resultType.FullName == "System.Threading.Tasks.VoidTaskResult") return null;
+        return type.GetProperty("Result", BindingFlags.Public | BindingFlags.Instance)?.GetValue(task);
     }
 
     /// <summary>
