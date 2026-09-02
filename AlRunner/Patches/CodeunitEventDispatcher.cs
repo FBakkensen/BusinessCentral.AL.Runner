@@ -342,7 +342,14 @@ public static partial class BcRuntime
     /// </summary>
     internal static bool IsSenderParameter(ParameterInfo p, int paramIndex)
     {
-        if (paramIndex != 0) return false;
+        // Position is NOT a discriminator (#2348). BC binds the sender to whichever subscriber
+        // parameter carries the publisher's type and has no matching event argument, wherever
+        // it sits — Base App's MfgItemJnlPostLine.OnPostOutput declares `var sender` LAST, and
+        // the AL compiler preserves that order in the emitted C# signature. Measured on a real
+        // 28.4 service tier: first / middle / last all receive the live publisher instance.
+        // Safety against misclassifying a declared record-/codeunit-typed event ARGUMENT comes
+        // from InvokeOneSubscriber's field-lookup-first ordering, not from the index.
+        _ = paramIndex;
         // Codeunit publisher: AL emits sender as Codeunit50047 (the publisher CLR type) — the
         // bundle's typed handle. The runtime type ancestry traces back to NavCodeunitHandle.
         var t = p.ParameterType;
