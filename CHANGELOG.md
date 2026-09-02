@@ -23,6 +23,7 @@ All notable changes to this project are documented here. Format based on
 - **alsid:** answer Sid(name) with BC's not-mapped empty string on a host with no Windows identity store
 
 ### Changed
+- **corpus:** bump the pin to the TestPage-over-a-platform-page suite
 - **test-data:** read backup tables over serve mode, and stop paying per-call costs on the hottest hooks
 - **corpus:** bump the pin to the four backfilled BC-behavior tests
 - normalise a Time field's InitValue to the format BC evaluates it with
