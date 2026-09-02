@@ -6,6 +6,9 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+### Added
+- **all-profile:** populate the All Profile system virtual table (2000000178)
+
 ### Fixed
 - **alsid:** answer Sid(name) with BC's not-mapped empty string on a host with no Windows identity store
 
